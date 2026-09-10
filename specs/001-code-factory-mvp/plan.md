@@ -61,13 +61,20 @@ across 8 phases; concurrency capped by workspace setting (the design shows 6)
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-**The constitution is not ratified.** `.specify/memory/constitution.md` is the unmodified template —
-16 unfilled placeholders, no principles, no governance rules. There are therefore **no gates to
-enforce, and this check neither passes nor fails: it does not apply.** Recording that plainly is
-better than inventing principles and calling them a gate.
+Checked against **Constitution v1.0.0** (ratified 2026-09-10). Every principle is named below with
+how this plan honours it.
 
-In its absence the plan holds itself to the eight principles the repository's own product
-specification states, which are repo-sourced rather than invented:
+| Principle | Status | How this plan honours it |
+| --- | --- | --- |
+| **I. Spec-Driven Delivery** (NON-NEGOTIABLE) | Pass | Every phase in the delivery table cites the requirements it discharges, and all 148 are assigned to exactly one phase. The conditional design stage was absorbed into the spec *before* being planned, and the three divergences from the source material are recorded in the spec rather than left silent |
+| **II. Tested Before Merge** | Pass | D9: `bun test` for unit and integration against a real Postgres, contract tests for the four interfaces in `contracts/`, one Playwright spec per user story's Independent Test. The order of writing is left to the author, which is what the principle permits |
+| **III. Pipelines Are Data** | Pass | Steps are entries in a stored snapshot; the orchestrator branches only on `type` and `condition` — see "What the orchestrator must never do" in `contracts/orchestrator.md` |
+| **IV. Pinned Execution** | Pass | D7 resolves the snapshot once and never re-reads it; `pipeline_versions` is insert-only; ceilings resolve to `least(agent, pipeline, workspace)` at snapshot time |
+| **V. Least Privilege and Secret Hygiene** | Pass | D5 confines container-host rights to the Runner; D8 encrypts at rest, injects as environment, and redacts at ingest rather than at display |
+
+**Architectural invariants**: all ten hold. Eight come from the product specification and are traced
+below. The two the constitution adds — verification is a step an author adds, and exactly two git
+providers exist — are FR-055a–d and FR-014a/b, both delivered in phase A.
 
 | Principle (source: root `spec.md` §1) | How this plan honours it | Where |
 | --- | --- | --- |
@@ -80,13 +87,10 @@ specification states, which are repo-sourced rather than invented:
 | Steps may be conditional | `condition` on every step, evaluated when reached; false ⇒ `skipped`, never failed | FR-032a–f, FR-110–112 |
 | UI work is designed before it is built | Design step gated behind the classification, before Plan | FR-099–FR-109 |
 
-**Recommendation, not a gate**: run `/speckit-constitution` before `/speckit-tasks`. The decisions
-most exposed to a later ratification are testing discipline (D9 assumes tests alongside, not
-test-first) and the two-service split (Complexity Tracking below). Ratifying afterwards may
-invalidate them.
-
-**Post-Phase-1 re-check**: unchanged — still not applicable. No design decision below conflicts
-with the eight principles above; the two that add structure are justified in Complexity Tracking.
+**Post-Phase-1 re-check**: passes unchanged. Ratification confirmed rather than invalidated the two
+decisions that were exposed to it — Principle II matches D9's tests-alongside standard, and the two
+structures exceeding a single project (the separate Runner, the external orchestrator) are justified
+in Complexity Tracking, as the constitution's compliance rule requires.
 
 ## Project Structure
 
