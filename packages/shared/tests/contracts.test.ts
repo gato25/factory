@@ -82,10 +82,13 @@ test('no workspace outside packages/shared redeclares a contract type', () => {
   ];
   const offenders: string[] = [];
   for (const file of elsewhere) {
-    const text = readFileSync(file, 'utf8');
+    // Strip import statements first: `import { type PipelineSnapshot } from …`
+    // names a contract type without redeclaring it.
+    const text = readFileSync(file, 'utf8').replace(/^import[\s\S]*?from\s+'[^']*';$/gm, '');
     for (const name of guarded) {
-      // A local declaration, as opposed to an import of the shared one.
-      if (new RegExp(`^\\s*(export\\s+)?(interface|type)\\s+${name}\\b`, 'm').test(text)) {
+      // A declaration is followed by `=`, `{` or a type parameter list — which
+      // is what separates it from a re-export or an import specifier.
+      if (new RegExp(`^\\s*(export\\s+)?(interface|type)\\s+${name}\\s*[<={]`, 'm').test(text)) {
         offenders.push(`${file.replace(`${REPO}/`, '')} redeclares ${name}`);
       }
     }

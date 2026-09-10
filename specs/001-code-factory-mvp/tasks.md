@@ -123,45 +123,45 @@ the suite passing (quickstart.md scenario A).
 - [ ] T040 [P] [US1] Contract test for the four Runner operations in `apps/runner/tests/contract/api.test.ts` (`contracts/runner.md`)
 - [ ] T041 [P] [US1] Contract test for the step-engine interface in `apps/runner/tests/contract/step-engines.test.ts` — every engine satisfies one `StepEngine` contract: streams output while running, reports cost from the engine's own usage, is killed at a ceiling, and retains partial output on failure (`contracts/step-engines.md`, Constitution Principle II)
 - [ ] T042 [P] [US1] Contract test for the remote-function surface in `apps/web/tests/contract/ui-data.test.ts` — queries, commands and forms carry the shapes in `contracts/ui-data.md`, and every one checks authorisation **inside** the function rather than in a component (`contracts/ui-data.md`, Constitution Principle II)
-- [ ] T043 [P] [US1] Integration test for snapshot resolution in `apps/web/tests/integration/snapshot.test.ts` — a snapshot must be complete, and editing an agent afterwards must not change it (FR-044, SC-010)
-- [ ] T044 [P] [US1] Integration test for callback idempotency in `apps/web/tests/integration/idempotency.test.ts` — a repeated event creates no second `step_results` row and does not advance the run twice (FR-095)
+- [X] T043 [P] [US1] Integration test for snapshot resolution in `apps/web/tests/integration/snapshot.test.ts` — a snapshot must be complete, and editing an agent afterwards must not change it (FR-044, SC-010)
+- [X] T044 [P] [US1] Integration test for callback idempotency in `apps/web/tests/integration/idempotency.test.ts` — a repeated event creates no second `step_results` row and does not advance the run twice (FR-095)
 - [ ] T045 [P] [US1] Integration test for required-output checking in `apps/runner/tests/integration/outputs.test.ts` — a missing **or empty** declared file fails the step (FR-051)
 - [ ] T046 [P] [US1] End-to-end test of the whole journey in `apps/web/tests/e2e/ticket-to-mr.spec.ts`, including the three refusals from quickstart.md scenario A: a token missing a permission names which one (FR-009), a non-GitLab/GitHub repository is refused with a reason (FR-014b), and a step with a missing document opens no merge request (FR-055)
 
 ### Shipped defaults
 
-- [ ] T047 [US1] Ship working default agents covering specification, interface design, planning, task breakdown and implementation, so a workspace produces a merge request with nothing configured in `apps/web/src/lib/services/agent-defaults.ts` (FR-033)
-- [ ] T048 [US1] Ship at least three default pipelines differing in how much human oversight they impose — none of them carrying a verification command, because that command is repository-specific (FR-034a) — in `apps/web/src/lib/services/pipeline-defaults.ts` (FR-034)
+- [X] T047 [US1] Ship working default agents covering specification, interface design, planning, task breakdown and implementation, so a workspace produces a merge request with nothing configured in `apps/web/src/lib/services/agent-defaults.ts` (FR-033)
+- [X] T048 [US1] Ship at least three default pipelines differing in how much human oversight they impose — none of them carrying a verification command, because that command is repository-specific (FR-034a) — in `apps/web/src/lib/services/pipeline-defaults.ts` (FR-034)
 
 ### Repositories
 
-- [ ] T049 [US1] Implement repository connection in `apps/web/src/lib/services/repository.ts` — verify the credential can read the repository, create branches **and** open merge requests before saving (FR-008)
-- [ ] T050 [US1] Name the specific missing permission when verification fails, rather than reporting a generic failure, in `apps/web/src/lib/services/repository.ts` (FR-009)
-- [ ] T051 [US1] Refuse a repository not hosted on GitLab.com or GitHub.com, with a stated reason in `apps/web/src/lib/services/repository.ts` (FR-014a, FR-014b)
+- [X] T049 [US1] Implement repository connection in `apps/web/src/lib/services/repository.ts` — verify the credential can read the repository, create branches **and** open merge requests before saving (FR-008)
+- [X] T050 [US1] Name the specific missing permission when verification fails, rather than reporting a generic failure, in `apps/web/src/lib/services/repository.ts` (FR-009)
+- [X] T051 [US1] Refuse a repository not hosted on GitLab.com or GitHub.com, with a stated reason in `apps/web/src/lib/services/repository.ts` (FR-014a, FR-014b)
 - [ ] T052 [P] [US1] Remote functions for repositories in `apps/web/src/lib/remote/repositories.remote.ts` — a `query` for the list, a `form` for connecting, `command`s for replacing a credential and disconnecting (FR-014); thin, delegating to the service (research.md risk 1)
 - [ ] T053 [P] [US1] Repositories screen (02) in `apps/web/src/routes/(app)/repositories/+page.svelte` — provider, default branch, default pipeline, running and done counts, connection usability (FR-012)
 - [ ] T054 [P] [US1] Connect Repository modal (03) in `apps/web/src/components/ConnectRepository.svelte` — provider choice limited to GitLab and GitHub, address, credential, default pipeline, stating the required permissions at the point the credential is entered (FR-007, FR-010)
-- [ ] T055 [US1] Block new runs on a repository whose credential is no longer valid, and show that state on the repository in `apps/web/src/lib/services/repository.ts` (FR-013)
+- [X] T055 [US1] Block new runs on a repository whose credential is no longer valid, and show that state on the repository in `apps/web/src/lib/services/repository.ts` (FR-013)
 
 ### Tickets
 
-- [ ] T056 [US1] Implement ticket creation in `apps/web/src/lib/services/ticket.ts` — repository and title required, description and acceptance criteria may be empty (FR-015, FR-016)
-- [ ] T057 [US1] Derive the ticket reference and the branch name from the reference and title in `apps/web/src/lib/services/ticket.ts` (FR-021)
-- [ ] T058 [US1] Implement the ticket state vocabulary — not started, waiting to start, running, waiting for approval, done, failed, cancelled — in `apps/web/src/lib/services/ticket.ts` (FR-022)
-- [ ] T059 [US1] Default the pipeline choice to the repository's default while allowing the author to change it in `apps/web/src/lib/services/ticket.ts` (FR-018)
-- [ ] T060 [US1] Compute the pre-flight preview — every step with its agent and model, plus a cost and duration estimate derived from comparable past runs — in `apps/web/src/lib/services/estimate.ts` (FR-019); estimates are explicitly not commitments
+- [X] T056 [US1] Implement ticket creation in `apps/web/src/lib/services/ticket.ts` — repository and title required, description and acceptance criteria may be empty (FR-015, FR-016)
+- [X] T057 [US1] Derive the ticket reference and the branch name from the reference and title in `apps/web/src/lib/services/ticket.ts` (FR-021)
+- [X] T058 [US1] Implement the ticket state vocabulary — not started, waiting to start, running, waiting for approval, done, failed, cancelled — in `apps/web/src/lib/services/ticket.ts` (FR-022)
+- [X] T059 [US1] Default the pipeline choice to the repository's default while allowing the author to change it in `apps/web/src/lib/services/ticket.ts` (FR-018)
+- [X] T060 [US1] Compute the pre-flight preview — every step with its agent and model, plus a cost and duration estimate derived from comparable past runs — in `apps/web/src/lib/services/estimate.ts` (FR-019); estimates are explicitly not commitments
 - [ ] T061 [P] [US1] Remote functions for tickets in `apps/web/src/lib/remote/tickets.remote.ts` — a `form` for create-and-start and for save-as-draft (FR-017), and a `query` for one ticket
 - [ ] T062 [P] [US1] Create Ticket screen (05) in `apps/web/src/routes/(app)/tickets/new/+page.svelte` with the "What will happen" panel and the footer estimate
 
 ### Run orchestration (app side)
 
-- [ ] T063 [US1] Implement snapshot resolution in `apps/web/src/lib/snapshot/resolve.ts` — flatten the pipeline version, every agent, every skill and every ceiling into one document, consulted **once** (FR-044, Principle IV)
-- [ ] T064 [US1] Resolve ceilings as `least(agent, pipeline, workspace)` at snapshot time and store them on the run, so a member-set limit cannot raise consumption in `apps/web/src/lib/snapshot/ceilings.ts` (FR-079a)
-- [ ] T065 [US1] Create the run with `attempt = previous + 1` and at most one active run per ticket in `apps/web/src/lib/services/run.ts` (FR-020, FR-045)
-- [ ] T066 [US1] Post the trigger to the orchestrator, retrying with increasing delays and keeping the ticket queued while showing the author it has not begun (FR-094), in `apps/web/src/lib/services/orchestrator.ts`
-- [ ] T067 [US1] Implement the callback sink at `apps/web/src/routes/api/hooks/n8n/+server.ts` — authenticated with the run secret, rejecting unauthenticated calls without revealing whether the run exists, and applying every event idempotently on `(run_id, step_index)` (FR-095)
-- [ ] T068 [US1] Record step results — outcome, timings, cost, summary — and add cost to the run ledger in `apps/web/src/lib/ledger/record.ts` (FR-052, FR-108)
-- [ ] T069 [US1] Capture produced files as versioned artifacts with the correct `kind`, additively so no version is overwritten in `apps/web/src/lib/services/artifact.ts` (FR-053, FR-054)
+- [X] T063 [US1] Implement snapshot resolution in `apps/web/src/lib/snapshot/resolve.ts` — flatten the pipeline version, every agent, every skill and every ceiling into one document, consulted **once** (FR-044, Principle IV)
+- [X] T064 [US1] Resolve ceilings as `least(agent, pipeline, workspace)` at snapshot time and store them on the run, so a member-set limit cannot raise consumption in `apps/web/src/lib/snapshot/ceilings.ts` (FR-079a)
+- [X] T065 [US1] Create the run with `attempt = previous + 1` and at most one active run per ticket in `apps/web/src/lib/services/run.ts` (FR-020, FR-045)
+- [X] T066 [US1] Post the trigger to the orchestrator, retrying with increasing delays and keeping the ticket queued while showing the author it has not begun (FR-094), in `apps/web/src/lib/services/orchestrator.ts`
+- [X] T067 [US1] Implement the callback sink at `apps/web/src/routes/api/hooks/n8n/+server.ts` — authenticated with the run secret, rejecting unauthenticated calls without revealing whether the run exists, and applying every event idempotently on `(run_id, step_index)` (FR-095)
+- [X] T068 [US1] Record step results — outcome, timings, cost, summary — and add cost to the run ledger in `apps/web/src/lib/ledger/record.ts` (FR-052, FR-108)
+- [X] T069 [US1] Capture produced files as versioned artifacts with the correct `kind`, additively so no version is overwritten in `apps/web/src/lib/services/artifact.ts` (FR-053, FR-054)
 
 ### Runner and engines
 
