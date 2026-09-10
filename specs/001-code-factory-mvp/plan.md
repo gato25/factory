@@ -164,13 +164,13 @@ slices — each ends at something demonstrable.
 
 | Phase | Story | Delivers | Requirements |
 | --- | --- | --- | --- |
-| **A** | 1 (P1) | Foundation and the value path: schema, sign-in, repository connection with permission verification, ticket creation and its state vocabulary, snapshot resolution, n8n trigger, Runner and container, Claude CLI agent steps, branch push, merge request | FR-001–FR-022, FR-044–FR-055d, FR-065–FR-070a |
+| **A** | 1 (P1) | Foundation and the value path: schema, sign-in, repository connection with permission verification, ticket creation and its state vocabulary, the shipped default agents and pipelines a run needs, snapshot resolution, n8n trigger, Runner and container, Claude CLI agent steps, branch push, merge request | FR-001–FR-022, FR-033–FR-034a, FR-044–FR-055d, FR-065–FR-070a |
 | **B** | 2 (P2) | Observability: `LISTEN`/`NOTIFY` + SSE, run page, live log, artifact viewers, dashboard, activity feed, tickets board with filters and per-ticket status | FR-023–FR-023a, FR-071–FR-078 |
-| **C** | 3 (P3) | Review gates: pause, notify, the four decisions, resume, edit-and-continue, approval records, timeouts | FR-056–FR-064e |
+| **C** | 3 (P3) | Review gates: pause, notify, the four decisions, resume, edit-and-continue, change-request feedback reaching the agent, approval records, timeouts | FR-038, FR-056–FR-064e |
 | **D** | 4 (P4) | Recovery and safety: failure reasons, retry and edit-and-retry, attempt history, branch reset, budget ceilings, pause, cancel | FR-079–FR-098 |
 | **E** | 5 (P5) | The design stage: classification, conditions, `skipped`, design engine, screens, gate 14, screens into later steps and the merge request | FR-032a–f, FR-099–FR-112, FR-019a, FR-067a, FR-075a |
 | **F** | 6 (P6) | Pipeline builder: reorder, insert, conditions in words, versioning, save-time validation | FR-024–FR-032 |
-| **G** | 7 (P7) | Agents and skills: editors, ownership, per-engine configuration, reset to default, usage counts | FR-033–FR-043a, FR-006–FR-006d |
+| **G** | 7 (P7) | Agents and skills: editors, ownership, per-engine configuration, reset to default, usage counts | FR-035–FR-037, FR-039–FR-043a, FR-006–FR-006d |
 | **H** | 8 (P8) | Workspace governance: settings, connection tests, members and roles, cost and concurrency ceilings, queue position | FR-004–FR-005a, FR-082, FR-085, FR-086 |
 
 Phase A is the only phase that must be whole before any other starts. B through H are each shippable

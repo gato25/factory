@@ -121,63 +121,70 @@ the suite passing (quickstart.md scenario A).
 - [ ] T038 [P] [US1] Contract test for the trigger payload in `apps/web/tests/contract/trigger.test.ts` — asserts the body is the fully resolved snapshot and that no field requires a later lookup (`contracts/orchestrator.md` §1)
 - [ ] T039 [P] [US1] Contract test for all eleven callback events in `apps/web/tests/contract/callbacks.test.ts` (`contracts/orchestrator.md` §3)
 - [ ] T040 [P] [US1] Contract test for the four Runner operations in `apps/runner/tests/contract/api.test.ts` (`contracts/runner.md`)
-- [ ] T041 [P] [US1] Integration test for snapshot resolution in `apps/web/tests/integration/snapshot.test.ts` — a snapshot must be complete, and editing an agent afterwards must not change it (FR-044, SC-010)
-- [ ] T042 [P] [US1] Integration test for callback idempotency in `apps/web/tests/integration/idempotency.test.ts` — a repeated event creates no second `step_results` row and does not advance the run twice (FR-095)
-- [ ] T043 [P] [US1] Integration test for required-output checking in `apps/runner/tests/integration/outputs.test.ts` — a missing **or empty** declared file fails the step (FR-051)
-- [ ] T044 [P] [US1] End-to-end test of the whole journey in `apps/web/tests/e2e/ticket-to-mr.spec.ts`, including the three refusals from quickstart.md scenario A: a token missing a permission names which one (FR-009), a non-GitLab/GitHub repository is refused with a reason (FR-014b), and a step with a missing document opens no merge request (FR-055)
+- [ ] T041 [P] [US1] Contract test for the step-engine interface in `apps/runner/tests/contract/step-engines.test.ts` — every engine satisfies one `StepEngine` contract: streams output while running, reports cost from the engine's own usage, is killed at a ceiling, and retains partial output on failure (`contracts/step-engines.md`, Constitution Principle II)
+- [ ] T042 [P] [US1] Contract test for the remote-function surface in `apps/web/tests/contract/ui-data.test.ts` — queries, commands and forms carry the shapes in `contracts/ui-data.md`, and every one checks authorisation **inside** the function rather than in a component (`contracts/ui-data.md`, Constitution Principle II)
+- [ ] T043 [P] [US1] Integration test for snapshot resolution in `apps/web/tests/integration/snapshot.test.ts` — a snapshot must be complete, and editing an agent afterwards must not change it (FR-044, SC-010)
+- [ ] T044 [P] [US1] Integration test for callback idempotency in `apps/web/tests/integration/idempotency.test.ts` — a repeated event creates no second `step_results` row and does not advance the run twice (FR-095)
+- [ ] T045 [P] [US1] Integration test for required-output checking in `apps/runner/tests/integration/outputs.test.ts` — a missing **or empty** declared file fails the step (FR-051)
+- [ ] T046 [P] [US1] End-to-end test of the whole journey in `apps/web/tests/e2e/ticket-to-mr.spec.ts`, including the three refusals from quickstart.md scenario A: a token missing a permission names which one (FR-009), a non-GitLab/GitHub repository is refused with a reason (FR-014b), and a step with a missing document opens no merge request (FR-055)
+
+### Shipped defaults
+
+- [ ] T047 [US1] Ship working default agents covering specification, interface design, planning, task breakdown and implementation, so a workspace produces a merge request with nothing configured in `apps/web/src/lib/services/agent-defaults.ts` (FR-033)
+- [ ] T048 [US1] Ship at least three default pipelines differing in how much human oversight they impose — none of them carrying a verification command, because that command is repository-specific (FR-034a) — in `apps/web/src/lib/services/pipeline-defaults.ts` (FR-034)
 
 ### Repositories
 
-- [ ] T045 [US1] Implement repository connection in `apps/web/src/lib/services/repository.ts` — verify the credential can read the repository, create branches **and** open merge requests before saving (FR-008)
-- [ ] T046 [US1] Name the specific missing permission when verification fails, rather than reporting a generic failure, in `apps/web/src/lib/services/repository.ts` (FR-009)
-- [ ] T047 [US1] Refuse a repository not hosted on GitLab.com or GitHub.com, with a stated reason in `apps/web/src/lib/services/repository.ts` (FR-014a, FR-014b)
-- [ ] T048 [P] [US1] Remote functions for repositories in `apps/web/src/lib/remote/repositories.remote.ts` — a `query` for the list, a `form` for connecting, `command`s for replacing a credential and disconnecting (FR-014); thin, delegating to the service (research.md risk 1)
-- [ ] T049 [P] [US1] Repositories screen (02) in `apps/web/src/routes/(app)/repositories/+page.svelte` — provider, default branch, default pipeline, running and done counts, connection usability (FR-012)
-- [ ] T050 [P] [US1] Connect Repository modal (03) in `apps/web/src/components/ConnectRepository.svelte` — provider choice limited to GitLab and GitHub, address, credential, default pipeline, stating the required permissions at the point the credential is entered (FR-007, FR-010)
-- [ ] T051 [US1] Block new runs on a repository whose credential is no longer valid, and show that state on the repository in `apps/web/src/lib/services/repository.ts` (FR-013)
+- [ ] T049 [US1] Implement repository connection in `apps/web/src/lib/services/repository.ts` — verify the credential can read the repository, create branches **and** open merge requests before saving (FR-008)
+- [ ] T050 [US1] Name the specific missing permission when verification fails, rather than reporting a generic failure, in `apps/web/src/lib/services/repository.ts` (FR-009)
+- [ ] T051 [US1] Refuse a repository not hosted on GitLab.com or GitHub.com, with a stated reason in `apps/web/src/lib/services/repository.ts` (FR-014a, FR-014b)
+- [ ] T052 [P] [US1] Remote functions for repositories in `apps/web/src/lib/remote/repositories.remote.ts` — a `query` for the list, a `form` for connecting, `command`s for replacing a credential and disconnecting (FR-014); thin, delegating to the service (research.md risk 1)
+- [ ] T053 [P] [US1] Repositories screen (02) in `apps/web/src/routes/(app)/repositories/+page.svelte` — provider, default branch, default pipeline, running and done counts, connection usability (FR-012)
+- [ ] T054 [P] [US1] Connect Repository modal (03) in `apps/web/src/components/ConnectRepository.svelte` — provider choice limited to GitLab and GitHub, address, credential, default pipeline, stating the required permissions at the point the credential is entered (FR-007, FR-010)
+- [ ] T055 [US1] Block new runs on a repository whose credential is no longer valid, and show that state on the repository in `apps/web/src/lib/services/repository.ts` (FR-013)
 
 ### Tickets
 
-- [ ] T052 [US1] Implement ticket creation in `apps/web/src/lib/services/ticket.ts` — repository and title required, description and acceptance criteria may be empty (FR-015, FR-016)
-- [ ] T053 [US1] Derive the ticket reference and the branch name from the reference and title in `apps/web/src/lib/services/ticket.ts` (FR-021)
-- [ ] T054 [US1] Implement the ticket state vocabulary — not started, waiting to start, running, waiting for approval, done, failed, cancelled — in `apps/web/src/lib/services/ticket.ts` (FR-022)
-- [ ] T055 [US1] Default the pipeline choice to the repository's default while allowing the author to change it in `apps/web/src/lib/services/ticket.ts` (FR-018)
-- [ ] T056 [US1] Compute the pre-flight preview — every step with its agent and model, plus a cost and duration estimate derived from comparable past runs — in `apps/web/src/lib/services/estimate.ts` (FR-019); estimates are explicitly not commitments
-- [ ] T057 [P] [US1] Remote functions for tickets in `apps/web/src/lib/remote/tickets.remote.ts` — a `form` for create-and-start and for save-as-draft (FR-017), and a `query` for one ticket
-- [ ] T058 [P] [US1] Create Ticket screen (05) in `apps/web/src/routes/(app)/tickets/new/+page.svelte` with the "What will happen" panel and the footer estimate
+- [ ] T056 [US1] Implement ticket creation in `apps/web/src/lib/services/ticket.ts` — repository and title required, description and acceptance criteria may be empty (FR-015, FR-016)
+- [ ] T057 [US1] Derive the ticket reference and the branch name from the reference and title in `apps/web/src/lib/services/ticket.ts` (FR-021)
+- [ ] T058 [US1] Implement the ticket state vocabulary — not started, waiting to start, running, waiting for approval, done, failed, cancelled — in `apps/web/src/lib/services/ticket.ts` (FR-022)
+- [ ] T059 [US1] Default the pipeline choice to the repository's default while allowing the author to change it in `apps/web/src/lib/services/ticket.ts` (FR-018)
+- [ ] T060 [US1] Compute the pre-flight preview — every step with its agent and model, plus a cost and duration estimate derived from comparable past runs — in `apps/web/src/lib/services/estimate.ts` (FR-019); estimates are explicitly not commitments
+- [ ] T061 [P] [US1] Remote functions for tickets in `apps/web/src/lib/remote/tickets.remote.ts` — a `form` for create-and-start and for save-as-draft (FR-017), and a `query` for one ticket
+- [ ] T062 [P] [US1] Create Ticket screen (05) in `apps/web/src/routes/(app)/tickets/new/+page.svelte` with the "What will happen" panel and the footer estimate
 
 ### Run orchestration (app side)
 
-- [ ] T059 [US1] Implement snapshot resolution in `apps/web/src/lib/snapshot/resolve.ts` — flatten the pipeline version, every agent, every skill and every ceiling into one document, consulted **once** (FR-044, Principle IV)
-- [ ] T060 [US1] Resolve ceilings as `least(agent, pipeline, workspace)` at snapshot time and store them on the run, so a member-set limit cannot raise consumption in `apps/web/src/lib/snapshot/ceilings.ts` (FR-079a)
-- [ ] T061 [US1] Create the run with `attempt = previous + 1` and at most one active run per ticket in `apps/web/src/lib/services/run.ts` (FR-020, FR-045)
-- [ ] T062 [US1] Post the trigger to the orchestrator, retrying with increasing delays and keeping the ticket queued while showing the author it has not begun (FR-094), in `apps/web/src/lib/services/orchestrator.ts`
-- [ ] T063 [US1] Implement the callback sink at `apps/web/src/routes/api/hooks/n8n/+server.ts` — authenticated with the run secret, rejecting unauthenticated calls without revealing whether the run exists, and applying every event idempotently on `(run_id, step_index)` (FR-095)
-- [ ] T064 [US1] Record step results — outcome, timings, cost, summary — and add cost to the run ledger in `apps/web/src/lib/ledger/record.ts` (FR-052, FR-108)
-- [ ] T065 [US1] Capture produced files as versioned artifacts with the correct `kind`, additively so no version is overwritten in `apps/web/src/lib/services/artifact.ts` (FR-053, FR-054)
+- [ ] T063 [US1] Implement snapshot resolution in `apps/web/src/lib/snapshot/resolve.ts` — flatten the pipeline version, every agent, every skill and every ceiling into one document, consulted **once** (FR-044, Principle IV)
+- [ ] T064 [US1] Resolve ceilings as `least(agent, pipeline, workspace)` at snapshot time and store them on the run, so a member-set limit cannot raise consumption in `apps/web/src/lib/snapshot/ceilings.ts` (FR-079a)
+- [ ] T065 [US1] Create the run with `attempt = previous + 1` and at most one active run per ticket in `apps/web/src/lib/services/run.ts` (FR-020, FR-045)
+- [ ] T066 [US1] Post the trigger to the orchestrator, retrying with increasing delays and keeping the ticket queued while showing the author it has not begun (FR-094), in `apps/web/src/lib/services/orchestrator.ts`
+- [ ] T067 [US1] Implement the callback sink at `apps/web/src/routes/api/hooks/n8n/+server.ts` — authenticated with the run secret, rejecting unauthenticated calls without revealing whether the run exists, and applying every event idempotently on `(run_id, step_index)` (FR-095)
+- [ ] T068 [US1] Record step results — outcome, timings, cost, summary — and add cost to the run ledger in `apps/web/src/lib/ledger/record.ts` (FR-052, FR-108)
+- [ ] T069 [US1] Capture produced files as versioned artifacts with the correct `kind`, additively so no version is overwritten in `apps/web/src/lib/services/artifact.ts` (FR-053, FR-054)
 
 ### Runner and engines
 
-- [ ] T066 [US1] Implement container start in `apps/runner/src/container/start.ts` — one fresh non-root container per run with the configured ceilings, workspace at `/work`, never reused (FR-046, FR-047). The workspace persists across every step of the run, which is how work is handed between them — each step reads what earlier steps wrote (FR-050)
-- [ ] T067 [US1] Inject credentials as environment at container start, never writing them into the workspace, in `apps/runner/src/container/secrets.ts` (FR-083, Principle V)
-- [ ] T068 [US1] Clone the repository at its **current** default branch and check out the run branch in `apps/runner/src/container/clone.ts` (FR-048, FR-065)
-- [ ] T069 [US1] Write each agent's system prompt and each attached skill into the workspace, substituting the run's values for prompt variables, in `apps/runner/src/container/config.ts` (FR-037)
-- [ ] T070 [US1] Implement the `claude_cli` engine in `apps/runner/src/engines/claude-cli.ts` — headless invocation with structured output, using the exact model identifiers `claude-sonnet-5` and `claude-opus-5` with **no date suffixes** (`contracts/step-engines.md`); a tool the agent has not been permitted must not be reachable (FR-039)
-- [ ] T071 [US1] Implement the `shell` engine in `apps/runner/src/engines/shell.ts` — a non-zero exit fails the step and the run, with the full output retained, and **no preceding agent step re-run automatically** (FR-055c, FR-055d)
-- [ ] T072 [US1] Implement required-output checking in `apps/runner/src/outputs/check.ts` — every `output_files` entry must exist and be non-empty (FR-051)
-- [ ] T073 [US1] Stream stdout and stderr as `log_chunk` callbacks with credentials redacted at ingest, in `apps/runner/src/stream/logs.ts` (FR-076)
-- [ ] T074 [US1] Report cost from the engine's own reported usage, never from an estimate of our own, in `apps/runner/src/engines/usage.ts` (FR-108, D6)
-- [ ] T075 [US1] Implement branch push in `apps/runner/src/container/push.ts`, running **no tests of its own** — verification exists only as a shell step an author added (FR-055a, FR-055b)
-- [ ] T076 [US1] Report the branch-pushed-but-merge-request-failed case distinguishably from total failure in `apps/runner/src/container/push.ts` (FR-098)
-- [ ] T077 [US1] Implement container destruction in `apps/runner/src/container/destroy.ts`, within five minutes of the run ending (FR-086, SC-012)
+- [ ] T070 [US1] Implement container start in `apps/runner/src/container/start.ts` — one fresh non-root container per run with the configured ceilings, workspace at `/work`, never reused (FR-046, FR-047). The workspace persists across every step of the run, which is how work is handed between them — each step reads what earlier steps wrote (FR-050)
+- [ ] T071 [US1] Inject credentials as environment at container start, never writing them into the workspace, in `apps/runner/src/container/secrets.ts` (FR-083, Principle V)
+- [ ] T072 [US1] Clone the repository at its **current** default branch and check out the run branch in `apps/runner/src/container/clone.ts` (FR-048, FR-065)
+- [ ] T073 [US1] Write each agent's system prompt and each attached skill into the workspace, substituting the run's values for prompt variables, in `apps/runner/src/container/config.ts` (FR-037)
+- [ ] T074 [US1] Implement the `claude_cli` engine in `apps/runner/src/engines/claude-cli.ts` — headless invocation with structured output, using the exact model identifiers `claude-sonnet-5` and `claude-opus-5` with **no date suffixes** (`contracts/step-engines.md`); a tool the agent has not been permitted must not be reachable (FR-039)
+- [ ] T075 [US1] Implement the `shell` engine in `apps/runner/src/engines/shell.ts` — a non-zero exit fails the step and the run, with the full output retained, and **no preceding agent step re-run automatically** (FR-055c, FR-055d)
+- [ ] T076 [US1] Implement required-output checking in `apps/runner/src/outputs/check.ts` — every `output_files` entry must exist and be non-empty (FR-051)
+- [ ] T077 [US1] Stream stdout and stderr as `log_chunk` callbacks with credentials redacted at ingest, in `apps/runner/src/stream/logs.ts` (FR-076)
+- [ ] T078 [US1] Report cost from the engine's own reported usage, never from an estimate of our own, in `apps/runner/src/engines/usage.ts` (FR-108, D6)
+- [ ] T079 [US1] Implement branch push in `apps/runner/src/container/push.ts`, running **no tests of its own** — verification exists only as a shell step an author added (FR-055a, FR-055b)
+- [ ] T080 [US1] Report the branch-pushed-but-merge-request-failed case distinguishably from total failure in `apps/runner/src/container/push.ts` (FR-098)
+- [ ] T081 [US1] Implement container destruction in `apps/runner/src/container/destroy.ts`, within five minutes of the run ending (FR-086, SC-012)
 
 ### Orchestration workflow
 
-- [ ] T078 [US1] Build the generic workflow in `orchestration/n8n/run-ticket-pipeline.json` — webhook, Runner start, the ordered step loop branching **only** on `type`, the failure path, and container destruction (FR-049, Principle III)
-- [ ] T079 [US1] Open the merge request from the run branch into the repository's current default branch, in the workflow's merge-request node in `orchestration/n8n/run-ticket-pipeline.json` (FR-065)
-- [ ] T080 [US1] Compose the merge request body in `apps/web/src/lib/services/merge-request.ts` — ticket description, acceptance criteria as a checklist, the specification and plan, cost and duration, and a link back to the ticket (FR-066, FR-067)
-- [ ] T081 [US1] Label the merge request so system-produced work and the pipeline that produced it are identifiable in `apps/web/src/lib/services/merge-request.ts` (FR-068)
-- [ ] T082 [US1] Store the merge request address on the ticket, mark it done, record final cost, and add the outcome to the activity feed (FR-069, FR-070a); the system never merges in `apps/web/src/lib/services/run.ts` (FR-070)
+- [ ] T082 [US1] Build the generic workflow in `orchestration/n8n/run-ticket-pipeline.json` — webhook, Runner start, the ordered step loop branching **only** on `type`, the failure path, and container destruction (FR-049, Principle III)
+- [ ] T083 [US1] Open the merge request from the run branch into the repository's current default branch, in the workflow's merge-request node in `orchestration/n8n/run-ticket-pipeline.json` (FR-065)
+- [ ] T084 [US1] Compose the merge request body in `apps/web/src/lib/services/merge-request.ts` — ticket description, acceptance criteria as a checklist, the specification and plan, cost and duration, and a link back to the ticket (FR-066, FR-067)
+- [ ] T085 [US1] Label the merge request so system-produced work and the pipeline that produced it are identifiable in `apps/web/src/lib/services/merge-request.ts` (FR-068)
+- [ ] T086 [US1] Store the merge request address on the ticket, mark it done, record final cost, and add the outcome to the activity feed (FR-069, FR-070a); the system never merges in `apps/web/src/lib/services/run.ts` (FR-070)
 
 **Checkpoint**: User Story 1 is fully functional. A ticket becomes an open merge request. **This is
 the MVP** — deployable and demonstrable on its own.
@@ -195,25 +202,25 @@ claim against the produced documents when the run ends.
 
 ### Tests for User Story 2
 
-- [ ] T083 [P] [US2] Integration test for `LISTEN`/`NOTIFY` fan-out in `apps/web/tests/integration/events.test.ts` — a callback write reaches a subscribed stream
-- [ ] T084 [P] [US2] Integration test asserting displayed state is never more than 5 seconds behind actual state in `apps/web/tests/integration/staleness.test.ts` (SC-004)
-- [ ] T085 [P] [US2] End-to-end test in `apps/web/tests/e2e/watch-run.spec.ts` — step states, progressive log output, artifact reading, and a dashboard that updates as runs progress (quickstart.md scenario B)
+- [ ] T087 [P] [US2] Integration test for `LISTEN`/`NOTIFY` fan-out in `apps/web/tests/integration/events.test.ts` — a callback write reaches a subscribed stream
+- [ ] T088 [P] [US2] Integration test asserting displayed state is never more than 5 seconds behind actual state in `apps/web/tests/integration/staleness.test.ts` (SC-004)
+- [ ] T089 [P] [US2] End-to-end test in `apps/web/tests/e2e/watch-run.spec.ts` — step states, progressive log output, artifact reading, and a dashboard that updates as runs progress (quickstart.md scenario B)
 
 ### Implementation for User Story 2
 
-- [ ] T086 [US2] Emit a Postgres `NOTIFY` on a run-scoped channel from every write that changes a run, in `apps/web/src/lib/services/notify.ts` (D4)
-- [ ] T087 [US2] Implement the server-sent-events route at `apps/web/src/routes/api/events/[run_id]/+server.ts` — subscribe with `LISTEN`, emit change signals, and carry log chunks as payloads rather than signals (FR-074, FR-076)
-- [ ] T088 [P] [US2] Client subscription that refreshes the affected `query` on a change signal, in `apps/web/src/lib/events/subscribe.ts`
-- [ ] T089 [P] [US2] Ticket Run screen (06) in `apps/web/src/routes/(app)/tickets/[id]/+page.svelte` — header with branch, creator, start time and cost so far, plus Pause and Cancel
-- [ ] T090 [P] [US2] Step tracker component in `apps/web/src/components/StepTracker.svelte` — each step's state, duration and cost, and total spent against the run's ceiling (FR-075)
-- [ ] T091 [P] [US2] Live log component in `apps/web/src/components/LiveLog.svelte` — streamed output with the exact command shown in the header (FR-076)
-- [ ] T092 [P] [US2] Artifact viewers in `apps/web/src/components/ArtifactViewer.svelte` — documents, the commit list and the merge request opened and read in the application (FR-077)
-- [ ] T093 [P] [US2] Run details panel in `apps/web/src/components/RunDetails.svelte` — pipeline and version, attempt, and a reference identifying the execution in the orchestrator (FR-078)
-- [ ] T094 [P] [US2] Dashboard screen (01) in `apps/web/src/routes/(app)/+page.svelte` — four stat tiles: connected repositories, tickets running, awaiting approval, merge requests this week (FR-071)
-- [ ] T095 [P] [US2] Active runs list on the dashboard with ticket, repository, pipeline progress and status, updating as runs progress in `apps/web/src/components/ActiveRuns.svelte` (FR-072, FR-074)
-- [ ] T096 [P] [US2] Activity feed in `apps/web/src/components/ActivityFeed.svelte` — merge requests merged, runs completed, runs failed, gates reached, tickets created (FR-073)
-- [ ] T097 [P] [US2] Tickets Board screen (04) in `apps/web/src/routes/(app)/tickets/+page.svelte` — filters by repository, pipeline and author, board and list views, grouped by state (FR-023)
-- [ ] T098 [US2] Per-ticket status strip in `apps/web/src/components/TicketCard.svelte` — whichever applies: the running step and its position, the gate awaiting approval, the merge request opened, or the failure reason (FR-023a)
+- [ ] T090 [US2] Emit a Postgres `NOTIFY` on a run-scoped channel from every write that changes a run, in `apps/web/src/lib/services/notify.ts` (D4)
+- [ ] T091 [US2] Implement the server-sent-events route at `apps/web/src/routes/api/events/[run_id]/+server.ts` — subscribe with `LISTEN`, emit change signals, and carry log chunks as payloads rather than signals (FR-074, FR-076)
+- [ ] T092 [P] [US2] Client subscription that refreshes the affected `query` on a change signal, in `apps/web/src/lib/events/subscribe.ts`
+- [ ] T093 [P] [US2] Ticket Run screen (06) in `apps/web/src/routes/(app)/tickets/[id]/+page.svelte` — header with branch, creator, start time and cost so far, plus Pause and Cancel
+- [ ] T094 [P] [US2] Step tracker component in `apps/web/src/components/StepTracker.svelte` — each step's state, duration and cost, and total spent against the run's ceiling (FR-075)
+- [ ] T095 [P] [US2] Live log component in `apps/web/src/components/LiveLog.svelte` — streamed output with the exact command shown in the header (FR-076)
+- [ ] T096 [P] [US2] Artifact viewers in `apps/web/src/components/ArtifactViewer.svelte` — documents, the commit list and the merge request opened and read in the application (FR-077)
+- [ ] T097 [P] [US2] Run details panel in `apps/web/src/components/RunDetails.svelte` — pipeline and version, attempt, and a reference identifying the execution in the orchestrator (FR-078)
+- [ ] T098 [P] [US2] Dashboard screen (01) in `apps/web/src/routes/(app)/+page.svelte` — four stat tiles: connected repositories, tickets running, awaiting approval, merge requests this week (FR-071)
+- [ ] T099 [P] [US2] Active runs list on the dashboard with ticket, repository, pipeline progress and status, updating as runs progress in `apps/web/src/components/ActiveRuns.svelte` (FR-072, FR-074)
+- [ ] T100 [P] [US2] Activity feed in `apps/web/src/components/ActivityFeed.svelte` — merge requests merged, runs completed, runs failed, gates reached, tickets created (FR-073)
+- [ ] T101 [P] [US2] Tickets Board screen (04) in `apps/web/src/routes/(app)/tickets/+page.svelte` — filters by repository, pipeline and author, board and list views, grouped by state (FR-023)
+- [ ] T102 [US2] Per-ticket status strip in `apps/web/src/components/TicketCard.svelte` — whichever applies: the running step and its position, the gate awaiting approval, the merge request opened, or the failure reason (FR-023a)
 
 **Checkpoint**: Stories 1 and 2 both work. A run is now observable while it happens.
 
@@ -230,26 +237,27 @@ re-runs the previous step with the feedback and returns to the same gate.
 
 ### Tests for User Story 3
 
-- [ ] T099 [P] [US3] Contract test for the resume hand-off in `apps/web/tests/contract/resume.test.ts` — all four decisions (`contracts/orchestrator.md` §4)
-- [ ] T100 [P] [US3] Integration test asserting one decision per gate in `apps/web/tests/integration/approval.test.ts` — the second decider's insert fails and they are told the gate is already decided (FR-064a)
-- [ ] T101 [P] [US3] Integration test for each timeout behaviour — wait indefinitely, continue, fail — in `apps/web/tests/integration/gate-timeout.test.ts` (FR-064b)
-- [ ] T102 [P] [US3] End-to-end test in `apps/web/tests/e2e/approve.spec.ts` covering all three decisions plus a non-approver who can read everything and decide nothing (quickstart.md scenario C)
+- [ ] T103 [P] [US3] Contract test for the resume hand-off in `apps/web/tests/contract/resume.test.ts` — all four decisions (`contracts/orchestrator.md` §4)
+- [ ] T104 [P] [US3] Integration test asserting one decision per gate in `apps/web/tests/integration/approval.test.ts` — the second decider's insert fails and they are told the gate is already decided (FR-064a)
+- [ ] T105 [P] [US3] Integration test for each timeout behaviour — wait indefinitely, continue, fail — in `apps/web/tests/integration/gate-timeout.test.ts` (FR-064b)
+- [ ] T106 [P] [US3] End-to-end test in `apps/web/tests/e2e/approve.spec.ts` covering all three decisions plus a non-approver who can read everything and decide nothing (quickstart.md scenario C)
 
 ### Implementation for User Story 3
 
-- [ ] T103 [US3] Add the checkpoint branch to the workflow in `orchestration/n8n/run-ticket-pipeline.json` — post `waiting_approval` carrying the resume address, then enter a wait that can hold indefinitely (FR-056)
-- [ ] T104 [US3] Store `resume_url` on the run when `waiting_approval` arrives, so a gate stays drivable even if the orchestrator execution is lost (research.md risk 2)
-- [ ] T105 [US3] Set both run and ticket to waiting-for-approval while paused, in `apps/web/src/lib/services/gate.ts` (FR-057)
-- [ ] T106 [US3] Notify the gate's configured approvers when a run reaches it, in `apps/web/src/lib/services/notify.ts` (FR-058)
-- [ ] T107 [P] [US3] Surface every run awaiting approval on the dashboard as its most prominent call to action, and in the tickets view grouped by that state in `apps/web/src/components/ApprovalPanel.svelte` (FR-059)
-- [ ] T108 [US3] Implement the four decisions in `apps/web/src/lib/services/gate.ts` — approve and continue, edit a document and continue, request changes with feedback, cancel (FR-060)
-- [ ] T109 [US3] Continue at the next step on approval, and re-run the **preceding** step with the feedback before returning to the same gate on a change request in `apps/web/src/lib/services/gate.ts` (FR-061)
-- [ ] T110 [US3] Write a human's edit as a new artifact version and carry it into every subsequent step as the version they read, retaining the previous one in `apps/web/src/lib/services/artifact.ts` (FR-062, FR-054)
-- [ ] T111 [US3] Record every decision with who decided, what they decided, any feedback, and when — including a gate that continued or failed without a human in `apps/web/src/lib/services/gate.ts` (FR-063, FR-064b)
-- [ ] T112 [US3] Restrict deciding to the gate's configured approvers — anyone in the workspace, the ticket's author, or a named list — while letting anyone read the ticket and its artifacts in `apps/web/src/lib/services/authz.ts` (FR-064)
-- [ ] T113 [P] [US3] Remote functions for gate decisions in `apps/web/src/lib/remote/approvals.remote.ts` — a `form` per decision so the buttons work without JavaScript, invalidating the run query on success
-- [ ] T114 [P] [US3] Approval Checkpoint screen (07) in `apps/web/src/routes/(app)/tickets/[id]/approve/+page.svelte` — the banner, every document produced so far, and a chronological record of the run (FR-064c)
-- [ ] T115 [US3] Release the sandbox and leave the branch intact when a run is cancelled at a gate in `apps/web/src/lib/services/gate.ts` (FR-064c, FR-097)
+- [ ] T107 [US3] Add the checkpoint branch to the workflow in `orchestration/n8n/run-ticket-pipeline.json` — post `waiting_approval` carrying the resume address, then enter a wait that can hold indefinitely (FR-056)
+- [ ] T108 [US3] Store `resume_url` on the run when `waiting_approval` arrives, so a gate stays drivable even if the orchestrator execution is lost (research.md risk 2)
+- [ ] T109 [US3] Set both run and ticket to waiting-for-approval while paused, in `apps/web/src/lib/services/gate.ts` (FR-057)
+- [ ] T110 [US3] Notify the gate's configured approvers when a run reaches it, in `apps/web/src/lib/services/notify.ts` (FR-058)
+- [ ] T111 [P] [US3] Surface every run awaiting approval on the dashboard as its most prominent call to action, and in the tickets view grouped by that state in `apps/web/src/components/ApprovalPanel.svelte` (FR-059)
+- [ ] T112 [US3] Implement the four decisions in `apps/web/src/lib/services/gate.ts` — approve and continue, edit a document and continue, request changes with feedback, cancel (FR-060)
+- [ ] T113 [US3] Continue at the next step on approval, and re-run the **preceding** step with the feedback before returning to the same gate on a change request in `apps/web/src/lib/services/gate.ts` (FR-061)
+- [ ] T114 [US3] Make change-request feedback available to the agent that runs again because of it in `apps/runner/src/container/config.ts` (FR-038)
+- [ ] T115 [US3] Write a human's edit as a new artifact version and carry it into every subsequent step as the version they read, retaining the previous one in `apps/web/src/lib/services/artifact.ts` (FR-062, FR-054)
+- [ ] T116 [US3] Record every decision with who decided, what they decided, any feedback, and when — including a gate that continued or failed without a human in `apps/web/src/lib/services/gate.ts` (FR-063, FR-064b)
+- [ ] T117 [US3] Restrict deciding to the gate's configured approvers — anyone in the workspace, the ticket's author, or a named list — while letting anyone read the ticket and its artifacts in `apps/web/src/lib/services/authz.ts` (FR-064)
+- [ ] T118 [P] [US3] Remote functions for gate decisions in `apps/web/src/lib/remote/approvals.remote.ts` — a `form` per decision so the buttons work without JavaScript, invalidating the run query on success
+- [ ] T119 [P] [US3] Approval Checkpoint screen (07) in `apps/web/src/routes/(app)/tickets/[id]/approve/+page.svelte` — the banner, every document produced so far, and a chronological record of the run (FR-064c)
+- [ ] T120 [US3] Release the sandbox and leave the branch intact when a run is cancelled at a gate in `apps/web/src/lib/services/gate.ts` (FR-064c, FR-097)
 
 **Checkpoint**: Stories 1–3 work. Oversight can now be inserted anywhere in a pipeline.
 
@@ -265,27 +273,27 @@ and confirm a second attempt exists while the first remains readable.
 
 ### Tests for User Story 4
 
-- [ ] T116 [P] [US4] Integration test for ceiling enforcement in `apps/web/tests/integration/ceilings.test.ts` — no run exceeds its cost ceiling by more than 5% (SC-006)
-- [ ] T117 [P] [US4] Integration test for attempt history in `apps/web/tests/integration/retry.test.ts` — a new attempt keeps the previous attempt's records, output and documents (FR-090)
-- [ ] T118 [P] [US4] Integration test for sandbox loss mid-step in `apps/runner/tests/integration/recovery.test.ts` — attempted once more from the last commit, then failed (FR-093)
-- [ ] T119 [P] [US4] End-to-end test in `apps/web/tests/e2e/recover.spec.ts` — both forced failures, retry, and edit-and-retry in at most two interactions (quickstart.md scenario D, SC-009)
+- [ ] T121 [P] [US4] Integration test for ceiling enforcement in `apps/web/tests/integration/ceilings.test.ts` — no run exceeds its cost ceiling by more than 5% (SC-006)
+- [ ] T122 [P] [US4] Integration test for attempt history in `apps/web/tests/integration/retry.test.ts` — a new attempt keeps the previous attempt's records, output and documents (FR-090)
+- [ ] T123 [P] [US4] Integration test for sandbox loss mid-step in `apps/runner/tests/integration/recovery.test.ts` — attempted once more from the last commit, then failed (FR-093)
+- [ ] T124 [P] [US4] End-to-end test in `apps/web/tests/e2e/recover.spec.ts` — both forced failures, retry, and edit-and-retry in at most two interactions (quickstart.md scenario D, SC-009)
 
 ### Implementation for User Story 4
 
-- [ ] T120 [US4] Enforce the run's cost and time ceilings in `apps/web/src/lib/ledger/enforce.ts` (FR-079)
-- [ ] T121 [US4] Enforce each agent's own cost, time and turn limits within a step, in `apps/runner/src/engines/limits.ts` (FR-080)
-- [ ] T122 [US4] Kill the work and fail the run when a ceiling is reached, naming the ceiling as the reason and showing what was consumed in `apps/web/src/lib/ledger/enforce.ts` (FR-081)
-- [ ] T123 [US4] Present a failed run's failing step and a reason in language that does not require reading raw output, in `apps/web/src/lib/services/failure.ts` (FR-087, SC-008)
-- [ ] T124 [P] [US4] Remote functions for retry, edit-and-retry, pause and cancel in `apps/web/src/lib/remote/run-actions.remote.ts` — `command`s, since these are controls rather than forms
-- [ ] T125 [US4] Implement retry in `apps/web/src/lib/services/run.ts` — a further attempt on the same ticket with the same pipeline version and a fresh sandbox (FR-088)
-- [ ] T126 [US4] Implement edit-and-retry as one action in `apps/web/src/lib/services/run.ts` (FR-089)
-- [ ] T127 [US4] Retain every previous attempt's records, output and documents when a new attempt is created in `apps/web/src/lib/services/run.ts` (FR-090)
-- [ ] T128 [US4] Reset the run branch to a known state when an attempt begins on a branch a previous attempt already wrote to, in `apps/runner/src/container/reset.ts` (FR-091)
-- [ ] T129 [US4] Hold the implementing agent responsible for leaving the repository's tests passing within its own step, using the tools it has been permitted — there is no verification stage of the system's own in `apps/web/src/lib/services/agent-defaults.ts` (FR-092)
-- [ ] T130 [US4] Attempt a step once more in a new container from the last commit when the sandbox or host becomes unavailable, then fail in `apps/runner/src/container/recover.ts` (FR-093)
-- [ ] T131 [US4] Implement pause — the current step concludes, no further step begins in `apps/web/src/lib/services/run.ts` (FR-096)
-- [ ] T132 [US4] Implement cancel at any point — sandbox released, branch left intact in `apps/web/src/lib/services/run.ts` (FR-097)
-- [ ] T133 [P] [US4] Show the failed step highlighted with its error and a Retry action on screen 06 in `apps/web/src/components/StepTracker.svelte` (FR-087)
+- [ ] T125 [US4] Enforce the run's cost and time ceilings in `apps/web/src/lib/ledger/enforce.ts` (FR-079)
+- [ ] T126 [US4] Enforce each agent's own cost, time and turn limits within a step, in `apps/runner/src/engines/limits.ts` (FR-080)
+- [ ] T127 [US4] Kill the work and fail the run when a ceiling is reached, naming the ceiling as the reason and showing what was consumed in `apps/web/src/lib/ledger/enforce.ts` (FR-081)
+- [ ] T128 [US4] Present a failed run's failing step and a reason in language that does not require reading raw output, in `apps/web/src/lib/services/failure.ts` (FR-087, SC-008)
+- [ ] T129 [P] [US4] Remote functions for retry, edit-and-retry, pause and cancel in `apps/web/src/lib/remote/run-actions.remote.ts` — `command`s, since these are controls rather than forms
+- [ ] T130 [US4] Implement retry in `apps/web/src/lib/services/run.ts` — a further attempt on the same ticket with the same pipeline version and a fresh sandbox (FR-088)
+- [ ] T131 [US4] Implement edit-and-retry as one action in `apps/web/src/lib/services/run.ts` (FR-089)
+- [ ] T132 [US4] Retain every previous attempt's records, output and documents when a new attempt is created in `apps/web/src/lib/services/run.ts` (FR-090)
+- [ ] T133 [US4] Reset the run branch to a known state when an attempt begins on a branch a previous attempt already wrote to, in `apps/runner/src/container/reset.ts` (FR-091)
+- [ ] T134 [US4] Hold the implementing agent responsible for leaving the repository's tests passing within its own step, using the tools it has been permitted — there is no verification stage of the system's own in `apps/web/src/lib/services/agent-defaults.ts` (FR-092)
+- [ ] T135 [US4] Attempt a step once more in a new container from the last commit when the sandbox or host becomes unavailable, then fail in `apps/runner/src/container/recover.ts` (FR-093)
+- [ ] T136 [US4] Implement pause — the current step concludes, no further step begins in `apps/web/src/lib/services/run.ts` (FR-096)
+- [ ] T137 [US4] Implement cancel at any point — sandbox released, branch left intact in `apps/web/src/lib/services/run.ts` (FR-097)
+- [ ] T138 [P] [US4] Show the failed step highlighted with its error and a Retry action on screen 06 in `apps/web/src/components/StepTracker.svelte` (FR-087)
 
 **Checkpoint**: Stories 1–4 work. Failures are now survivable day to day.
 
@@ -303,51 +311,51 @@ an open merge request.
 
 ### Tests for User Story 5
 
-- [ ] T134 [P] [US5] Integration test for condition evaluation in `apps/web/tests/integration/conditions.test.ts` — evaluated when the step is reached, against facts established by then (FR-032c)
-- [ ] T135 [P] [US5] Integration test asserting `skipped` is terminal for its step, never fails the run, and is distinguishable from `done`, `failed`, `pending` and `running` in `apps/web/tests/integration/skipped.test.ts` (FR-110, FR-111, FR-112)
-- [ ] T136 [P] [US5] Integration test for the missing-classification path in `apps/web/tests/integration/classification.test.ts` — treated as no interface change, run continues, warning recorded **on the run** rather than only in step output (FR-102)
-- [ ] T137 [P] [US5] Integration test for design output validation in `apps/runner/tests/integration/design-outputs.test.ts` — absent design source or zero images fails the step, and partial output is retained (FR-104)
-- [ ] T138 [P] [US5] End-to-end test in `apps/web/tests/e2e/design-stage.spec.ts` — both tickets, plus the honest-failure case with the classification block removed (quickstart.md scenario E, SC-018)
+- [ ] T139 [P] [US5] Integration test for condition evaluation in `apps/web/tests/integration/conditions.test.ts` — evaluated when the step is reached, against facts established by then (FR-032c)
+- [ ] T140 [P] [US5] Integration test asserting `skipped` is terminal for its step, never fails the run, and is distinguishable from `done`, `failed`, `pending` and `running` in `apps/web/tests/integration/skipped.test.ts` (FR-110, FR-111, FR-112)
+- [ ] T141 [P] [US5] Integration test for the missing-classification path in `apps/web/tests/integration/classification.test.ts` — treated as no interface change, run continues, warning recorded **on the run** rather than only in step output (FR-102)
+- [ ] T142 [P] [US5] Integration test for design output validation in `apps/runner/tests/integration/design-outputs.test.ts` — absent design source or zero images fails the step, and partial output is retained (FR-104)
+- [ ] T143 [P] [US5] End-to-end test in `apps/web/tests/e2e/design-stage.spec.ts` — both tickets, plus the honest-failure case with the classification block removed (quickstart.md scenario E, SC-018)
 
 ### Conditional execution
 
-- [ ] T139 [US5] Add `condition` to every step with `always` as the default, in `packages/shared/src/snapshot.ts` and the step editor (FR-032a)
-- [ ] T140 [US5] Offer exactly three conditions — always, only when the ticket changes the interface, only when it does not in `packages/shared/src/snapshot.ts` (FR-032b)
-- [ ] T141 [US5] Evaluate the condition in the workflow loop and post `step_skipped` with the condition that failed, **without calling the Runner**, in `orchestration/n8n/run-ticket-pipeline.json` (FR-032c, FR-110)
-- [ ] T142 [US5] Record a skipped step and continue the run at the next step, never failing it in `apps/web/src/lib/services/run.ts` (FR-111)
-- [ ] T143 [US5] Distinguish `skipped` from `done`, `failed`, `pending` and `running` everywhere step outcomes appear in `apps/web/src/components/StepTracker.svelte` (FR-112)
+- [ ] T144 [US5] Add `condition` to every step with `always` as the default, in `packages/shared/src/snapshot.ts` and the step editor (FR-032a)
+- [ ] T145 [US5] Offer exactly three conditions — always, only when the ticket changes the interface, only when it does not in `packages/shared/src/snapshot.ts` (FR-032b)
+- [ ] T146 [US5] Evaluate the condition in the workflow loop and post `step_skipped` with the condition that failed, **without calling the Runner**, in `orchestration/n8n/run-ticket-pipeline.json` (FR-032c, FR-110)
+- [ ] T147 [US5] Record a skipped step and continue the run at the next step, never failing it in `apps/web/src/lib/services/run.ts` (FR-111)
+- [ ] T148 [US5] Distinguish `skipped` from `done`, `failed`, `pending` and `running` everywhere step outcomes appear in `apps/web/src/components/StepTracker.svelte` (FR-112)
 
 ### Classification
 
-- [ ] T144 [US5] Have the specification step decide whether the ticket changes the interface and record a one-sentence reason, via its instructions in `apps/web/src/lib/services/agent-defaults.ts` (FR-099)
-- [ ] T145 [US5] Parse the decision block from the specification step's output in `apps/runner/src/outputs/classification.ts` and return it in the step outcome (`contracts/step-engines.md`)
-- [ ] T146 [US5] Apply `ticket_classified` to store the decision and reason on the ticket, and show the reason wherever the decision changes what runs in `apps/web/src/lib/services/ticket.ts` (FR-100)
-- [ ] T147 [US5] Treat an absent or unparseable decision as no interface change, continue the run, and set `classification_missing` so the warning is a field on the run in `apps/web/src/lib/services/ticket.ts` (FR-102)
-- [ ] T148 [US5] Ensure the create-ticket flow never asks the author whether the ticket changes the interface in `apps/web/src/routes/(app)/tickets/new/+page.svelte` (FR-101)
+- [ ] T149 [US5] Have the specification step decide whether the ticket changes the interface and record a one-sentence reason, via its instructions in `apps/web/src/lib/services/agent-defaults.ts` (FR-099)
+- [ ] T150 [US5] Parse the decision block from the specification step's output in `apps/runner/src/outputs/classification.ts` and return it in the step outcome (`contracts/step-engines.md`)
+- [ ] T151 [US5] Apply `ticket_classified` to store the decision and reason on the ticket, and show the reason wherever the decision changes what runs in `apps/web/src/lib/services/ticket.ts` (FR-100)
+- [ ] T152 [US5] Treat an absent or unparseable decision as no interface change, continue the run, and set `classification_missing` so the warning is a field on the run in `apps/web/src/lib/services/ticket.ts` (FR-102)
+- [ ] T153 [US5] Ensure the create-ticket flow never asks the author whether the ticket changes the interface in `apps/web/src/routes/(app)/tickets/new/+page.svelte` (FR-101)
 
 ### The design step
 
-- [ ] T149 [US5] Implement the `design_cli` engine in `apps/runner/src/engines/design-cli.ts` — writes the design source at the configured path and exports one image per screen at the configured scale (FR-103)
-- [ ] T150 [US5] Pass the existing design source back in on a repeat — a change request or a run retry — so the tool **revises** rather than starting from an empty canvas in `apps/runner/src/engines/design-cli.ts` (FR-106)
-- [ ] T151 [US5] Fail the design step when the design source is absent or no image was exported, retaining what was produced in `apps/runner/src/outputs/design.ts` (FR-104)
-- [ ] T152 [US5] Commit the design source and the exported screens to the run branch so the design travels with the code in `apps/runner/src/container/commit.ts` (FR-105)
-- [ ] T153 [US5] Stream the design step's output as log chunks, naming the command, on the same terms as an agent step in `apps/runner/src/stream/logs.ts` (FR-107)
-- [ ] T154 [US5] Count the design step's cost against the same run budget and ceilings as every other step in `apps/runner/src/engines/usage.ts` (FR-108)
-- [ ] T155 [US5] Make the produced screens available to the planning and implementing steps that follow in `apps/runner/src/container/config.ts` (FR-109)
+- [ ] T154 [US5] Implement the `design_cli` engine in `apps/runner/src/engines/design-cli.ts` — writes the design source at the configured path and exports one image per screen at the configured scale (FR-103)
+- [ ] T155 [US5] Pass the existing design source back in on a repeat — a change request or a run retry — so the tool **revises** rather than starting from an empty canvas in `apps/runner/src/engines/design-cli.ts` (FR-106)
+- [ ] T156 [US5] Fail the design step when the design source is absent or no image was exported, retaining what was produced in `apps/runner/src/outputs/design.ts` (FR-104)
+- [ ] T157 [US5] Commit the design source and the exported screens to the run branch so the design travels with the code in `apps/runner/src/container/commit.ts` (FR-105)
+- [ ] T158 [US5] Stream the design step's output as log chunks, naming the command, on the same terms as an agent step in `apps/runner/src/stream/logs.ts` (FR-107)
+- [ ] T159 [US5] Count the design step's cost against the same run budget and ceilings as every other step in `apps/runner/src/engines/usage.ts` (FR-108)
+- [ ] T160 [US5] Make the produced screens available to the planning and implementing steps that follow in `apps/runner/src/container/config.ts` (FR-109)
 
 ### Design review and visibility
 
-- [ ] T156 [P] [US5] Show every document **and every screen** produced so far at a gate in `apps/web/src/routes/(app)/tickets/[id]/approve/+page.svelte` (FR-064c)
-- [ ] T157 [P] [US5] Design Review screen (14) in `apps/web/src/routes/(app)/tickets/[id]/design/+page.svelte` — each screen as an image openable at full size, the acceptance criteria beside them, the classification reason, and a statement that no code has been written yet (FR-064d)
-- [ ] T158 [P] [US5] Offer a link opening the committed design source in the design service, at that gate in `apps/web/src/routes/(app)/tickets/[id]/design/+page.svelte` (FR-064e)
-- [ ] T159 [US5] Re-run the design step with the feedback and return to the same gate with the revised screens, on a change request there in `apps/web/src/lib/services/gate.ts` (FR-061a)
-- [ ] T160 [P] [US5] Screen gallery component in `apps/web/src/components/ScreenGallery.svelte` — thumbnails opening a full-size viewer with next and previous (FR-077)
-- [ ] T161 [P] [US5] Distinguish conditional from always-running steps in the pre-flight preview, stating each condition in words in `apps/web/src/lib/services/estimate.ts` (FR-019a)
-- [ ] T162 [P] [US5] Show a skipped step in the run's step list, marked, carrying its reason, rather than omitting it in `apps/web/src/components/StepTracker.svelte` (FR-075a)
-- [ ] T163 [US5] Embed the screens in the merge request description above the change summary and link the committed design source below them in `apps/web/src/lib/services/merge-request.ts` (FR-067a)
-- [ ] T164 [US5] Additionally label a merge request whose ticket was classified as interface work in `apps/web/src/lib/services/merge-request.ts` (FR-068a)
-- [ ] T165 [US5] Supply the design credential only to runs whose pipeline contains a design step in `apps/runner/src/container/secrets.ts` (FR-083a)
-- [ ] T166 [US5] Detect a missing or rejected design credential when such a run starts, failing the design step immediately with a message naming where it is configured in `apps/runner/src/container/secrets.ts` (FR-083b)
+- [ ] T161 [P] [US5] Show every document **and every screen** produced so far at a gate in `apps/web/src/routes/(app)/tickets/[id]/approve/+page.svelte` (FR-064c)
+- [ ] T162 [P] [US5] Design Review screen (14) in `apps/web/src/routes/(app)/tickets/[id]/design/+page.svelte` — each screen as an image openable at full size, the acceptance criteria beside them, the classification reason, and a statement that no code has been written yet (FR-064d)
+- [ ] T163 [P] [US5] Offer a link opening the committed design source in the design service, at that gate in `apps/web/src/routes/(app)/tickets/[id]/design/+page.svelte` (FR-064e)
+- [ ] T164 [US5] Re-run the design step with the feedback and return to the same gate with the revised screens, on a change request there in `apps/web/src/lib/services/gate.ts` (FR-061a)
+- [ ] T165 [P] [US5] Screen gallery component in `apps/web/src/components/ScreenGallery.svelte` — thumbnails opening a full-size viewer with next and previous (FR-077)
+- [ ] T166 [P] [US5] Distinguish conditional from always-running steps in the pre-flight preview, stating each condition in words in `apps/web/src/lib/services/estimate.ts` (FR-019a)
+- [ ] T167 [P] [US5] Show a skipped step in the run's step list, marked, carrying its reason, rather than omitting it in `apps/web/src/components/StepTracker.svelte` (FR-075a)
+- [ ] T168 [US5] Embed the screens in the merge request description above the change summary and link the committed design source below them in `apps/web/src/lib/services/merge-request.ts` (FR-067a)
+- [ ] T169 [US5] Additionally label a merge request whose ticket was classified as interface work in `apps/web/src/lib/services/merge-request.ts` (FR-068a)
+- [ ] T170 [US5] Supply the design credential only to runs whose pipeline contains a design step in `apps/runner/src/container/secrets.ts` (FR-083a)
+- [ ] T171 [US5] Detect a missing or rejected design credential when such a run starts, failing the design step immediately with a message naming where it is configured in `apps/runner/src/container/secrets.ts` (FR-083b)
 
 **Checkpoint**: Stories 1–5 work. Interface work is designed and reviewed before it is built.
 
@@ -364,26 +372,26 @@ before the edit continues on the old arrangement.
 
 ### Tests for User Story 6
 
-- [ ] T167 [P] [US6] Integration test for version pinning in `apps/web/tests/integration/pipeline-version.test.ts` — saving advances the version and changes the behaviour of zero runs in flight (FR-027, SC-010)
-- [ ] T168 [P] [US6] Integration test for all three save-time refusals in `apps/web/tests/integration/pipeline-validation.test.ts` — no code-producing step (FR-028), a design step before the classifying step (FR-032e), and a condition depending on a fact not yet established (FR-032d), each with a stated reason
-- [ ] T169 [P] [US6] End-to-end test in `apps/web/tests/e2e/pipeline-builder.spec.ts` (quickstart.md scenario F)
+- [ ] T172 [P] [US6] Integration test for version pinning in `apps/web/tests/integration/pipeline-version.test.ts` — saving advances the version and changes the behaviour of zero runs in flight (FR-027, SC-010)
+- [ ] T173 [P] [US6] Integration test for all three save-time refusals in `apps/web/tests/integration/pipeline-validation.test.ts` — no code-producing step (FR-028), a design step before the classifying step (FR-032e), and a condition depending on a fact not yet established (FR-032d), each with a stated reason
+- [ ] T174 [P] [US6] End-to-end test in `apps/web/tests/e2e/pipeline-builder.spec.ts` (quickstart.md scenario F)
 
 ### Implementation for User Story 6
 
-- [ ] T170 [US6] Represent a pipeline as an ordered list of steps held as data, with no step order or meaning hard-coded, in `apps/web/src/lib/services/pipeline.ts` (FR-024, Principle III)
-- [ ] T171 [US6] Support all five step kinds in the builder — agent, design, review gate, shell command, notification in `apps/web/src/components/PipelineBuilder.svelte` (FR-025)
-- [ ] T172 [US6] Implement reorder, insert between any two steps, and remove, in `apps/web/src/lib/services/pipeline.ts` (FR-026)
-- [ ] T173 [US6] Advance the version on every save by writing a new insert-only `pipeline_versions` row, leaving runs in flight on the version they started with in `apps/web/src/lib/services/pipeline.ts` (FR-027, Principle IV)
-- [ ] T174 [US6] Refuse to save a pipeline containing no code-producing step, while allowing verification, gates and notifications to follow it in `apps/web/src/lib/services/pipeline-validate.ts` (FR-028)
-- [ ] T175 [US6] Refuse to save a pipeline whose design step precedes the classifying step, naming the offending step in `apps/web/src/lib/services/pipeline-validate.ts` (FR-032e)
-- [ ] T176 [US6] Refuse to save a condition at a point where the fact it depends on is not yet established, naming the step and the fact in `apps/web/src/lib/services/pipeline-validate.ts` (FR-032d)
-- [ ] T177 [US6] Treat opening the merge request as implicit and always last, not a step a user can move or remove in `apps/web/src/lib/services/pipeline.ts` (FR-029)
-- [ ] T178 [US6] Let each agent step declare its required documents, and each gate declare approvers, waiting time and expiry behaviour in `apps/web/src/components/StepEditor.svelte` (FR-032)
-- [ ] T179 [P] [US6] Remote functions for the builder in `apps/web/src/lib/remote/pipelines.remote.ts` — a `query` for one pipeline, a `form` for save, `command`s for reorder, insert, remove and duplicate
-- [ ] T180 [P] [US6] Pipeline Builder screen (08) in `apps/web/src/routes/(app)/pipelines/[id]/+page.svelte` — the vertical flow, the step palette, drag to reorder, and a + on each connector
-- [ ] T181 [P] [US6] Mark conditional steps as conditional wherever a pipeline is shown, stating the condition **in words rather than as a code** in `apps/web/src/components/StepNode.svelte` (FR-032f)
-- [ ] T182 [P] [US6] Show how many repositories use a pipeline, before anyone changes it in `apps/web/src/routes/(app)/pipelines/[id]/+page.svelte` (FR-030)
-- [ ] T183 [P] [US6] Implement duplicate in `apps/web/src/lib/services/pipeline.ts` (FR-031)
+- [ ] T175 [US6] Represent a pipeline as an ordered list of steps held as data, with no step order or meaning hard-coded, in `apps/web/src/lib/services/pipeline.ts` (FR-024, Principle III)
+- [ ] T176 [US6] Support all five step kinds in the builder — agent, design, review gate, shell command, notification in `apps/web/src/components/PipelineBuilder.svelte` (FR-025)
+- [ ] T177 [US6] Implement reorder, insert between any two steps, and remove, in `apps/web/src/lib/services/pipeline.ts` (FR-026)
+- [ ] T178 [US6] Advance the version on every save by writing a new insert-only `pipeline_versions` row, leaving runs in flight on the version they started with in `apps/web/src/lib/services/pipeline.ts` (FR-027, Principle IV)
+- [ ] T179 [US6] Refuse to save a pipeline containing no code-producing step, while allowing verification, gates and notifications to follow it in `apps/web/src/lib/services/pipeline-validate.ts` (FR-028)
+- [ ] T180 [US6] Refuse to save a pipeline whose design step precedes the classifying step, naming the offending step in `apps/web/src/lib/services/pipeline-validate.ts` (FR-032e)
+- [ ] T181 [US6] Refuse to save a condition at a point where the fact it depends on is not yet established, naming the step and the fact in `apps/web/src/lib/services/pipeline-validate.ts` (FR-032d)
+- [ ] T182 [US6] Treat opening the merge request as implicit and always last, not a step a user can move or remove in `apps/web/src/lib/services/pipeline.ts` (FR-029)
+- [ ] T183 [US6] Let each agent step declare its required documents, and each gate declare approvers, waiting time and expiry behaviour in `apps/web/src/components/StepEditor.svelte` (FR-032)
+- [ ] T184 [P] [US6] Remote functions for the builder in `apps/web/src/lib/remote/pipelines.remote.ts` — a `query` for one pipeline, a `form` for save, `command`s for reorder, insert, remove and duplicate
+- [ ] T185 [P] [US6] Pipeline Builder screen (08) in `apps/web/src/routes/(app)/pipelines/[id]/+page.svelte` — the vertical flow, the step palette, drag to reorder, and a + on each connector
+- [ ] T186 [P] [US6] Mark conditional steps as conditional wherever a pipeline is shown, stating the condition **in words rather than as a code** in `apps/web/src/components/StepNode.svelte` (FR-032f)
+- [ ] T187 [P] [US6] Show how many repositories use a pipeline, before anyone changes it in `apps/web/src/routes/(app)/pipelines/[id]/+page.svelte` (FR-030)
+- [ ] T188 [P] [US6] Implement duplicate in `apps/web/src/lib/services/pipeline.ts` (FR-031)
 
 **Checkpoint**: Stories 1–6 work. Teams can shape their own oversight.
 
@@ -398,35 +406,31 @@ run, and confirm from the output that the agent behaved accordingly and did not 
 
 ### Tests for User Story 7
 
-- [ ] T184 [P] [US7] Integration test for ownership in `apps/web/tests/integration/ownership.test.ts` — any member creates and changes their own; another member's is readable and usable but not changeable; an administrator may change any (FR-006, FR-006c)
-- [ ] T185 [P] [US7] Integration test for tool withholding in `apps/runner/tests/integration/tools.test.ts` — an action requiring an unpermitted tool is unreachable (FR-039)
-- [ ] T186 [P] [US7] Integration test asserting agent changes apply only to runs started afterwards in `apps/web/tests/integration/agent-pinning.test.ts` (FR-041, SC-010)
-- [ ] T187 [P] [US7] End-to-end test in `apps/web/tests/e2e/agents.spec.ts` (quickstart.md scenario G, SC-015)
+- [ ] T189 [P] [US7] Integration test for ownership in `apps/web/tests/integration/ownership.test.ts` — any member creates and changes their own; another member's is readable and usable but not changeable; an administrator may change any (FR-006, FR-006c)
+- [ ] T190 [P] [US7] Integration test for tool withholding in `apps/runner/tests/integration/tools.test.ts` — an action requiring an unpermitted tool is unreachable (FR-039)
+- [ ] T191 [P] [US7] Integration test asserting agent changes apply only to runs started afterwards in `apps/web/tests/integration/agent-pinning.test.ts` (FR-041, SC-010)
+- [ ] T192 [P] [US7] End-to-end test in `apps/web/tests/e2e/agents.spec.ts` (quickstart.md scenario G, SC-015)
 
 ### Implementation for User Story 7
 
-- [ ] T188 [US7] Let any member create, edit and delete pipelines, agents and skills without administrator involvement, in `apps/web/src/lib/services/authz.ts` (FR-006)
-- [ ] T189 [US7] Record an owner on every pipeline, agent and skill a user creates, and let that owner change or delete it at will in `apps/web/src/lib/services/ownership.ts` (FR-006a)
-- [ ] T190 [US7] Make the shipped default agents and pipelines available to every user in `apps/web/src/lib/services/agent-defaults.ts` (FR-006b)
-- [ ] T191 [US7] Let any user read and use another user's pipeline, agent or skill while restricting change and deletion to its owner and administrators in `apps/web/src/lib/services/authz.ts` (FR-006c)
-- [ ] T192 [P] [US7] Show who owns a pipeline, agent or skill wherever it can be selected or edited in `apps/web/src/components/OwnerBadge.svelte` (FR-006d)
-- [ ] T193 [US7] Ship working default agents covering specification, interface design, planning, task breakdown and implementation, so a workspace produces a merge request with nothing configured in `apps/web/src/lib/services/agent-defaults.ts` (FR-033)
-- [ ] T194 [US7] Ship at least three default pipelines differing in how much human oversight they impose in `apps/web/src/lib/services/pipeline-defaults.ts` (FR-034)
-- [ ] T195 [US7] Put no verification command in any shipped default pipeline, and make plain — in the builder and before a ticket starts — when a pipeline has no verification step and nothing beyond the implementing agent checks the result in `apps/web/src/lib/services/pipeline-defaults.ts` (FR-034a, SC-016)
-- [ ] T196 [US7] Let instructions, model, permitted tools, attached skills, and per-step cost, time and turn limits be configured independently in `apps/web/src/lib/services/agent.ts` (FR-035, FR-036)
-- [ ] T197 [US7] Offer the design service's own model choices and **omit the tool permissions** for an agent running on that engine in `apps/web/src/routes/(app)/agents/[id]/+page.svelte` (FR-036a)
-- [ ] T198 [P] [US7] Identify which engine each agent runs on, wherever agents are listed in `apps/web/src/components/AgentCard.svelte` (FR-036b)
-- [ ] T199 [US7] Substitute the ticket's and repository's actual values wherever an agent's instructions reference them in `apps/runner/src/container/config.ts` (FR-037)
-- [ ] T200 [US7] Make change-request feedback available to the agent that runs again because of it in `apps/runner/src/container/config.ts` (FR-038)
-- [ ] T201 [US7] Restore a modified default agent to its shipped configuration from `default_config` in `apps/web/src/lib/services/agent.ts` (FR-040)
-- [ ] T202 [US7] Apply agent changes only to runs started afterwards in `apps/web/src/lib/snapshot/resolve.ts` (FR-041)
-- [ ] T203 [US7] Implement skill create, edit and delete, attachable to any number of agents, in `apps/web/src/lib/services/skill.ts` (FR-042)
-- [ ] T204 [US7] Record a description on each skill saying when to apply it, and make that description available to agents holding it in `apps/web/src/lib/services/skill.ts` (FR-043)
-- [ ] T205 [P] [US7] Show how many pipelines and runs depend on each agent and each skill in `apps/web/src/lib/services/usage.ts` (FR-043a)
-- [ ] T206 [P] [US7] Remote functions for agents and skills in `apps/web/src/lib/remote/agents.remote.ts` and `skills.remote.ts`
-- [ ] T207 [P] [US7] Agents screen (09) in `apps/web/src/routes/(app)/agents/+page.svelte` — card per agent with badge, model, tools, skills and usage
-- [ ] T208 [P] [US7] Agent Editor screen (10) in `apps/web/src/routes/(app)/agents/[id]/+page.svelte` — prompt editor with template variables, model and limits, tool toggles, attached skills, Reset to default
-- [ ] T209 [P] [US7] Skills screen (11) in `apps/web/src/routes/(app)/skills/+page.svelte` — searchable list with usage counts, and the editor with name, description, content and history
+- [ ] T193 [US7] Let any member create, edit and delete pipelines, agents and skills without administrator involvement, in `apps/web/src/lib/services/authz.ts` (FR-006)
+- [ ] T194 [US7] Record an owner on every pipeline, agent and skill a user creates, and let that owner change or delete it at will in `apps/web/src/lib/services/ownership.ts` (FR-006a)
+- [ ] T195 [US7] Make the shipped default agents and pipelines available to every user in `apps/web/src/lib/services/agent-defaults.ts` (FR-006b)
+- [ ] T196 [US7] Let any user read and use another user's pipeline, agent or skill while restricting change and deletion to its owner and administrators in `apps/web/src/lib/services/authz.ts` (FR-006c)
+- [ ] T197 [P] [US7] Show who owns a pipeline, agent or skill wherever it can be selected or edited in `apps/web/src/components/OwnerBadge.svelte` (FR-006d)
+- [ ] T198 [US7] Make plain — in the pipeline editor and before a ticket is started — when a pipeline contains no verification step and nothing beyond the implementing agent checks the result, in `apps/web/src/components/PipelineBuilder.svelte` and `apps/web/src/lib/services/estimate.ts` (FR-034a, SC-016)
+- [ ] T199 [US7] Let instructions, model, permitted tools, attached skills, and per-step cost, time and turn limits be configured independently in `apps/web/src/lib/services/agent.ts` (FR-035, FR-036)
+- [ ] T200 [US7] Offer the design service's own model choices and **omit the tool permissions** for an agent running on that engine in `apps/web/src/routes/(app)/agents/[id]/+page.svelte` (FR-036a)
+- [ ] T201 [P] [US7] Identify which engine each agent runs on, wherever agents are listed in `apps/web/src/components/AgentCard.svelte` (FR-036b)
+- [ ] T202 [US7] Restore a modified default agent to its shipped configuration from `default_config` in `apps/web/src/lib/services/agent.ts` (FR-040)
+- [ ] T203 [US7] Apply agent changes only to runs started afterwards in `apps/web/src/lib/snapshot/resolve.ts` (FR-041)
+- [ ] T204 [US7] Implement skill create, edit and delete, attachable to any number of agents, in `apps/web/src/lib/services/skill.ts` (FR-042)
+- [ ] T205 [US7] Record a description on each skill saying when to apply it, and make that description available to agents holding it in `apps/web/src/lib/services/skill.ts` (FR-043)
+- [ ] T206 [P] [US7] Show how many pipelines and runs depend on each agent and each skill in `apps/web/src/lib/services/usage.ts` (FR-043a)
+- [ ] T207 [P] [US7] Remote functions for agents and skills in `apps/web/src/lib/remote/agents.remote.ts` and `skills.remote.ts`
+- [ ] T208 [P] [US7] Agents screen (09) in `apps/web/src/routes/(app)/agents/+page.svelte` — card per agent with badge, model, tools, skills and usage
+- [ ] T209 [P] [US7] Agent Editor screen (10) in `apps/web/src/routes/(app)/agents/[id]/+page.svelte` — prompt editor with template variables, model and limits, tool toggles, attached skills, Reset to default
+- [ ] T210 [P] [US7] Skills screen (11) in `apps/web/src/routes/(app)/skills/+page.svelte` — searchable list with usage counts, and the editor with name, description, content and history
 
 **Checkpoint**: Stories 1–7 work. Agent behaviour is self-service.
 
@@ -443,23 +447,23 @@ concurrency cap waits and reports its position.
 
 ### Tests for User Story 8
 
-- [ ] T210 [P] [US8] Integration test for the concurrency cap and queue position in `apps/web/tests/integration/concurrency.test.ts` (FR-082)
-- [ ] T211 [P] [US8] Integration test asserting a member-set agent limit cannot raise consumption beyond the workspace ceiling, and the member is told which limit applies in `apps/web/tests/integration/limit-cap.test.ts` (FR-079a)
-- [ ] T212 [P] [US8] Integration test asserting no stored credential is readable back in full through any interface in `apps/web/tests/integration/credentials.test.ts` (FR-011)
-- [ ] T213 [P] [US8] End-to-end test in `apps/web/tests/e2e/governance.spec.ts` (quickstart.md scenario H)
+- [ ] T211 [P] [US8] Integration test for the concurrency cap and queue position in `apps/web/tests/integration/concurrency.test.ts` (FR-082)
+- [ ] T212 [P] [US8] Integration test asserting a member-set agent limit cannot raise consumption beyond the workspace ceiling, and the member is told which limit applies in `apps/web/tests/integration/limit-cap.test.ts` (FR-079a)
+- [ ] T213 [P] [US8] Integration test asserting no stored credential is readable back in full through any interface in `apps/web/tests/integration/credentials.test.ts` (FR-011)
+- [ ] T214 [P] [US8] End-to-end test in `apps/web/tests/e2e/governance.spec.ts` (quickstart.md scenario H)
 
 ### Implementation for User Story 8
 
-- [ ] T214 [US8] Restrict workspace credentials, dependency connections, cost ceilings and membership to administrators in `apps/web/src/lib/services/authz.ts` (FR-004)
-- [ ] T215 [US8] Let administrators invite users and change a user's role in `apps/web/src/lib/services/members.ts` (FR-005)
-- [ ] T216 [US8] Let administrators record the design service connection, its default model and export settings, and test it — required only where a pipeline contains a design step in `apps/web/src/lib/services/connections.ts` (FR-005a)
-- [ ] T217 [US8] Implement connection tests distinguishing reachable-and-authorised from unreachable or unauthorised, for the orchestrator, the container host and the design service, in `apps/web/src/lib/services/connections.ts` (FR-005a)
-- [ ] T218 [US8] Enforce the workspace concurrency limit, holding further runs in a queue that shows each author their position in `apps/web/src/lib/services/queue.ts` (FR-082)
-- [ ] T219 [US8] Let administrators constrain a sandbox's processing power, memory, wall-clock lifetime, and network reach while code is being written in `apps/web/src/lib/services/workspace.ts` (FR-085)
-- [ ] T220 [US8] Let administrators have failed runs' sandboxes retained for a bounded period for diagnosis, destroyed after in `apps/web/src/lib/services/workspace.ts` (FR-086)
-- [ ] T221 [P] [US8] Settings screen (12) in `apps/web/src/routes/(app)/settings/+page.svelte` — Workspace, Orchestration, Sandbox, model credentials, Design, Cost limits, Members, Notifications
-- [ ] T222 [P] [US8] Remote functions for settings in `apps/web/src/lib/remote/settings.remote.ts`, every one checking the administrator rule inside
-- [ ] T223 [P] [US8] Show queue position on the ticket and dashboard for a run waiting on the concurrency cap in `apps/web/src/components/QueuePosition.svelte` (FR-082)
+- [ ] T215 [US8] Restrict workspace credentials, dependency connections, cost ceilings and membership to administrators in `apps/web/src/lib/services/authz.ts` (FR-004)
+- [ ] T216 [US8] Let administrators invite users and change a user's role in `apps/web/src/lib/services/members.ts` (FR-005)
+- [ ] T217 [US8] Let administrators record the design service connection, its default model and export settings, and test it — required only where a pipeline contains a design step in `apps/web/src/lib/services/connections.ts` (FR-005a)
+- [ ] T218 [US8] Implement connection tests distinguishing reachable-and-authorised from unreachable or unauthorised, for the orchestrator, the container host and the design service, in `apps/web/src/lib/services/connections.ts` (FR-005a)
+- [ ] T219 [US8] Enforce the workspace concurrency limit, holding further runs in a queue that shows each author their position in `apps/web/src/lib/services/queue.ts` (FR-082)
+- [ ] T220 [US8] Let administrators constrain a sandbox's processing power, memory, wall-clock lifetime, and network reach while code is being written in `apps/web/src/lib/services/workspace.ts` (FR-085)
+- [ ] T221 [US8] Let administrators have failed runs' sandboxes retained for a bounded period for diagnosis, destroyed after in `apps/web/src/lib/services/workspace.ts` (FR-086)
+- [ ] T222 [P] [US8] Settings screen (12) in `apps/web/src/routes/(app)/settings/+page.svelte` — Workspace, Orchestration, Sandbox, model credentials, Design, Cost limits, Members, Notifications
+- [ ] T223 [P] [US8] Remote functions for settings in `apps/web/src/lib/remote/settings.remote.ts`, every one checking the administrator rule inside
+- [ ] T224 [P] [US8] Show queue position on the ticket and dashboard for a run waiting on the concurrency cap in `apps/web/src/components/QueuePosition.svelte` (FR-082)
 
 **Checkpoint**: All eight stories work. The product is complete against the specification.
 
@@ -469,17 +473,17 @@ concurrency cap waits and reports its position.
 
 **Purpose**: The success criteria no single story proves, from quickstart.md's cross-cutting checks.
 
-- [ ] T224 [P] Credential scan across every artifact, log chunk and merge request description of every run in a period — expect none, scripted in `scripts/audit/credential-scan.ts` (SC-011)
-- [ ] T225 [P] Concurrency check — the configured number of runs execute without any run taking more than 20% longer than it would alone, scripted in `scripts/audit/concurrency-check.ts` (SC-007)
-- [ ] T226 [P] Sandbox release check — every sandbox released within five minutes of its run ending, except deliberately retained failures, scripted in `scripts/audit/sandbox-release-check.ts` (SC-012)
-- [ ] T227 [P] Merge request legibility review — a reviewer who never saw the ticket can judge each merge request from the merge request alone, recorded in `docs/reviews/merge-request-legibility.md` (SC-014)
-- [ ] T228 First-run walkthrough — sign-in to open merge request in under 15 minutes of attention, without documentation, recorded in `docs/reviews/first-run-walkthrough.md` (SC-001)
-- [ ] T229 [P] Quality check — at least 70% of tickets with complete, unambiguous acceptance criteria reach an open merge request on the first attempt with no human editing of the code, scripted in `scripts/audit/first-attempt-rate.ts` (SC-002)
-- [ ] T230 [P] Write the deployment and operations guide in `docs/operations.md` — the two deployables, the container host, the orchestrator workflow import
-- [ ] T231 [P] Write `README.md` at the repository root — what the product is, how to run it locally, where the specification lives
-- [ ] T232 Run every scenario in [quickstart.md](./quickstart.md) end to end against a real repository
-- [ ] T233 Security review of the credential path — encryption at rest, environment injection, redaction at ingest, and the Runner's privilege boundary (Principle V), recorded in `docs/reviews/credential-path.md`
-- [ ] T234 Code cleanup and refactoring pass across both deployables across `apps/web/src/` and `apps/runner/src/`
+- [ ] T225 [P] Credential scan across every artifact, log chunk and merge request description of every run in a period — expect none, scripted in `scripts/audit/credential-scan.ts` (SC-011)
+- [ ] T226 [P] Concurrency check — the configured number of runs execute without any run taking more than 20% longer than it would alone, scripted in `scripts/audit/concurrency-check.ts` (SC-007)
+- [ ] T227 [P] Sandbox release check — every sandbox released within five minutes of its run ending, except deliberately retained failures, scripted in `scripts/audit/sandbox-release-check.ts` (SC-012)
+- [ ] T228 [P] Merge request legibility review — a reviewer who never saw the ticket can judge each merge request from the merge request alone, recorded in `docs/reviews/merge-request-legibility.md` (SC-014)
+- [ ] T229 First-run walkthrough — sign-in to open merge request in under 15 minutes of attention, without documentation, recorded in `docs/reviews/first-run-walkthrough.md` (SC-001)
+- [ ] T230 [P] Quality check — at least 70% of tickets with complete, unambiguous acceptance criteria reach an open merge request on the first attempt with no human editing of the code, scripted in `scripts/audit/first-attempt-rate.ts` (SC-002)
+- [ ] T231 [P] Write the deployment and operations guide in `docs/operations.md` — the two deployables, the container host, the orchestrator workflow import
+- [ ] T232 [P] Write `README.md` at the repository root — what the product is, how to run it locally, where the specification lives
+- [ ] T233 Run every scenario in [quickstart.md](./quickstart.md) end to end against a real repository
+- [ ] T234 Security review of the credential path — encryption at rest, environment injection, redaction at ingest, and the Runner's privilege boundary (Principle V), recorded in `docs/reviews/credential-path.md`
+- [ ] T235 Code cleanup and refactoring pass across both deployables across `apps/web/src/` and `apps/runner/src/`
 
 ---
 
@@ -547,9 +551,11 @@ Task: "T019 Define artifacts, approvals and log_chunks in packages/db/src/schema
 Task: "T038 Contract test for the trigger payload"
 Task: "T039 Contract test for all eleven callback events"
 Task: "T040 Contract test for the four Runner operations"
-Task: "T041 Integration test for snapshot resolution"
-Task: "T042 Integration test for callback idempotency"
-Task: "T043 Integration test for required-output checking"
+Task: "T041 Contract test for the step-engine interface"
+Task: "T042 Contract test for the remote-function surface"
+Task: "T043 Integration test for snapshot resolution"
+Task: "T044 Integration test for callback idempotency"
+Task: "T045 Integration test for required-output checking"
 ```
 
 ---

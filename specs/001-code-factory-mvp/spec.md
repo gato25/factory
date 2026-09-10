@@ -382,8 +382,9 @@ confirm a run stops at the ceiling and that a run beyond the cap waits and repor
 - **FR-005a**: System MUST let administrators record the design service connection, its default
   model and its export settings, and MUST let them test that connection, and MUST require it only
   where a pipeline contains a design step.
-- **FR-006**: System MUST allow any member, without administrator involvement, to create, edit and
-  delete pipelines, agents and skills.
+- **FR-006**: System MUST allow any member to create pipelines, agents and skills, and to change and
+  delete their own, without administrator involvement. The scope of what a member may change is set
+  by FR-006c; this requirement governs only that no administrator need be involved.
 - **FR-006a**: System MUST record an owner for every pipeline, agent and skill a user creates, and
   MUST allow that owner to change or delete it at will.
 - **FR-006b**: System MUST make the shipped default agents and default pipelines available to every
