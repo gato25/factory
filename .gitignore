@@ -1,0 +1,7 @@
+# Local Claude Code state (may contain tokens or machine-specific permissions).
+# The spec-kit skills under .claude/skills/ are shared tooling and stay tracked.
+.claude/settings.local.json
+.claude/.credentials.json
+
+# pen.dev CLI local state
+.pencil/
