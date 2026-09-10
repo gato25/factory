@@ -21,6 +21,8 @@ A user connects a git repository, writes a ticket describing a change, and a pip
 | n8n orchestrates, the app stays thin | The app stores data and renders UI. n8n executes the pipeline, waits at checkpoints, and opens the MR. |
 | Docker isolates | Each run gets one fresh container with the repo, the CLI and the toolchain. It is destroyed at the end. |
 | Files are the hand-off | Each agent step reads and writes markdown files in the repo workspace (`docs/spec.md`, `docs/plan.md`, `docs/tasks.md`). The next step reads them. |
+| Steps may be conditional | A step can carry a condition. When the condition is false the step is skipped and recorded as skipped, not failed. This is how UI work gets designed and non-UI work does not. |
+| UI work is designed before it is built | When a ticket changes the interface, a Design step produces screens with the pen.dev CLI before any code is planned or written. The screens are committed as a `.pen` file and as exported images. |
 | Unlimited tickets | Any user may create any number of tickets. Limits are enforced by cost caps and concurrency, not by ticket count. |
 
 ### Out of scope for this version
@@ -98,6 +100,8 @@ One per team. Holds members, the Anthropic key, the n8n connection, Docker runne
 | `current_run_id` | |
 | `branch_name` | `factory/<id>-<slug>` |
 | `merge_request_url` | set at the end |
+| `has_ui` | `null` until the Spec agent decides, then `true` or `false`. Drives every conditional design step. See §8.6. |
+| `ui_rationale` | one sentence from the Spec agent explaining the decision, shown in the UI |
 
 ### Pipeline
 | Field | Notes |
@@ -109,13 +113,15 @@ One per team. Holds members, the Anthropic key, the n8n connection, Docker runne
 ### Step (embedded in Pipeline)
 | Field | Notes |
 | --- | --- |
-| `type` | `agent` \| `checkpoint` \| `shell` \| `notify` |
-| `agent_id` | for `agent` steps |
+| `type` | `agent` \| `design` \| `checkpoint` \| `shell` \| `notify` |
+| `agent_id` | for `agent` and `design` steps |
 | `output_files[]` | files the step must produce, e.g. `docs/spec.md` |
+| `condition` | `always` (default) \| `ticket_has_ui` \| `ticket_has_no_ui`. Evaluated when the step is reached. |
 | `approvers` | for `checkpoint`: `anyone` \| `ticket_creator` \| list of user ids |
 | `timeout_hours, on_timeout` | for `checkpoint`: `wait_forever` \| `auto_continue` \| `fail` |
 | `command` | for `shell` steps, e.g. `npm run lint` |
 | `channel, template` | for `notify` steps |
+| `design` | for `design` steps: `pen_file` (default `docs/design/ui.pen`), `export_dir` (default `docs/design/screens`), `export_scale`, `screens[]` (optional list of screens to require) |
 
 ### Agent
 | Field | Notes |
@@ -146,7 +152,17 @@ One per team. Holds members, the Anthropic key, the n8n connection, Docker runne
 `run_id, step_index, status (done | running | waiting | failed | skipped), started_at, finished_at, duration_s, cost_usd, session_id, summary, log_ref, artifacts[]`.
 
 ### Artifact
-`run_id, step_index, path (docs/spec.md), content, version`. Also used for commit lists and the MR link.
+`run_id, step_index, kind, path, content, version`. Also used for commit lists and the MR link.
+
+| `kind` | Stored as | Shown as |
+| --- | --- | --- |
+| `document` | markdown text (`docs/spec.md`, `docs/plan.md`, `docs/tasks.md`) | rendered document |
+| `design_file` | the `.pen` file, committed to the repo | download plus a link to open it in pen.dev |
+| `screen` | one exported PNG per screen, with the screen name | image, in a gallery |
+| `commits` | list of commit hashes and messages | list |
+| `merge_request` | the MR URL | link |
+
+A design step produces one `design_file` artifact and one `screen` artifact per exported image. Screens are the only artifact rendered as pictures; everything else is text.
 
 ### Approval
 `run_id, step_index, decided_by, decision (approved | changes_requested | edited), feedback, decided_at`.
@@ -193,16 +209,25 @@ Columns: **Backlog**, **Running**, **Waiting approval**, **Done**, **Failed**. E
 ### 05 Create Ticket
 **Purpose:** describe the change well enough for agents to succeed.
 Fields: repository (required), title (required), description, acceptance criteria (one per line), pipeline choice (Standard / Review-heavy / Quick fix) with a one-line explanation of each.
-Right panel **What will happen** lists every step of the chosen pipeline with the agent and model, ending in "Open merge request". A tip explains that acceptance criteria are the biggest quality lever.
+Right panel **What will happen** lists every step of the chosen pipeline with the agent and model, ending in "Open merge request". Conditional steps are shown greyed with the condition stated, for example "Design, only if this ticket changes the interface". A tip explains that acceptance criteria are the biggest quality lever.
 Footer shows an estimated cost and duration. Actions: **Save as draft**, **Create & start pipeline**.
-**Behavior:** on create, the ticket is stored with the pipeline version pinned, status becomes `queued`, and the webhook fires (see §5).
+**Behavior:** on create, the ticket is stored with the pipeline version pinned, status becomes `queued`, and the webhook fires (see §5). The user does not declare whether the ticket has UI work; the Spec agent decides that at the first step (§8.6).
+
+### 06a Design Review
+**Purpose:** look at the screens the Design step produced and decide whether to build them.
+Reached when a checkpoint follows a design step, and openable read-only at any later point from the run's artifacts.
+- Banner naming the checkpoint and stating that no code has been written yet.
+- **Screen gallery**: every exported image as a large thumbnail with its screen name. Clicking one opens it full size with next and previous.
+- Side panel: the ticket's acceptance criteria, so the reviewer can check the screens against them, and the Spec agent's reason for classifying the ticket as UI work.
+- Actions: **Approve & continue**, **Request changes** with a feedback box, **Open in pen.dev** (link to the committed `.pen` file), **Cancel run**.
+**Behavior:** approving continues the pipeline to Plan. Requesting changes re-runs the design step with the feedback appended, which revises the existing `.pen` file rather than starting a new one (§8.6), then returns here with the new screens.
 
 ### 06 Ticket Run
 **Purpose:** watch one run and understand exactly where it is.
 - Header: breadcrumb, title, status badge, branch name, creator, start time, cost so far. Actions: **Pause**, **Cancel run**.
-- **Pipeline steps** tracker: Spec, Plan, Tasks, Implement, Merge request. Each shows done (green check), running (blue) or upcoming (grey) with duration and cost.
-- **Live log**: streamed terminal output of the current Claude CLI step, with the exact command shown in the header.
-- **Artifacts**: `spec.md`, `plan.md`, `tasks.md`, commits on the branch, and the merge request once it exists. Each opens in a viewer.
+- **Pipeline steps** tracker: Spec, Design, Plan, Tasks, Implement, Merge request. Each shows done (green check), running (blue), upcoming (grey) or skipped (grey, struck through, with the reason "no UI change"), plus duration and cost.
+- **Live log**: streamed terminal output of the current step, with the exact command shown in the header. This is the Claude CLI for agent steps and the pen.dev CLI for design steps.
+- **Artifacts**: `spec.md`, the design screens, `plan.md`, `tasks.md`, commits on the branch, and the merge request once it exists. Documents open in a viewer. Screens appear as a row of thumbnails that opens the gallery (06a).
 - **Run details**: pipeline, attempt, sandbox image, n8n execution id (deep link), budget used of cap.
 **Behavior:** the page is the visual form of the run state machine (§6). When the run finishes, the MR link appears and the ticket closes. When it fails, the failed step is highlighted, the log shows the error, and a **Retry** action creates a new attempt.
 
@@ -216,14 +241,16 @@ Footer shows an estimated cost and duration. Actions: **Save as draft**, **Creat
 
 ### 08 Pipeline Builder
 **Purpose:** define the order of steps and where humans intervene.
-Vertical flow from **Trigger: ticket created** to **Open merge request → close ticket**. Each node is an agent step (blue), a checkpoint (amber), or a custom agent (purple). Nodes can be dragged to reorder, and each connector has a + to insert a step.
-Right palette: **Human checkpoint**, **Agent step**, **Shell command**, **Notify**, and a list of the workspace's agents to drop in.
+Vertical flow from **Trigger: ticket created** to **Open merge request → close ticket**. Each node is an agent step (blue), a design step (pink), a checkpoint (amber), or a custom agent (purple). Nodes can be dragged to reorder, and each connector has a + to insert a step.
+A step carrying a condition shows a **Conditional** badge and the condition in words, for example "Runs only if the ticket changes the interface".
+Right palette: **Human checkpoint**, **Agent step**, **Design step**, **Shell command**, **Notify**, and a list of the workspace's agents to drop in.
 Header actions: **Duplicate**, **Test run**, **Save pipeline**. A badge shows how many repos use the pipeline.
-**Behavior:** saving increments the pipeline version. Running tickets keep the version they started with. A pipeline must end with the Implement step or a custom agent that produces code; the MR step is implicit and always last.
+**Behavior:** saving increments the pipeline version. Running tickets keep the version they started with. A pipeline must contain a step that produces code; the MR step is implicit and always last. A design step must come after the Spec step, because the condition it depends on is only known once Spec has run.
 
 ### 09 Agents
 **Purpose:** see every agent and what it is allowed to do.
 Card per agent: icon, Default or Custom badge, name, description, model, tools, skills, and usage ("Used in 3 pipelines · 41 runs"). **Edit** opens 10. **New agent** creates a custom one.
+The **Design agent** is shown here alongside the others, marked as running on the pen.dev CLI rather than the Claude CLI. Its editor (10) hides the tool toggles, which do not apply, and offers the pen.dev model list instead of the Claude one.
 
 ### 10 Agent Editor
 **Purpose:** configure one agent.
@@ -240,9 +267,10 @@ Left: searchable list of skills with description and how many agents use each. R
 **Behavior:** skills are copied into `.claude/skills/<name>/SKILL.md` for every run of an agent that references them.
 
 ### 12 Settings
-Sections: Workspace, **Orchestration (n8n)**, **Sandbox (Docker)**, Claude CLI & keys, Cost limits, Members, Notifications.
+Sections: Workspace, **Orchestration (n8n)**, **Sandbox (Docker)**, Claude CLI & keys, **Design (pen.dev)**, Cost limits, Members, Notifications.
 - **n8n**: base URL, API key, the workflow used for ticket pipelines, the callback webhook URL, connection health and **Test connection**.
 - **Docker**: runner image, Docker host, CPU and memory per container, max wall time, parallel containers, network access during Implement, destroy container after MR.
+- **pen.dev**: account credential, default design model, export format and scale, default output paths for the `.pen` file and the screens, connection health and **Test connection**. Required only if any pipeline contains a design step.
 
 ### 13 System Architecture
 Diagram artboard for the team, not an application screen. Shows User → Factory App → n8n → Runner + Docker → Git provider and the eight-step ticket lifecycle.
@@ -254,12 +282,15 @@ Diagram artboard for the team, not an application screen. Shows User → Factory
 ```
 1. Created      user submits ticket (05)                 status: backlog → queued
 2. Queued       app resolves pipeline, POSTs to n8n     run created, attempt 1
-3. Spec         agent writes docs/spec.md               running
-4. Checkpoint   optional, anywhere                      waiting_approval
-5. Plan → Tasks agents write plan.md, tasks.md          running
-6. Implement    code, tests, commits                    running
-7. MR opened    branch pushed, MR created               opening_mr
-8. Done         ticket closed, MR linked                done
+3. Spec         agent writes docs/spec.md, decides      running
+                whether the ticket changes the UI
+4. Design       only if it does: pen.dev CLI writes     running, or skipped
+                docs/design/ui.pen and exports screens
+5. Checkpoint   optional, anywhere                      waiting_approval
+6. Plan → Tasks agents write plan.md, tasks.md          running
+7. Implement    code, tests, commits                    running
+8. MR opened    branch pushed, MR created               opening_mr
+9. Done         ticket closed, MR linked                done
 ```
 
 ### 5.1 Trigger
@@ -286,19 +317,24 @@ One generic workflow, never edited per pipeline.
 
 1. **Webhook** node receives the payload above.
 2. **HTTP → Runner: create workspace** (`POST /runs/{run_id}/start`). Runner starts the container, clones the repo, creates the branch, writes `.claude/` config. Returns `container_id`.
-3. **Loop over `pipeline.steps`** (SplitInBatches or Code node). For each step, branch on `type`:
-   - `agent` → **HTTP → Runner: run step** (`POST /runs/{run_id}/steps/{i}`). Runner executes the CLI (§8), streams logs to the app, returns the JSON result. n8n posts the StepResult to the callback.
+3. **Loop over `pipeline.steps`** (SplitInBatches or Code node). For each step, first evaluate `step.condition` against the run's accumulated facts. If it is false, post a `step_skipped` callback with the reason and move to the next step without calling the Runner. Otherwise branch on `type`:
+   - `agent` → **HTTP → Runner: run step** (`POST /runs/{run_id}/steps/{i}`). Runner executes the Claude CLI (§8.2), streams logs to the app, returns the JSON result. n8n posts the StepResult to the callback.
+   - `design` → same Runner endpoint. Runner executes the pen.dev CLI (§8.6), returns the produced `.pen` path, the exported image paths and the cost. n8n posts them as artifacts.
    - `shell` → same Runner endpoint with a command instead of a prompt.
    - `checkpoint` → post `waiting_approval` to the callback with the **Wait node resume URL**, then enter a **Wait** node (webhook resume, optional timeout). See §7.
    - `notify` → Slack / email / HTTP node.
    - After every step: if the result is `failed` or the budget is exceeded, jump to **Fail** (below).
+
+   The only fact conditions read today is `ticket.has_ui`, which the Spec step returns and n8n carries forward for the rest of the loop. A condition on a step reached before Spec has run is an error caught when the pipeline is saved, not at run time.
 4. **Verify**: Runner runs the repo's test command once more (from the repo profile or the Implement agent's last command) and pushes the branch.
-5. **Open MR**: GitLab or GitHub node creates the MR from `branch` into `default_branch`. Title = ticket title; description = ticket description + acceptance criteria + `spec.md` and `plan.md` collapsed sections + link back to the ticket.
+5. **Open MR**: GitLab or GitHub node creates the MR from `branch` into `default_branch`. Title = ticket title; description = ticket description + acceptance criteria + `spec.md` and `plan.md` collapsed sections + the design screens embedded as images when the ticket had any + link back to the ticket.
 6. **Finish**: callback `done` with `merge_request_url`. **HTTP → Runner: destroy** container.
 7. **Fail** path: callback `failed` with the step index and error summary, destroy container (or keep it 24 h if the workspace setting says so).
 
 ### 5.3 Callbacks (n8n → app)
-`POST {callback_url}` with `run_id`, `event` and payload. Events: `started`, `step_started`, `step_finished`, `waiting_approval`, `log_chunk`, `mr_opened`, `done`, `failed`, `cancelled`. Every callback carries `step_index` and `attempt` and is idempotent: the app ignores duplicates.
+`POST {callback_url}` with `run_id`, `event` and payload. Events: `started`, `step_started`, `step_finished`, `step_skipped`, `ticket_classified`, `waiting_approval`, `log_chunk`, `mr_opened`, `done`, `failed`, `cancelled`. Every callback carries `step_index` and `attempt` and is idempotent: the app ignores duplicates.
+
+`ticket_classified` carries `{has_ui, rationale}` from the Spec step and is what sets those fields on the ticket. `step_skipped` carries the condition that was false, so the run view can say why a step did not run.
 
 ### 5.4 Closing the ticket
 On `done`, the app sets `ticket.status = done`, stores `merge_request_url`, records the final cost, and posts to the activity feed. Reviewing and merging the MR happens on the git provider as usual.
@@ -321,6 +357,7 @@ queued ──► running(step i) ──► running(step i+1) … ──► verif
 - **Retry** from `failed` or `cancelled` creates a new Run with `attempt + 1`, same pipeline version, fresh container, same branch (force-updated).
 - **Pause** stops before the next step starts; the current CLI call finishes.
 - A ticket's status mirrors its current run's status.
+- A **skipped** step is a terminal state for that step alone. It never fails a run, and the run moves straight to the next step.
 
 ---
 
@@ -350,7 +387,7 @@ A checkpoint is a pipeline step of type `checkpoint`. It can appear anywhere, in
 
 ### 8.1 Container preparation (Runner, once per run)
 1. `docker run` the runner image with CPU, memory and wall-clock limits from Settings, as a non-root user, workspace mounted at `/work`.
-2. Inject `ANTHROPIC_API_KEY` and a git credential for this repo as environment variables. They are never written to disk in the repo.
+2. Inject `ANTHROPIC_API_KEY`, a git credential for this repo, and a pen.dev credential as environment variables. They are never written to disk in the repo. The pen.dev credential is only injected when the pipeline contains a design step.
 3. `git clone --branch <default_branch>` and `git checkout -b factory/<id>-<slug>`.
 4. Write ticket context to `/work/.factory/ticket.json`.
 5. For every agent in the snapshot, write `/work/.claude/agents/<agent-slug>.md` (system prompt with variables substituted) and every referenced skill to `/work/.claude/skills/<skill>/SKILL.md`.
@@ -372,20 +409,65 @@ claude -p "<step prompt>" \
 
 ### 8.3 Prompt variables
 Available in system prompts and step prompts:
-`{{ticket.id}}`, `{{ticket.title}}`, `{{ticket.description}}`, `{{ticket.acceptance}}` (bulleted list), `{{repo.name}}`, `{{repo.branch}}`, `{{repo.default_branch}}`, `{{run.attempt}}`, `{{feedback}}` (present after a changes-requested loop).
+`{{ticket.id}}`, `{{ticket.title}}`, `{{ticket.description}}`, `{{ticket.acceptance}}` (bulleted list), `{{repo.name}}`, `{{repo.branch}}`, `{{repo.default_branch}}`, `{{run.attempt}}`, `{{feedback}}` (present after a changes-requested loop), `{{ticket.has_ui}}` (available after the Spec step), `{{design.screens}}` (list of exported image paths, empty when no design step ran).
 
 ### 8.4 Default agents and their contracts
 | Agent | Reads | Produces | Model (default) | Tools |
 | --- | --- | --- | --- | --- |
-| Spec | ticket | `docs/spec.md` — goal, scope, non-goals, acceptance criteria restated, open questions resolved by stated assumptions | Sonnet 5 | Read, Write |
-| Plan | spec, repo | `docs/plan.md` — approach, files to change, data changes, risks | Opus 5 | Read, Write, Bash (read-only) |
+| Spec | ticket | `docs/spec.md` and the UI classification (§8.6) | Sonnet 5 | Read, Write |
+| Design | spec | `docs/design/ui.pen` and one PNG per screen (§8.6) | Opus 5 via pen.dev | pen.dev CLI |
+| Plan | spec, screens if any, repo | `docs/plan.md` — approach, files to change, data changes, risks | Opus 5 | Read, Write, Bash (read-only) |
 | Tasks | spec, plan | `docs/tasks.md` — ordered small tasks, each with a verification step | Sonnet 5 | Read, Write |
-| Implement | spec, plan, tasks | code changes, one commit per task (`feat(#<id>): <task>`), all tests passing | Opus 5 | Read, Edit, Bash, Git push |
+| Implement | spec, screens if any, plan, tasks | code changes, one commit per task (`feat(#<id>): <task>`), all tests passing | Opus 5 | Read, Edit, Bash, Git push |
 
 Custom agents follow the same contract: declared inputs, declared outputs, model, tools, skills. Example from the design: **Security review** (reads the diff, blocks on high findings) and **Docs writer** (updates README and CHANGELOG).
 
 ### 8.5 Shell steps
 Run a fixed command in the container (`npm run lint`, `pytest`). Non-zero exit = step failed. Output is logged like an agent step.
+
+### 8.6 The design step
+
+**Deciding whether a ticket has UI work.** The Spec agent makes the call, as the last thing it does. Its instructions require it to end `docs/spec.md` with a machine-readable block:
+
+```
+<!-- factory:classification
+has_ui: true
+rationale: The ticket adds a sign-in button and a callback screen, both visible to end users.
+-->
+```
+
+The Runner parses that block and returns it in the StepResult. n8n posts it as `ticket_classified` and carries `has_ui` forward for the rest of the loop. If the block is missing or unparseable, `has_ui` defaults to `false` and the run continues, because guessing "yes" would waste a design step on a migration.
+
+A design step whose condition is false is recorded as `skipped` with the reason "ticket has no UI change". It is visible in the run's step tracker, greyed out.
+
+**Running the step.** The Runner invokes the pen.dev CLI, not the Claude CLI:
+
+```
+pen --out docs/design/ui.pen \
+    --prompt "<design prompt>" \
+    --model <agent.model> \
+    --repo /work \
+    --export docs/design/screens \
+    --export-type png \
+    --export-scale 2 \
+    --usage /tmp/pen-usage.json
+```
+
+- On a revision, `--in docs/design/ui.pen` is added so the CLI edits the existing file rather than starting from an empty canvas. This applies to a changes-requested loop from the design review checkpoint and to any retry of a run whose design already exists.
+- The design prompt is assembled from the Design agent's system prompt, `docs/spec.md`, the ticket's acceptance criteria, and `{{feedback}}` when returning from a rejected review.
+- `stdout` streams to the app as `log_chunk` events, so the live log works the same as for an agent step.
+- `--usage` writes cost and token counts as JSON. The Runner reads that file and records the cost in the StepResult, so design spend counts against the same run budget and the same caps as everything else.
+
+**Outputs, both committed.** The step commits two things to the branch:
+
+| Path | Artifact kind | Purpose |
+| --- | --- | --- |
+| `docs/design/ui.pen` | `design_file` | The editable source. Committed so the design travels with the code, can be opened in pen.dev, reviewed in the merge request, and revised by a later ticket instead of being redrawn. |
+| `docs/design/screens/*.png` | `screen` | One exported image per screen. This is what the app displays and what the merge request embeds. |
+
+The Runner fails the step if the `.pen` file is missing or if no image was exported.
+
+**What later steps do with it.** The Plan and Implement agents receive the exported images as part of their context and are instructed to build the interface to match them. The `.pen` file is present in the working tree, so an agent that needs markup rather than a picture can export it through the pen.dev tooling instead of eyeballing the PNG. Nothing forces that path; the images alone are a valid input.
 
 ---
 
@@ -394,7 +476,8 @@ Run a fixed command in the container (`npm run lint`, `pytest`). Non-zero exit =
 - Branch: `factory/<ticket-id>-<slug>`, force-pushed on retries.
 - Target: the repository's default branch.
 - Title: ticket title. Description: ticket description, acceptance criteria as a checklist, collapsible `spec.md` and `plan.md`, run cost and duration, link to the ticket.
-- Labels: `code-factory`, pipeline name.
+- When the ticket had a design step, the description embeds the exported screens as images directly under the summary, so a reviewer sees the intended interface before reading the diff. The committed `.pen` file is linked below them.
+- Labels: `code-factory`, pipeline name, plus `ui` when the ticket was classified as UI work.
 - The MR URL is stored on the ticket and shown on 04 and 06. Merging is done by humans on the provider.
 
 ---
@@ -404,6 +487,9 @@ Run a fixed command in the container (`npm run lint`, `pytest`). Non-zero exit =
 | Failure | Behavior |
 | --- | --- |
 | Agent step produces no output file | Step failed → run failed, ticket `failed`, log kept. |
+| Design step produces no `.pen` file or no images | Step failed → run failed. The partial output is kept for inspection. |
+| Spec agent omits the classification block | `has_ui` defaults to `false`, design steps skip, run continues. Surfaced as a warning on the run, not a failure. |
+| pen.dev credential missing or rejected | Design step fails immediately with a clear message pointing at Settings. Detected at container start when the pipeline contains a design step. |
 | Tests fail at Verify | Implement agent is re-invoked with the test output up to 2 times, then run failed. |
 | Budget or time cap exceeded | Process killed, run failed with reason shown on 06. |
 | Container crash or Runner unreachable | n8n retries the step once with a new container from the last commit on the branch; then failed. |
@@ -421,7 +507,7 @@ Every failed or cancelled ticket offers **Retry** (new attempt) and **Edit ticke
 - **Per agent step**: cost, minutes, turns from the agent config.
 - **Per workspace**: maximum parallel containers (design shows 6). Extra tickets wait in `queued` and show their position.
 - **Container**: non-root, CPU and memory limits, network access during Implement configurable, destroyed after MR unless kept for debugging (24 h).
-- **Secrets**: git tokens and the Anthropic key are injected as environment variables at container start and never stored in n8n or in the repo workspace.
+- **Secrets**: git tokens, the Anthropic key and the pen.dev credential are injected as environment variables at container start and never stored in n8n or in the repo workspace. The pen.dev credential is only injected into runs whose pipeline contains a design step.
 - **Pinned versions**: runs pin the pipeline version and agent configuration at start, so editing a pipeline or agent never changes a running ticket.
 
 ---
@@ -432,11 +518,15 @@ Every failed or cancelled ticket offers **Retry** (new attempt) and **Edit ticke
 | --- | --- |
 | Ticket | A unit of work on one repository, created by a user. |
 | Pipeline | Ordered list of steps that turns a ticket into an MR. |
-| Step | One item in a pipeline: agent, checkpoint, shell or notify. |
+| Step | One item in a pipeline: agent, design, checkpoint, shell or notify. |
 | Agent | A configured Claude CLI persona: prompt, model, tools, skills, limits. |
+| Design step | A step that runs the pen.dev CLI to produce screens. Conditional on the ticket having UI work. |
+| Condition | A rule on a step deciding whether it runs. Today the only one reads `ticket.has_ui`. |
+| Skipped | A step whose condition was false. Recorded, never a failure. |
 | Skill | A reusable markdown instruction file available to agents. |
 | Run | One execution attempt of a pipeline for a ticket. |
-| Artifact | A file produced by a step (`spec.md`, `plan.md`, `tasks.md`), a commit list, or the MR. |
+| Artifact | Something a step produced: a document, the `.pen` design file, an exported screen image, a commit list, or the MR. |
+| Screen | One exported PNG from the design step. The unit the app displays and the merge request embeds. |
 | Checkpoint | A step that pauses the run until a human approves. |
 | Runner | The service that manages Docker containers and executes steps. |
 | Snapshot | The fully resolved pipeline JSON sent to n8n when a run starts. |
