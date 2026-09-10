@@ -33,8 +33,6 @@ export const TICKET_STATES = [
 export type TicketState = (typeof TICKET_STATES)[number];
 
 const TERMINAL_STATES: TicketState[] = ['done', 'failed', 'cancelled'];
-export const isTerminal = (state: TicketState) => TERMINAL_STATES.includes(state);
-
 /** T057 — a stable, human-readable identifier, and the branch derived from it. */
 export function branchNameFor(reference: string, title: string): string {
   const number = reference.replace(/^#/, '');

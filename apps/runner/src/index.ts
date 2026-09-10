@@ -46,17 +46,27 @@ const routes: Route[] = [
       // app, so the orchestration service never holds one (FR-083).
       const credentials = body.credentials ?? (await fetchCredentials(body.snapshot));
 
+      // The snapshot's own limits, which is where an administrator's
+      // settings reach a run (FR-085). Compiled-in figures are a last
+      // resort for a snapshot written before this field existed — used
+      // silently, they meant nothing anybody configured had any effect.
+      const limits = body.snapshot.sandbox;
       const result = await startRun(dockerHost, store, {
         snapshot: body.snapshot,
         credentials,
         sandbox: body.sandbox ?? {
-          image: config.sandboxImage,
-          cpu: 2,
-          memoryMb: 4096,
-          wallClockMinutes: 90,
-          networkDuringImplement: false,
+          image: limits?.image || config.sandboxImage,
+          cpu: limits?.cpu ?? 2,
+          memoryMb: limits?.memory_mb ?? 4096,
+          wallClockMinutes: limits?.wall_clock_minutes ?? 90,
+          networkDuringImplement: limits?.network_during_implement ?? false,
         },
       });
+      if (!limits) {
+        log.warn('the snapshot carries no sandbox limits, so defaults were used', {
+          run_id: runId,
+        });
+      }
       log.info('sandbox created', { run_id: runId, container_id: result.container_id });
       return Response.json(result);
     },

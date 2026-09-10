@@ -164,7 +164,3 @@ export function assertSavable(steps: Step[]): void {
 export function conditionWords(step: Step): string | undefined {
   return CONDITION_DESCRIPTION[step.condition];
 }
-
-export function conditionFact(step: Step): string | undefined {
-  return CONDITION_FACT[step.condition];
-}

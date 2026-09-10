@@ -69,17 +69,30 @@ export interface PipelineSnapshot {
   pipeline: { id: string; version: number; name: string; steps: Step[] };
   /** Already resolved to least(agent, pipeline, workspace) — FR-079a. */
   limits: { cost_ceiling_usd: string; time_ceiling_minutes: number };
+  /**
+   * What the sandbox is allowed (FR-085), resolved from the workspace at
+   * start and pinned here for the same reason the ceilings are: a limit
+   * changed mid-run must not reshape a container that is already running.
+   *
+   * It travels in the snapshot because the snapshot is the only channel
+   * between the application and the Runner — the Runner cannot read a
+   * workspace setting, and without this it fell back to figures compiled
+   * into it, so nothing an administrator set had any effect.
+   *
+   * Optional because a run started before this field existed does not have
+   * it, and that is a real state of the database rather than something to
+   * assert away. The Runner falls back to its own defaults and says so.
+   */
+  sandbox?: {
+    image: string;
+    cpu: number;
+    memory_mb: number;
+    wall_clock_minutes: number;
+    network_during_implement: boolean;
+  };
   agents: SnapshotAgent[];
   callback_url: string;
   resume_secret: string;
 }
 
 export const DEFAULT_CONDITION: StepCondition = 'always';
-
-/** Terminal for the step alone; the run continues (FR-111). */
-export const NON_TERMINAL_RUN_STATUSES = [
-  'queued',
-  'running',
-  'waiting_approval',
-  'opening_mr',
-] as const;

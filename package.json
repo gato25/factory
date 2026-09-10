@@ -21,7 +21,8 @@
     "audit:concurrency": "bun scripts/audit/concurrency-check.ts",
     "audit:sandboxes": "bun scripts/audit/sandbox-release-check.ts",
     "audit:first-attempt": "bun scripts/audit/first-attempt-rate.ts",
-    "maintenance": "bun scripts/maintenance.ts"
+    "maintenance": "bun scripts/maintenance.ts",
+    "install-defaults": "bun scripts/install-defaults.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.12",

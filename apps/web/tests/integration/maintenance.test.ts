@@ -223,3 +223,81 @@ test('sweeping twice changes nothing the second time', async () => {
   expect(second.released).toEqual([]);
   expect(result.problems).toEqual([]);
 });
+
+test('a runner that has forgotten the run is a problem, not a release', async () => {
+  const { runnerRelease } = await import('../../src/lib/services/sandbox');
+  // The Runner keeps its run-to-container mapping in memory, so a restart
+  // loses it. It answers 200 and `released: false`, meaning "I cannot act" —
+  // and treating that as success would clear the container id and discard
+  // the only handle anything has for reclaiming a running container.
+  const release = runnerRelease({
+    baseUrl: 'http://runner:8080',
+    authToken: 't',
+    retainFailedHours: 0,
+  });
+  const original = globalThis.fetch;
+  globalThis.fetch = (async () => Response.json({ released: false })) as unknown as typeof fetch;
+  try {
+    await expect(
+      release({ runId: 'r1', containerId: 'container-20', outcome: 'done' }),
+    ).rejects.toThrow(/has no record of run r1.*cannot release container-20/s);
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test('a sandbox the runner is still retaining is a problem, not a release', async () => {
+  const { runnerRelease } = await import('../../src/lib/services/sandbox');
+  const release = runnerRelease({
+    baseUrl: 'http://runner:8080',
+    authToken: 't',
+    retainFailedHours: 6,
+  });
+  const original = globalThis.fetch;
+  globalThis.fetch = (async () =>
+    Response.json({
+      released: false,
+      retainedUntil: '2026-09-11T00:00:00Z',
+    })) as unknown as typeof fetch;
+  try {
+    await expect(
+      release({ runId: 'r2', containerId: 'container-21', outcome: 'failed' }),
+    ).rejects.toThrow(/retained for diagnosis until 2026-09-11/);
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test('a release the runner confirms carries the outcome and the retention', async () => {
+  const { runnerRelease } = await import('../../src/lib/services/sandbox');
+  const release = runnerRelease({
+    baseUrl: 'http://runner:8080/',
+    authToken: 'the-token',
+    retainFailedHours: 6,
+  });
+  const seen: { url: string; method?: string; authorization: string | null }[] = [];
+  const original = globalThis.fetch;
+  globalThis.fetch = (async (url: string, init?: RequestInit) => {
+    seen.push({
+      url,
+      method: init?.method,
+      authorization: new Headers(init?.headers as HeadersInit).get('authorization'),
+    });
+    return Response.json({ released: true });
+  }) as unknown as typeof fetch;
+  try {
+    await release({ runId: 'r3', containerId: 'container-22', outcome: 'failed' });
+  } finally {
+    globalThis.fetch = original;
+  }
+  // Keyed by RUN, because that is how the Runner keys its sandboxes; and the
+  // retention travels with it, because the Runner cannot read a workspace
+  // setting — the two deployables share a database only through the snapshot.
+  expect(seen).toEqual([
+    {
+      url: 'http://runner:8080/runs/r3?outcome=failed&retain_failed_hours=6',
+      method: 'DELETE',
+      authorization: 'Bearer the-token',
+    },
+  ]);
+});

@@ -55,11 +55,18 @@ export function runnerRelease(access: RunnerAccess): ReleaseSandbox {
       );
     }
     const body = (await response.json()) as { released?: boolean; retainedUntil?: string };
-    // A retained sandbox is not released, and saying it was would make the
-    // record claim a container is gone while it is still running.
-    if (body.released === false && body.retainedUntil) {
+    // `released: false` is not success, in either of its two shapes, and
+    // treating it as one would clear the container id from the record —
+    // discarding the only handle anything has for reclaiming a container
+    // that is still running.
+    if (body.released === false) {
       throw new Error(
-        `${sandbox.containerId} is retained for diagnosis until ${body.retainedUntil}`,
+        body.retainedUntil
+          ? `${sandbox.containerId} is retained for diagnosis until ${body.retainedUntil}`
+          : // The Runner keys sandboxes by run in memory, so a restart loses
+            // the mapping. It cannot act, and the id has to stay visible.
+            `the runner has no record of run ${sandbox.runId}, so it cannot release ` +
+              `${sandbox.containerId} — check the container host by hand`,
       );
     }
   };

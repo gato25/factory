@@ -33,9 +33,20 @@ test('the body carries everything the orchestrator needs, and nothing to look up
       'repo',
       'resume_secret',
       'run_id',
+      'sandbox',
       'ticket',
     ].sort(),
   );
+  // The sandbox's limits are the administrator's, not the Runner's own
+  // defaults: the Runner cannot read a workspace setting, so a snapshot
+  // without them means nothing anybody configured applies (FR-085).
+  expect(snapshot.sandbox).toEqual({
+    image: 'code-factory/sandbox:latest',
+    cpu: 2,
+    memory_mb: 4096,
+    wall_clock_minutes: 90,
+    network_during_implement: false,
+  });
   expect(snapshot.pipeline.steps.length).toBeGreaterThan(0);
   // Each step names its agent, and that agent travels in the same document.
   for (const step of snapshot.pipeline.steps) {

@@ -175,5 +175,3 @@ export const githubClient: ProviderClient = {
 export function clientFor(provider: Provider): ProviderClient {
   return provider === 'gitlab' ? gitlabClient : githubClient;
 }
-
-export const VERIFICATION_FAILURE: FailureReason = 'credential_invalid';

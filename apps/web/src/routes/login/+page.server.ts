@@ -8,11 +8,20 @@ import {
   SESSION_COOKIE_OPTIONS,
   signInWithPassword,
 } from '$lib/services/auth';
+import { configuredProviders } from '$lib/services/oauth';
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = ({ locals }) => {
+export const load: PageServerLoad = ({ locals, url }) => {
   if (locals.user) redirect(303, '/');
-  return {};
+  return {
+    // Only providers this deployment can actually complete a sign-in with. A
+    // button that leads nowhere is worse than no button.
+    providers: configuredProviders(),
+    // A round trip that failed comes back here with its reason, rather than
+    // an error page: somebody who cannot sign in needs the next thing to
+    // try.
+    problem: url.searchParams.get('problem'),
+  };
 };
 
 export const actions: Actions = {

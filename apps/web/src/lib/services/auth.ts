@@ -25,13 +25,6 @@ export interface SessionUser {
 
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 14;
 
-export async function hashPassword(password: string): Promise<string> {
-  if (password.length < 12) {
-    throw new FactoryError('invalid_input', 'a password must be at least 12 characters');
-  }
-  return Bun.password.hash(password, { algorithm: 'argon2id' });
-}
-
 export async function signInWithPassword(
   database: Database,
   email: string,

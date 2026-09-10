@@ -226,11 +226,6 @@ export function removeStep(steps: Step[], at: number): Step[] {
   return steps.filter((_, index) => index !== at);
 }
 
-export function replaceStep(steps: Step[], at: number, step: Step): Step[] {
-  if (at < 0 || at >= steps.length) throw invalidInput('there is no such step to change');
-  return steps.map((existing, index) => (index === at ? { ...existing, ...step } : existing));
-}
-
 /** A blank step of each kind, so the palette inserts something valid-shaped. */
 export function blankStep(kind: (typeof STEP_KINDS)[number]): Step {
   switch (kind) {

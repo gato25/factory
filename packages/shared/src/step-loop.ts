@@ -44,8 +44,6 @@ const CONDITION_TEXT: Record<Exclude<StepCondition, 'always'>, string> = {
   ticket_has_no_ui: 'ticket changes the interface',
 };
 
-export const CONDITION_NOT_MET = CONDITION_TEXT;
-
 /** True when the condition holds. An unestablished fact reads as false. */
 export function conditionHolds(condition: StepCondition, facts: RunFacts): boolean {
   switch (condition) {

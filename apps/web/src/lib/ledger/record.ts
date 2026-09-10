@@ -117,12 +117,3 @@ export async function captureArtifacts(
       });
   }
 }
-
-export async function currentCost(database: Database, runId: string): Promise<string> {
-  const [row] = await database
-    .select({ costUsd: runs.costUsd })
-    .from(runs)
-    .where(eq(runs.id, runId))
-    .limit(1);
-  return row?.costUsd ?? '0.0000';
-}

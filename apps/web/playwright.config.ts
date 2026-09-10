@@ -27,5 +27,16 @@ export default defineConfig({
     command: 'bun run dev',
     port: 5173,
     reuseExistingServer: !process.env.CI,
+    env: {
+      // The sign-in screen offers only a provider it can complete a sign-in
+      // with, so a suite that asserts both are offered has to configure
+      // both. These reach no provider — the round trip needs a registered
+      // application — but they are what makes the buttons real rather than
+      // links to nowhere.
+      GITLAB_CLIENT_ID: process.env.GITLAB_CLIENT_ID ?? 'e2e-gitlab-client',
+      GITLAB_CLIENT_SECRET: process.env.GITLAB_CLIENT_SECRET ?? 'e2e-gitlab-secret',
+      GITHUB_CLIENT_ID: process.env.GITHUB_CLIENT_ID ?? 'e2e-github-client',
+      GITHUB_CLIENT_SECRET: process.env.GITHUB_CLIENT_SECRET ?? 'e2e-github-secret',
+    },
   },
 });

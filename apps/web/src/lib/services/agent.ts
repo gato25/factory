@@ -403,11 +403,6 @@ export const TEMPLATE_VARIABLES = [
   { name: 'design.screens', what: 'Paths of the designed screens, when a design step ran' },
 ] as const;
 
-/** The shipped defaults, available to every user (FR-006b). */
-export function shippedAgentNames(): string[] {
-  return DEFAULT_AGENTS.map((agent) => agent.name);
-}
-
 /** Whether an agent still matches what shipped, for the editor's Reset. */
 export async function isModifiedFromShipped(database: Database, agentId: string): Promise<boolean> {
   const [row] = await database.select().from(agents).where(eq(agents.id, agentId)).limit(1);

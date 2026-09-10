@@ -175,6 +175,15 @@ export async function resolveSnapshot(
       steps,
     },
     limits: { cost_ceiling_usd: ceilings.costUsd, time_ceiling_minutes: ceilings.minutes },
+    // Pinned at start, like the ceilings: raising a sandbox's memory must
+    // not reshape a container already running (FR-085, FR-044).
+    sandbox: {
+      image: workspace.sandboxImage,
+      cpu: workspace.sandboxCpu,
+      memory_mb: workspace.sandboxMemoryMb,
+      wall_clock_minutes: workspace.sandboxWallClockMinutes,
+      network_during_implement: workspace.sandboxNetworkDuringImplement,
+    },
     agents: snapshotAgents,
     callback_url: input.callbackUrl,
     resume_secret: input.resumeSecret,

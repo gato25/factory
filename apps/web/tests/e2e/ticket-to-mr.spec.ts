@@ -26,7 +26,13 @@ test.describe('the parts that need no external service', () => {
 
   test('the sign-in screen offers both providers and explains the pipeline', async ({ page }) => {
     await page.goto('/login');
-    await expect(page.getByRole('link', { name: /Continue with GitLab/ })).toBeVisible();
+    // Both are offered because playwright.config.ts configures both. A
+    // provider with no client id and secret is not offered at all, rather
+    // than offered as a link that fails — asserted against the environment
+    // directly in tests/integration/oauth.test.ts.
+    const gitlab = page.getByRole('link', { name: /Continue with GitLab/ });
+    await expect(gitlab).toBeVisible();
+    await expect(gitlab).toHaveAttribute('href', '/login/gitlab');
     await expect(page.getByRole('link', { name: /Continue with GitHub/ })).toBeVisible();
     await expect(page.getByText(/Turn a ticket into a reviewable merge request/)).toBeVisible();
     // The design step is conditional, and the screen says so (FR-032b).

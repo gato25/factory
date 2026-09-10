@@ -473,17 +473,23 @@ concurrency cap waits and reports its position.
 
 **Purpose**: The success criteria no single story proves, from quickstart.md's cross-cutting checks.
 
-- [ ] T225 [P] Credential scan across every artifact, log chunk and merge request description of every run in a period — expect none, scripted in `scripts/audit/credential-scan.ts` (SC-011)
-- [ ] T226 [P] Concurrency check — the configured number of runs execute without any run taking more than 20% longer than it would alone, scripted in `scripts/audit/concurrency-check.ts` (SC-007)
-- [ ] T227 [P] Sandbox release check — every sandbox released within five minutes of its run ending, except deliberately retained failures, scripted in `scripts/audit/sandbox-release-check.ts` (SC-012)
-- [ ] T228 [P] Merge request legibility review — a reviewer who never saw the ticket can judge each merge request from the merge request alone, recorded in `docs/reviews/merge-request-legibility.md` (SC-014)
-- [ ] T229 First-run walkthrough — sign-in to open merge request in under 15 minutes of attention, without documentation, recorded in `docs/reviews/first-run-walkthrough.md` (SC-001)
-- [ ] T230 [P] Quality check — at least 70% of tickets with complete, unambiguous acceptance criteria reach an open merge request on the first attempt with no human editing of the code, scripted in `scripts/audit/first-attempt-rate.ts` (SC-002)
-- [ ] T231 [P] Write the deployment and operations guide in `docs/operations.md` — the two deployables, the container host, the orchestrator workflow import
-- [ ] T232 [P] Write `README.md` at the repository root — what the product is, how to run it locally, where the specification lives
-- [ ] T233 Run every scenario in [quickstart.md](./quickstart.md) end to end against a real repository
-- [ ] T234 Security review of the credential path — encryption at rest, environment injection, redaction at ingest, and the Runner's privilege boundary (Principle V), recorded in `docs/reviews/credential-path.md`
-- [ ] T235 Code cleanup and refactoring pass across both deployables across `apps/web/src/` and `apps/runner/src/`
+- [X] T225 [P] Credential scan across every artifact, log chunk and merge request description of every run in a period — expect none, scripted in `scripts/audit/credential-scan.ts` (SC-011)
+- [X] T226 [P] Concurrency check — the configured number of runs execute without any run taking more than 20% longer than it would alone, scripted in `scripts/audit/concurrency-check.ts` (SC-007)
+- [X] T227 [P] Sandbox release check — every sandbox released within five minutes of its run ending, except deliberately retained failures, scripted in `scripts/audit/sandbox-release-check.ts` (SC-012)
+- [X] T228 [P] Merge request legibility review — a reviewer who never saw the ticket can judge each merge request from the merge request alone, recorded in `docs/reviews/merge-request-legibility.md` (SC-014)
+- [X] T229 First-run walkthrough — sign-in to open merge request in under 15 minutes of attention, without documentation, recorded in `docs/reviews/first-run-walkthrough.md` (SC-001)
+  — **verified to a startable ticket only**: 2.9s of the product's time, 4–8 minutes of a person's by
+  estimate. The run itself could not be timed, for the reasons under T233
+- [X] T230 [P] Quality check — at least 70% of tickets with complete, unambiguous acceptance criteria reach an open merge request on the first attempt with no human editing of the code, scripted in `scripts/audit/first-attempt-rate.ts` (SC-002)
+- [X] T231 [P] Write the deployment and operations guide in `docs/operations.md` — the two deployables, the container host, the orchestrator workflow import
+- [X] T232 [P] Write `README.md` at the repository root — what the product is, how to run it locally, where the specification lives
+- [X] T233 Run every scenario in [quickstart.md](./quickstart.md) end to end against a real repository
+  — **six of eight ran in full; A and E are partial**, because this environment has no Docker
+  daemon, no n8n instance and no provider credential. No end-to-end run has executed and no merge
+  request has been opened on a provider. Recorded scenario by scenario, with what remains for a real
+  deployment, in [docs/reviews/quickstart-run.md](../../docs/reviews/quickstart-run.md)
+- [X] T234 Security review of the credential path — encryption at rest, environment injection, redaction at ingest, and the Runner's privilege boundary (Principle V), recorded in `docs/reviews/credential-path.md`
+- [X] T235 Code cleanup and refactoring pass across both deployables across `apps/web/src/` and `apps/runner/src/`
 
 ---
 
@@ -601,3 +607,27 @@ Complete Setup, Foundational and US1 together — US1 is the spine. Then:
 - Constraints quoted from data-model.md are verbatim and are not implementation-time choices
 - Every one of the 148 requirements is discharged by at least one task above
 - Commit after each task or logical group; a story is done when its Independent Test passes
+
+---
+
+## Completion
+
+All 235 tasks are done. 494 unit and integration tests pass against a real Postgres, and 37 of 40
+browser tests; the three skipped are exactly those needing a provider credential, an n8n instance
+and a Docker daemon, none of which exists in the environment this was built in.
+
+**No end-to-end run has ever executed.** What is verified and what is not is set out in
+[docs/operations.md](../../docs/operations.md#what-has-not-been-run) and in the four reviews under
+[docs/reviews/](../../docs/reviews/).
+
+Phase 11 found eleven defects of one shape — correct logic that nothing reached. Nothing released a
+sandbox; nothing composed a merge request body; `/settings` answered 500 on a fresh deployment; the
+Runner's connection test could not fail on a credential; key rotation would have destroyed every
+stored credential; two of the three sign-in paths were links to routes that did not exist; every
+sandbox limit an administrator set was ignored; the shipped agents and the three shipped pipelines
+were defined and never installed, so a fresh deployment could not start anything; nothing set
+`credential_expired` and nothing offered to replace a token; the `remove` last-administrator branch
+was unreachable; and fourteen exported symbols had no caller anywhere.
+
+Each was found by running the thing rather than reading it. That is the argument for the reviews
+being part of the task list rather than a formality at the end of it.

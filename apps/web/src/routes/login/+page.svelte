@@ -1,8 +1,10 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
-  import type { ActionData } from './$types';
+  import type { ActionData, PageData } from './$types';
 
-  let { form }: { form: ActionData } = $props();
+  let { form, data }: { form: ActionData; data: PageData } = $props();
+
+  const NAMES = { gitlab: 'GitLab', github: 'GitHub' } as const;
 
   // The pipeline as main describes it: design is conditional on the ticket
   // changing the interface (FR-099, FR-032b).
@@ -26,11 +28,17 @@
 
   <section class="signin">
     <h2>Sign in</h2>
-    <div class="providers">
-      <a class="provider" href="/login/gitlab">Continue with GitLab</a>
-      <a class="provider" href="/login/github">Continue with GitHub</a>
-    </div>
-    <div class="or"><span>or</span></div>
+    {#if data.problem}
+      <p class="error" role="alert">{data.problem}</p>
+    {/if}
+    {#if data.providers.length > 0}
+      <div class="providers">
+        {#each data.providers as provider (provider)}
+          <a class="provider" href="/login/{provider}">Continue with {NAMES[provider]}</a>
+        {/each}
+      </div>
+      <div class="or"><span>or</span></div>
+    {/if}
     <form method="POST" action="?/password" use:enhance>
       <label>
         Email

@@ -62,12 +62,6 @@ export const DEFAULT_PIPELINES: DefaultPipeline[] = [
   },
 ];
 
-export function defaultPipeline(slug: string): DefaultPipeline {
-  const found = DEFAULT_PIPELINES.find((p) => p.slug === slug);
-  if (!found) throw new Error(`no default pipeline named ${slug}`);
-  return found;
-}
-
 /**
  * Whether a pipeline checks its own result. A pipeline verifies only if an
  * author added a shell step (FR-055a); this is what the builder and the

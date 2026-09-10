@@ -1,5 +1,5 @@
 import { afterAll, beforeEach, expect, test } from 'bun:test';
-import { agents } from '@factory/db/schema';
+import { agents, workspaces } from '@factory/db/schema';
 import { eq } from 'drizzle-orm';
 import { resolveCeilings } from '../../src/lib/snapshot/ceilings';
 import { resolveSnapshot } from '../../src/lib/snapshot/resolve';
@@ -153,4 +153,47 @@ test("an agent's per-step limit travels on the agent, not on the run", async () 
   expect(spec?.limits.max_cost_usd).toBe('0.5000');
   // Not on the run: a step's limit is not the run's ceiling (FR-079).
   expect(snapshot.limits.cost_ceiling_usd).toBe('5.0000');
+});
+
+test("the snapshot pins the sandbox's limits, so what an administrator set applies", async () => {
+  await db.update(workspaces).set({
+    sandboxImage: 'code-factory/sandbox:pinned',
+    sandboxCpu: 4,
+    sandboxMemoryMb: 8192,
+    sandboxWallClockMinutes: 30,
+    sandboxNetworkDuringImplement: true,
+  });
+
+  const { snapshot } = await resolveSnapshot(db, {
+    ticketId: scenario.ticketId,
+    runId: crypto.randomUUID(),
+    attempt: 1,
+    callbackUrl: 'https://factory.example/api/hooks/n8n',
+    resumeSecret: 's',
+  });
+
+  // Without this the Runner used figures compiled into it, so every sandbox
+  // limit an administrator set was ignored (FR-085).
+  expect(snapshot.sandbox).toEqual({
+    image: 'code-factory/sandbox:pinned',
+    cpu: 4,
+    memory_mb: 8192,
+    wall_clock_minutes: 30,
+    network_during_implement: true,
+  });
+});
+
+test('changing a sandbox limit does not reshape a run already resolved', async () => {
+  const first = await resolveSnapshot(db, {
+    ticketId: scenario.ticketId,
+    runId: crypto.randomUUID(),
+    attempt: 1,
+    callbackUrl: 'https://factory.example/api/hooks/n8n',
+    resumeSecret: 's',
+  });
+  await db.update(workspaces).set({ sandboxMemoryMb: 65536 });
+
+  // The same reason the ceilings are pinned: a container already running
+  // cannot be reshaped, so its recorded limits must be what it started with.
+  expect(first.snapshot.sandbox?.memory_mb).not.toBe(65536);
 });

@@ -83,11 +83,6 @@ export async function requireChangeable(
   );
 }
 
-/** Any member may create their own, with no administrator involved (FR-006). */
-export function ownerFor(user: SessionUser): string {
-  return user.id;
-}
-
 async function nameOf(database: Database, userId: string): Promise<string | null> {
   const { users } = await import('@factory/db/schema');
   const [row] = await database

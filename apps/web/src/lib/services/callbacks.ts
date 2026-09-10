@@ -11,6 +11,7 @@ import { eq } from 'drizzle-orm';
 import { addCost, captureArtifacts, recordStep } from '$lib/ledger/record';
 import { matches } from '$lib/secrets/store';
 import { notifyApprovers, notifyDashboard, notifyRun, type RunEvent } from './notify';
+import { markCredentialExpired } from './repository';
 import { setRunStatus } from './run';
 import {
   classifyingStepIndex,
@@ -256,6 +257,28 @@ export async function applyCallback(
         failureStepIndex: callback.step_index,
       });
       await mirrorTicket(database, runId, 'failed');
+
+      // A rejected credential is the repository's problem, not this run's:
+      // every future run against it will fail the same way until somebody
+      // replaces the token. Recording it on the repository is what stops new
+      // runs and puts the fix in front of an administrator (FR-013). Nothing
+      // set this status before, so the screen could show it and never did.
+      if (callback.reason === 'credential_invalid') {
+        const [ticket] = await database
+          .select({ repositoryId: tickets.repositoryId })
+          .from(tickets)
+          .where(eq(tickets.id, run.ticketId))
+          .limit(1);
+        if (ticket) {
+          await markCredentialExpired(
+            database,
+            ticket.repositoryId,
+            callback.detail ??
+              'A run could not authenticate with this repository. Replace the access token.',
+          );
+        }
+      }
+
       await announce(database, runId, { event: 'finished', status: 'failed' });
       return { applied: true };
     }

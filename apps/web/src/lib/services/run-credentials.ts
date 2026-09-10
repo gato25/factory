@@ -88,13 +88,3 @@ export async function resolveRunCredentials(
   );
   return { gitToken, modelKey, designKey };
 }
-
-/** Which repository a credential belongs to, for the message when it fails. */
-export async function repositoryFor(database: Database, credentialId: string) {
-  const [row] = await database
-    .select({ fullPath: repositories.fullPath })
-    .from(repositories)
-    .where(eq(repositories.credentialId, credentialId))
-    .limit(1);
-  return row?.fullPath ?? null;
-}

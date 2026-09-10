@@ -1,8 +1,11 @@
 <script lang="ts">
   import ConnectRepository from '$components/ConnectRepository.svelte';
-  import { disconnect, repositories } from '$lib/remote/repositories.remote';
+  import { disconnect, replaceToken, repositories } from '$lib/remote/repositories.remote';
 
   const repos = $derived(repositories());
+
+  /** Which repository's token is being replaced, if any. */
+  let replacing = $state<string | null>(null);
 </script>
 
 <div class="head">
@@ -51,10 +54,51 @@
                 </span>
                 {#if repo.statusDetail}<small>{repo.statusDetail}</small>{/if}
               </td>
-              <td>
+              <td class="actions">
+                <!--
+                  A token expires and somebody has to replace it, or the
+                  repository stays blocked forever. Offered only where it is
+                  the problem: on a working repository this would be an
+                  invitation to break it (FR-013, FR-010).
+                -->
+                {#if repo.status !== 'connected'}
+                  <button onclick={() => (replacing = replacing === repo.id ? null : repo.id)}>
+                    {replacing === repo.id ? 'Cancel' : 'Replace token'}
+                  </button>
+                {/if}
                 <button onclick={() => disconnect(repo.id)}>Disconnect</button>
               </td>
             </tr>
+            {#if replacing === repo.id}
+              <tr class="replacing">
+                <td colspan="6">
+                  <form
+                    {...replaceToken}
+                    onsubmit={() => {
+                      replacing = null;
+                    }}
+                  >
+                    <input type="hidden" name="repositoryId" value={repo.id} />
+                    <label>
+                      New access token for {repo.fullPath}
+                      <input name="token" type="password" autocomplete="off" required />
+                    </label>
+                    <!-- The permissions, at the point the credential is entered (FR-010) -->
+                    <p class="muted small">
+                      It needs to read the repository, push branches and open
+                      {repo.provider === 'gitlab' ? 'merge requests' : 'pull requests'}. Stored
+                      encrypted and never shown again — not even to you.
+                    </p>
+                    {#each replaceToken.fields.allIssues() ?? [] as issue (issue.message)}
+                      <p class="error" role="alert">{issue.message}</p>
+                    {/each}
+                    <button type="submit" disabled={replaceToken.pending > 0}>
+                      {replaceToken.pending > 0 ? 'Storing…' : 'Store the new token'}
+                    </button>
+                  </form>
+                </td>
+              </tr>
+            {/if}
           {/each}
         </tbody>
       </table>
@@ -62,6 +106,17 @@
 {/if}
 
 <style>
+  .actions { display: flex; gap: 8px; justify-content: flex-end; }
+  .replacing td { background: var(--surface-2, #f6f7f9); }
+  .replacing form {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+    padding: 8px 0;
+  }
+  .replacing label { display: flex; flex-direction: column; gap: 4px; }
+  .replacing .error { color: var(--bad); margin: 0; }
   .head {
     display: flex;
     justify-content: space-between;

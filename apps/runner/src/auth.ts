@@ -16,8 +16,3 @@ export function authenticate(request: Request, expectedToken: string): void {
     throw new FactoryError('not_authorised', 'unauthorised');
   }
 }
-
-/** Uniform response for any rejection: the same body whatever went wrong. */
-export function unauthorisedResponse(): Response {
-  return Response.json({ error: 'unauthorised' }, { status: 401 });
-}

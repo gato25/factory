@@ -17,8 +17,15 @@ The body is the **resolved snapshot**: pipeline, agents, skills and ceilings alr
   repo:    { clone_url, default_branch, branch, provider, credential_ref },
   pipeline:{ id, version, name, steps[] },          // steps carry type + condition
   limits:  { cost_ceiling_usd, time_ceiling_minutes },
+  sandbox: { image, cpu, memory_mb, wall_clock_minutes, network_during_implement },
   callback_url, resume_secret }
 ```
+
+`sandbox` is what an administrator set for the workspace (FR-085), pinned here for the same reason
+the ceilings are: a limit changed mid-run must not reshape a container already running. It travels
+in the snapshot because the snapshot is the only channel to the Runner — the Runner cannot read a
+workspace setting, and without this it fell back to figures compiled into it, so nothing an
+administrator set had any effect.
 
 Delivery is retried with increasing delays if the orchestrator is unreachable; the ticket stays
 `queued` and the user is told the run has not begun (FR-094).

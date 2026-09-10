@@ -1,8 +1,11 @@
 import type { Database } from '@factory/db';
 import { credentials, workspaces } from '@factory/db/schema';
-import { invalidInput } from '@factory/shared';
+import { createLogger, invalidInput } from '@factory/shared';
 import { eq } from 'drizzle-orm';
 import { type KeyRing, seal } from '$lib/secrets/store';
+
+const log = createLogger('web');
+
 import type { SessionUser } from './auth';
 import { requireAdmin } from './authz';
 
@@ -88,7 +91,23 @@ export async function ensureWorkspace(database: Database, name = 'Workspace') {
 
   try {
     const [created] = await database.insert(workspaces).values({ name }).returning();
-    if (created) return created;
+    if (created) {
+      // Creating this row IS "this deployment is new", and it happens once.
+      // The shipped agents and pipelines have to exist before anybody can
+      // start anything: a ticket needs a pipeline (FR-033, FR-034). Failing
+      // to install them must not fail the read that created the workspace,
+      // though — an operator can run `bun run install-defaults` — so the
+      // problem is logged rather than thrown.
+      const { installDefaults } = await import('./install-defaults');
+      try {
+        await installDefaults(database);
+      } catch (error) {
+        log.error('could not install the shipped agents and pipelines', {
+          detail: error instanceof Error ? error.message : String(error),
+        });
+      }
+      return created;
+    }
   } catch (error) {
     // Two first requests arriving together both see nothing and both insert;
     // the `workspaces_singleton` index refuses the second. That is the index
@@ -194,18 +213,6 @@ function validate(input: WorkspaceInput) {
   if (input.retainFailedSandboxesHours !== undefined && input.retainFailedSandboxesHours < 0) {
     throw invalidInput('A retention period cannot be negative. Zero means release immediately.');
   }
-}
-
-/** What the Runner is told about a sandbox, resolved once per run (FR-085). */
-export async function sandboxSettings(database: Database) {
-  const workspace = await getWorkspace(database);
-  return {
-    image: workspace.sandboxImage,
-    cpu: workspace.sandboxCpu,
-    memoryMb: workspace.sandboxMemoryMb,
-    wallClockMinutes: workspace.sandboxWallClockMinutes,
-    networkDuringImplement: workspace.sandboxNetworkDuringImplement,
-  };
 }
 
 /**
