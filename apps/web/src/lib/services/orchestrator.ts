@@ -18,7 +18,9 @@ export interface TriggerDeps {
   baseUrl: string;
   apiKey?: string;
   workflowPath?: string;
-  fetch?: typeof globalThis.fetch;
+  /** Narrowed to the call we actually make, so a test double is a plain
+   *  function rather than the whole platform fetch. */
+  fetch?: (url: string, init?: RequestInit) => Promise<Response>;
   sleep?: (ms: number) => Promise<void>;
 }
 

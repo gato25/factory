@@ -118,15 +118,15 @@ the suite passing (quickstart.md scenario A).
 
 ### Tests for User Story 1
 
-- [ ] T038 [P] [US1] Contract test for the trigger payload in `apps/web/tests/contract/trigger.test.ts` — asserts the body is the fully resolved snapshot and that no field requires a later lookup (`contracts/orchestrator.md` §1)
-- [ ] T039 [P] [US1] Contract test for all eleven callback events in `apps/web/tests/contract/callbacks.test.ts` (`contracts/orchestrator.md` §3)
+- [X] T038 [P] [US1] Contract test for the trigger payload in `apps/web/tests/contract/trigger.test.ts` — asserts the body is the fully resolved snapshot and that no field requires a later lookup (`contracts/orchestrator.md` §1)
+- [X] T039 [P] [US1] Contract test for all eleven callback events in `apps/web/tests/contract/callbacks.test.ts` (`contracts/orchestrator.md` §3)
 - [X] T040 [P] [US1] Contract test for the four Runner operations in `apps/runner/tests/contract/api.test.ts` (`contracts/runner.md`)
 - [X] T041 [P] [US1] Contract test for the step-engine interface in `apps/runner/tests/contract/step-engines.test.ts` — every engine satisfies one `StepEngine` contract: streams output while running, reports cost from the engine's own usage, is killed at a ceiling, and retains partial output on failure (`contracts/step-engines.md`, Constitution Principle II)
-- [ ] T042 [P] [US1] Contract test for the remote-function surface in `apps/web/tests/contract/ui-data.test.ts` — queries, commands and forms carry the shapes in `contracts/ui-data.md`, and every one checks authorisation **inside** the function rather than in a component (`contracts/ui-data.md`, Constitution Principle II)
+- [X] T042 [P] [US1] Contract test for the remote-function surface in `apps/web/tests/contract/ui-data.test.ts` — queries, commands and forms carry the shapes in `contracts/ui-data.md`, and every one checks authorisation **inside** the function rather than in a component (`contracts/ui-data.md`, Constitution Principle II)
 - [X] T043 [P] [US1] Integration test for snapshot resolution in `apps/web/tests/integration/snapshot.test.ts` — a snapshot must be complete, and editing an agent afterwards must not change it (FR-044, SC-010)
 - [X] T044 [P] [US1] Integration test for callback idempotency in `apps/web/tests/integration/idempotency.test.ts` — a repeated event creates no second `step_results` row and does not advance the run twice (FR-095)
 - [X] T045 [P] [US1] Integration test for required-output checking in `apps/runner/tests/integration/outputs.test.ts` — a missing **or empty** declared file fails the step (FR-051)
-- [ ] T046 [P] [US1] End-to-end test of the whole journey in `apps/web/tests/e2e/ticket-to-mr.spec.ts`, including the three refusals from quickstart.md scenario A: a token missing a permission names which one (FR-009), a non-GitLab/GitHub repository is refused with a reason (FR-014b), and a step with a missing document opens no merge request (FR-055)
+- [X] T046 [P] [US1] End-to-end test of the whole journey in `apps/web/tests/e2e/ticket-to-mr.spec.ts`, including the three refusals from quickstart.md scenario A: a token missing a permission names which one (FR-009), a non-GitLab/GitHub repository is refused with a reason (FR-014b), and a step with a missing document opens no merge request (FR-055)
 
 ### Shipped defaults
 
@@ -138,9 +138,9 @@ the suite passing (quickstart.md scenario A).
 - [X] T049 [US1] Implement repository connection in `apps/web/src/lib/services/repository.ts` — verify the credential can read the repository, create branches **and** open merge requests before saving (FR-008)
 - [X] T050 [US1] Name the specific missing permission when verification fails, rather than reporting a generic failure, in `apps/web/src/lib/services/repository.ts` (FR-009)
 - [X] T051 [US1] Refuse a repository not hosted on GitLab.com or GitHub.com, with a stated reason in `apps/web/src/lib/services/repository.ts` (FR-014a, FR-014b)
-- [ ] T052 [P] [US1] Remote functions for repositories in `apps/web/src/lib/remote/repositories.remote.ts` — a `query` for the list, a `form` for connecting, `command`s for replacing a credential and disconnecting (FR-014); thin, delegating to the service (research.md risk 1)
-- [ ] T053 [P] [US1] Repositories screen (02) in `apps/web/src/routes/(app)/repositories/+page.svelte` — provider, default branch, default pipeline, running and done counts, connection usability (FR-012)
-- [ ] T054 [P] [US1] Connect Repository modal (03) in `apps/web/src/components/ConnectRepository.svelte` — provider choice limited to GitLab and GitHub, address, credential, default pipeline, stating the required permissions at the point the credential is entered (FR-007, FR-010)
+- [X] T052 [P] [US1] Remote functions for repositories in `apps/web/src/lib/remote/repositories.remote.ts` — a `query` for the list, a `form` for connecting, `command`s for replacing a credential and disconnecting (FR-014); thin, delegating to the service (research.md risk 1)
+- [X] T053 [P] [US1] Repositories screen (02) in `apps/web/src/routes/(app)/repositories/+page.svelte` — provider, default branch, default pipeline, running and done counts, connection usability (FR-012)
+- [X] T054 [P] [US1] Connect Repository modal (03) in `apps/web/src/components/ConnectRepository.svelte` — provider choice limited to GitLab and GitHub, address, credential, default pipeline, stating the required permissions at the point the credential is entered (FR-007, FR-010)
 - [X] T055 [US1] Block new runs on a repository whose credential is no longer valid, and show that state on the repository in `apps/web/src/lib/services/repository.ts` (FR-013)
 
 ### Tickets
@@ -150,8 +150,8 @@ the suite passing (quickstart.md scenario A).
 - [X] T058 [US1] Implement the ticket state vocabulary — not started, waiting to start, running, waiting for approval, done, failed, cancelled — in `apps/web/src/lib/services/ticket.ts` (FR-022)
 - [X] T059 [US1] Default the pipeline choice to the repository's default while allowing the author to change it in `apps/web/src/lib/services/ticket.ts` (FR-018)
 - [X] T060 [US1] Compute the pre-flight preview — every step with its agent and model, plus a cost and duration estimate derived from comparable past runs — in `apps/web/src/lib/services/estimate.ts` (FR-019); estimates are explicitly not commitments
-- [ ] T061 [P] [US1] Remote functions for tickets in `apps/web/src/lib/remote/tickets.remote.ts` — a `form` for create-and-start and for save-as-draft (FR-017), and a `query` for one ticket
-- [ ] T062 [P] [US1] Create Ticket screen (05) in `apps/web/src/routes/(app)/tickets/new/+page.svelte` with the "What will happen" panel and the footer estimate
+- [X] T061 [P] [US1] Remote functions for tickets in `apps/web/src/lib/remote/tickets.remote.ts` — a `form` for create-and-start and for save-as-draft (FR-017), and a `query` for one ticket
+- [X] T062 [P] [US1] Create Ticket screen (05) in `apps/web/src/routes/(app)/tickets/new/+page.svelte` with the "What will happen" panel and the footer estimate
 
 ### Run orchestration (app side)
 
@@ -180,11 +180,11 @@ the suite passing (quickstart.md scenario A).
 
 ### Orchestration workflow
 
-- [ ] T082 [US1] Build the generic workflow in `orchestration/n8n/run-ticket-pipeline.json` — webhook, Runner start, the ordered step loop branching **only** on `type`, the failure path, and container destruction (FR-049, Principle III)
-- [ ] T083 [US1] Open the merge request from the run branch into the repository's current default branch, in the workflow's merge-request node in `orchestration/n8n/run-ticket-pipeline.json` (FR-065)
-- [ ] T084 [US1] Compose the merge request body in `apps/web/src/lib/services/merge-request.ts` — ticket description, acceptance criteria as a checklist, the specification and plan, cost and duration, and a link back to the ticket (FR-066, FR-067)
-- [ ] T085 [US1] Label the merge request so system-produced work and the pipeline that produced it are identifiable in `apps/web/src/lib/services/merge-request.ts` (FR-068)
-- [ ] T086 [US1] Store the merge request address on the ticket, mark it done, record final cost, and add the outcome to the activity feed (FR-069, FR-070a); the system never merges in `apps/web/src/lib/services/run.ts` (FR-070)
+- [X] T082 [US1] Build the generic workflow in `orchestration/n8n/run-ticket-pipeline.json` — webhook, Runner start, the ordered step loop branching **only** on `type`, the failure path, and container destruction (FR-049, Principle III)
+- [X] T083 [US1] Open the merge request from the run branch into the repository's current default branch, in the workflow's merge-request node in `orchestration/n8n/run-ticket-pipeline.json` (FR-065)
+- [X] T084 [US1] Compose the merge request body in `apps/web/src/lib/services/merge-request.ts` — ticket description, acceptance criteria as a checklist, the specification and plan, cost and duration, and a link back to the ticket (FR-066, FR-067)
+- [X] T085 [US1] Label the merge request so system-produced work and the pipeline that produced it are identifiable in `apps/web/src/lib/services/merge-request.ts` (FR-068)
+- [X] T086 [US1] Store the merge request address on the ticket, mark it done, record final cost, and add the outcome to the activity feed (FR-069, FR-070a); the system never merges in `apps/web/src/lib/services/run.ts` (FR-070)
 
 **Checkpoint**: User Story 1 is fully functional. A ticket becomes an open merge request. **This is
 the MVP** — deployable and demonstrable on its own.
