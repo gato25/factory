@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { page } from '$app/state';
-  import ApprovalPanel from '$components/ApprovalPanel.svelte';
+  import Icon from '$components/Icon.svelte';
   import TicketCard from '$components/TicketCard.svelte';
   import { subscribeToRun } from '$lib/events/subscribe';
   import { repositories } from '$lib/remote/repositories.remote';
@@ -20,12 +20,14 @@
   // Cards move automatically as run status changes (FR-023, FR-074).
   onMount(() => subscribeToRun({ target: 'dashboard', onEvent: () => void ticketBoard().refresh() }));
 
+  // The design gives each column a dot in the colour of what that state
+  // means, so the board can be read at a glance rather than by heading.
   const COLUMNS = [
-    { id: 'draft', label: 'Backlog' },
-    { id: 'queued,running', label: 'Running' },
-    { id: 'waiting_approval', label: 'Waiting approval' },
-    { id: 'done', label: 'Done' },
-    { id: 'failed', label: 'Failed' }
+    { id: 'draft', label: 'Backlog', tone: 'idle' },
+    { id: 'queued,running', label: 'Running', tone: 'live' },
+    { id: 'waiting_approval', label: 'Waiting approval', tone: 'warn' },
+    { id: 'done', label: 'Done', tone: 'ok' },
+    { id: 'failed', label: 'Failed', tone: 'bad' },
   ];
 </script>
 
@@ -46,9 +48,12 @@
           `${t.reference} ${t.title} ${t.repository ?? ''}`.toLowerCase().includes(search))
     )}
 
-    <!-- Grouped by the state that needs a person, before the board (FR-059). -->
-    <ApprovalPanel heading="Waiting approval" compact />
-
+    <!--
+      No approval panel here, as the design has none: this board already has
+      a Waiting approval column, and repeating it above the thing it
+      duplicates makes the screen longer without telling anybody more. The
+      panel is on the dashboard, where there is no such column (FR-059).
+    -->
     {#if search}
       <!-- An empty board after a search should say why it is empty. -->
       <p class="searching card">
@@ -57,37 +62,62 @@
       </p>
     {/if}
 
-    <div class="controls card">
-      <label>
-        <span class="sr">Repository</span>
-        <select bind:value={repositoryId}>
-          <option value="">All repositories</option>
-          {#each repos.ready ? repos.current : [] as repo (repo.id)}
-            <option value={repo.id}>{repo.fullPath}</option>
-          {/each}
-        </select>
-      </label>
-      <label>
-        <span class="sr">Pipeline</span>
-        <select bind:value={pipelineId}>
-          <option value="">All pipelines</option>
-          {#each [...new Set(rows.map((t) => t.pipelineId).filter(Boolean))] as id (id)}
-            <option value={id}>{rows.find((t) => t.pipelineId === id)?.pipeline}</option>
-          {/each}
-        </select>
-      </label>
-      <label>
-        <span class="sr">Creator</span>
-        <select bind:value={createdBy}>
-          <option value="">Anyone</option>
-          {#each [...new Set(rows.map((t) => t.createdBy))] as id (id)}
-            <option value={id}>{rows.find((t) => t.createdBy === id)?.createdByName}</option>
-          {/each}
-        </select>
-      </label>
-      <div class="toggle">
-        <button class:on={view === 'board'} onclick={() => (view = 'board')}>Board</button>
-        <button class:on={view === 'list'} onclick={() => (view = 'list')}>List</button>
+    <!--
+      The design's Filters row: three pills that look like what they are —
+      a choice you can change — and a segmented view switch.
+    -->
+    <div class="filters">
+      <div class="pills">
+        <label class="pill">
+          <Icon name="git-branch" size={14} />
+          <span class="sr">Repository</span>
+          <select bind:value={repositoryId}>
+            <option value="">All repositories</option>
+            {#each repos.ready ? repos.current : [] as repo (repo.id)}
+              <option value={repo.id}>{repo.fullPath}</option>
+            {/each}
+          </select>
+          <Icon name="chevron-down" size={14} />
+        </label>
+        <label class="pill">
+          <Icon name="workflow" size={14} />
+          <span class="sr">Pipeline</span>
+          <select bind:value={pipelineId}>
+            <option value="">Any pipeline</option>
+            {#each [...new Set(rows.map((t) => t.pipelineId).filter(Boolean))] as id (id)}
+              <option value={id}>{rows.find((t) => t.pipelineId === id)?.pipeline}</option>
+            {/each}
+          </select>
+          <Icon name="chevron-down" size={14} />
+        </label>
+        <label class="pill">
+          <Icon name="user" size={14} />
+          <span class="sr">Creator</span>
+          <select bind:value={createdBy}>
+            <option value="">Created by anyone</option>
+            {#each [...new Set(rows.map((t) => t.createdBy))] as id (id)}
+              <option value={id}>{rows.find((t) => t.createdBy === id)?.createdByName}</option>
+            {/each}
+          </select>
+          <Icon name="chevron-down" size={14} />
+        </label>
+      </div>
+
+      <div class="views">
+        <button
+          type="button"
+          class:on={view === 'board'}
+          aria-label="Board view"
+          aria-pressed={view === 'board'}
+          onclick={() => (view = 'board')}><Icon name="kanban" size={16} /></button
+        >
+        <button
+          type="button"
+          class:on={view === 'list'}
+          aria-label="List view"
+          aria-pressed={view === 'list'}
+          onclick={() => (view = 'list')}><Icon name="list" size={16} /></button
+        >
       </div>
     </div>
 
@@ -98,11 +128,22 @@
         {#each COLUMNS as column (column.id)}
           {@const inColumn = filtered.filter((t) => column.id.split(',').includes(t.status))}
           <section>
-            <h2 class="section">{column.label} <span class="muted">{inColumn.length}</span></h2>
+            <div class="col-head">
+              <span class="dot {column.tone}"></span>
+              <span class="col-title">{column.label}</span>
+              <span class="count">{inColumn.length}</span>
+            </div>
             <div class="cards">
               {#each inColumn as ticket (ticket.id)}
                 <TicketCard {ticket} />
               {/each}
+              {#if column.id === 'draft'}
+                <!-- The design puts the way in at the foot of Backlog. -->
+                <a class="add" href="/tickets/new">
+                  <Icon name="plus" size={14} />
+                  <span>New ticket</span>
+                </a>
+              {/if}
             </div>
           </section>
         {/each}
@@ -134,46 +175,168 @@
     padding: 12px 16px;
   }
 
-  .controls {
+  /* The design's Filters: choices that look like choices, and a view switch. */
+  .filters {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 28px;
+  }
+  .pills {
     display: flex;
     gap: 10px;
     flex-wrap: wrap;
-    align-items: center;
-    margin-bottom: 16px;
-    padding: 12px 16px;
   }
-  select {
-    padding: 7px 10px;
+  .pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--r-sm);
-    font: inherit;
-  }
-  .toggle {
-    margin-left: auto;
-    display: flex;
-  }
-  .toggle button {
-    padding: 7px 12px;
-    border: 1px solid var(--border);
-    background: var(--surface);
-    font: inherit;
+    color: var(--text-2);
     cursor: pointer;
   }
-  .toggle button:first-child { border-radius: var(--r-sm) 0 0 var(--r-sm); }
-  .toggle button:last-child { border-radius: 0 var(--r-sm) var(--r-sm) 0; border-left: 0; }
-  .toggle button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .pill:focus-within {
+    border-color: var(--accent);
+  }
+  .pill select {
+    border: 0;
+    padding: 0;
+    background: none;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    cursor: pointer;
+    /* The design draws one chevron; the native one would make two. */
+    appearance: none;
+  }
+  .pill select:focus {
+    outline: none;
+  }
+  .pill :global(svg:last-child) {
+    color: var(--text-3);
+  }
+
+  .views {
+    display: flex;
+    gap: 4px;
+    padding: 4px;
+    background: var(--surface-2);
+    border-radius: var(--r-sm);
+  }
+  .views button {
+    display: grid;
+    place-items: center;
+    padding: 6px;
+    border: 0;
+    border-radius: 4px;
+    background: none;
+    color: var(--text-3);
+    cursor: pointer;
+  }
+  .views button.on {
+    background: var(--surface);
+    color: var(--text);
+  }
+
   .board {
     display: grid;
     grid-template-columns: repeat(5, minmax(200px, 1fr));
-    gap: 12px;
+    gap: 16px;
+    align-items: start;
     overflow-x: auto;
   }
-  .cards { display: flex; flex-direction: column; gap: 8px; }
-  table { width: 100%; border-collapse: collapse; }
-  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); }
-  th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-3); }
-  td a { color: inherit; }
+
+  .col-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 4px 8px;
+  }
+  .col-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    flex: none;
+  }
+  .dot.idle {
+    background: var(--text-3);
+  }
+  .dot.live {
+    background: var(--accent);
+  }
+  .dot.warn {
+    background: var(--warning);
+  }
+  .dot.ok {
+    background: var(--success);
+  }
+  .dot.bad {
+    background: var(--danger);
+  }
+  .count {
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: var(--surface-2);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-2);
+  }
+
+  .cards {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .add {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px;
+    border: 1px dashed var(--border);
+    border-radius: var(--r-md);
+    text-decoration: none;
+    font-size: 13px;
+    color: var(--text-2);
+  }
+  .add:hover {
+    border-color: var(--accent);
+    color: var(--accent-text);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  th,
+  td {
+    text-align: left;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  th {
+    font-size: 12px;
+    color: var(--text-2);
+    font-weight: 500;
+  }
+  td a {
+    color: inherit;
+  }
+
   @media (max-width: 900px) {
-    .board { grid-template-columns: repeat(5, 220px); }
+    .board {
+      grid-template-columns: repeat(5, 220px);
+    }
   }
 </style>

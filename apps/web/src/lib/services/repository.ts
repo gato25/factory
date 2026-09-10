@@ -1,5 +1,5 @@
 import type { Database } from '@factory/db';
-import { credentials, repositories, tickets } from '@factory/db/schema';
+import { credentials, pipelines, repositories, tickets } from '@factory/db/schema';
 import { FactoryError, notFound } from '@factory/shared';
 import { count, eq, inArray } from 'drizzle-orm';
 import { type KeyRing, seal } from '$lib/secrets/store';
@@ -188,9 +188,44 @@ export async function listRepositories(database: Database) {
   const countOf = (list: { repositoryId: string; n: number }[], id: string) =>
     list.find((r) => r.repositoryId === id)?.n ?? 0;
 
+  // The screen names the pipeline rather than showing its id, which means
+  // the name has to travel with the row (design.pen, 02 Repositories).
+  const named = await database.select({ id: pipelines.id, name: pipelines.name }).from(pipelines);
+
   return rows.map((repository) => ({
     ...repository,
     ticketsRunning: countOf(running, repository.id),
     ticketsDone: countOf(done, repository.id),
+    defaultPipelineName:
+      named.find((pipeline) => pipeline.id === repository.defaultPipelineId)?.name ?? null,
   }));
+}
+
+/**
+ * Which pipeline a new ticket for this repository starts on (FR-012).
+ *
+ * Settable after connecting, not only during it: a workspace that adds a
+ * pipeline later would otherwise have to disconnect and reconnect the
+ * repository to use it, which would discard its tickets' history.
+ */
+export async function setDefaultPipeline(
+  database: Database,
+  repositoryId: string,
+  pipelineId: string | null,
+): Promise<{ defaultPipelineId: string | null }> {
+  if (pipelineId) {
+    const [pipeline] = await database
+      .select({ id: pipelines.id })
+      .from(pipelines)
+      .where(eq(pipelines.id, pipelineId))
+      .limit(1);
+    if (!pipeline) throw notFound('no such pipeline');
+  }
+  const updated = await database
+    .update(repositories)
+    .set({ defaultPipelineId: pipelineId, updatedAt: new Date() })
+    .where(eq(repositories.id, repositoryId))
+    .returning({ defaultPipelineId: repositories.defaultPipelineId });
+  if (updated.length === 0) throw notFound('no such repository');
+  return { defaultPipelineId: updated[0]?.defaultPipelineId ?? null };
 }

@@ -1,15 +1,47 @@
 <script lang="ts">
   import ConnectRepository from '$components/ConnectRepository.svelte';
-  import { disconnect, replaceToken, repositories } from '$lib/remote/repositories.remote';
+  import Icon from '$components/Icon.svelte';
+  import { pipelines } from '$lib/remote/pipelines.remote';
+  import {
+    changeDefaultPipeline,
+    disconnect,
+    replaceToken,
+    repositories,
+  } from '$lib/remote/repositories.remote';
+
+  /**
+   * Built to `design.pen`'s 02 Repositories: a page head, then one table with
+   * a 44px header and 64px rows — Repository 290, Provider 120, Default
+   * branch 140, Default pipeline 220, Tickets 120, Status 120, and a 40px
+   * cell for the overflow menu.
+   *
+   * That menu is what the design puts the row's actions behind, and spec.md
+   * §4 says what belongs in it: the default pipeline, the token, and
+   * disconnecting.
+   */
 
   const repos = $derived(repositories());
+  const available = $derived(pipelines());
 
-  /** Which repository's token is being replaced, if any. */
+  /** Which row's menu is open, and what it is showing. */
+  let openMenu = $state<string | null>(null);
   let replacing = $state<string | null>(null);
+  let choosing = $state<string | null>(null);
+
+  const close = () => {
+    openMenu = null;
+  };
+
+  const PROVIDER = { gitlab: 'GitLab', github: 'GitHub' } as const;
 </script>
 
+<svelte:window onclick={close} />
+
 <div class="head">
-  <p class="lede">Every ticket belongs to exactly one repository.</p>
+  <div class="page-head">
+    <h2>Connected repositories</h2>
+    <p>Each ticket belongs to one repository. Connect a repo to start creating tickets for it.</p>
+  </div>
   <ConnectRepository />
 </div>
 
@@ -17,181 +49,388 @@
   <p class="card error" role="alert">{(repos.error as Error).message}</p>
 {:else if !repos.ready}
   <p class="card">Loading repositories…</p>
+{:else if repos.current.length === 0}
+  <p class="card empty">No repositories connected yet. Connect one to create your first ticket.</p>
 {:else}
-  {@const rows = repos.current}
-    {#if rows.length === 0}
-      <p class="empty">No repositories connected yet. Connect one to create your first ticket.</p>
-    {:else}
-      <table>
-        <thead>
-          <tr>
-            <th>Repository</th>
-            <th>Provider</th>
-            <th>Default branch</th>
-            <th>Tickets</th>
-            <th>Status</th>
-            <th><span class="sr">Actions</span></th>
-          </tr>
-        </thead>
-        <tbody>
-          {#each rows as repo (repo.id)}
-            <tr>
-              <td>
-                <strong>{repo.name}</strong>
-                <span class="path">{repo.fullPath}</span>
-              </td>
-              <td>{repo.provider === 'gitlab' ? 'GitLab' : 'GitHub'}</td>
-              <td><code>{repo.defaultBranch}</code></td>
-              <td>{repo.ticketsRunning} running &middot; {repo.ticketsDone} done</td>
-              <td>
-                <!-- A repository whose credential no longer works blocks new runs (FR-013) -->
-                <span class="badge" class:bad={repo.status !== 'connected'}>
-                  {repo.status === 'connected'
-                    ? 'Connected'
-                    : repo.status === 'credential_expired'
-                      ? 'Token expired'
-                      : 'Error'}
-                </span>
-                {#if repo.statusDetail}<small>{repo.statusDetail}</small>{/if}
-              </td>
-              <td class="actions">
-                <!--
-                  A token expires and somebody has to replace it, or the
-                  repository stays blocked forever. Offered only where it is
-                  the problem: on a working repository this would be an
-                  invitation to break it (FR-013, FR-010).
-                -->
-                {#if repo.status !== 'connected'}
-                  <button onclick={() => (replacing = replacing === repo.id ? null : repo.id)}>
-                    {replacing === repo.id ? 'Cancel' : 'Replace token'}
-                  </button>
-                {/if}
-                <button onclick={() => disconnect(repo.id)}>Disconnect</button>
-              </td>
-            </tr>
-            {#if replacing === repo.id}
-              <tr class="replacing">
-                <td colspan="6">
-                  <form
-                    {...replaceToken}
-                    onsubmit={() => {
-                      replacing = null;
+  <div class="table">
+    <div class="row header">
+      <span class="c repo">Repository</span>
+      <span class="c provider">Provider</span>
+      <span class="c branch">Default branch</span>
+      <span class="c pipeline">Default pipeline</span>
+      <span class="c tickets">Tickets</span>
+      <span class="c status">Status</span>
+      <span class="c more"><span class="sr">Actions</span></span>
+    </div>
+
+    {#each repos.current as repo (repo.id)}
+      <div class="row">
+        <span class="c repo">
+          <span class="repo-icon"><Icon name="folder-git-2" size={18} /></span>
+          <span class="repo-text">
+            <span class="name">{repo.name}</span>
+            <span class="path">{repo.fullPath}</span>
+          </span>
+        </span>
+
+        <span class="c provider">
+          <Icon name={repo.provider} size={16} />
+          <span>{PROVIDER[repo.provider]}</span>
+        </span>
+
+        <span class="c branch"><span class="pill">{repo.defaultBranch}</span></span>
+
+        <span class="c pipeline">
+          {#if repo.defaultPipelineName}
+            {repo.defaultPipelineName}
+          {:else}
+            <span class="muted">None — a ticket picks one</span>
+          {/if}
+        </span>
+
+        <span class="c tickets small">
+          {repo.ticketsRunning} running &middot; {repo.ticketsDone} done
+        </span>
+
+        <span class="c status">
+          <!-- A repository whose credential no longer works blocks new runs (FR-013) -->
+          <span class="badge {repo.status === 'connected' ? 'ok' : 'bad'}">
+            <span class="dot"></span>
+            {repo.status === 'connected'
+              ? 'Connected'
+              : repo.status === 'credential_expired'
+                ? 'Token expired'
+                : 'Error'}
+          </span>
+        </span>
+
+        <span class="c more">
+          <button
+            type="button"
+            aria-label="Actions for {repo.name}"
+            aria-expanded={openMenu === repo.id}
+            onclick={(event) => {
+              event.stopPropagation();
+              openMenu = openMenu === repo.id ? null : repo.id;
+              replacing = null;
+              choosing = null;
+            }}
+          >
+            <Icon name="ellipsis" size={18} />
+          </button>
+
+          {#if openMenu === repo.id}
+            <!-- svelte-ignore a11y_no_static_element_interactions -->
+            <!-- svelte-ignore a11y_click_events_have_key_events -->
+            <div class="menu" onclick={(event) => event.stopPropagation()}>
+              <button
+                type="button"
+                onclick={() => {
+                  choosing = choosing === repo.id ? null : repo.id;
+                  replacing = null;
+                }}>Change the default pipeline</button
+              >
+              <button
+                type="button"
+                onclick={() => {
+                  replacing = replacing === repo.id ? null : repo.id;
+                  choosing = null;
+                }}>Replace the access token</button
+              >
+              <button
+                type="button"
+                class="danger"
+                onclick={() => {
+                  void disconnect(repo.id);
+                  close();
+                }}>Disconnect</button
+              >
+
+              {#if choosing === repo.id}
+                <label class="field">
+                  <span class="small muted">Pipeline for new tickets</span>
+                  <select
+                    value={repo.defaultPipelineId ?? ''}
+                    onchange={async (event) => {
+                      await changeDefaultPipeline({
+                        repositoryId: repo.id,
+                        pipelineId: event.currentTarget.value,
+                      });
+                      close();
                     }}
                   >
-                    <input type="hidden" name="repositoryId" value={repo.id} />
-                    <label>
-                      New access token for {repo.fullPath}
-                      <input name="token" type="password" autocomplete="off" required />
-                    </label>
-                    <!-- The permissions, at the point the credential is entered (FR-010) -->
-                    <p class="muted small">
-                      It needs to read the repository, push branches and open
-                      {repo.provider === 'gitlab' ? 'merge requests' : 'pull requests'}. Stored
-                      encrypted and never shown again — not even to you.
-                    </p>
-                    {#each replaceToken.fields.allIssues() ?? [] as issue (issue.message)}
-                      <p class="error" role="alert">{issue.message}</p>
+                    <option value="">None — a ticket picks one</option>
+                    {#each available.current ?? [] as pipeline (pipeline.id)}
+                      <option value={pipeline.id}>{pipeline.name}</option>
                     {/each}
-                    <button type="submit" disabled={replaceToken.pending > 0}>
-                      {replaceToken.pending > 0 ? 'Storing…' : 'Store the new token'}
-                    </button>
-                  </form>
-                </td>
-              </tr>
-            {/if}
-          {/each}
-        </tbody>
-      </table>
-    {/if}
+                  </select>
+                </label>
+              {/if}
+
+              {#if replacing === repo.id}
+                <form {...replaceToken} class="field" onsubmit={close}>
+                  <input type="hidden" name="repositoryId" value={repo.id} />
+                  <label>
+                    <span class="small muted">New access token</span>
+                    <input name="token" type="password" autocomplete="off" required />
+                  </label>
+                  <!-- The permissions, at the point the credential is entered (FR-010) -->
+                  <p class="small muted">
+                    It needs to read the repository, push branches and open
+                    {repo.provider === 'gitlab' ? 'merge requests' : 'pull requests'}. Stored
+                    encrypted and never shown again — not even to you.
+                  </p>
+                  {#each replaceToken.fields.allIssues() ?? [] as issue (issue.message)}
+                    <p class="small error" role="alert">{issue.message}</p>
+                  {/each}
+                  <button type="submit" disabled={replaceToken.pending > 0}>
+                    {replaceToken.pending > 0 ? 'Storing…' : 'Store the new token'}
+                  </button>
+                </form>
+              {/if}
+            </div>
+          {/if}
+        </span>
+      </div>
+    {/each}
+  </div>
 {/if}
 
 <style>
-  .actions { display: flex; gap: 8px; justify-content: flex-end; }
-  .replacing td { background: var(--surface-2, #f6f7f9); }
-  .replacing form {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    align-items: flex-start;
-    padding: 8px 0;
-  }
-  .replacing label { display: flex; flex-direction: column; gap: 4px; }
-  .replacing .error { color: var(--danger); margin: 0; }
   .head {
     display: flex;
+    align-items: flex-start;
     justify-content: space-between;
-    align-items: center;
-    gap: 16px;
-    margin-bottom: 16px;
+    gap: 24px;
+    margin-bottom: 28px;
   }
-  .lede {
+  .page-head {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .page-head h2 {
     margin: 0;
-    color: #4a5060;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text);
   }
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    background: #fff;
-    border-radius: 8px;
+  .page-head p {
+    margin: 0;
+    font-size: 14px;
+    color: var(--text-2);
+  }
+
+  .table {
+    background: var(--surface);
+    border: 1px solid var(--card-border);
+    border-radius: var(--r-lg);
+    box-shadow: 0 1px 2px #0f172a0a;
+    overflow: visible;
+  }
+
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    height: 64px;
+    padding: 0 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .row:last-child {
+    border-bottom: 0;
+  }
+  .row.header {
+    height: 44px;
+    background: var(--surface-2);
+    border-radius: var(--r-lg) var(--r-lg) 0 0;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-2);
+  }
+
+  /* The design's column widths, so the table reads down as well as across. */
+  .c {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+  .c.repo {
+    width: 290px;
+    flex: 1;
+  }
+  .c.provider {
+    width: 120px;
+    flex: none;
+  }
+  .c.branch {
+    width: 140px;
+    flex: none;
+  }
+  .c.pipeline {
+    width: 220px;
+    flex: none;
+  }
+  .c.tickets {
+    width: 120px;
+    flex: none;
+  }
+  .c.status {
+    width: 120px;
+    flex: none;
+  }
+  .c.more {
+    width: 40px;
+    flex: none;
+    justify-content: flex-end;
+    position: relative;
+  }
+
+  .repo-icon {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border-radius: var(--r-sm);
+    background: var(--accent-soft);
+    color: var(--accent-text);
+    flex: none;
+  }
+  .repo-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+  .repo-text .name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .repo-text .path {
+    font-size: 12px;
+    color: var(--text-3);
+  }
+  .repo-text span {
     overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
-  th,
-  td {
-    text-align: left;
-    padding: 12px 14px;
-    border-bottom: 1px solid #eef1f7;
-    vertical-align: top;
+
+  .c.provider span,
+  .c.pipeline {
+    font-size: 13px;
+    color: var(--text);
   }
-  th {
+
+  .pill {
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: var(--surface-2);
     font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: #6b7280;
+    color: var(--text);
   }
-  .path {
-    display: block;
-    color: #6b7280;
-    font-size: 12px;
-  }
+
   .badge {
-    display: inline-block;
-    padding: 3px 9px;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 10px;
+  }
+  .dot {
+    width: 6px;
+    height: 6px;
     border-radius: 999px;
-    background: #e6f4ea;
-    color: #14733c;
-    font-size: 12px;
+    background: currentcolor;
+    flex: none;
   }
-  .badge.bad {
-    background: #fdeceb;
-    color: #b3261e;
-  }
-  td small {
-    display: block;
-    color: #b3261e;
-    font-size: 12px;
-    margin-top: 4px;
-  }
-  button {
-    padding: 6px 10px;
-    border: 1px solid #dfe3ea;
-    border-radius: 6px;
-    background: #fff;
+
+  .c.more > button {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 0;
+    border-radius: var(--r-sm);
+    background: none;
+    color: var(--text-3);
     cursor: pointer;
   }
-  .empty,
-  .error {
-    background: #fff;
-    padding: 24px;
-    border-radius: 8px;
+  .c.more > button:hover {
+    background: var(--surface-2);
+    color: var(--text-2);
   }
-  .error {
-    color: #b3261e;
-  }
-  .sr {
+
+  .menu {
     position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
+    top: 34px;
+    right: 0;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    width: 280px;
+    padding: 6px;
+    background: var(--surface);
+    border: 1px solid var(--card-border);
+    border-radius: var(--r-md);
+    box-shadow: 0 8px 24px #0f172a1f;
+  }
+  .menu > button {
+    padding: 8px 10px;
+    border: 0;
+    border-radius: var(--r-sm);
+    background: none;
+    font: inherit;
+    font-size: 13px;
+    text-align: left;
+    color: var(--text);
+    cursor: pointer;
+  }
+  .menu > button:hover {
+    background: var(--surface-2);
+  }
+  .menu > button.danger {
+    color: var(--danger);
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px 10px 4px;
+    border-top: 1px solid var(--border);
+    margin-top: 4px;
+  }
+  .field label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .error {
+    color: var(--danger);
+  }
+  .empty {
+    color: var(--text-2);
+  }
+
+  @media (max-width: 1200px) {
+    .row {
+      height: auto;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding: 16px 20px;
+    }
+    .row.header {
+      display: none;
+    }
+    .c {
+      width: auto !important;
+      flex: none !important;
+    }
+    .c.repo {
+      flex: 1 0 100% !important;
+    }
   }
 </style>

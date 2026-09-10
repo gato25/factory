@@ -10,6 +10,7 @@ import {
   disconnectRepository,
   listRepositories,
   replaceCredential,
+  setDefaultPipeline,
 } from '$lib/services/repository';
 
 /**
@@ -67,6 +68,24 @@ export const replaceToken = form(
     });
     await repositories().refresh();
     return { hint };
+  },
+);
+
+/**
+ * Which pipeline a new ticket here starts on. Administrator-only, like every
+ * other change to a repository's connection (FR-004).
+ */
+export const changeDefaultPipeline = command(
+  v.object({
+    repositoryId: v.pipe(v.string(), v.uuid()),
+    // Empty means none: a repository may have no default, and a ticket then
+    // asks for a pipeline rather than assuming one.
+    pipelineId: v.optional(v.string(), ''),
+  }),
+  async ({ repositoryId, pipelineId }) => {
+    requireAdmin(user());
+    await setDefaultPipeline(db(), repositoryId, pipelineId || null);
+    await repositories().refresh();
   },
 );
 
