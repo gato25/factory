@@ -10,8 +10,10 @@
 
 **Input**: `/speckit-specify` was invoked with no arguments. Source material taken from the
 repository-root product specification `spec.md` ("Code Factory — Product Specification", v0.1)
-and the design file `design.pen` (artboards 00–13). Scope was confirmed with the user as
+and the design file `design.pen` (artboards 00–14). Scope was confirmed with the user as
 **the whole product as one MVP feature**; the planning phase is expected to slice it into phases.
+Revised against the source material as of `main`, which added a conditional design stage: interface
+work is designed and reviewed before any code is planned or written.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -162,7 +164,57 @@ first attempt's record remains readable.
 
 ---
 
-### User Story 5 - Composing the pipeline (Priority: P5)
+### User Story 5 - Designing the interface before building it (Priority: P5)
+
+A ticket asks for a new sign-in screen. Nobody tells the system this is interface work — it works
+that out for itself while writing the specification, and says why. Because it is, the run produces
+screens before any code is planned: an editable design source committed to the branch alongside one
+exported image per screen. The pipeline pauses on those images. A reviewer looks at them next to the
+acceptance criteria, knowing no code exists yet, and either approves so the build proceeds against
+them, or asks for changes and gets revised screens. A later ticket that only touches a database
+migration skips all of this, and the run says so rather than looking stalled.
+
+**Why this priority**: Designing before building is what stops the system inventing an interface
+nobody chose. It needs Stories 1–4 working first — there must be a pipeline, visibility, gates and
+recovery before a stage is added to them — but it sits above the configuration stories because it
+changes what the product produces rather than how it is tuned.
+
+**Independent Test**: Run one ticket that changes the interface and one that does not through the
+same pipeline. Verify the first produces a design source and images, pauses for review, and passes
+those images to the steps that follow; verify the second records the design step as skipped with a
+stated reason and still reaches an open merge request.
+
+**Acceptance Scenarios**:
+
+1. **Given** a ticket whose specification step has run, **When** that step finishes, **Then** the
+   ticket carries a decision on whether it changes the interface together with a one-sentence
+   reason, and that reason is visible to anyone reading the ticket.
+2. **Given** a ticket classified as changing the interface, **When** the design step runs, **Then**
+   it produces an editable design source committed to the branch and one exported image per screen.
+3. **Given** a design step that produced no design source, or no image at all, **When** it finishes,
+   **Then** the step fails, the run fails, and whatever it did produce is kept for inspection.
+4. **Given** a ticket classified as not changing the interface, **When** the run reaches the design
+   step, **Then** the step is recorded as skipped with its reason shown, the run does not fail, and
+   it continues to the next step.
+5. **Given** a specification step that produced no decision at all, **When** the run continues,
+   **Then** the ticket is treated as not changing the interface, the run proceeds, and the missing
+   decision is surfaced as a warning rather than failing the run.
+6. **Given** a review gate following a design step, **When** a reviewer opens it, **Then** they see
+   every screen as an image they can open full size, the ticket's acceptance criteria beside them,
+   the reason the ticket was classified as interface work, and a statement that no code has been
+   written yet.
+7. **Given** a reviewer at that gate, **When** they request changes with feedback, **Then** the
+   design step runs again and revises the existing design source rather than starting from nothing,
+   and the run returns to the same gate with the new screens.
+8. **Given** a run whose design step produced screens, **When** the planning and implementing steps
+   run, **Then** those screens are available to them and the interface they build is expected to
+   match them.
+9. **Given** a completed run that produced screens, **When** the merge request is opened, **Then**
+   the screens appear in its description and the committed design source is linked from it.
+
+---
+
+### User Story 6 - Composing the pipeline (Priority: P6)
 
 A lead decides the standard pipeline is too loose for their repository. They open the pipeline,
 drag the steps into the order they want, insert a review gate between planning and implementation,
@@ -194,7 +246,7 @@ exactly that order — while a run started before the edit continues on the old 
 
 ---
 
-### User Story 6 - Configuring the agents and their skills (Priority: P6)
+### User Story 7 - Configuring the agents and their skills (Priority: P7)
 
 An engineer is unhappy with how the planning agent writes. Without asking an administrator, they
 create their own planning agent, write its instructions, put it on a stronger model, restrict which
@@ -229,7 +281,7 @@ instructions and did not use a tool it was no longer permitted.
 
 ---
 
-### User Story 7 - Setting up and governing the workspace (Priority: P7)
+### User Story 8 - Setting up and governing the workspace (Priority: P8)
 
 An administrator prepares the workspace for the team: they record the credentials the agents need,
 point the system at the orchestration and sandbox services it depends on, confirm those
@@ -298,6 +350,18 @@ confirm a run stops at the ceiling and that a run beyond the cap waits and repor
 - A user leaves the workspace while pipelines, agents or skills they own are still in use: those
   configurations must keep working for the runs and repositories depending on them, and must remain
   changeable by an administrator.
+- A ticket really does change the interface but the specification step records no decision: the run
+  proceeds with design skipped, and the warning is the only signal, so a reviewer can receive code
+  for an interface nobody designed. The warning must therefore be visible on the run and not only
+  in the step's output.
+- A design step is placed before the step that classifies the ticket: refused when the pipeline is
+  saved, so it is never discovered at run time.
+- A reviewer rejects the screens repeatedly: the loop is bounded by the run's cost and time
+  ceilings, as any other change-request loop is.
+- A run is retried after a previous attempt already produced a design: the existing design source is
+  revised rather than redrawn, so a reviewer's earlier accepted work is not silently discarded.
+- The design service becomes unreachable part-way through a design step: treated as a failed step
+  like any other engine failure, with whatever was produced retained.
 
 ## Requirements *(mandatory)*
 
@@ -315,6 +379,9 @@ confirm a run stops at the ceiling and that a run beyond the cap waits and repor
   ceilings, and membership to administrators.
 - **FR-005**: System MUST allow administrators to invite users to the workspace and to change a
   user's role.
+- **FR-005a**: System MUST let administrators record the design service connection, its default
+  model and its export settings, and MUST let them test that connection, and MUST require it only
+  where a pipeline contains a design step.
 - **FR-006**: System MUST allow any member, without administrator involvement, to create, edit and
   delete pipelines, agents and skills.
 - **FR-006a**: System MUST record an owner for every pipeline, agent and skill a user creates, and
@@ -362,6 +429,8 @@ confirm a run stops at the ceiling and that a run beyond the cap waits and repor
   repository's default pipeline.
 - **FR-019**: System MUST show, before the ticket is started, every step that will run with the
   agent and model behind each, and an estimate of what the run will cost and how long it will take.
+- **FR-019a**: System MUST distinguish, in that list, the steps that always run from those that are
+  conditional, and MUST state each condition in words.
 - **FR-020**: System MUST tie every ticket to exactly one repository and allow at most one run of a
   ticket to be active at a time.
 - **FR-021**: System MUST assign each ticket a stable human-readable identifier and derive its
@@ -378,8 +447,8 @@ confirm a run stops at the ceiling and that a run beyond the cap waits and repor
 
 - **FR-024**: System MUST represent a pipeline as an ordered list of steps held as data that users
   edit, with no step order fixed by the execution machinery.
-- **FR-025**: System MUST support four kinds of step: an agent step, a human review gate, a shell
-  command, and a notification.
+- **FR-025**: System MUST support five kinds of step: an agent step, a design step, a human review
+  gate, a shell command, and a notification.
 - **FR-026**: Users MUST be able to reorder steps, insert a step between any two existing steps,
   and remove a step.
 - **FR-027**: System MUST advance a pipeline's version on every save, and MUST leave runs already
@@ -393,12 +462,24 @@ confirm a run stops at the ceiling and that a run beyond the cap waits and repor
 - **FR-032**: System MUST allow each agent step to declare the documents it is required to produce,
   and each review gate to declare who may approve it, how long it waits, and what happens when
   that time expires.
+- **FR-032a**: System MUST let every step carry a condition deciding whether it runs, defaulting to
+  running always.
+- **FR-032b**: System MUST offer as conditions: always, only when the ticket changes the interface,
+  and only when it does not.
+- **FR-032c**: System MUST evaluate a step's condition when the run reaches that step, against what
+  the run has established by then.
+- **FR-032d**: System MUST refuse to save a pipeline carrying a condition at a point where the fact
+  it depends on has not yet been established, and MUST state which step and which fact.
+- **FR-032e**: System MUST refuse to save a pipeline whose design step precedes the step that
+  decides whether the ticket changes the interface.
+- **FR-032f**: System MUST mark a conditional step as conditional wherever a pipeline is shown, and
+  state its condition in words rather than as a code.
 
 #### Agents and skills
 
-- **FR-033**: System MUST ship working default agents covering specification, planning, task
-  breakdown, and implementation, such that a workspace can produce a merge request without any
-  agent being configured.
+- **FR-033**: System MUST ship working default agents covering specification, interface design,
+  planning, task breakdown, and implementation, such that a workspace can produce a merge request
+  without any agent being configured.
 - **FR-034**: System MUST ship at least three default pipelines offering different amounts of human
   oversight.
 - **FR-034a**: System MUST NOT put a verification command in any shipped default pipeline, because
@@ -408,6 +489,10 @@ confirm a run stops at the ceiling and that a run beyond the cap waits and repor
 - **FR-035**: Users MUST be able to create additional agents and edit existing ones.
 - **FR-036**: System MUST allow each agent's instructions, model, permitted tools, attached skills,
   and per-step cost, time and turn limits to be configured independently.
+- **FR-036a**: System MUST offer, for an agent that runs on the design service rather than the
+  coding agent engine, that service's own choice of models, and MUST omit the tool permissions,
+  which do not apply to it.
+- **FR-036b**: System MUST identify, wherever agents are listed, which engine each one runs on.
 - **FR-037**: System MUST substitute the ticket's and repository's actual values wherever an agent's
   instructions reference them.
 - **FR-038**: System MUST make the feedback from a change request available to the agent that runs
@@ -458,6 +543,37 @@ confirm a run stops at the ceiling and that a run beyond the cap waits and repor
   failed; recovery from a failed verification is a retry (FR-088) or a human decision at a review
   gate the author placed after it (FR-060).
 
+#### Designing the interface
+
+- **FR-099**: The step that writes the specification MUST also decide whether the ticket changes the
+  interface, and MUST record a one-sentence reason for that decision.
+- **FR-100**: System MUST store that decision and its reason on the ticket, and MUST show the reason
+  wherever the decision changes what runs.
+- **FR-101**: System MUST NOT ask the person creating a ticket to declare whether it changes the
+  interface.
+- **FR-102**: System MUST treat a ticket as not changing the interface when the specification step
+  produces no usable decision, MUST let the run continue, and MUST surface the missing decision as a
+  warning on the run rather than failing it.
+- **FR-103**: A design step MUST produce an editable design source committed to the run's branch and
+  one exported image per screen.
+- **FR-104**: System MUST fail a design step that produced no design source, or that exported no
+  image at all, and MUST retain whatever it did produce for inspection.
+- **FR-105**: System MUST commit the design source to the branch, so that a design travels with the
+  code it describes and a later ticket can revise it rather than redraw it.
+- **FR-106**: System MUST revise the existing design source, rather than start from an empty one,
+  whenever a design step runs again — whether from a change request or from a retry of the run.
+- **FR-107**: System MUST stream a design step's output to anyone viewing the ticket as it runs, and
+  MUST show what command produced it, on the same terms as any other step.
+- **FR-108**: System MUST count a design step's cost against the same run budget and the same
+  ceilings as every other step.
+- **FR-109**: System MUST make the screens a design step produced available to the planning and
+  implementing steps that follow it.
+- **FR-110**: System MUST record a step whose condition was not met as skipped, stating the
+  condition that was not met.
+- **FR-111**: A skipped step MUST NOT fail its run; the run MUST continue at the next step.
+- **FR-112**: System MUST treat skipped as a terminal outcome for that step alone, and MUST
+  distinguish it from done, failed, and not yet run wherever step outcomes appear.
+
 #### Human review gates
 
 - **FR-056**: System MUST pause a run when it reaches a review gate and hold it until a decision is
@@ -470,6 +586,8 @@ confirm a run stops at the ceiling and that a run beyond the cap waits and repor
   produced document and continue, request changes with written feedback, or cancel the run.
 - **FR-061**: System MUST continue at the next step on approval, and MUST run the preceding agent
   step again with the feedback and return to the same gate on a change request.
+- **FR-061a**: System MUST re-run the design step with the feedback, and return to the same gate
+  with the revised screens, when changes are requested at a gate that follows a design step.
 - **FR-062**: System MUST carry a document edited at a gate into every subsequent step as the
   version they read.
 - **FR-063**: System MUST record for every decision who made it, what they decided, any feedback
@@ -481,8 +599,13 @@ confirm a run stops at the ceiling and that a run beyond the cap waits and repor
   the gate is already decided.
 - **FR-064b**: System MUST honour the gate's expiry behaviour — wait indefinitely, continue
   automatically, or fail the run — and MUST record when a run continued or failed for that reason.
-- **FR-064c**: System MUST show, at a gate, every document produced so far and a chronological
-  record of everything that has happened on the run.
+- **FR-064c**: System MUST show, at a gate, every document and every screen produced so far, and a
+  chronological record of everything that has happened on the run.
+- **FR-064d**: System MUST show, at a gate following a design step, every screen as an image
+  openable at full size, the ticket's acceptance criteria beside them, the reason the ticket was
+  classified as interface work, and a statement that no code has been written yet.
+- **FR-064e**: System MUST offer, at such a gate, a link that opens the committed design source in
+  the design service.
 
 #### Delivering the merge request
 
@@ -492,8 +615,12 @@ confirm a run stops at the ceiling and that a run beyond the cap waits and repor
 - **FR-067**: System MUST include in the merge request description the ticket's description, its
   acceptance criteria as a checklist, the specification and plan the agents produced, what the run
   cost and how long it took, and a link back to the ticket.
+- **FR-067a**: System MUST embed the screens in the merge request description, above the summary of
+  the change, and MUST link the committed design source below them, whenever the run produced any.
 - **FR-068**: System MUST label the merge request so that work produced by the system, and the
   pipeline that produced it, are identifiable on the provider.
+- **FR-068a**: System MUST additionally label a merge request whose ticket was classified as
+  interface work, so that this is identifiable on the provider.
 - **FR-069**: System MUST store the merge request's address on the ticket and show it wherever the
   ticket appears.
 - **FR-070**: System MUST NOT merge the merge request; merging remains a human action on the
@@ -514,10 +641,13 @@ confirm a run stops at the ceiling and that a run beyond the cap waits and repor
   user reloading.
 - **FR-075**: System MUST show, for a run, each step's state, duration and cost, and the total spent
   against the run's ceiling.
+- **FR-075a**: System MUST show a skipped step in that list, marked as skipped and carrying its
+  reason, rather than omitting it.
 - **FR-076**: System MUST stream the output of the executing step to anyone viewing the ticket, and
   MUST show what command produced it.
-- **FR-077**: System MUST let every document a run produced, the commits on its branch, and its
-  merge request be opened and read within the application.
+- **FR-077**: System MUST let every document a run produced, every screen it produced, the commits
+  on its branch, and its merge request be opened within the application, showing screens as images
+  in a gallery that opens each at full size and everything else as text or a link.
 - **FR-078**: System MUST show, for a run, which pipeline and version it used, which attempt it is,
   and a reference that identifies the execution in the orchestration service.
 
@@ -535,8 +665,13 @@ confirm a run stops at the ceiling and that a run beyond the cap waits and repor
   further runs in a queue showing each author their position.
 - **FR-083**: System MUST supply credentials to a run without writing them into the repository
   workspace, and MUST NOT persist them in the orchestration service.
-- **FR-084**: System MUST exclude credentials from step output, retained documents, and merge
-  request descriptions.
+- **FR-083a**: System MUST supply the design service credential only to runs whose pipeline
+  contains a design step.
+- **FR-083b**: System MUST detect a missing or rejected design service credential when such a run
+  starts, and MUST fail the design step immediately with a message naming where that credential is
+  configured.
+- **FR-084**: System MUST exclude credentials from step output, retained documents, retained
+  screens, and merge request descriptions.
 - **FR-085**: System MUST allow administrators to constrain a sandbox's processing power, memory,
   wall-clock lifetime, and whether it may reach the network while code is being written.
 - **FR-086**: System MUST release a run's sandbox when the run ends, and MUST allow administrators
@@ -582,12 +717,14 @@ confirm a run stops at the ceiling and that a run beyond the cap waits and repor
   credential currently works.
 - **Ticket**: One unit of requested work on one repository. Carries a title, a description,
   acceptance criteria, the pipeline and pipeline version pinned when it started, its state, its
-  branch name, its current run, and the merge request it produced.
+  branch name, its current run, whether it changes the interface together with the reason for that
+  decision, and the merge request it produced.
 - **Pipeline**: A named, versioned, ordered list of steps that turns a ticket into a merge request.
   Belongs to the workspace, records the user who owns it, and may be used by many repositories.
-- **Step**: One item in a pipeline. Is an agent step, a human review gate, a shell command, or a
-  notification, and carries the settings that kind of step needs — which agent, which documents it
-  must produce, who may approve, how long to wait, which command to run, or where to notify.
+- **Step**: One item in a pipeline. Is an agent step, a design step, a human review gate, a shell
+  command, or a notification. Carries the condition under which it runs, and the settings its kind
+  needs — which agent, which documents or screens it must produce, who may approve, how long to
+  wait, which command to run, or where to notify.
 - **Agent**: A configured persona that does one kind of work. Carries instructions, a model, the
   tools it is permitted, the skills attached to it, and its own cost, time and turn limits. Either
   one of the shipped defaults, available to everyone, or one a user created and owns.
@@ -598,8 +735,12 @@ confirm a run stops at the ceiling and that a run beyond the cap waits and repor
   execution and sandbox behind it, its cost, and when it started and finished.
 - **Step Result**: What happened on one step of one run: its outcome, its timings, its cost, a
   summary, and references to its output and the documents it produced.
-- **Artifact**: A versioned thing a run produced — a document, the list of commits on the branch, or
-  the merge request — belonging to a run and a step.
+- **Artifact**: A versioned thing a run produced, belonging to a run and a step. Each is one of: a
+  document, the editable design source, one exported screen image, the list of commits on the
+  branch, or the merge request. Screen images are the only kind shown as pictures; the rest are text
+  or links.
+- **Screen**: One exported image from a design step, carrying the name of the screen it depicts.
+  The unit the application shows in a gallery and the merge request embeds.
 - **Approval**: One decision at one review gate: who decided, what they decided, any feedback they
   wrote, and when.
 
@@ -640,6 +781,12 @@ confirm a run stops at the ceiling and that a run beyond the cap waits and repor
   next run without any administrator action.
 - **SC-016**: Before starting a ticket, a user can tell whether the pipeline they chose verifies the
   result, without inspecting the pipeline's individual steps.
+- **SC-017**: For at least 90% of tickets that change the interface, a reviewer can judge the
+  proposed screens against the acceptance criteria before any code exists.
+- **SC-018**: A ticket that does not change the interface spends nothing on design, and its run
+  shows the design step as skipped with a reason rather than as missing or stalled.
+- **SC-019**: A reviewer at a design gate can reach a decision from the screens shown, without
+  opening the design source or the repository.
 
 ## Assumptions
 
@@ -650,9 +797,11 @@ recorded here so they can be challenged rather than discovered later.
   as the source specification states.
 - **Architectural constraints are already decided.** The source specification fixes that an external
   workflow orchestrator executes pipelines and waits at gates, that each run occupies a
-  container-based sandbox, and that agent steps are invocations of the Claude command-line tool.
-  These are treated as given constraints on the solution rather than as requirements of this
-  feature, and this specification deliberately describes behaviour instead of restating them.
+  container-based sandbox, that agent steps are invocations of the Claude command-line tool, and
+  that design steps are invocations of the pen.dev command-line tool — two distinct engines behind
+  one step vocabulary. These are treated as given constraints on the solution rather than as
+  requirements of this feature, and this specification deliberately describes behaviour instead of
+  restating them.
 - **Humans merge.** The system opens merge requests and never merges them; code review happens on
   the git provider as the team already does it.
 - **Change-request loops are bounded by the run's ceilings**, not by a fixed number of rounds, so a
@@ -682,8 +831,9 @@ recorded here so they can be challenged rather than discovered later.
 
 ### Divergences from the source product specification
 
-Resolving the three open questions moved this feature away from `spec.md` (v0.1) and `design.pen`
-in three places. Those documents should be updated to match, or this specification revisited.
+This specification now tracks the conditional design stage as `main` describes it. Three
+divergences remain, all from the answers to this feature's open questions rather than from the
+design stage. Those documents should be updated to match, or this specification revisited.
 
 - **No verification stage of the system's own.** Source §5.2 step 4 has the system running the
   repository's test command before opening the merge request, and §10 lists "Tests fail at Verify"
@@ -705,7 +855,11 @@ in three places. Those documents should be updated to match, or this specificati
 - A reachable workflow orchestration service capable of pausing a run for an unbounded period while
   a gate awaits a human decision.
 - A reachable container host able to run the configured number of sandboxes concurrently, each
-  carrying git, the Claude command-line tool, and the repository's own language toolchain.
+  carrying git, the Claude command-line tool, the design tooling, and the repository's own language
+  toolchain.
+- A reachable design service, credentialed at the workspace level, able to produce screens from a
+  written description and export them as images. Required only where a pipeline contains a design
+  step.
 
 ### Out of Scope
 
@@ -723,3 +877,6 @@ in three places. Those documents should be updated to match, or this specificati
   Enterprise Server — and any provider other than GitLab.com and GitHub.com.
 - Inferring, detecting or storing a repository's build, test or lint commands.
 - A verification stage belonging to the system; verification exists only as a step an author adds.
+- Editing screens by hand inside the application; screens are produced by the design step and
+  changed only by running it again.
+- Conditions other than whether the ticket changes the interface.

@@ -1,7 +1,7 @@
 # Specification Quality Checklist: Code Factory MVP
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
-**Created**: 2026-09-10
+**Created**: 2026-09-10 · **Last revised**: 2026-09-10 (design stage)
 **Feature**: [spec.md](../spec.md)
 
 **Review Ownership**: This checklist is a reviewer-owned requirements-quality review artifact. Mark an item `[x]` only when the reviewer determines the requirements-quality criterion is satisfied.
@@ -33,6 +33,52 @@
 - [x] No implementation details leak into specification
 
 ## Validation Findings
+
+### Iteration 3 — 2026-09-10 · design stage absorbed, all items still pass
+
+`main` gained a conditional design stage (`d5e5903`, `8e648b9`) after this spec was merged. The spec
+was revised to cover it before planning, on the user's instruction.
+
+**Seven statements that had become false, corrected**
+
+| Requirement | Was | Now |
+| --- | --- | --- |
+| FR-025 | four kinds of step | five — a design step joins them |
+| FR-033 | defaults cover spec, plan, tasks, implement | interface design included |
+| FR-036 | one shape of agent configuration | FR-036a/b: the design engine offers its own models and no tool permissions |
+| Assumptions | agent steps are Claude CLI invocations | two engines behind one step vocabulary |
+| Artifact entity | document, commits, merge request | five kinds, plus a new **Screen** entity |
+| FR-077 | documents, commits, MR readable | screens shown as images in a gallery |
+| Input | artboards 00–13 | 00–14 |
+
+**What was added**
+
+- **A new user story at P5** — designing the interface before building it, with 9 acceptance
+  scenarios covering classification, production, skipping, review and hand-off. Stories 5–7 moved
+  down to 6–8; priorities remain P1–P8 with no gaps or duplicates.
+- **Conditional steps** (FR-032a–FR-032f): every step carries a condition, evaluated when reached;
+  a condition depending on a fact not yet established is refused at save time, as is a design step
+  placed before the classifying step.
+- **A "Designing the interface" section** (FR-099–FR-112): the classification and its reason, the
+  design source and exported screens, output validation, revision rather than redraw, cost counted
+  against the same ceilings, hand-off to later steps, and `skipped` as a terminal non-failing
+  outcome distinguished from done, failed and not-yet-run.
+- **Extensions where the stage touches existing behaviour**: the design review gate (FR-064c–e),
+  change requests re-running the design step (FR-061a), screens embedded in the merge request and
+  the interface label (FR-067a, FR-068a), conditional steps shown before starting and skipped steps
+  shown in the run (FR-019a, FR-075a), and the design credential supplied only to runs that need it
+  (FR-083a/b, FR-005a).
+- **Six edge cases and three success criteria** (SC-017–SC-019).
+
+**One risk recorded rather than smoothed over.** A ticket that really does change the interface but
+whose specification step records no decision proceeds with design skipped — a warning is the only
+signal. FR-102 keeps the upstream behaviour (defaulting to "no interface change" avoids wasting a
+design step on a migration), and the matching edge case requires the warning to be visible on the
+run itself, not buried in step output.
+
+**Verification**: 0 clarification markers · 148 functional requirements, all unique · every FR
+cross-reference resolves · 8 stories at P1–P8 · 51 acceptance scenarios · 23 edge cases ·
+13 key entities · 19 success criteria · `pen.dev` named only in Assumptions, as a given constraint.
 
 ### Iteration 2 — 2026-09-10 · all items pass
 
