@@ -114,7 +114,7 @@
     gap: 6px;
     width: 100%;
     padding: 0;
-    border: 1px solid var(--line);
+    border: 1px solid var(--border);
     border-radius: var(--r-sm);
     background: var(--surface);
     font: inherit;
@@ -128,7 +128,7 @@
     aspect-ratio: 4 / 3;
     object-fit: cover;
     object-position: top;
-    background: var(--line-2);
+    background: var(--surface-2);
   }
   .caption {
     display: flex;

@@ -57,7 +57,7 @@
     gap: 8px;
     flex-wrap: wrap;
     padding: 8px 2px;
-    border-top: 1px solid var(--line-2);
+    border-top: 1px solid var(--border);
   }
   li:first-child { border-top: 0; }
   a { color: inherit; }

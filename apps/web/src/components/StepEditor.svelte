@@ -249,7 +249,7 @@
     gap: 6px;
   }
   fieldset {
-    border: 1px solid var(--line);
+    border: 1px solid var(--border);
     border-radius: var(--r-sm);
     display: flex;
     flex-direction: column;
@@ -261,7 +261,7 @@
   select,
   textarea {
     padding: 8px 10px;
-    border: 1px solid var(--line);
+    border: 1px solid var(--border);
     border-radius: var(--r-sm);
     font: inherit;
     width: 100%;

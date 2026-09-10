@@ -192,7 +192,7 @@
   }
   .head p { margin: 0; max-width: 60ch; }
   .notice { border-left: 3px solid var(--accent); margin-bottom: 16px; padding: 12px 16px; }
-  .failure { border-left: 3px solid var(--bad); }
+  .failure { border-left: 3px solid var(--danger); }
   .layout {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 420px;
@@ -200,7 +200,7 @@
     align-items: start;
   }
   ul { list-style: none; margin: 0; padding: 0; }
-  li { border-top: 1px solid var(--line-2); }
+  li { border-top: 1px solid var(--border); }
   li:first-child { border-top: 0; }
   li button {
     display: flex;
@@ -223,7 +223,7 @@
   label { display: flex; flex-direction: column; gap: 4px; }
   input, textarea {
     padding: 8px 10px;
-    border: 1px solid var(--line);
+    border: 1px solid var(--border);
     border-radius: var(--r-sm);
     font: inherit;
     width: 100%;
@@ -232,7 +232,7 @@
   textarea { font: 13px/1.6 ui-monospace, monospace; resize: vertical; }
   button {
     padding: 8px 14px;
-    border: 1px solid var(--line);
+    border: 1px solid var(--border);
     border-radius: var(--r-sm);
     background: var(--surface);
     font: inherit;
@@ -244,9 +244,9 @@
     color: #fff;
     font-weight: 600;
   }
-  button.danger { color: var(--bad); border-color: #f3c7c4; }
-  .errors { margin: 0; padding-left: 18px; color: var(--bad); }
-  .ok { color: var(--ok); }
+  button.danger { color: var(--danger); border-color: #f3c7c4; }
+  .errors { margin: 0; padding-left: 18px; color: var(--danger); }
+  .ok { color: var(--success); }
   @media (max-width: 1000px) {
     .layout { grid-template-columns: 1fr; }
   }

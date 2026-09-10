@@ -110,7 +110,7 @@
     display: flex;
     align-items: stretch;
     gap: 8px;
-    border: 1px solid var(--line);
+    border: 1px solid var(--border);
     border-radius: var(--r-sm);
     background: var(--surface);
     padding: 4px 8px 4px 4px;
@@ -121,7 +121,7 @@
   }
   li.invalid {
     border-color: #f3c7c4;
-    box-shadow: inset 3px 0 0 var(--bad);
+    box-shadow: inset 3px 0 0 var(--danger);
   }
   .body {
     flex: 1;
@@ -151,9 +151,9 @@
     width: 20px;
     height: 20px;
     border-radius: 999px;
-    background: var(--line-2);
+    background: var(--surface-2);
     font-size: 11px;
-    color: var(--ink-2);
+    color: var(--text-2);
   }
   .kind { font-weight: 600; }
   .conditional { background: #fff5e0; color: #8a6100; }
@@ -165,7 +165,7 @@
   }
   /* A problem is read, not scanned: it wraps rather than truncating. */
   .problem {
-    color: var(--bad);
+    color: var(--danger);
     max-width: 100%;
     white-space: normal;
   }
@@ -178,12 +178,12 @@
     border: 0;
     background: none;
     font: inherit;
-    color: var(--ink-3);
+    color: var(--text-3);
     cursor: pointer;
     padding: 4px 6px;
     border-radius: var(--r-sm);
   }
-  .controls button:hover:not(:disabled) { background: var(--line-2); color: var(--ink); }
+  .controls button:hover:not(:disabled) { background: var(--surface-2); color: var(--text); }
   .controls button:disabled { opacity: 0.3; cursor: default; }
-  .controls button.danger:hover { color: var(--bad); }
+  .controls button.danger:hover { color: var(--danger); }
 </style>

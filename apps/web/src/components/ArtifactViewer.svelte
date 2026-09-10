@@ -87,7 +87,7 @@
     padding: 0;
   }
   li {
-    border-top: 1px solid var(--line-2);
+    border-top: 1px solid var(--border);
   }
   li:first-child {
     border-top: 0;
@@ -107,7 +107,7 @@
   pre {
     margin: 0 0 10px;
     padding: 12px;
-    background: var(--line-2);
+    background: var(--surface-2);
     border-radius: var(--r-sm);
     font-size: 12px;
     max-height: 360px;

@@ -94,7 +94,7 @@
   a { text-decoration: none; color: inherit; }
   a:hover strong { text-decoration: underline; }
   .badges { display: flex; gap: 6px; flex-wrap: wrap; }
-  .engine { background: var(--line-2); color: var(--ink-2); }
+  .engine { background: var(--surface-2); color: var(--text-2); }
   .engine.design { background: #fdeffa; color: #8a3b76; }
   p { margin: 0; }
   dl {
@@ -104,6 +104,6 @@
     margin: 0;
     font-size: 13px;
   }
-  dt { color: var(--ink-3); }
+  dt { color: var(--text-3); }
   dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
 </style>

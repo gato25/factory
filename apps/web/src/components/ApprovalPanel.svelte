@@ -37,7 +37,7 @@
 <style>
   .approvals {
     margin-bottom: 16px;
-    border-left: 3px solid var(--warn);
+    border-left: 3px solid var(--warning);
   }
   .approvals.compact { margin-bottom: 12px; }
   ul { list-style: none; margin: 0; padding: 0; }
@@ -47,7 +47,7 @@
     align-items: center;
     gap: 12px;
     padding: 8px 2px;
-    border-top: 1px solid var(--line-2);
+    border-top: 1px solid var(--border);
   }
   li:first-child { border-top: 0; }
   .what { display: flex; flex-direction: column; min-width: 0; }

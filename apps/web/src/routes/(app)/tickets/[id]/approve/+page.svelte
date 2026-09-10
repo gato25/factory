@@ -296,7 +296,7 @@
 
 <style>
   .banner {
-    border-left: 3px solid var(--warn);
+    border-left: 3px solid var(--warning);
     margin-bottom: 16px;
     display: flex;
     justify-content: space-between;
@@ -304,7 +304,7 @@
     align-items: flex-start;
   }
   .banner.decided {
-    border-left-color: var(--line);
+    border-left-color: var(--border);
   }
   .banner h1 {
     margin: 0 0 6px;
@@ -343,7 +343,7 @@
   }
   .tabs button {
     padding: 6px 10px;
-    border: 1px solid var(--line);
+    border: 1px solid var(--border);
     border-radius: var(--r-sm);
     background: var(--surface);
     font: inherit;
@@ -359,7 +359,7 @@
     box-sizing: border-box;
     margin: 0;
     padding: 12px;
-    background: var(--line-2);
+    background: var(--surface-2);
     border: 0;
     border-radius: var(--r-sm);
     font: 12px/1.6 ui-monospace, monospace;
@@ -369,7 +369,7 @@
   }
   textarea {
     background: var(--surface);
-    border: 1px solid var(--line);
+    border: 1px solid var(--border);
     resize: vertical;
   }
   .criteria {
@@ -381,7 +381,7 @@
     flex-direction: column;
     gap: 8px;
     padding-bottom: 12px;
-    border-bottom: 1px solid var(--line-2);
+    border-bottom: 1px solid var(--border);
     margin-bottom: 12px;
   }
   .stack:last-of-type {
@@ -394,7 +394,7 @@
   }
   button {
     padding: 9px 14px;
-    border: 1px solid var(--line);
+    border: 1px solid var(--border);
     border-radius: var(--r-sm);
     background: var(--surface);
     font: inherit;
@@ -407,7 +407,7 @@
     font-weight: 600;
   }
   button.danger {
-    color: var(--bad);
+    color: var(--danger);
     border-color: #f3c7c4;
   }
   button.link {
@@ -427,13 +427,13 @@
   .errors {
     margin: 0;
     padding-left: 18px;
-    color: var(--bad);
+    color: var(--danger);
   }
   .refused {
     margin: 0 0 16px;
     padding: 12px 16px;
-    border-left: 3px solid var(--bad);
-    color: var(--bad);
+    border-left: 3px solid var(--danger);
+    color: var(--danger);
   }
   .timeline {
     list-style: none;
@@ -444,7 +444,7 @@
     display: flex;
     flex-direction: column;
     padding: 8px 0;
-    border-top: 1px solid var(--line-2);
+    border-top: 1px solid var(--border);
   }
   .timeline li:first-child {
     border-top: 0;

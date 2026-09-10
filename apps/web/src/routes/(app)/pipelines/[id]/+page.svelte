@@ -153,7 +153,7 @@
   h1 { margin: 0 0 4px; font-size: 20px; }
   .actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .notice { border-left: 3px solid var(--accent); margin-bottom: 16px; padding: 12px 16px; }
-  .failure { border-left: 3px solid var(--bad); margin-bottom: 16px; padding: 12px 16px; }
+  .failure { border-left: 3px solid var(--danger); margin-bottom: 16px; padding: 12px 16px; }
   .saver { margin-top: 16px; }
   .saver-row {
     display: flex;
@@ -164,7 +164,7 @@
   }
   button {
     padding: 8px 14px;
-    border: 1px solid var(--line);
+    border: 1px solid var(--border);
     border-radius: var(--r-sm);
     background: var(--surface);
     font: inherit;
@@ -177,5 +177,5 @@
     font-weight: 600;
   }
   button:disabled { opacity: 0.5; cursor: not-allowed; }
-  .errors { margin: 8px 0 0; padding-left: 18px; color: var(--bad); }
+  .errors { margin: 8px 0 0; padding-left: 18px; color: var(--danger); }
 </style>

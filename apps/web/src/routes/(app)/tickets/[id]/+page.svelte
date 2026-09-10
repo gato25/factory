@@ -309,7 +309,7 @@
     font-size: 20px;
   }
   code {
-    background: var(--line-2);
+    background: var(--surface-2);
     padding: 1px 5px;
     border-radius: 4px;
   }
@@ -321,7 +321,7 @@
   }
   button {
     padding: 7px 12px;
-    border: 1px solid var(--line);
+    border: 1px solid var(--border);
     border-radius: var(--r-sm);
     background: var(--surface);
     font: inherit;
@@ -352,19 +352,19 @@
     margin: 0 0 6px;
   }
   .failure .next {
-    color: var(--ink-2);
+    color: var(--text-2);
   }
   .failure details {
     margin-top: 8px;
   }
   .failure summary {
     cursor: pointer;
-    color: var(--ink-3);
+    color: var(--text-3);
   }
   .failure pre {
     margin: 8px 0 0;
     padding: 10px;
-    background: var(--line-2);
+    background: var(--surface-2);
     border-radius: var(--r-sm);
     font: 12px/1.6 ui-monospace, monospace;
     white-space: pre-wrap;
@@ -389,7 +389,7 @@
   .editor input,
   .editor textarea {
     padding: 9px 12px;
-    border: 1px solid var(--line);
+    border: 1px solid var(--border);
     border-radius: var(--r-sm);
     font: inherit;
     width: 100%;
@@ -408,11 +408,11 @@
     font-weight: 600;
   }
   .actions button.danger {
-    color: var(--bad);
+    color: var(--danger);
     border-color: #f3c7c4;
   }
   .failure {
-    border-left: 3px solid var(--bad);
+    border-left: 3px solid var(--danger);
     margin: 0 0 16px;
   }
   .layout {

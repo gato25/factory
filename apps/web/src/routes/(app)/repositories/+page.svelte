@@ -116,7 +116,7 @@
     padding: 8px 0;
   }
   .replacing label { display: flex; flex-direction: column; gap: 4px; }
-  .replacing .error { color: var(--bad); margin: 0; }
+  .replacing .error { color: var(--danger); margin: 0; }
   .head {
     display: flex;
     justify-content: space-between;

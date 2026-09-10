@@ -73,7 +73,7 @@
     margin: 0;
   }
   dt {
-    color: var(--ink-3);
+    color: var(--text-3);
     font-size: 12px;
   }
   dd {
@@ -81,7 +81,7 @@
     overflow-wrap: anywhere;
   }
   code {
-    background: var(--line-2);
+    background: var(--surface-2);
     padding: 1px 5px;
     border-radius: 4px;
     font-size: 12px;

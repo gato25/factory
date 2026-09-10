@@ -64,8 +64,8 @@
   }
   code {
     font-size: 12px;
-    color: var(--ink-3);
-    background: var(--line-2);
+    color: var(--text-3);
+    background: var(--surface-2);
     padding: 2px 6px;
     border-radius: 4px;
     overflow-wrap: anywhere;

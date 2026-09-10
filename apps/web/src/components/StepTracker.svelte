@@ -124,7 +124,7 @@
     flex-direction: column;
   }
   li {
-    border-top: 1px solid var(--line-2);
+    border-top: 1px solid var(--border);
   }
   li:first-child {
     border-top: 0;
@@ -149,17 +149,17 @@
     grid-template-columns: 20px 1fr;
     gap: 10px;
     padding: 10px 4px;
-    color: var(--ink-3);
+    color: var(--text-3);
   }
   .mark {
     text-align: center;
-    color: var(--ink-3);
+    color: var(--text-3);
   }
-  li.done .mark { color: var(--ok); }
+  li.done .mark { color: var(--success); }
   li.running .mark { color: var(--accent); }
-  li.failed .mark { color: var(--bad); }
+  li.failed .mark { color: var(--danger); }
   li.culprit {
-    border-left: 3px solid var(--bad);
+    border-left: 3px solid var(--danger);
     background: #fdf6f5;
   }
   .retry {
@@ -173,7 +173,7 @@
     display: inline-block;
     width: auto;
     padding: 7px 14px;
-    border: 1px solid var(--line);
+    border: 1px solid var(--border);
     border-radius: var(--r-sm);
     background: var(--surface);
     font-weight: 600;
@@ -183,7 +183,7 @@
     opacity: 0.5;
     cursor: not-allowed;
   }
-  li.skipped .mark { color: var(--ink-3); }
+  li.skipped .mark { color: var(--text-3); }
   .body {
     display: flex;
     flex-direction: column;
@@ -197,23 +197,23 @@
   }
   li.skipped .label {
     text-decoration: line-through;
-    color: var(--ink-3);
+    color: var(--text-3);
   }
   .fail {
-    color: var(--bad);
+    color: var(--danger);
   }
   .meta {
     white-space: nowrap;
   }
   .spend {
     margin-top: 12px;
-    border-top: 1px solid var(--line-2);
+    border-top: 1px solid var(--border);
     padding-top: 12px;
   }
   .bar {
     height: 6px;
     border-radius: 999px;
-    background: var(--line-2);
+    background: var(--surface-2);
     overflow: hidden;
   }
   .fill {

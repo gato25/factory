@@ -83,7 +83,7 @@
 
 <style>
   .warning {
-    border-left: 3px solid var(--warn);
+    border-left: 3px solid var(--warning);
     padding: 12px 16px;
     margin-bottom: 16px;
     color: #8a6100;
@@ -96,20 +96,20 @@
   }
   .tile {
     background: var(--surface);
-    border-radius: var(--r);
+    border-radius: var(--r-md);
     padding: 16px;
-    color: var(--ink-2);
+    color: var(--text-2);
     font-size: 13px;
   }
   .tile.attention {
-    outline: 2px solid var(--warn);
+    outline: 2px solid var(--warning);
     outline-offset: -2px;
   }
   .n {
     display: block;
     font-size: 26px;
     font-weight: 600;
-    color: var(--ink);
+    color: var(--text);
     line-height: 1.2;
   }
   .stack {

@@ -338,8 +338,8 @@
 
 <style>
   .notice { border-left: 3px solid var(--accent); margin-bottom: 16px; padding: 12px 16px; }
-  .warning { border-left: 3px solid var(--warn); margin-bottom: 16px; padding: 12px 16px; color: #8a6100; }
-  .failure { border-left: 3px solid var(--bad); padding: 12px 16px; }
+  .warning { border-left: 3px solid var(--warning); margin-bottom: 16px; padding: 12px 16px; color: #8a6100; }
+  .failure { border-left: 3px solid var(--danger); padding: 12px 16px; }
   section, form { margin-bottom: 16px; display: flex; flex-direction: column; gap: 10px; }
   section p, form p { margin: 0; }
   .grid {
@@ -351,7 +351,7 @@
   label.inline { flex-direction: row; align-items: center; gap: 8px; }
   input, select {
     padding: 8px 10px;
-    border: 1px solid var(--line);
+    border: 1px solid var(--border);
     border-radius: var(--r-sm);
     font: inherit;
     width: 100%;
@@ -362,7 +362,7 @@
   .row.end { justify-content: flex-end; }
   button {
     padding: 8px 14px;
-    border: 1px solid var(--line);
+    border: 1px solid var(--border);
     border-radius: var(--r-sm);
     background: var(--surface);
     font: inherit;
@@ -375,14 +375,14 @@
     color: #fff;
     font-weight: 600;
   }
-  button.danger { color: var(--bad); border-color: #f3c7c4; }
+  button.danger { color: var(--danger); border-color: #f3c7c4; }
   .results, .people { list-style: none; margin: 0; padding: 0; }
   .results li, .people li {
     display: flex;
     align-items: center;
     gap: 12px;
     padding: 8px 2px;
-    border-top: 1px solid var(--line-2);
+    border-top: 1px solid var(--border);
   }
   .results li:first-child, .people li:first-child { border-top: 0; }
   .results li span:last-child { display: flex; flex-direction: column; }
@@ -395,10 +395,10 @@
     align-items: end;
     margin: 8px 0 0;
     padding-top: 12px;
-    border-top: 1px solid var(--line-2);
+    border-top: 1px solid var(--border);
   }
-  .errors { margin: 0; padding-left: 18px; color: var(--bad); }
-  .ok { color: var(--ok); }
+  .errors { margin: 0; padding-left: 18px; color: var(--danger); }
+  .ok { color: var(--success); }
   @media (max-width: 720px) {
     .invite { grid-template-columns: 1fr; }
   }

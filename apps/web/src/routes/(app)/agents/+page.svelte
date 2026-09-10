@@ -108,7 +108,7 @@
   }
   .head p { margin: 0; max-width: 60ch; }
   .notice { border-left: 3px solid var(--accent); margin-bottom: 16px; padding: 12px 16px; }
-  .failure { border-left: 3px solid var(--bad); }
+  .failure { border-left: 3px solid var(--danger); }
   .grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -121,13 +121,13 @@
   label { display: flex; flex-direction: column; gap: 4px; }
   input, select {
     padding: 8px 10px;
-    border: 1px solid var(--line);
+    border: 1px solid var(--border);
     border-radius: var(--r-sm);
     font: inherit;
   }
   button, .edit {
     padding: 8px 14px;
-    border: 1px solid var(--line);
+    border: 1px solid var(--border);
     border-radius: var(--r-sm);
     background: var(--surface);
     font: inherit;
@@ -141,5 +141,5 @@
     color: #fff;
     font-weight: 600;
   }
-  .errors { margin: 0; padding-left: 18px; color: var(--bad); }
+  .errors { margin: 0; padding-left: 18px; color: var(--danger); }
 </style>

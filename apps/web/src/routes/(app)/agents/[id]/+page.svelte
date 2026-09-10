@@ -324,7 +324,7 @@
   .head p { margin: 0 0 4px; }
   h1 { margin: 0 0 4px; font-size: 20px; }
   .notice { border-left: 3px solid var(--accent); margin-bottom: 16px; padding: 12px 16px; }
-  .failure { border-left: 3px solid var(--bad); margin-bottom: 16px; padding: 12px 16px; }
+  .failure { border-left: 3px solid var(--danger); margin-bottom: 16px; padding: 12px 16px; }
   .layout {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 340px;
@@ -339,7 +339,7 @@
   label.inline span { display: flex; flex-direction: column; }
   input, select, textarea {
     padding: 8px 10px;
-    border: 1px solid var(--line);
+    border: 1px solid var(--border);
     border-radius: var(--r-sm);
     font: inherit;
     width: 100%;
@@ -359,7 +359,7 @@
   }
   .vars dt { white-space: nowrap; }
   .vars dd { margin: 0; }
-  .vars summary { cursor: pointer; color: var(--ink-3); }
+  .vars summary { cursor: pointer; color: var(--text-3); }
   .saver { margin-top: 16px; }
   .saver-row {
     display: flex;
@@ -370,7 +370,7 @@
   }
   button {
     padding: 8px 14px;
-    border: 1px solid var(--line);
+    border: 1px solid var(--border);
     border-radius: var(--r-sm);
     background: var(--surface);
     font: inherit;
@@ -384,7 +384,7 @@
     font-weight: 600;
   }
   button:disabled { opacity: 0.5; cursor: not-allowed; }
-  .errors { margin: 0 0 8px; padding-left: 18px; color: var(--bad); }
+  .errors { margin: 0 0 8px; padding-left: 18px; color: var(--danger); }
   @media (max-width: 1000px) {
     .layout { grid-template-columns: 1fr; }
   }

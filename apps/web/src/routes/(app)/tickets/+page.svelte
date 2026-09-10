@@ -121,7 +121,7 @@
   }
   select {
     padding: 7px 10px;
-    border: 1px solid var(--line);
+    border: 1px solid var(--border);
     border-radius: var(--r-sm);
     font: inherit;
   }
@@ -131,7 +131,7 @@
   }
   .toggle button {
     padding: 7px 12px;
-    border: 1px solid var(--line);
+    border: 1px solid var(--border);
     background: var(--surface);
     font: inherit;
     cursor: pointer;
@@ -147,8 +147,8 @@
   }
   .cards { display: flex; flex-direction: column; gap: 8px; }
   table { width: 100%; border-collapse: collapse; }
-  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line-2); }
-  th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-3); }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-3); }
   td a { color: inherit; }
   @media (max-width: 900px) {
     .board { grid-template-columns: repeat(5, 220px); }

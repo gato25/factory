@@ -50,7 +50,7 @@
     width: 22px;
     height: 22px;
     border-radius: 999px;
-    background: var(--line-2);
+    background: var(--surface-2);
     display: grid;
     place-items: center;
   }

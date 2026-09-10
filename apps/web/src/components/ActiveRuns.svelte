@@ -65,7 +65,7 @@
 
 <style>
   ul { list-style: none; margin: 0; padding: 0; }
-  li { border-top: 1px solid var(--line-2); }
+  li { border-top: 1px solid var(--border); }
   li:first-child { border-top: 0; }
   a {
     display: grid;
@@ -83,9 +83,9 @@
     flex: 1;
     height: 6px;
     border-radius: 2px;
-    background: var(--line-2);
+    background: var(--surface-2);
   }
-  .seg.done { background: var(--ok); }
+  .seg.done { background: var(--success); }
   .seg.now { background: var(--accent); }
   @media (max-width: 720px) {
     a { grid-template-columns: 1fr; }

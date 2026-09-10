@@ -80,7 +80,7 @@
   .head { margin-bottom: 16px; }
   .head p { margin: 0; }
   .notice { border-left: 3px solid var(--accent); margin-bottom: 16px; padding: 12px 16px; }
-  .failure { border-left: 3px solid var(--bad); }
+  .failure { border-left: 3px solid var(--danger); }
   ul { list-style: none; margin: 0; padding: 0; }
   li {
     display: grid;
@@ -88,7 +88,7 @@
     gap: 12px;
     align-items: center;
     padding: 8px 2px;
-    border-top: 1px solid var(--line-2);
+    border-top: 1px solid var(--border);
   }
   li:first-child { border-top: 0; }
   .who { display: flex; flex-direction: column; min-width: 0; }
@@ -98,14 +98,14 @@
   label { display: flex; flex-direction: column; gap: 4px; }
   input {
     padding: 8px 10px;
-    border: 1px solid var(--line);
+    border: 1px solid var(--border);
     border-radius: var(--r-sm);
     font: inherit;
   }
   .row { display: flex; justify-content: flex-end; }
   button {
     padding: 8px 14px;
-    border: 1px solid var(--line);
+    border: 1px solid var(--border);
     border-radius: var(--r-sm);
     background: var(--surface);
     font: inherit;
@@ -117,5 +117,5 @@
     color: #fff;
     font-weight: 600;
   }
-  .errors { margin: 0; padding-left: 18px; color: var(--bad); }
+  .errors { margin: 0; padding-left: 18px; color: var(--danger); }
 </style>

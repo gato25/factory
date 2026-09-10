@@ -182,14 +182,14 @@
 
 <style>
   .banner {
-    border-left: 3px solid var(--warn);
+    border-left: 3px solid var(--warning);
     margin-bottom: 16px;
     display: flex;
     justify-content: space-between;
     gap: 16px;
     align-items: flex-start;
   }
-  .banner.decided { border-left-color: var(--line); }
+  .banner.decided { border-left-color: var(--border); }
   .banner h1 { margin: 0 0 6px; font-size: 18px; }
   .banner p { margin: 0 0 4px; }
   .warn-text { color: #8a6100; }
@@ -198,7 +198,7 @@
     padding: 7px 14px;
     border-radius: var(--r-sm);
     background: var(--surface);
-    border: 1px solid var(--line);
+    border: 1px solid var(--border);
     text-decoration: none;
     color: inherit;
     white-space: nowrap;
@@ -217,7 +217,7 @@
     flex-direction: column;
     gap: 8px;
     padding-bottom: 12px;
-    border-bottom: 1px solid var(--line-2);
+    border-bottom: 1px solid var(--border);
     margin-bottom: 12px;
   }
   .stack:last-of-type { border-bottom: 0; margin-bottom: 0; padding-bottom: 0; }
@@ -226,14 +226,14 @@
     width: 100%;
     box-sizing: border-box;
     padding: 10px 12px;
-    border: 1px solid var(--line);
+    border: 1px solid var(--border);
     border-radius: var(--r-sm);
     font: inherit;
     resize: vertical;
   }
   button {
     padding: 9px 14px;
-    border: 1px solid var(--line);
+    border: 1px solid var(--border);
     border-radius: var(--r-sm);
     background: var(--surface);
     font: inherit;
@@ -245,9 +245,9 @@
     color: #fff;
     font-weight: 600;
   }
-  button.danger { color: var(--bad); border-color: #f3c7c4; }
-  .errors { margin: 0; padding-left: 18px; color: var(--bad); }
-  .failure { border-left: 3px solid var(--bad); }
+  button.danger { color: var(--danger); border-color: #f3c7c4; }
+  .errors { margin: 0; padding-left: 18px; color: var(--danger); }
+  .failure { border-left: 3px solid var(--danger); }
   @media (max-width: 1000px) {
     .layout { grid-template-columns: 1fr; }
   }

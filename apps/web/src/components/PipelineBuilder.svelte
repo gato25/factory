@@ -251,7 +251,7 @@
     inset: 0 auto;
     left: 22px;
     width: 1px;
-    background: var(--line);
+    background: var(--border);
   }
   .connector.over .line { background: var(--accent); width: 3px; }
   .connector .drop {
@@ -266,10 +266,10 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 1px solid var(--line);
+    border: 1px solid var(--border);
     border-radius: 999px;
     background: var(--surface);
-    color: var(--ink-3);
+    color: var(--text-3);
     cursor: pointer;
     font-size: 14px;
     line-height: 1;
@@ -286,7 +286,7 @@
     flex-direction: column;
     gap: 2px;
     padding: 6px;
-    border: 1px solid var(--line);
+    border: 1px solid var(--border);
     border-radius: var(--r-sm);
     background: var(--surface);
     box-shadow: 0 6px 20px rgba(16, 18, 24, 0.12);
@@ -308,30 +308,30 @@
     text-align: left;
     cursor: pointer;
   }
-  .palette button:hover { background: var(--line-2); }
-  .palette.standing button { border: 1px solid var(--line); }
+  .palette button:hover { background: var(--surface-2); }
+  .palette.standing button { border: 1px solid var(--border); }
   .implicit {
     display: flex;
     gap: 10px;
     align-items: flex-start;
     margin-top: 8px;
     padding: 10px 12px;
-    border: 1px dashed var(--line);
+    border: 1px dashed var(--border);
     border-radius: var(--r-sm);
-    color: var(--ink-3);
+    color: var(--text-3);
   }
   .implicit span:last-child { display: flex; flex-direction: column; }
   .warning {
     margin: 0 0 12px;
     padding: 12px 16px;
-    border-left: 3px solid var(--warn);
+    border-left: 3px solid var(--warning);
     color: #8a6100;
   }
   .errors {
     margin: 0 0 12px;
     padding: 12px 16px 12px 34px;
-    border-left: 3px solid var(--bad);
-    color: var(--bad);
+    border-left: 3px solid var(--danger);
+    color: var(--danger);
   }
   @media (max-width: 1000px) {
     .builder { grid-template-columns: 1fr; }
