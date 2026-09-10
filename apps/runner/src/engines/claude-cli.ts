@@ -46,8 +46,12 @@ export function buildArgv(input: ClaudeStepInput, prompt: string): string[] {
     '--append-system-prompt-file',
     `.claude/agents/${agentSlug(input.agent)}.md`,
   ];
-  if (input.agent.allowed_tools.length > 0) {
-    argv.push('--allowedTools', input.agent.allowed_tools.join(','));
+  // Tool permissions do not apply to the design engine (FR-036a). The
+  // snapshot already empties them, and this holds the claim here too rather
+  // than depending on that having happened.
+  const permitted = input.agent.engine === 'design_cli' ? [] : input.agent.allowed_tools;
+  if (permitted.length > 0) {
+    argv.push('--allowedTools', permitted.join(','));
   }
   if (input.agent.limits.max_turns) {
     argv.push('--max-turns', String(input.agent.limits.max_turns));

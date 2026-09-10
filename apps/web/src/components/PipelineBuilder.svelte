@@ -36,6 +36,17 @@
   let dropAt = $state<number | null>(null);
 
   const overall = $derived(problems.filter((p) => p.index === null));
+
+  /**
+   * FR-034a and SC-016 — a pipeline with no verification step is a pipeline
+   * where nothing beyond the implementing agent checks the result. That is a
+   * legitimate choice, so it is a warning rather than a refusal — but it is
+   * made plain here, where the choice is being made, as well as before a
+   * ticket is started.
+   */
+  const verifies = $derived(
+    steps.some((step) => step.type === 'shell' && Boolean(step.command?.trim()))
+  );
   const problemsFor = (index: number) =>
     problems.filter((p) => p.index === index).map((p) => p.message);
   const agentName = (id?: string) => agents.find((a) => a.id === id)?.name;
@@ -83,6 +94,14 @@
           <li>{problem.message}</li>
         {/each}
       </ul>
+    {/if}
+
+    {#if steps.length > 0 && !verifies}
+      <p class="card warning">
+        Nothing in this pipeline checks the result. The implementing agent is asked to leave the
+        tests passing, and nothing after it confirms that. Add a shell step running your tests to
+        change that.
+      </p>
     {/if}
 
     <ol>
@@ -302,6 +321,12 @@
     color: var(--ink-3);
   }
   .implicit span:last-child { display: flex; flex-direction: column; }
+  .warning {
+    margin: 0 0 12px;
+    padding: 12px 16px;
+    border-left: 3px solid var(--warn);
+    color: #8a6100;
+  }
   .errors {
     margin: 0 0 12px;
     padding: 12px 16px 12px 34px;

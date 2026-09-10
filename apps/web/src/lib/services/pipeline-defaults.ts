@@ -76,8 +76,3 @@ export function defaultPipeline(slug: string): DefaultPipeline {
 export function verifies(steps: Step[]): boolean {
   return steps.some((step) => step.type === 'shell' && Boolean(step.command));
 }
-
-/** The step that produces code — a pipeline without one cannot be saved (FR-028). */
-export function producesCode(steps: Step[]): boolean {
-  return steps.some((step) => step.type === 'agent' && step.agent_id === 'implement');
-}

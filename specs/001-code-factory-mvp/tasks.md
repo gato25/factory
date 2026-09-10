@@ -406,31 +406,31 @@ run, and confirm from the output that the agent behaved accordingly and did not 
 
 ### Tests for User Story 7
 
-- [ ] T189 [P] [US7] Integration test for ownership in `apps/web/tests/integration/ownership.test.ts` — any member creates and changes their own; another member's is readable and usable but not changeable; an administrator may change any (FR-006, FR-006c)
-- [ ] T190 [P] [US7] Integration test for tool withholding in `apps/runner/tests/integration/tools.test.ts` — an action requiring an unpermitted tool is unreachable (FR-039)
-- [ ] T191 [P] [US7] Integration test asserting agent changes apply only to runs started afterwards in `apps/web/tests/integration/agent-pinning.test.ts` (FR-041, SC-010)
-- [ ] T192 [P] [US7] End-to-end test in `apps/web/tests/e2e/agents.spec.ts` (quickstart.md scenario G, SC-015)
+- [X] T189 [P] [US7] Integration test for ownership in `apps/web/tests/integration/ownership.test.ts` — any member creates and changes their own; another member's is readable and usable but not changeable; an administrator may change any (FR-006, FR-006c)
+- [X] T190 [P] [US7] Integration test for tool withholding in `apps/runner/tests/integration/tools.test.ts` — an action requiring an unpermitted tool is unreachable (FR-039)
+- [X] T191 [P] [US7] Integration test asserting agent changes apply only to runs started afterwards in `apps/web/tests/integration/agent-pinning.test.ts` (FR-041, SC-010)
+- [X] T192 [P] [US7] End-to-end test in `apps/web/tests/e2e/agents.spec.ts` (quickstart.md scenario G, SC-015)
 
 ### Implementation for User Story 7
 
-- [ ] T193 [US7] Let any member create, edit and delete pipelines, agents and skills without administrator involvement, in `apps/web/src/lib/services/authz.ts` (FR-006)
-- [ ] T194 [US7] Record an owner on every pipeline, agent and skill a user creates, and let that owner change or delete it at will in `apps/web/src/lib/services/ownership.ts` (FR-006a)
-- [ ] T195 [US7] Make the shipped default agents and pipelines available to every user in `apps/web/src/lib/services/agent-defaults.ts` (FR-006b)
-- [ ] T196 [US7] Let any user read and use another user's pipeline, agent or skill while restricting change and deletion to its owner and administrators in `apps/web/src/lib/services/authz.ts` (FR-006c)
-- [ ] T197 [P] [US7] Show who owns a pipeline, agent or skill wherever it can be selected or edited in `apps/web/src/components/OwnerBadge.svelte` (FR-006d)
-- [ ] T198 [US7] Make plain — in the pipeline editor and before a ticket is started — when a pipeline contains no verification step and nothing beyond the implementing agent checks the result, in `apps/web/src/components/PipelineBuilder.svelte` and `apps/web/src/lib/services/estimate.ts` (FR-034a, SC-016)
-- [ ] T199 [US7] Let instructions, model, permitted tools, attached skills, and per-step cost, time and turn limits be configured independently in `apps/web/src/lib/services/agent.ts` (FR-035, FR-036)
-- [ ] T200 [US7] Offer the design service's own model choices and **omit the tool permissions** for an agent running on that engine in `apps/web/src/routes/(app)/agents/[id]/+page.svelte` (FR-036a)
-- [ ] T201 [P] [US7] Identify which engine each agent runs on, wherever agents are listed in `apps/web/src/components/AgentCard.svelte` (FR-036b)
-- [ ] T202 [US7] Restore a modified default agent to its shipped configuration from `default_config` in `apps/web/src/lib/services/agent.ts` (FR-040)
-- [ ] T203 [US7] Apply agent changes only to runs started afterwards in `apps/web/src/lib/snapshot/resolve.ts` (FR-041)
-- [ ] T204 [US7] Implement skill create, edit and delete, attachable to any number of agents, in `apps/web/src/lib/services/skill.ts` (FR-042)
-- [ ] T205 [US7] Record a description on each skill saying when to apply it, and make that description available to agents holding it in `apps/web/src/lib/services/skill.ts` (FR-043)
-- [ ] T206 [P] [US7] Show how many pipelines and runs depend on each agent and each skill in `apps/web/src/lib/services/usage.ts` (FR-043a)
-- [ ] T207 [P] [US7] Remote functions for agents and skills in `apps/web/src/lib/remote/agents.remote.ts` and `skills.remote.ts`
-- [ ] T208 [P] [US7] Agents screen (09) in `apps/web/src/routes/(app)/agents/+page.svelte` — card per agent with badge, model, tools, skills and usage
-- [ ] T209 [P] [US7] Agent Editor screen (10) in `apps/web/src/routes/(app)/agents/[id]/+page.svelte` — prompt editor with template variables, model and limits, tool toggles, attached skills, Reset to default
-- [ ] T210 [P] [US7] Skills screen (11) in `apps/web/src/routes/(app)/skills/+page.svelte` — searchable list with usage counts, and the editor with name, description, content and history
+- [X] T193 [US7] Let any member create, edit and delete pipelines, agents and skills without administrator involvement, in `apps/web/src/lib/services/authz.ts` (FR-006)
+- [X] T194 [US7] Record an owner on every pipeline, agent and skill a user creates, and let that owner change or delete it at will in `apps/web/src/lib/services/ownership.ts` (FR-006a)
+- [X] T195 [US7] Make the shipped default agents and pipelines available to every user in `apps/web/src/lib/services/agent-defaults.ts` (FR-006b)
+- [X] T196 [US7] Let any user read and use another user's pipeline, agent or skill while restricting change and deletion to its owner and administrators in `apps/web/src/lib/services/authz.ts` (FR-006c)
+- [X] T197 [P] [US7] Show who owns a pipeline, agent or skill wherever it can be selected or edited in `apps/web/src/components/OwnerBadge.svelte` (FR-006d)
+- [X] T198 [US7] Make plain — in the pipeline editor and before a ticket is started — when a pipeline contains no verification step and nothing beyond the implementing agent checks the result, in `apps/web/src/components/PipelineBuilder.svelte` and `apps/web/src/lib/services/estimate.ts` (FR-034a, SC-016)
+- [X] T199 [US7] Let instructions, model, permitted tools, attached skills, and per-step cost, time and turn limits be configured independently in `apps/web/src/lib/services/agent.ts` (FR-035, FR-036)
+- [X] T200 [US7] Offer the design service's own model choices and **omit the tool permissions** for an agent running on that engine in `apps/web/src/routes/(app)/agents/[id]/+page.svelte` (FR-036a)
+- [X] T201 [P] [US7] Identify which engine each agent runs on, wherever agents are listed in `apps/web/src/components/AgentCard.svelte` (FR-036b)
+- [X] T202 [US7] Restore a modified default agent to its shipped configuration from `default_config` in `apps/web/src/lib/services/agent.ts` (FR-040)
+- [X] T203 [US7] Apply agent changes only to runs started afterwards in `apps/web/src/lib/snapshot/resolve.ts` (FR-041)
+- [X] T204 [US7] Implement skill create, edit and delete, attachable to any number of agents, in `apps/web/src/lib/services/skill.ts` (FR-042)
+- [X] T205 [US7] Record a description on each skill saying when to apply it, and make that description available to agents holding it in `apps/web/src/lib/services/skill.ts` (FR-043)
+- [X] T206 [P] [US7] Show how many pipelines and runs depend on each agent and each skill in `apps/web/src/lib/services/usage.ts` (FR-043a)
+- [X] T207 [P] [US7] Remote functions for agents and skills in `apps/web/src/lib/remote/agents.remote.ts` and `skills.remote.ts`
+- [X] T208 [P] [US7] Agents screen (09) in `apps/web/src/routes/(app)/agents/+page.svelte` — card per agent with badge, model, tools, skills and usage
+- [X] T209 [P] [US7] Agent Editor screen (10) in `apps/web/src/routes/(app)/agents/[id]/+page.svelte` — prompt editor with template variables, model and limits, tool toggles, attached skills, Reset to default
+- [X] T210 [P] [US7] Skills screen (11) in `apps/web/src/routes/(app)/skills/+page.svelte` — searchable list with usage counts, and the editor with name, description, content and history
 
 **Checkpoint**: Stories 1–7 work. Agent behaviour is self-service.
 
