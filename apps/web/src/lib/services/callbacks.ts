@@ -10,6 +10,7 @@ import {
 } from '@factory/shared';
 import { eq } from 'drizzle-orm';
 import { addCost, captureArtifacts, recordStep } from '$lib/ledger/record';
+import { notifyDashboard, notifyRun, type RunEvent } from './notify';
 import { setRunStatus } from './run';
 import { setTicketStatus } from './ticket';
 
@@ -54,12 +55,16 @@ export async function applyCallback(
         .where(eq(runs.id, runId));
       await setRunStatus(database, runId, 'running');
       await mirrorTicket(database, runId, 'running');
+      await announce(database, runId, { event: 'run_changed' });
       return { applied: true };
     }
 
     case 'step_started': {
       const { applied } = await recordStep(database, { runId, stepIndex, status: 'running' });
-      if (applied) await setRunStatus(database, runId, 'running', { currentStepIndex: stepIndex });
+      if (applied) {
+        await setRunStatus(database, runId, 'running', { currentStepIndex: stepIndex });
+        await announce(database, runId, { event: 'step_changed', stepIndex });
+      }
       return { applied };
     }
 
@@ -78,6 +83,14 @@ export async function applyCallback(
       if (applied) {
         await addCost(database, runId, callback.cost_usd);
         await captureArtifacts(database, runId, stepIndex, callback.artifacts);
+        await announce(database, runId, { event: 'step_changed', stepIndex });
+        for (const artifact of callback.artifacts) {
+          await notifyRun(database, runId, {
+            event: 'artifact_added',
+            stepIndex,
+            path: artifact.path,
+          });
+        }
       } else {
         log.info('ignored a duplicate step_finished', { run_id: runId, step_index: stepIndex });
       }
@@ -92,6 +105,7 @@ export async function applyCallback(
         status: 'skipped',
         conditionNotMet: callback.condition_not_met,
       });
+      if (applied) await announce(database, runId, { event: 'step_changed', stepIndex });
       return { applied };
     }
 
@@ -106,6 +120,7 @@ export async function applyCallback(
           updatedAt: new Date(),
         })
         .where(eq(tickets.id, run.ticketId));
+      await announce(database, runId, { event: 'run_changed' });
       return { applied: true };
     }
 
@@ -120,6 +135,7 @@ export async function applyCallback(
         })
         .where(eq(runs.id, runId));
       await mirrorTicket(database, runId, 'waiting_approval');
+      await announce(database, runId, { event: 'run_changed' });
       return { applied: true };
     }
 
@@ -140,6 +156,14 @@ export async function applyCallback(
         .onConflictDoNothing({
           target: [logChunks.runId, logChunks.stepIndex, logChunks.seq],
         });
+      // Log chunks ride the stream as payloads rather than signals (D4).
+      await notifyRun(database, runId, {
+        event: 'log_chunk',
+        stepIndex,
+        seq: callback.seq,
+        stream: callback.stream,
+        text: redact(callback.text),
+      });
       return { applied: true };
     }
 
@@ -150,6 +174,7 @@ export async function applyCallback(
         .set({ mergeRequestUrl: callback.merge_request_url, updatedAt: new Date() })
         .where(eq(tickets.id, run.ticketId));
       await setRunStatus(database, runId, 'opening_mr');
+      await announce(database, runId, { event: 'run_changed' });
       return { applied: true };
     }
 
@@ -165,6 +190,7 @@ export async function applyCallback(
           updatedAt: new Date(),
         })
         .where(eq(tickets.id, run.ticketId));
+      await announce(database, runId, { event: 'finished', status: 'done' });
       return { applied: true };
     }
 
@@ -176,6 +202,7 @@ export async function applyCallback(
         failureStepIndex: callback.step_index,
       });
       await mirrorTicket(database, runId, 'failed');
+      await announce(database, runId, { event: 'finished', status: 'failed' });
       return { applied: true };
     }
 
@@ -184,9 +211,16 @@ export async function applyCallback(
       if (run.status === 'cancelled') return { applied: false };
       await setRunStatus(database, runId, 'cancelled');
       await mirrorTicket(database, runId, 'cancelled');
+      await announce(database, runId, { event: 'finished', status: 'cancelled' });
       return { applied: true };
     }
   }
+}
+
+/** A change reaches the run's own viewers and the dashboard (FR-072, FR-074). */
+async function announce(database: Database, runId: string, message: RunEvent) {
+  await notifyRun(database, runId, message);
+  await notifyDashboard(database, message);
 }
 
 async function runFor(database: Database, runId: string) {

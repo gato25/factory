@@ -1,6 +1,8 @@
 <script lang="ts">
   import ConnectRepository from '$components/ConnectRepository.svelte';
   import { disconnect, repositories } from '$lib/remote/repositories.remote';
+
+  const repos = $derived(repositories());
 </script>
 
 <div class="head">
@@ -8,8 +10,12 @@
   <ConnectRepository />
 </div>
 
-<svelte:boundary>
-  {#await repositories() then rows}
+{#if repos.error}
+  <p class="card error" role="alert">{(repos.error as Error).message}</p>
+{:else if !repos.ready}
+  <p class="card">Loading repositories…</p>
+{:else}
+  {@const rows = repos.current}
     {#if rows.length === 0}
       <p class="empty">No repositories connected yet. Connect one to create your first ticket.</p>
     {:else}
@@ -53,11 +59,7 @@
         </tbody>
       </table>
     {/if}
-  {/await}
-
-  {#snippet pending()}<p>Loading repositories…</p>{/snippet}
-  {#snippet failed(error)}<p class="error" role="alert">{(error as Error).message}</p>{/snippet}
-</svelte:boundary>
+{/if}
 
 <style>
   .head {

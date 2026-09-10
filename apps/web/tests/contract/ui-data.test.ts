@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
 /**
@@ -96,6 +96,35 @@ test('the external callback sink is an explicit route with a versioned payload',
   expect(sink).toContain("{ error: 'unauthorised' }");
   // A duplicate is a successful no-op, so the orchestrator stops retrying.
   expect(sink).toContain('applied');
+});
+
+test('no component awaits a remote query — a query is reactive, a promise is not', () => {
+  // `{#await query()}` renders the first resolution and then ignores
+  // `refresh()`, which silently breaks every live view. `.current` is the
+  // reactive read. This assertion exists because that bug shipped once.
+  const walk = (dir: string, found: string[] = []): string[] => {
+    for (const entry of readdirSync(dir)) {
+      if (entry === 'node_modules' || entry.startsWith('.')) continue;
+      const full = join(dir, entry);
+      if (statSync(full).isDirectory()) walk(full, found);
+      else if (entry.endsWith('.svelte')) found.push(full);
+    }
+    return found;
+  };
+
+  const offenders: string[] = [];
+  for (const file of walk(join(WEB, 'src'))) {
+    const source = readFileSync(file, 'utf8');
+    for (const match of source.matchAll(/\{#await\s+([A-Za-z_$][\w$]*)\s*\(/g)) {
+      const name = match[1] as string;
+      // Awaiting an imported remote function is the mistake; awaiting an
+      // ordinary promise is fine.
+      if (new RegExp(`import \\{[^}]*\\b${name}\\b[^}]*\\} from '\\$lib/remote/`).test(source)) {
+        offenders.push(`${file.replace(`${WEB}/`, '')} awaits ${name}()`);
+      }
+    }
+  }
+  expect(offenders).toEqual([]);
 });
 
 test('the experimental opt-ins are both present, since neither works alone', () => {

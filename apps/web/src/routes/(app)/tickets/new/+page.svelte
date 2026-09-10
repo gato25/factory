@@ -3,6 +3,8 @@
   import { repositories } from '$lib/remote/repositories.remote';
   import { create, preview } from '$lib/remote/tickets.remote';
 
+  const repos = $derived(repositories());
+  const pipes = $derived(pipelines());
   let repositoryId = $state('');
   let pipelineId = $state('');
   let start = $state(true);
@@ -14,13 +16,11 @@
       <span>Repository <em>required</em></span>
       <select name="repositoryId" bind:value={repositoryId} required>
         <option value="" disabled>Choose a repository…</option>
-        {#await repositories() then rows}
-          {#each rows as repo (repo.id)}
-            <option value={repo.id} disabled={repo.status !== 'connected'}>
-              {repo.fullPath}{repo.status !== 'connected' ? ' — token expired' : ''}
-            </option>
-          {/each}
-        {/await}
+        {#each repos.ready ? repos.current : [] as repo (repo.id)}
+          <option value={repo.id} disabled={repo.status !== 'connected'}>
+            {repo.fullPath}{repo.status !== 'connected' ? ' — token expired' : ''}
+          </option>
+        {/each}
       </select>
     </label>
 
@@ -48,11 +48,9 @@
       <span>Pipeline</span>
       <select name="pipelineId" bind:value={pipelineId}>
         <option value="">Use the repository's default</option>
-        {#await pipelines() then rows}
-          {#each rows as pipeline (pipeline.id)}
-            <option value={pipeline.id}>{pipeline.name} — {pipeline.description}</option>
-          {/each}
-        {/await}
+        {#each pipes.ready ? pipes.current : [] as pipeline (pipeline.id)}
+          <option value={pipeline.id}>{pipeline.name} — {pipeline.description}</option>
+        {/each}
       </select>
     </label>
 
@@ -88,11 +86,12 @@
 
   <aside class="what">
     <h2>What will happen</h2>
-    {#if pipelineId}
-      {#await pipelines() then rows}
-        {@const chosen = rows.find((p) => p.id === pipelineId)}
-        {#if chosen}
-          {#await preview({ pipelineId: chosen.id, version: chosen.currentVersion }) then p}
+    {#if pipelineId && pipes.ready}
+      {@const chosen = pipes.current.find((p) => p.id === pipelineId)}
+      {#if chosen}
+        {@const q = preview({ pipelineId: chosen.id, version: chosen.currentVersion })}
+        {#if q.ready}
+          {@const p = q.current}
             <ol class="steps">
               {#each p.steps as step (step.index)}
                 <li class:conditional={step.conditional}>
@@ -131,9 +130,10 @@
                 </dd>
               {/if}
             </dl>
-          {/await}
+        {:else}
+          <p class="hint">Loading the steps…</p>
         {/if}
-      {/await}
+      {/if}
     {:else}
       <p class="hint">Choose a pipeline to see the steps that will run.</p>
     {/if}

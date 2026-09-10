@@ -2,6 +2,7 @@
   import { connect, requiredScopes } from '$lib/remote/repositories.remote';
 
   let { pipelines = [] }: { pipelines?: { id: string; name: string }[] } = $props();
+  const scopes = $derived(requiredScopes());
   let provider = $state<'gitlab' | 'github'>('gitlab');
   let open = $state(false);
 
@@ -50,12 +51,12 @@
         <span>3 &middot; Access token</span>
         <input name="token" type="password" required autocomplete="off" />
         <small>
-          {#await requiredScopes()}
+          {#if scopes.ready}
+            This token needs: {scopes.current[provider].join(', ')}. It is encrypted before it is
+            stored and can never be read back.
+          {:else}
             Loading the required permissions…
-          {:then scopes}
-            This token needs: {scopes[provider].join(', ')}. It is encrypted before it is stored
-            and can never be read back.
-          {/await}
+          {/if}
         </small>
       </label>
 

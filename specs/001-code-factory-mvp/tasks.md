@@ -202,25 +202,25 @@ claim against the produced documents when the run ends.
 
 ### Tests for User Story 2
 
-- [ ] T087 [P] [US2] Integration test for `LISTEN`/`NOTIFY` fan-out in `apps/web/tests/integration/events.test.ts` — a callback write reaches a subscribed stream
-- [ ] T088 [P] [US2] Integration test asserting displayed state is never more than 5 seconds behind actual state in `apps/web/tests/integration/staleness.test.ts` (SC-004)
-- [ ] T089 [P] [US2] End-to-end test in `apps/web/tests/e2e/watch-run.spec.ts` — step states, progressive log output, artifact reading, and a dashboard that updates as runs progress (quickstart.md scenario B)
+- [X] T087 [P] [US2] Integration test for `LISTEN`/`NOTIFY` fan-out in `apps/web/tests/integration/events.test.ts` — a callback write reaches a subscribed stream
+- [X] T088 [P] [US2] Integration test asserting displayed state is never more than 5 seconds behind actual state in `apps/web/tests/integration/staleness.test.ts` (SC-004)
+- [X] T089 [P] [US2] End-to-end test in `apps/web/tests/e2e/watch-run.spec.ts` — step states, progressive log output, artifact reading, and a dashboard that updates as runs progress (quickstart.md scenario B)
 
 ### Implementation for User Story 2
 
-- [ ] T090 [US2] Emit a Postgres `NOTIFY` on a run-scoped channel from every write that changes a run, in `apps/web/src/lib/services/notify.ts` (D4)
-- [ ] T091 [US2] Implement the server-sent-events route at `apps/web/src/routes/api/events/[run_id]/+server.ts` — subscribe with `LISTEN`, emit change signals, and carry log chunks as payloads rather than signals (FR-074, FR-076)
-- [ ] T092 [P] [US2] Client subscription that refreshes the affected `query` on a change signal, in `apps/web/src/lib/events/subscribe.ts`
-- [ ] T093 [P] [US2] Ticket Run screen (06) in `apps/web/src/routes/(app)/tickets/[id]/+page.svelte` — header with branch, creator, start time and cost so far, plus Pause and Cancel
-- [ ] T094 [P] [US2] Step tracker component in `apps/web/src/components/StepTracker.svelte` — each step's state, duration and cost, and total spent against the run's ceiling (FR-075)
-- [ ] T095 [P] [US2] Live log component in `apps/web/src/components/LiveLog.svelte` — streamed output with the exact command shown in the header (FR-076)
-- [ ] T096 [P] [US2] Artifact viewers in `apps/web/src/components/ArtifactViewer.svelte` — documents, the commit list and the merge request opened and read in the application (FR-077)
-- [ ] T097 [P] [US2] Run details panel in `apps/web/src/components/RunDetails.svelte` — pipeline and version, attempt, and a reference identifying the execution in the orchestrator (FR-078)
-- [ ] T098 [P] [US2] Dashboard screen (01) in `apps/web/src/routes/(app)/+page.svelte` — four stat tiles: connected repositories, tickets running, awaiting approval, merge requests this week (FR-071)
-- [ ] T099 [P] [US2] Active runs list on the dashboard with ticket, repository, pipeline progress and status, updating as runs progress in `apps/web/src/components/ActiveRuns.svelte` (FR-072, FR-074)
-- [ ] T100 [P] [US2] Activity feed in `apps/web/src/components/ActivityFeed.svelte` — merge requests merged, runs completed, runs failed, gates reached, tickets created (FR-073)
-- [ ] T101 [P] [US2] Tickets Board screen (04) in `apps/web/src/routes/(app)/tickets/+page.svelte` — filters by repository, pipeline and author, board and list views, grouped by state (FR-023)
-- [ ] T102 [US2] Per-ticket status strip in `apps/web/src/components/TicketCard.svelte` — whichever applies: the running step and its position, the gate awaiting approval, the merge request opened, or the failure reason (FR-023a)
+- [X] T090 [US2] Emit a Postgres `NOTIFY` on a run-scoped channel from every write that changes a run, in `apps/web/src/lib/services/notify.ts` (D4)
+- [X] T091 [US2] Implement the server-sent-events route at `apps/web/src/routes/api/events/[run_id]/+server.ts` — subscribe with `LISTEN`, emit change signals, and carry log chunks as payloads rather than signals (FR-074, FR-076)
+- [X] T092 [P] [US2] Client subscription that refreshes the affected `query` on a change signal, in `apps/web/src/lib/events/subscribe.ts`
+- [X] T093 [P] [US2] Ticket Run screen (06) in `apps/web/src/routes/(app)/tickets/[id]/+page.svelte` — header with branch, creator, start time and cost so far, plus Pause and Cancel
+- [X] T094 [P] [US2] Step tracker component in `apps/web/src/components/StepTracker.svelte` — each step's state, duration and cost, and total spent against the run's ceiling (FR-075)
+- [X] T095 [P] [US2] Live log component in `apps/web/src/components/LiveLog.svelte` — streamed output with the exact command shown in the header (FR-076)
+- [X] T096 [P] [US2] Artifact viewers in `apps/web/src/components/ArtifactViewer.svelte` — documents, the commit list and the merge request opened and read in the application (FR-077)
+- [X] T097 [P] [US2] Run details panel in `apps/web/src/components/RunDetails.svelte` — pipeline and version, attempt, and a reference identifying the execution in the orchestrator (FR-078)
+- [X] T098 [P] [US2] Dashboard screen (01) in `apps/web/src/routes/(app)/+page.svelte` — four stat tiles: connected repositories, tickets running, awaiting approval, merge requests this week (FR-071)
+- [X] T099 [P] [US2] Active runs list on the dashboard with ticket, repository, pipeline progress and status, updating as runs progress in `apps/web/src/components/ActiveRuns.svelte` (FR-072, FR-074)
+- [X] T100 [P] [US2] Activity feed in `apps/web/src/components/ActivityFeed.svelte` — merge requests merged, runs completed, runs failed, gates reached, tickets created (FR-073)
+- [X] T101 [P] [US2] Tickets Board screen (04) in `apps/web/src/routes/(app)/tickets/+page.svelte` — filters by repository, pipeline and author, board and list views, grouped by state (FR-023)
+- [X] T102 [US2] Per-ticket status strip in `apps/web/src/components/TicketCard.svelte` — whichever applies: the running step and its position, the gate awaiting approval, the merge request opened, or the failure reason (FR-023a)
 
 **Checkpoint**: Stories 1 and 2 both work. A run is now observable while it happens.
 

@@ -22,6 +22,13 @@ function requireUser() {
 
 export const tickets = query(async () => listTickets(db()));
 
+/** The board, with each card's status strip (FR-023, FR-023a). */
+export const ticketBoard = query(async () => {
+  requireUser();
+  const { board } = await import('$lib/services/run-view');
+  return board(db());
+});
+
 export const ticket = query(v.pipe(v.string(), v.uuid()), async (id) => getTicket(db(), id));
 
 /** What the ticket form shows before anything starts (FR-019, FR-019a). */

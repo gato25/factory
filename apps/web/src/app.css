@@ -1,0 +1,85 @@
+/* Shared tokens and the few patterns every screen repeats. */
+:root {
+  --ink: #1a1d24;
+  --ink-2: #4a5060;
+  --ink-3: #6b7280;
+  --line: #e3e6ec;
+  --line-2: #eef1f7;
+  --surface: #fff;
+  --ground: #edeff3;
+  --accent: #3d5afe;
+  --ok: #14733c;
+  --ok-soft: #e6f4ea;
+  --bad: #b3261e;
+  --bad-soft: #fdeceb;
+  --warn: #8a6100;
+  --warn-soft: #fff8e1;
+  --r: 8px;
+  --r-sm: 6px;
+}
+
+body {
+  margin: 0;
+  font:
+    14px / 1.5 system-ui,
+    -apple-system,
+    sans-serif;
+  color: var(--ink);
+  background: var(--ground);
+}
+
+.card {
+  background: var(--surface);
+  border-radius: var(--r);
+  padding: 20px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  background: var(--line-2);
+  color: var(--ink-2);
+}
+.badge.ok {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+.badge.bad {
+  background: var(--bad-soft);
+  color: var(--bad);
+}
+.badge.warn {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+.badge.live {
+  background: #e8ecff;
+  color: var(--accent);
+}
+
+.muted {
+  color: var(--ink-3);
+}
+.small {
+  font-size: 12px;
+}
+
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+h2.section {
+  margin: 0 0 12px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-3);
+}
