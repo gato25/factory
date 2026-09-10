@@ -35,10 +35,10 @@ GitLab or GitHub, read the diff, and merge it themselves.
 one trustworthy, observable, or adjustable. If only this story shipped, a team could already
 convert small, well-described tickets into reviewable code without writing it by hand.
 
-**Independent Test**: Connect a real repository containing a test suite, create a ticket for a
-small self-contained change with two acceptance criteria, start the pipeline, and verify that a
-merge request appears on the provider with a branch containing commits that satisfy the
-acceptance criteria and leave the test suite passing.
+**Independent Test**: Connect a real repository containing a test suite, add a shell step running
+that suite after the implementing step, create a ticket for a small self-contained change with two
+acceptance criteria, start the pipeline, and verify that a merge request appears on the provider
+with a branch whose commits satisfy the acceptance criteria and leave the suite passing.
 
 **Acceptance Scenarios**:
 
@@ -154,9 +154,9 @@ first attempt's record remains readable.
    uses the edited ticket text and the previous attempt's record remains intact.
 4. **Given** a run whose cost has reached its cap, **When** the cap is exceeded, **Then** the work
    stops, the run fails identifying the cap as the cause, and the cost consumed is shown.
-5. **Given** a run whose verification step finds the test suite failing, **When** the failure is
-   reported to the implementing agent, **Then** it is given a bounded number of attempts to fix it
-   before the run is failed.
+5. **Given** a pipeline with a shell step running the repository's tests, **When** that step reports
+   failure, **Then** the run fails at that step with the command's output retained, and no preceding
+   agent step is re-run automatically.
 6. **Given** a running ticket, **When** the user cancels it, **Then** the current step is allowed to
    conclude, no further steps begin, and the sandbox is released.
 
@@ -196,10 +196,11 @@ exactly that order — while a run started before the edit continues on the old 
 
 ### User Story 6 - Configuring the agents and their skills (Priority: P6)
 
-An engineer is unhappy with how the planning agent writes. They open it, rewrite its instructions,
-switch it to a stronger model, restrict which tools it may use, and attach a reusable
-house-style document so every agent that references it follows the same conventions. New runs use
-the new configuration; nothing in flight changes.
+An engineer is unhappy with how the planning agent writes. Without asking an administrator, they
+create their own planning agent, write its instructions, put it on a stronger model, restrict which
+tools it may use, and attach a reusable house-style document so every agent referencing it follows
+the same conventions. They swap it into their own pipeline. New runs use the new configuration;
+nothing in flight changes, and nobody else's agents are touched.
 
 **Why this priority**: This is the deepest layer of control and the one fewest users touch. Sensible
 defaults must exist and work first, which is why it sits below composing pipelines.
@@ -223,6 +224,8 @@ instructions and did not use a tool it was no longer permitted.
    is available to it, and editing the document changes what later runs receive.
 6. **Given** an agent or skill, **When** the user views it, **Then** how many pipelines and runs
    depend on it is visible before they change it.
+7. **Given** an agent another user owns, **When** a user opens it, **Then** its owner is identified,
+   they can read it and use it in their own pipeline, and they cannot change or delete it.
 
 ---
 
@@ -287,6 +290,14 @@ confirm a run stops at the ceiling and that a run beyond the cap waits and repor
   step begins.
 - An agent attempts to read a credential from its environment and write it into a document it
   produces: credentials must not survive into artifacts, logs, or the merge request description.
+- A pipeline contains no verification step: the run can reach an open merge request with nothing but
+  the implementing agent's own judgement behind it, and the author must be able to see that before
+  starting the ticket rather than discovering it in review.
+- A member sets their own agent's cost or time limit above the workspace ceiling: the workspace
+  ceiling prevails and the member is told which limit actually applies.
+- A user leaves the workspace while pipelines, agents or skills they own are still in use: those
+  configurations must keep working for the runs and repositories depending on them, and must remain
+  changeable by an administrator.
 
 ## Requirements *(mandatory)*
 
@@ -304,17 +315,23 @@ confirm a run stops at the ceiling and that a run beyond the cap waits and repor
   ceilings, and membership to administrators.
 - **FR-005**: System MUST allow administrators to invite users to the workspace and to change a
   user's role.
-- **FR-006**: System MUST determine who may create and edit pipelines, agents, and skills based on
-  role [NEEDS CLARIFICATION: may any member edit pipelines, agents and skills, or is that
-  administrator-only? These settings control which tools agents may run and what gets pushed to
-  repositories, so the answer is security-significant and the source specification does not state
-  it.]
+- **FR-006**: System MUST allow any member, without administrator involvement, to create, edit and
+  delete pipelines, agents and skills.
+- **FR-006a**: System MUST record an owner for every pipeline, agent and skill a user creates, and
+  MUST allow that owner to change or delete it at will.
+- **FR-006b**: System MUST make the shipped default agents and default pipelines available to every
+  user in the workspace.
+- **FR-006c**: System MUST allow any user to read a pipeline, agent or skill another user owns and
+  to use it in their own work, while restricting changing and deleting it to its owner and to
+  administrators.
+- **FR-006d**: System MUST show who owns a pipeline, agent or skill wherever it can be selected or
+  edited.
 
 #### Repositories
 
-- **FR-007**: Users MUST be able to connect a git repository by choosing its provider, giving its
-  address, supplying an access credential, and choosing which pipeline new tickets on it use by
-  default.
+- **FR-007**: Users MUST be able to connect a git repository by choosing whether it is hosted on
+  GitLab or GitHub, giving its address, supplying an access credential, and choosing which pipeline
+  new tickets on it use by default.
 - **FR-008**: System MUST verify, before saving a connection, that the supplied credential can read
   the repository, create branches on it, and open merge requests against it.
 - **FR-009**: System MUST name the specific missing permission when that verification fails, rather
@@ -329,12 +346,10 @@ confirm a run stops at the ceiling and that a run beyond the cap waits and repor
 - **FR-013**: System MUST prevent new runs from starting on a repository whose credential is no
   longer valid, and MUST show that state on the repository.
 - **FR-014**: Users MUST be able to replace a repository's credential and to disconnect a repository.
-- **FR-014a**: System MUST support GitLab-hosted and GitHub-hosted repositories, and MUST
-  [NEEDS CLARIFICATION: is a self-hosted git server in scope for this MVP? The design offers
-  "Self-hosted Git" as a first-class provider choice, but the end-to-end flow only describes
-  opening merge requests on GitLab and GitHub. Options range from self-hosted GitLab and GitHub
-  Enterprise at a custom address, to any git server with no merge-request step, to
-  GitLab-and-GitHub-hosted only.]
+- **FR-014a**: System MUST support repositories hosted on GitLab.com and on GitHub.com, and MUST
+  offer no other provider choice in this version.
+- **FR-014b**: System MUST refuse, with a stated reason, an attempt to connect a repository that is
+  not hosted on one of those two services.
 
 #### Tickets
 
@@ -369,7 +384,8 @@ confirm a run stops at the ceiling and that a run beyond the cap waits and repor
   and remove a step.
 - **FR-027**: System MUST advance a pipeline's version on every save, and MUST leave runs already
   in flight executing the version they started with.
-- **FR-028**: System MUST refuse to save a pipeline whose final step does not produce code.
+- **FR-028**: System MUST refuse to save a pipeline that contains no code-producing step, while
+  allowing verification, review gates and notifications to follow that step.
 - **FR-029**: System MUST treat opening the merge request as implicit and always last, not as a step
   a user can move or remove.
 - **FR-030**: System MUST show how many repositories use a pipeline.
@@ -385,6 +401,10 @@ confirm a run stops at the ceiling and that a run beyond the cap waits and repor
   agent being configured.
 - **FR-034**: System MUST ship at least three default pipelines offering different amounts of human
   oversight.
+- **FR-034a**: System MUST NOT put a verification command in any shipped default pipeline, because
+  that command is repository-specific, and MUST make plain — in the pipeline editor and before a
+  ticket is started — when a pipeline contains no verification step and therefore nothing beyond
+  the implementing agent's own work checks the result.
 - **FR-035**: Users MUST be able to create additional agents and edit existing ones.
 - **FR-036**: System MUST allow each agent's instructions, model, permitted tools, attached skills,
   and per-step cost, time and turn limits to be configured independently.
@@ -427,13 +447,16 @@ confirm a run stops at the ceiling and that a run beyond the cap waits and repor
   created by a human editing it at a review gate.
 - **FR-055**: System MUST stop the run at the first failed step and MUST NOT open a merge request
   for a failed run.
-- **FR-055a**: System MUST run the repository's test suite after the implementing step and before
-  opening the merge request, and MUST determine the command to run
-  [NEEDS CLARIFICATION: how is a repository's test command established? The source specification
-  refers to "the repo profile or the Implement agent's last command", but no repository profile is
-  defined. Options include a command configured per repository at connection time, a command
-  detected automatically from the repository's contents, or a shell step the pipeline author adds
-  explicitly.]
+- **FR-055a**: System MUST treat verification as an explicit pipeline step rather than a stage of
+  its own: a pipeline author who wants the repository's tests, linters or build run adds a shell
+  step carrying that command.
+- **FR-055b**: System MUST NOT infer, detect or run any verification command a pipeline does not
+  specify, and MUST NOT hold a repository-level test command of its own.
+- **FR-055c**: System MUST fail the step, and with it the run, when a shell step's command reports
+  failure, and MUST retain that command's full output.
+- **FR-055d**: System MUST NOT re-run a preceding agent step automatically because a shell step
+  failed; recovery from a failed verification is a retry (FR-088) or a human decision at a review
+  gate the author placed after it (FR-060).
 
 #### Human review gates
 
@@ -502,6 +525,9 @@ confirm a run stops at the ceiling and that a run beyond the cap waits and repor
 
 - **FR-079**: System MUST enforce a ceiling on what a single run may cost and how long it may take,
   taken from the pipeline or, failing that, the workspace.
+- **FR-079a**: System MUST cap any pipeline-level or agent-level cost or time limit at the
+  workspace ceiling, so that a limit a member sets cannot raise what a run may consume beyond what
+  an administrator allowed.
 - **FR-080**: System MUST enforce each agent's own cost, time and turn limits within a step.
 - **FR-081**: System MUST stop the work and fail the run when a ceiling is reached, and MUST state
   the ceiling as the reason.
@@ -527,8 +553,9 @@ confirm a run stops at the ceiling and that a run beyond the cap waits and repor
   attempt is created.
 - **FR-091**: System MUST bring the run's branch back to a known state when an attempt begins on a
   branch a previous attempt already wrote to.
-- **FR-092**: System MUST return the failing tests to the implementing agent and allow it a bounded
-  number of further attempts before failing the run.
+- **FR-092**: System MUST hold the implementing agent responsible for leaving the repository's
+  tests passing within its own step, using the tools it has been permitted, rather than relying on
+  any verification stage of the system's own.
 - **FR-093**: System MUST attempt a step once more in a new sandbox, resuming from the last commit
   on the branch, when the sandbox or its host becomes unavailable mid-step.
 - **FR-094**: System MUST keep a ticket queued and retry delivery with increasing delays when the
@@ -557,15 +584,15 @@ confirm a run stops at the ceiling and that a run beyond the cap waits and repor
   acceptance criteria, the pipeline and pipeline version pinned when it started, its state, its
   branch name, its current run, and the merge request it produced.
 - **Pipeline**: A named, versioned, ordered list of steps that turns a ticket into a merge request.
-  Belongs to the workspace and may be used by many repositories.
+  Belongs to the workspace, records the user who owns it, and may be used by many repositories.
 - **Step**: One item in a pipeline. Is an agent step, a human review gate, a shell command, or a
   notification, and carries the settings that kind of step needs — which agent, which documents it
   must produce, who may approve, how long to wait, which command to run, or where to notify.
 - **Agent**: A configured persona that does one kind of work. Carries instructions, a model, the
   tools it is permitted, the skills attached to it, and its own cost, time and turn limits. Either
-  one of the shipped defaults or one the workspace created.
+  one of the shipped defaults, available to everyone, or one a user created and owns.
 - **Skill**: A named, reusable instruction document with a description saying when to apply it.
-  Attached to any number of agents.
+  Records the user who owns it, and may be attached to any number of agents.
 - **Run**: One attempt at executing a pipeline for a ticket. Carries its attempt number, the fixed
   description of the work resolved at the start, its state, which step it is on, references to the
   execution and sandbox behind it, its cost, and when it started and finished.
@@ -609,6 +636,10 @@ confirm a run stops at the ceiling and that a run beyond the cap waits and repor
   between every step — without anyone changing the system's own configuration or code.
 - **SC-014**: Every completed run's merge request contains enough context that a reviewer who never
   saw the ticket can judge the change from the merge request alone.
+- **SC-015**: A member can change how an agent behaves and have that change take effect on their
+  next run without any administrator action.
+- **SC-016**: Before starting a ticket, a user can tell whether the pipeline they chose verifies the
+  result, without inspecting the pipeline's individual steps.
 
 ## Assumptions
 
@@ -638,9 +669,33 @@ recorded here so they can be challenged rather than discovered later.
 - **The interface targets a desktop browser.** Layouts optimised for small screens are out of scope
   for this version, though the approval decision is expected to be usable on a phone.
 - **The interface is English-only** for this version.
-- **The repository's test suite is the definition of "working."** The system does not attempt to
-  judge correctness beyond the tests the repository already has plus the ticket's acceptance
-  criteria.
+- **Verification is opt-in and the pipeline author owns it.** The system runs no checks of its own
+  and never infers a repository's test command. Where a pipeline includes a shell step running the
+  repository's tests, that suite is the definition of "working"; where it does not, the only
+  assurance is what the implementing agent did within its own step. A consequence worth naming: a
+  shipped default pipeline cannot verify anything until an author adds a command to it.
+- **Any member may grant their own agents broad tool access.** This follows from the chosen
+  permission model rather than being an oversight. Three things bound it: ownership confines a
+  change to that member's own agents, workspace cost and time ceilings cannot be raised from below
+  (FR-079a), and administrators keep sole control of credentials, dependency connections and
+  sandbox constraints (FR-004, FR-085).
+
+### Divergences from the source product specification
+
+Resolving the three open questions moved this feature away from `spec.md` (v0.1) and `design.pen`
+in three places. Those documents should be updated to match, or this specification revisited.
+
+- **No verification stage of the system's own.** Source §5.2 step 4 has the system running the
+  repository's test command before opening the merge request, and §10 lists "Tests fail at Verify"
+  as a failure mode. Verification is now a shell step a pipeline author adds (FR-055a–FR-055d), so
+  neither that stage nor that failure mode exists any more, and the implementing agent carries the
+  responsibility instead (FR-092).
+- **No self-hosted provider.** Design artboard 03 offers "Self-hosted Git" as one of three provider
+  choices. Only GitLab.com and GitHub.com are in scope (FR-014a–FR-014b), so that choice comes off
+  the artboard.
+- **Pipelines, agents and skills have owners.** The source data model scopes them to the workspace
+  with no owner. They now record one (FR-006a): any member may create and change their own without
+  an administrator, and only the owner or an administrator may change a given one (FR-006c).
 
 ### Dependencies
 
@@ -664,3 +719,7 @@ recorded here so they can be challenged rather than discovered later.
 - Importing tickets from an existing issue tracker.
 - Editing the orchestration workflow itself from within the application.
 - Layouts optimised for small screens, and languages other than English.
+- Self-hosted and enterprise-hosted git servers — including GitLab Self-Managed and GitHub
+  Enterprise Server — and any provider other than GitLab.com and GitHub.com.
+- Inferring, detecting or storing a repository's build, test or lint commands.
+- A verification stage belonging to the system; verification exists only as a step an author adds.

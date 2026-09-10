@@ -16,8 +16,8 @@
 
 ## Requirement Completeness
 
-- [ ] No [NEEDS CLARIFICATION] markers remain
-- [ ] Requirements are testable and unambiguous
+- [x] No [NEEDS CLARIFICATION] markers remain
+- [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (no implementation details)
 - [x] All acceptance scenarios are defined
@@ -34,54 +34,75 @@
 
 ## Validation Findings
 
-**Iteration 1 — 2026-09-10**
+### Iteration 2 — 2026-09-10 · all items pass
 
-Passing, with evidence:
+The two items that failed in iteration 1 are now satisfied. The user resolved all three open
+questions, and the answers were written into the spec together with their knock-on effects.
 
-- *No implementation details*: a scan for technology names (n8n, Docker, Kubernetes, Postgres,
-  Redis, React, Vue, TypeScript, GraphQL, SQL, webhooks, REST/API endpoints) returns nothing in
-  the requirements. The architectural choices the source product specification had already made —
-  an external workflow orchestrator, a container-based sandbox per run, the Claude command-line
-  tool as the agent engine — are named only under **Assumptions**, **Dependencies** and
-  **Out of Scope**, and are labelled there as given constraints rather than decisions this
-  specification makes. Requirements describe the observable behaviour instead: FR-046/047 require
-  isolation and non-reuse, not a container runtime; FR-085 constrains a sandbox's processing power,
-  memory, lifetime and network reach in plain terms.
-- *Success criteria measurable and technology-agnostic*: all 14 carry a number or an observable
-  condition (SC-004 "never more than 5 seconds behind", SC-006 "within 5% of ceiling", SC-007
-  "no more than 20% longer"), and none names a technology.
-- *Scope bounded*: an explicit **Out of Scope** list closes off hosting, billing, multi-tenancy,
-  merging, cross-repository tickets, concurrent runs of one ticket, issue-tracker import, editing
-  the orchestration workflow, small-screen layouts, and non-English interfaces.
-- *Coverage*: 7 prioritised, independently testable user stories with 36 acceptance scenarios,
-  15 edge cases, 106 functional requirements, 12 key entities.
+**Answers applied**
 
-Failing, with the specific issues:
+| # | Question | Answer | Requirements |
+| --- | --- | --- | --- |
+| 1 | Who may configure pipelines, agents and skills | Any member, each owning their own | FR-006, FR-006a–FR-006d |
+| 2 | Is a self-hosted git server in scope | No — GitLab.com and GitHub.com only | FR-007, FR-014a, FR-014b |
+| 3 | How a repository's test command is established | It is not; verification is a shell step an author adds | FR-055a–FR-055d |
 
-1. **Three [NEEDS CLARIFICATION] markers remain.** They were kept rather than guessed because each
-   changes scope or carries a security consequence, and the source material genuinely does not
-   settle them:
-   - **FR-006** — whether editing pipelines, agents and skills is administrator-only or open to any
-     member. These settings decide which tools an agent may run and what reaches a repository, so
-     the choice is security-significant. The source specification defines the two roles but never
-     says what a member may configure.
-   - **FR-014a** — whether a self-hosted git server is in scope. Design artboard 03 offers
-     "Self-hosted Git" as a first-class provider, while the end-to-end flow describes opening merge
-     requests on GitLab and GitHub only. The readings differ materially in scope.
-   - **FR-055a** — how a repository's test command is established. The source specification refers
-     to "the repo profile or the Implement agent's last command", but defines no repository
-     profile and gives the Repository entity no such field. Verification (FR-055a) and the
-     failing-test retry loop (FR-092) both depend on the answer.
-2. **Requirements are testable and unambiguous** is consequently unchecked: FR-006, FR-014a and
-   FR-055a are not yet unambiguous. The remaining 103 functional requirements are each stated as a
-   single observable behaviour and are testable as written.
+**Knock-on effects traced and resolved**
 
-**Resolution path**: the three questions were put to the user at the end of `/speckit-specify`.
-Answering them here, or running `/speckit-clarify`, replaces the markers and clears both failing
-items. No other spec changes are required.
+Answer 3 removed a stage the spec had been built around, so four dependent places were corrected
+rather than left inconsistent:
+
+- **FR-092** was "return the failing tests to the implementing agent and allow it a bounded number
+  of further attempts". With no system-run verification there is nothing to feed that loop, so the
+  implementing agent now carries responsibility for leaving the tests passing inside its own step,
+  where it already holds the tools to run them.
+- **FR-028** required a pipeline's *final* step to produce code. That contradicted User Story 5,
+  which adds a linter step after implementation, and would have forbidden the very verification
+  step answer 3 depends on. It now requires that a pipeline *contain* a code-producing step.
+- **User Story 1's independent test** and **User Story 4, scenario 5** both asserted a system
+  verification stage. Both were rewritten around an author-added shell step.
+- **FR-034a** was added: shipped default pipelines cannot carry a repository-specific command, so
+  the system must make plain when a chosen pipeline verifies nothing. **SC-016** makes that
+  visible-before-starting property measurable.
+
+Answer 1 carried one security consequence, which is recorded rather than quietly absorbed: a member
+may grant their own agents broad tool access. Three bounds are stated in **Assumptions** — ownership
+confines a change to that member's own agents (FR-006c), a member-set cost or time limit cannot
+exceed the workspace ceiling (**FR-079a**, added for this), and administrators keep sole control of
+credentials, dependency connections and sandbox constraints (FR-004, FR-085).
+
+**Verification performed**
+
+- No `[NEEDS CLARIFICATION]` markers remain.
+- 116 functional requirements, all uniquely identified; every FR referenced from another
+  requirement resolves to a requirement that exists (no dangling cross-references).
+- A scan for technology names (n8n, Docker, Kubernetes, Postgres, Redis, React, Vue, TypeScript,
+  GraphQL, SQL, webhooks, REST APIs) returns nothing anywhere in the spec.
+- No residual reference to the removed verification stage survives.
+- Coverage: 7 prioritised, independently testable user stories · 42 acceptance scenarios ·
+  18 edge cases · 12 key entities · 16 measurable success criteria.
+
+**Recorded divergences from the source material**
+
+All three answers move this feature away from the root `spec.md` (v0.1) and `design.pen`. The spec
+carries a *Divergences from the source product specification* section naming each, so the source
+documents can be reconciled deliberately:
+
+1. Source §5.2 step 4 and §10 describe a Verify stage and a "Tests fail at Verify" failure mode.
+   Neither exists now.
+2. Design artboard 03 offers "Self-hosted Git" as one of three providers. That choice comes off.
+3. The source data model gives pipelines, agents and skills no owner. They now have one.
+
+### Iteration 1 — 2026-09-10 · 14 of 16 passed
+
+Failed on *No [NEEDS CLARIFICATION] markers remain* (three remained) and, consequently, on
+*Requirements are testable and unambiguous* (FR-006, FR-014a and FR-055a were not yet unambiguous;
+the other 103 were). The three were left marked rather than guessed because each changed scope or
+carried a security consequence and the source material did not settle it. Resolved in iteration 2.
 
 ## Notes
 
 - Items marked incomplete require spec updates before `/speckit-clarify` or `/speckit-plan`
 - `/speckit-implement` reads checklist checkbox state as a gate and must not modify markers
 - This file has a built-in lifecycle maintained by `/speckit-specify` and `/speckit-clarify`
+- The spec's *Divergences* section is a live to-do against the root `spec.md` and `design.pen`
