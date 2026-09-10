@@ -1,4 +1,5 @@
 <script lang="ts">
+  import ScreenGallery from '$components/ScreenGallery.svelte';
   import { artifact } from '$lib/remote/runs.remote';
   import type { RunView } from '$lib/services/run-view';
 
@@ -11,7 +12,7 @@
   const opened = $derived(openId ? artifact(openId) : null);
 
   // Screens are the only kind shown as pictures; the rest are text or links
-  // (FR-077). The gallery itself arrives with user story 5 (T160).
+  // (FR-077).
   const documents = $derived(artifacts.filter((a) => a.kind === 'document'));
   const screens = $derived(artifacts.filter((a) => a.kind === 'screen'));
   const commits = $derived(artifacts.filter((a) => a.kind === 'commits'));
@@ -53,8 +54,9 @@
   {/if}
 
   {#if screens.length > 0}
-    <h3 class="section">Screens</h3>
-    <p class="muted small">{screens.length} exported. The gallery arrives with the design stage.</p>
+    <div class="gallery">
+      <ScreenGallery {screens} heading="Screens" />
+    </div>
   {/if}
 
   {#if commits.length > 0}
@@ -75,6 +77,10 @@
 </section>
 
 <style>
+  /* The gallery brings its own card, so this one steps out of the way. */
+  .gallery {
+    margin: 12px -16px -16px;
+  }
   ul {
     list-style: none;
     margin: 0 0 12px;

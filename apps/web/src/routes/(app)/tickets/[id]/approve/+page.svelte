@@ -9,6 +9,7 @@
     gate,
     requestChanges
   } from '$lib/remote/approvals.remote';
+  import ScreenGallery from '$components/ScreenGallery.svelte';
   import { subscribeToRun } from '$lib/events/subscribe';
   import { runForTicket } from '$lib/remote/runs.remote';
 
@@ -56,6 +57,8 @@
 {:else}
   {@const d = detail.current}
   {@const paused = view.current.run.status === 'waiting_approval'}
+  {@const screens = d.artifacts.filter((a) => a.kind === 'screen')}
+  {@const readable = d.artifacts.filter((a) => a.kind !== 'screen')}
 
   <!-- The banner names the checkpoint and says the pipeline is paused -->
   <header class="card banner" class:decided={!paused}>
@@ -97,14 +100,31 @@
     <p class="card refused" role="alert">{refusal}</p>
   {/if}
 
+  <!--
+    A gate after a design step is a design review, and has a screen of its
+    own that shows the screens properly (FR-064d).
+  -->
+  {#if d.gate.precedingIsDesign}
+    <p class="card notice">
+      This checkpoint follows a design step.
+      <a href="/tickets/{ticketId}/design">Review the screens</a> to see them at full size.
+    </p>
+  {/if}
+
   <div class="layout">
     <section class="card">
       <h2 class="section">Produced so far</h2>
       {#if d.artifacts.length === 0}
         <p class="muted small">Nothing produced yet.</p>
       {:else}
+        {#if screens.length > 0}
+          <div class="screens">
+            <ScreenGallery {screens} heading="Screens" />
+          </div>
+        {/if}
+
         <div class="tabs">
-          {#each d.artifacts as item (item.id)}
+          {#each readable as item (item.id)}
             <button
               class:on={openPath === item.path}
               onclick={() => {
@@ -118,7 +138,9 @@
           {/each}
         </div>
 
-        {#if openPath && openDoc?.ready}
+        {#if readable.length === 0}
+          <p class="muted small">No documents yet — the screens above are what exists so far.</p>
+        {:else if openPath && openDoc?.ready}
           {#if editing}
             <form {...editAndApprove}>
               <input type="hidden" name="runId" value={d.gate.runId} />
@@ -304,6 +326,14 @@
     display: flex;
     flex-direction: column;
     gap: 16px;
+  }
+  .screens {
+    margin: 0 -16px 12px;
+  }
+  .notice {
+    border-left: 3px solid var(--accent);
+    margin: 0 0 16px;
+    padding: 12px 16px;
   }
   .tabs {
     display: flex;

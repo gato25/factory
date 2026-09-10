@@ -71,6 +71,20 @@ export async function writeAgentConfig(
     `${workdir}/.factory`,
   ]);
 
+  // Screens a design step produced are named where a following step will
+  // look for them, not only interpolated into a prompt that may not mention
+  // {{design.screens}} (FR-109).
+  if (context.designScreens?.length) {
+    await host.writeFile(
+      containerId,
+      `${workdir}/.factory/screens.md`,
+      `# Designed screens\n\nThese were designed and reviewed before any code was planned. ` +
+        `Build the interface to match them.\n\n${context.designScreens
+          .map((path) => `- ${path}`)
+          .join('\n')}\n`,
+    );
+  }
+
   // A change request re-runs the preceding step; the reviewer's words are put
   // where the agent can read them, not only interpolated into a prompt that
   // may not mention {{feedback}} at all (FR-038).
@@ -96,6 +110,10 @@ export async function writeAgentConfig(
         attempt: snapshot.attempt,
         has_ui: context.hasUi ?? null,
         feedback: context.feedback?.trim() || null,
+        // The screens a design step produced, so the planning and
+        // implementing steps can read them (FR-109). Paths, not images: they
+        // are on the branch, in the workspace these steps are working in.
+        design_screens: context.designScreens ?? [],
       },
       null,
       2,

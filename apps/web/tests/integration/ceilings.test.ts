@@ -1,5 +1,5 @@
 import { afterAll, beforeEach, expect, test } from 'bun:test';
-import { runs, tickets } from '@factory/db/schema';
+import { runs } from '@factory/db/schema';
 import type { Callback } from '@factory/shared';
 import { eq, sql } from 'drizzle-orm';
 import {

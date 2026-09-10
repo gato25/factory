@@ -456,3 +456,35 @@ export async function queuePosition(database: Database, runId: string): Promise<
   if (index < 0 || index < cap) return null;
   return index - cap + 1;
 }
+
+/**
+ * A screen's image bytes, for the route that serves them (FR-077). Only a
+ * screen: a document is text and goes through a query like everything else.
+ */
+export async function screenBytes(
+  database: Database,
+  artifactId: string,
+): Promise<{ bytes: Uint8Array; contentType: string; filename: string } | null> {
+  const [row] = await database
+    .select({ path: artifacts.path, kind: artifacts.kind, bytes: artifacts.bytes })
+    .from(artifacts)
+    .where(eq(artifacts.id, artifactId))
+    .limit(1);
+  if (row?.kind !== 'screen' || !row.bytes) return null;
+
+  const filename = row.path.split('/').pop() ?? 'screen.png';
+  return { bytes: row.bytes, contentType: contentTypeFor(filename), filename };
+}
+
+function contentTypeFor(filename: string): string {
+  const extension = filename.toLowerCase().split('.').pop();
+  switch (extension) {
+    case 'jpg':
+    case 'jpeg':
+      return 'image/jpeg';
+    case 'webp':
+      return 'image/webp';
+    default:
+      return 'image/png';
+  }
+}

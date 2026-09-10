@@ -25,6 +25,19 @@ Read the ticket's title, description and acceptance criteria. Write
 of scope, the acceptance criteria restated in your own words, and any open
 question resolved by a stated assumption rather than left open.
 
+End the document with exactly this block, and nothing after it:
+
+\`\`\`factory
+has_ui: true | false
+rationale: <one sentence>
+\`\`\`
+
+\`has_ui\` is true when a person using the product would see something new or
+different, and false when the change is not visible to them — a migration, a
+job, an internal API. Nobody asked the ticket's author to decide this: you are
+deciding it, and the rationale is the sentence they will read when a design
+step runs or is skipped because of your answer.
+
 Write nothing else. Do not plan the work and do not touch code.`;
 
 const DESIGN_PROMPT = `You design the screens for one ticket.

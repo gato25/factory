@@ -11,7 +11,7 @@ import {
   type ResumeRequest,
   type Step,
 } from '@factory/shared';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import type { SessionUser } from './auth';
 import { requireApprover } from './authz';
 import { notifyRun } from './notify';
@@ -151,6 +151,21 @@ export async function decide(
     throw error;
   }
 
+  // A change request sends the run BACK: the preceding step will run again
+  // and report again. Its existing outcome is what `(run_id, step_index)`
+  // idempotency would reject that report as a duplicate of, so the rows from
+  // that step onward are cleared first (FR-061, FR-095).
+  //
+  // Nothing is lost that the run needs: the money already spent stays on the
+  // run's total, every document and screen keeps both versions (FR-054), and
+  // the change request itself is on the record with its feedback (FR-063).
+  if (input.decision === 'changes_requested' && gate.precedingStepIndex !== null) {
+    await database.delete(stepResults).where(
+      sql`${stepResults.runId} = ${input.runId}::uuid
+          and ${stepResults.stepIndex} >= ${gate.precedingStepIndex}`,
+    );
+  }
+
   const [run] = await database.select().from(runs).where(eq(runs.id, input.runId)).limit(1);
   const resumeUrl = run?.resumeUrl ?? null;
 
@@ -254,6 +269,8 @@ export interface GateDetail {
     acceptanceCriteria: string[];
     hasUi: boolean | null;
     uiRationale: string | null;
+    /** FR-102's warning: no usable decision ever arrived. */
+    classificationMissing: boolean;
   };
   artifacts: {
     id: string;
@@ -343,6 +360,7 @@ export async function gateDetail(
       acceptanceCriteria: ticket.acceptanceCriteria,
       hasUi: ticket.hasUi,
       uiRationale: ticket.uiRationale,
+      classificationMissing: ticket.classificationMissing,
     },
     artifacts: [...latest.values()].map((row) => ({
       id: row.id,
@@ -383,4 +401,77 @@ function flatten(error: unknown): string {
     current = current.cause;
   }
   return parts.join(' | ');
+}
+
+/**
+ * A gate that follows a design step is a design review (FR-064d). It shows
+ * the screens, the acceptance criteria beside them, why the ticket was
+ * classified as interface work, and that no code has been written yet — and
+ * it offers a link that opens the committed design source in the design
+ * service (FR-064e).
+ */
+export interface DesignReview extends GateDetail {
+  screens: {
+    id: string;
+    path: string;
+    screenName: string | null;
+    version: number;
+  }[];
+  designSource: { path: string; url: string | null } | null;
+  /** True while no step after the design step has run. */
+  noCodeYet: boolean;
+}
+
+export async function designReview(
+  database: Database,
+  runId: string,
+  stepIndex: number,
+): Promise<DesignReview> {
+  const detail = await gateDetail(database, runId, stepIndex);
+  const [run] = await database.select().from(runs).where(eq(runs.id, runId)).limit(1);
+  if (!run) throw notFound('no such run');
+  const snapshot = run.snapshot as PipelineSnapshot;
+
+  const screens = detail.artifacts
+    .filter((artifact) => artifact.kind === 'screen')
+    .map(({ id, path, screenName, version }) => ({ id, path, screenName, version }));
+  const source = detail.artifacts.find((artifact) => artifact.kind === 'design_file') ?? null;
+
+  // Nothing after the design step has run yet, so no code exists. This is
+  // the statement FR-064d requires, and it is a fact about the run rather
+  // than a reassuring sentence: a gate reached after an implementing step
+  // must not claim it.
+  const wroteCode = await database
+    .select({ stepIndex: stepResults.stepIndex })
+    .from(stepResults)
+    .where(
+      sql`${stepResults.runId} = ${runId}::uuid
+        and ${stepResults.stepIndex} > ${detail.gate.precedingStepIndex ?? -1}
+        and ${stepResults.status} in ('done', 'failed')`,
+    )
+    .limit(1);
+
+  return {
+    ...detail,
+    screens,
+    designSource: source
+      ? { path: source.path, url: designSourceUrl(snapshot, source.path) }
+      : null,
+    noCodeYet: wroteCode.length === 0,
+  };
+}
+
+/**
+ * Where the committed design source can be opened (FR-064e). The source is
+ * on the branch, so the address is the provider's own view of that file —
+ * which is also the only address that is right for a self-hosted design
+ * service we know nothing about.
+ */
+export function designSourceUrl(snapshot: PipelineSnapshot, path: string): string | null {
+  const base = snapshot.repo.clone_url.replace(/\.git$/, '');
+  if (!/^https:\/\//.test(base)) return null;
+  const branch = encodeURIComponent(snapshot.repo.branch);
+  return snapshot.repo.provider === 'gitlab'
+    ? `${base}/-/blob/${branch}/${path}`
+    : `${base}/blob/${branch}/${path}`;
 }

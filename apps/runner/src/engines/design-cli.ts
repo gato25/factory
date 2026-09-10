@@ -1,0 +1,244 @@
+import type {
+  DesignStepConfig,
+  PipelineSnapshot,
+  SnapshotAgent,
+  Step,
+  StepOutcome,
+} from '@factory/shared';
+import { commitDesign } from '../container/commit';
+import type { ContainerHost } from '../container/host';
+import { WORKDIR } from '../container/start';
+import { checkDesignOutputs, collectDesignOutputs } from '../outputs/design';
+import type { LogSink } from '../stream/logs';
+import { applyLimits, effectiveLimits, timeoutMsFor } from './limits';
+import { usageFromDesignJson } from './usage';
+
+/**
+ * A design step invokes the design CLI in the workspace. It writes an editable
+ * design source at the step's configured path and exports one image per
+ * screen into the export directory (FR-103).
+ *
+ * Two things make it a step like any other rather than a special case: its
+ * output streams as log chunks naming the command (FR-107), and its cost
+ * comes from the tool's own reported usage and counts against the same
+ * ceilings as everything else (FR-108). Tool permissions do not apply to
+ * this engine (FR-036a).
+ */
+
+export const DEFAULT_DESIGN: DesignStepConfig = {
+  source_path: 'docs/design/ui.pen',
+  export_dir: 'docs/design/screens',
+  export_scale: 2,
+};
+
+export interface DesignStepInput {
+  step: Step;
+  snapshot: PipelineSnapshot;
+  agent: SnapshotAgent;
+  containerId: string;
+  logs: LogSink;
+  /** What the run has already spent, so this step's limit is what is left. */
+  spentSoFarUsd?: string;
+  /** Present after a change request at a design gate (FR-061a, FR-038). */
+  feedback?: string;
+}
+
+export function designConfig(step: Step): DesignStepConfig {
+  return { ...DEFAULT_DESIGN, ...(step.design ?? {}) };
+}
+
+/** Where the tool writes what it spent, so we never estimate it (FR-108). */
+const USAGE_PATH = '.factory/design-usage.json';
+
+export function buildDesignArgv(input: DesignStepInput, revising: boolean): string[] {
+  const config = designConfig(input.step);
+  const argv = [
+    'pen',
+    revising ? 'revise' : 'create',
+    '--source',
+    config.source_path,
+    '--export-dir',
+    config.export_dir,
+    '--export-scale',
+    String(config.export_scale),
+    '--brief',
+    '.factory/design-brief.md',
+    '--usage',
+    USAGE_PATH,
+  ];
+  if (config.screens?.length) argv.push('--screens', config.screens.join(','));
+  return argv;
+}
+
+/**
+ * What the tool is asked to draw. Written as a file rather than passed as an
+ * argument so it can be as long as the ticket needs, and so the reviewer at
+ * the design gate can see what the tool was actually told.
+ */
+export function buildBrief(input: DesignStepInput): string {
+  const { ticket } = input.snapshot;
+  const parts = [
+    `# ${ticket.reference} ${ticket.title}`,
+    ticket.description ?? '',
+    ticket.acceptance_criteria.length > 0
+      ? `## Acceptance criteria\n\n${ticket.acceptance_criteria.map((c) => `- ${c}`).join('\n')}`
+      : '',
+    // A revision must address the reviewer, not redraw from the ticket.
+    input.feedback
+      ? `## Requested changes\n\nA reviewer looked at the previous screens and asked for:\n\n${input.feedback}`
+      : '',
+    'Design only what the ticket asks for. A screen the acceptance criteria do not mention does not belong.',
+  ];
+  return `${parts.filter(Boolean).join('\n\n')}\n`;
+}
+
+export async function runDesignStep(
+  host: ContainerHost,
+  input: DesignStepInput,
+): Promise<StepOutcome> {
+  const started = Date.now();
+  const config = designConfig(input.step);
+
+  /**
+   * FR-106 — whenever a design step runs again, whether from a change
+   * request or a retry, the existing source is revised rather than replaced.
+   * The source is on the branch (FR-105), so a retry that re-cloned it finds
+   * it there; this is what keeps a reviewer's accepted work from being
+   * silently redrawn.
+   */
+  const existing = await host.stat(input.containerId, `${WORKDIR}/${config.source_path}`);
+  const revising = Boolean(existing && existing.size > 0);
+
+  await host.exec(input.containerId, [
+    'mkdir',
+    '-p',
+    `${WORKDIR}/${config.export_dir}`,
+    `${WORKDIR}/.factory`,
+  ]);
+  await host.writeFile(input.containerId, `${WORKDIR}/.factory/design-brief.md`, buildBrief(input));
+
+  const argv = buildDesignArgv(input, revising);
+  // The command is named in the log, on the same terms as an agent step
+  // (FR-107). It carries no credential: those are environment only (FR-083).
+  input.logs.write('stdout', `$ ${argv.join(' ')}\n`);
+
+  const limits = effectiveLimits(input.agent, input.snapshot.limits, input.spentSoFarUsd);
+  const result = await host.exec(input.containerId, argv, {
+    cwd: WORKDIR,
+    timeoutMs: timeoutMsFor(limits),
+    onOutput: (stream, text) => input.logs.write(stream, text),
+  });
+  input.logs.end();
+
+  const usage = usageFromDesignJson(
+    (await host.readFile(input.containerId, `${WORKDIR}/${USAGE_PATH}`)) ?? '',
+  );
+  const durationS = Math.max(1, Math.round((usage.durationMs ?? Date.now() - started) / 1000));
+
+  if (result.exitCode !== 0) {
+    // Whatever it drew before failing is retained (FR-104).
+    const partial = await collectDesignOutputs(
+      host,
+      input.containerId,
+      WORKDIR,
+      config.source_path,
+      config.export_dir,
+    );
+    return applyLimits(
+      {
+        status: 'failed',
+        costUsd: usage.costUsd,
+        durationS,
+        outputs: outputsFor(partial.sourceExists ? config.source_path : null, partial.screens),
+        error: {
+          reason: rejectedCredential(result.stderr) ? 'credential_invalid' : 'command_failed',
+          detail: rejectedCredential(result.stderr)
+            ? 'The design service rejected its credential. An administrator can replace it ' +
+              'under Settings → Design.'
+            : input.logs.clean(result.stderr.trim()).slice(0, 4000) ||
+              `the design tool exited ${result.exitCode}`,
+        },
+      },
+      limits,
+      { agentName: input.agent.name, exitCode: result.exitCode },
+    );
+  }
+
+  let produced: { source: string; screens: string[] };
+  try {
+    produced = await checkDesignOutputs(
+      host,
+      input.containerId,
+      WORKDIR,
+      config.source_path,
+      config.export_dir,
+    );
+  } catch (error) {
+    // Retained, not discarded: a partial design is still worth looking at.
+    const partial = await collectDesignOutputs(
+      host,
+      input.containerId,
+      WORKDIR,
+      config.source_path,
+      config.export_dir,
+    );
+    return {
+      status: 'failed',
+      costUsd: usage.costUsd,
+      durationS,
+      outputs: outputsFor(partial.sourceExists ? config.source_path : null, partial.screens),
+      error: {
+        reason: 'missing_output',
+        detail: error instanceof Error ? error.message : String(error),
+      },
+    };
+  }
+
+  // The source and the screens go onto the branch, so the design travels
+  // with the code it describes (FR-105).
+  await commitDesign(host, input.containerId, {
+    reference: input.snapshot.ticket.reference,
+    paths: [produced.source, ...produced.screens],
+    revising,
+  });
+
+  return applyLimits(
+    {
+      status: 'done',
+      costUsd: usage.costUsd,
+      durationS,
+      summary: `${revising ? 'Revised' : 'Designed'} ${produced.screens.length} screen${
+        produced.screens.length === 1 ? '' : 's'
+      }`,
+      outputs: outputsFor(produced.source, produced.screens),
+    },
+    limits,
+    { agentName: input.agent.name, exitCode: 0 },
+  );
+}
+
+/** The design source and each screen, as the app stores artifacts. */
+function outputsFor(source: string | null, screens: string[]) {
+  return [
+    ...(source ? [{ kind: 'design_file' as const, path: source, version: 1 }] : []),
+    ...screens.map((path) => ({
+      kind: 'screen' as const,
+      path,
+      version: 1,
+      screen_name: screenName(path),
+    })),
+  ];
+}
+
+/** `docs/design/screens/01-sign-in.png` → `sign in`. */
+export function screenName(path: string): string {
+  return (path.split('/').pop() ?? path)
+    .replace(/\.(png|jpe?g|webp)$/i, '')
+    .replace(/^\d+[-_]/, '')
+    .replace(/[-_]+/g, ' ')
+    .trim();
+}
+
+function rejectedCredential(stderr: string): boolean {
+  return /401|403|unauthori[sz]ed|invalid api key|rejected/i.test(stderr);
+}

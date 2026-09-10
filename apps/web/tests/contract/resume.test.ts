@@ -179,3 +179,71 @@ test('a decision still records when no resume address is stored', async () => {
   const [record] = await db.select().from(approvals).where(eq(approvals.runId, runId)).limit(1);
   expect(record?.decision).toBe('approved');
 });
+
+/**
+ * FR-061 — a change request sends the run back, and the step that runs again
+ * must be able to report again. `(run_id, step_index)` idempotency exists to
+ * drop a repeated report of the SAME pass (FR-095); it must not silently
+ * drop a genuine second pass.
+ */
+test('a re-run step after a change request can record its new outcome', async () => {
+  await decide(
+    db,
+    { runId, stepIndex: 1, decision: 'changes_requested', feedback: 'The plan is thin.' },
+    approver,
+    { resume },
+  );
+
+  // The preceding step runs again and reports again.
+  const started = await applyCallback(db, {
+    run_id: runId,
+    attempt: 1,
+    step_index: 0,
+    event: 'step_started',
+  } as Callback);
+  expect(started.applied).toBe(true);
+
+  const finished = await applyCallback(db, {
+    run_id: runId,
+    attempt: 1,
+    step_index: 0,
+    event: 'step_finished',
+    status: 'done',
+    duration_s: 11,
+    cost_usd: '0.3000',
+    artifacts: [{ kind: 'document', path: 'docs/spec.md', version: 2 }],
+  } as Callback);
+  expect(finished.applied).toBe(true);
+
+  // The document has both versions: the agent's first pass and its revision
+  // (FR-054). Nothing a reviewer read has been destroyed.
+  const versions = await db
+    .select({ version: artifacts.version })
+    .from(artifacts)
+    .where(eq(artifacts.runId, runId))
+    .orderBy(artifacts.version);
+  expect(versions.map((v) => v.version)).toEqual([1, 2]);
+
+  // And the money from both passes is on the run: it was really spent.
+  const [run] = await db.select().from(runs).where(eq(runs.id, runId)).limit(1);
+  expect(run?.costUsd).toBe('0.5000');
+});
+
+test('a duplicate report of the SAME pass is still dropped', async () => {
+  // No change request: the ordinary duplicate case must not have regressed.
+  const again = await applyCallback(db, {
+    run_id: runId,
+    attempt: 1,
+    step_index: 0,
+    event: 'step_finished',
+    status: 'done',
+    duration_s: 5,
+    cost_usd: '0.2000',
+    artifacts: [],
+  } as Callback);
+  expect(again.applied).toBe(false);
+
+  const [run] = await db.select().from(runs).where(eq(runs.id, runId)).limit(1);
+  // Charged once, not twice.
+  expect(run?.costUsd).toBe('0.2000');
+});

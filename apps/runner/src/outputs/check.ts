@@ -30,33 +30,3 @@ export async function checkRequiredOutputs(
     detail: JSON.stringify({ missing, empty }),
   });
 }
-
-/**
- * A design step must additionally have produced a design source and at least
- * one exported image (FR-104).
- */
-export async function checkDesignOutputs(
-  host: ContainerHost,
-  containerId: string,
-  workdir: string,
-  sourcePath: string,
-  exportDir: string,
-): Promise<string[]> {
-  const source = await host.stat(containerId, `${workdir}/${sourcePath}`);
-  if (!source || source.size === 0) {
-    throw new FactoryError('missing_output', `The design step did not produce ${sourcePath}.`);
-  }
-  const listing = await host.exec(containerId, [
-    'sh',
-    '-c',
-    `ls -1 '${workdir}/${exportDir}' 2>/dev/null || true`,
-  ]);
-  const images = listing.stdout
-    .split('\n')
-    .map((line) => line.trim())
-    .filter((line) => /\.(png|jpe?g|webp)$/i.test(line));
-  if (images.length === 0) {
-    throw new FactoryError('missing_output', 'The design step exported no images.');
-  }
-  return images;
-}

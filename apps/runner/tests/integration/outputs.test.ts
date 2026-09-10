@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
-import { checkDesignOutputs, checkRequiredOutputs } from '../../src/outputs/check';
+import { checkRequiredOutputs } from '../../src/outputs/check';
+import { checkDesignOutputs } from '../../src/outputs/design';
 import { FakeHost } from '../fake-host';
 
 test('a declared output that exists and has content passes (FR-051)', async () => {
@@ -44,14 +45,19 @@ test('a design step needs a source AND at least one image', async () => {
   const host = new FakeHost();
   host.files.set('/work/docs/design/ui.pen', '{"version":"2.17"}');
   host.responses = [{ match: 'ls -1', result: { stdout: '00-login.png\n01-callback.png\n' } }];
-  const images = await checkDesignOutputs(
+  const outputs = await checkDesignOutputs(
     host,
     'c1',
     '/work',
     'docs/design/ui.pen',
     'docs/design/screens',
   );
-  expect(images).toEqual(['00-login.png', '01-callback.png']);
+  expect(outputs.source).toBe('docs/design/ui.pen');
+  // Workspace-relative, so a caller can commit them or hand them onward.
+  expect(outputs.screens).toEqual([
+    'docs/design/screens/00-login.png',
+    'docs/design/screens/01-callback.png',
+  ]);
 });
 
 test('a design step with a source but no image fails (FR-104)', async () => {
@@ -60,7 +66,7 @@ test('a design step with a source but no image fails (FR-104)', async () => {
   host.responses = [{ match: 'ls -1', result: { stdout: '' } }];
   await expect(
     checkDesignOutputs(host, 'c1', '/work', 'docs/design/ui.pen', 'docs/design/screens'),
-  ).rejects.toThrow(/exported no images/);
+  ).rejects.toThrow(/exported no screen/);
 });
 
 test('a design step with images but no source fails (FR-104)', async () => {
@@ -68,7 +74,7 @@ test('a design step with images but no source fails (FR-104)', async () => {
   host.responses = [{ match: 'ls -1', result: { stdout: '00-login.png\n' } }];
   await expect(
     checkDesignOutputs(host, 'c1', '/work', 'docs/design/ui.pen', 'docs/design/screens'),
-  ).rejects.toThrow(/did not produce docs\/design\/ui\.pen/);
+  ).rejects.toThrow(/no editable design source at docs\/design\/ui\.pen/);
 });
 
 test('non-image files in the export directory are not counted as screens', async () => {
@@ -77,5 +83,5 @@ test('non-image files in the export directory are not counted as screens', async
   host.responses = [{ match: 'ls -1', result: { stdout: 'notes.txt\nREADME.md\n' } }];
   await expect(
     checkDesignOutputs(host, 'c1', '/work', 'docs/design/ui.pen', 'docs/design/screens'),
-  ).rejects.toThrow(/exported no images/);
+  ).rejects.toThrow(/exported no screen/);
 });

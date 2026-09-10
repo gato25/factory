@@ -44,6 +44,13 @@ A `query` cannot push. Two conventional routes carry the live behaviour (D4):
 
 Staleness budget: five seconds (SC-004).
 
+## Bytes are not a query either
+
+- `GET /api/artifacts/{id}/image` — one screen's image. A `query` returns JSON to code that asked
+  for it; an `<img src>` is the browser fetching a URL, so a screen openable at full size (FR-077)
+  needs an address rather than a return value. Authorisation is checked in the route exactly as it
+  is in a remote function: signed in, and the artifact is a screen of a run in this workspace.
+
 ## What the interface must show, and where it comes from
 
 | Requirement | Source |

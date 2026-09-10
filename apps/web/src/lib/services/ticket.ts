@@ -1,6 +1,6 @@
 import type { Database } from '@factory/db';
 import { pipelines, repositories, tickets } from '@factory/db/schema';
-import { FactoryError, invalidInput, notFound } from '@factory/shared';
+import { FactoryError, invalidInput, notFound, type Step } from '@factory/shared';
 import { desc, eq, sql } from 'drizzle-orm';
 import { assertRepositoryUsable } from './repository';
 
@@ -143,4 +143,68 @@ export async function listTickets(database: Database) {
 /** A ticket's status mirrors its current run's status (spec §6). */
 export async function setTicketStatus(database: Database, id: string, status: TicketState) {
   await database.update(tickets).set({ status, updatedAt: new Date() }).where(eq(tickets.id, id));
+}
+
+/**
+ * The specification step decides whether the ticket changes the interface
+ * (FR-099). Everything the app does with that decision goes through here.
+ */
+
+/** The step expected to classify: the first one that writes a document. */
+export function classifyingStepIndex(steps: Step[]): number | null {
+  const index = steps.findIndex(
+    (step) => step.type === 'agent' && (step.output_files?.length ?? 0) > 0,
+  );
+  return index === -1 ? null : index;
+}
+
+/** A usable decision arrived: stored on the ticket with its reason (FR-100). */
+export async function recordClassification(
+  database: Database,
+  ticketId: string,
+  decision: { hasUi: boolean; rationale: string },
+) {
+  await database
+    .update(tickets)
+    .set({
+      hasUi: decision.hasUi,
+      uiRationale: decision.rationale,
+      classificationMissing: false,
+      updatedAt: new Date(),
+    })
+    .where(eq(tickets.id, ticketId));
+}
+
+/**
+ * No usable decision arrived. The ticket is treated as not changing the
+ * interface, the run continues, and the absence is recorded as a field so the
+ * warning is a state rather than a line in step output (FR-102).
+ *
+ * `has_ui` is deliberately left null. Writing `false` would claim a decision
+ * nobody made, and the difference between "decided no" and "could not tell"
+ * is exactly what this warning exists to show.
+ */
+export async function noteMissingClassification(
+  database: Database,
+  ticketId: string,
+): Promise<{ noted: boolean }> {
+  const updated = await database
+    .update(tickets)
+    .set({ classificationMissing: true, updatedAt: new Date() })
+    .where(
+      sql`${tickets.id} = ${ticketId}::uuid
+        and ${tickets.hasUi} is null
+        and ${tickets.classificationMissing} = false`,
+    )
+    .returning({ id: tickets.id });
+  return { noted: updated.length > 0 };
+}
+
+/**
+ * What a conditional step is evaluated against. An absent decision reads as
+ * no interface change, which is what FR-102 requires and what the
+ * orchestrator's own copy of this logic does.
+ */
+export function ticketHasUi(ticket: { hasUi: boolean | null }): boolean {
+  return ticket.hasUi === true;
 }

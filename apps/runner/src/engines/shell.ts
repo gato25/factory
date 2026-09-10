@@ -43,7 +43,10 @@ export async function runShellStep(
       outputs: [],
       error: {
         reason: 'command_failed',
-        detail: `\`${command}\` exited ${result.exitCode}.\n${result.stderr.trim().slice(0, 4000)}`,
+        // Redacted: a failure detail is retained and shown (FR-084).
+        detail: `\`${command}\` exited ${result.exitCode}.\n${input.logs
+          .clean(result.stderr.trim())
+          .slice(0, 4000)}`,
       },
     };
   }

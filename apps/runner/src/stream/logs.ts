@@ -59,4 +59,14 @@ export class LogSink {
   get chunksSent(): number {
     return this.seq;
   }
+
+  /**
+   * The same redaction, for text that is retained but does not go through a
+   * chunk — a step's failure detail, above all. That detail is shown to a
+   * person and stored, so it is step output in every sense FR-084 means
+   * (Principle V). One redactor per step, built from one set of secrets.
+   */
+  clean(text: string): string {
+    return this.redact(text);
+  }
 }

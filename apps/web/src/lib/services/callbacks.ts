@@ -12,7 +12,12 @@ import { eq } from 'drizzle-orm';
 import { addCost, captureArtifacts, recordStep } from '$lib/ledger/record';
 import { notifyApprovers, notifyDashboard, notifyRun, type RunEvent } from './notify';
 import { setRunStatus } from './run';
-import { setTicketStatus } from './ticket';
+import {
+  classifyingStepIndex,
+  noteMissingClassification,
+  recordClassification,
+  setTicketStatus,
+} from './ticket';
 
 const log = createLogger('web');
 
@@ -83,6 +88,10 @@ export async function applyCallback(
       if (applied) {
         await addCost(database, runId, callback.cost_usd);
         await captureArtifacts(database, runId, stepIndex, callback.artifacts);
+        // The step that was expected to classify has now finished. If no
+        // usable decision arrived, that absence becomes a field rather than
+        // a line in step output, and the run carries on (FR-102).
+        await noteClassificationIfMissing(database, runId, stepIndex, callback.status);
         await announce(database, runId, { event: 'step_changed', stepIndex });
         for (const artifact of callback.artifacts) {
           await notifyRun(database, runId, {
@@ -111,15 +120,10 @@ export async function applyCallback(
 
     case 'ticket_classified': {
       const run = await runFor(database, runId);
-      await database
-        .update(tickets)
-        .set({
-          hasUi: callback.has_ui,
-          uiRationale: callback.rationale,
-          classificationMissing: false,
-          updatedAt: new Date(),
-        })
-        .where(eq(tickets.id, run.ticketId));
+      await recordClassification(database, run.ticketId, {
+        hasUi: callback.has_ui,
+        rationale: callback.rationale,
+      });
       await announce(database, runId, { event: 'run_changed' });
       return { applied: true };
     }
@@ -287,4 +291,32 @@ async function mirrorTicket(
 ) {
   const run = await runFor(database, runId);
   await setTicketStatus(database, run.ticketId, status);
+}
+
+/**
+ * FR-102 — the specification step finished without a usable decision. The
+ * ticket is left with `has_ui` null, because "could not tell" is not the same
+ * claim as "decided no", and the warning is what the difference is for.
+ *
+ * Only the step expected to classify is judged: a later document-producing
+ * step finding no classification says nothing new.
+ */
+async function noteClassificationIfMissing(
+  database: Database,
+  runId: string,
+  stepIndex: number,
+  status: 'done' | 'failed',
+) {
+  if (status !== 'done') return;
+  const run = await runFor(database, runId);
+  const snapshot = run.snapshot as PipelineSnapshot;
+  if (classifyingStepIndex(snapshot.pipeline.steps) !== stepIndex) return;
+
+  const { noted } = await noteMissingClassification(database, run.ticketId);
+  if (noted) {
+    log.warn('the specification step produced no usable classification', {
+      run_id: runId,
+      step_index: stepIndex,
+    });
+  }
 }

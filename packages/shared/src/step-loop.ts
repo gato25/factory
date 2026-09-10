@@ -61,7 +61,10 @@ export function decideStep(steps: Step[], index: number, facts: RunFacts): StepD
  */
 export function applyStepResult(
   facts: RunFacts,
-  result: { classification?: { has_ui: boolean } },
+  // The whole step result, as the workflow has it. Only the classification
+  // establishes a fact today; the rest is accepted and ignored so a caller
+  // does not have to pick the field out first.
+  result: { classification?: { has_ui: boolean; rationale?: string } },
 ): RunFacts {
   if (result.classification) return { ...facts, hasUi: result.classification.has_ui };
   return facts;

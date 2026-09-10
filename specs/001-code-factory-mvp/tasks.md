@@ -311,51 +311,51 @@ an open merge request.
 
 ### Tests for User Story 5
 
-- [ ] T139 [P] [US5] Integration test for condition evaluation in `apps/web/tests/integration/conditions.test.ts` — evaluated when the step is reached, against facts established by then (FR-032c)
-- [ ] T140 [P] [US5] Integration test asserting `skipped` is terminal for its step, never fails the run, and is distinguishable from `done`, `failed`, `pending` and `running` in `apps/web/tests/integration/skipped.test.ts` (FR-110, FR-111, FR-112)
-- [ ] T141 [P] [US5] Integration test for the missing-classification path in `apps/web/tests/integration/classification.test.ts` — treated as no interface change, run continues, warning recorded **on the run** rather than only in step output (FR-102)
-- [ ] T142 [P] [US5] Integration test for design output validation in `apps/runner/tests/integration/design-outputs.test.ts` — absent design source or zero images fails the step, and partial output is retained (FR-104)
-- [ ] T143 [P] [US5] End-to-end test in `apps/web/tests/e2e/design-stage.spec.ts` — both tickets, plus the honest-failure case with the classification block removed (quickstart.md scenario E, SC-018)
+- [X] T139 [P] [US5] Integration test for condition evaluation in `apps/web/tests/integration/conditions.test.ts` — evaluated when the step is reached, against facts established by then (FR-032c)
+- [X] T140 [P] [US5] Integration test asserting `skipped` is terminal for its step, never fails the run, and is distinguishable from `done`, `failed`, `pending` and `running` in `apps/web/tests/integration/skipped.test.ts` (FR-110, FR-111, FR-112)
+- [X] T141 [P] [US5] Integration test for the missing-classification path in `apps/web/tests/integration/classification.test.ts` — treated as no interface change, run continues, warning recorded **on the run** rather than only in step output (FR-102)
+- [X] T142 [P] [US5] Integration test for design output validation in `apps/runner/tests/integration/design-outputs.test.ts` — absent design source or zero images fails the step, and partial output is retained (FR-104)
+- [X] T143 [P] [US5] End-to-end test in `apps/web/tests/e2e/design-stage.spec.ts` — both tickets, plus the honest-failure case with the classification block removed (quickstart.md scenario E, SC-018)
 
 ### Conditional execution
 
-- [ ] T144 [US5] Add `condition` to every step with `always` as the default, in `packages/shared/src/snapshot.ts` and the step editor (FR-032a)
-- [ ] T145 [US5] Offer exactly three conditions — always, only when the ticket changes the interface, only when it does not in `packages/shared/src/snapshot.ts` (FR-032b)
-- [ ] T146 [US5] Evaluate the condition in the workflow loop and post `step_skipped` with the condition that failed, **without calling the Runner**, in `orchestration/n8n/run-ticket-pipeline.json` (FR-032c, FR-110)
-- [ ] T147 [US5] Record a skipped step and continue the run at the next step, never failing it in `apps/web/src/lib/services/run.ts` (FR-111)
-- [ ] T148 [US5] Distinguish `skipped` from `done`, `failed`, `pending` and `running` everywhere step outcomes appear in `apps/web/src/components/StepTracker.svelte` (FR-112)
+- [X] T144 [US5] Add `condition` to every step with `always` as the default, in `packages/shared/src/snapshot.ts` and the step editor (FR-032a)
+- [X] T145 [US5] Offer exactly three conditions — always, only when the ticket changes the interface, only when it does not in `packages/shared/src/snapshot.ts` (FR-032b)
+- [X] T146 [US5] Evaluate the condition in the workflow loop and post `step_skipped` with the condition that failed, **without calling the Runner**, in `orchestration/n8n/run-ticket-pipeline.json` (FR-032c, FR-110)
+- [X] T147 [US5] Record a skipped step and continue the run at the next step, never failing it in `apps/web/src/lib/services/run.ts` (FR-111)
+- [X] T148 [US5] Distinguish `skipped` from `done`, `failed`, `pending` and `running` everywhere step outcomes appear in `apps/web/src/components/StepTracker.svelte` (FR-112)
 
 ### Classification
 
-- [ ] T149 [US5] Have the specification step decide whether the ticket changes the interface and record a one-sentence reason, via its instructions in `apps/web/src/lib/services/agent-defaults.ts` (FR-099)
-- [ ] T150 [US5] Parse the decision block from the specification step's output in `apps/runner/src/outputs/classification.ts` and return it in the step outcome (`contracts/step-engines.md`)
-- [ ] T151 [US5] Apply `ticket_classified` to store the decision and reason on the ticket, and show the reason wherever the decision changes what runs in `apps/web/src/lib/services/ticket.ts` (FR-100)
-- [ ] T152 [US5] Treat an absent or unparseable decision as no interface change, continue the run, and set `classification_missing` so the warning is a field on the run in `apps/web/src/lib/services/ticket.ts` (FR-102)
-- [ ] T153 [US5] Ensure the create-ticket flow never asks the author whether the ticket changes the interface in `apps/web/src/routes/(app)/tickets/new/+page.svelte` (FR-101)
+- [X] T149 [US5] Have the specification step decide whether the ticket changes the interface and record a one-sentence reason, via its instructions in `apps/web/src/lib/services/agent-defaults.ts` (FR-099)
+- [X] T150 [US5] Parse the decision block from the specification step's output in `apps/runner/src/outputs/classification.ts` and return it in the step outcome (`contracts/step-engines.md`)
+- [X] T151 [US5] Apply `ticket_classified` to store the decision and reason on the ticket, and show the reason wherever the decision changes what runs in `apps/web/src/lib/services/ticket.ts` (FR-100)
+- [X] T152 [US5] Treat an absent or unparseable decision as no interface change, continue the run, and set `classification_missing` so the warning is a field on the run in `apps/web/src/lib/services/ticket.ts` (FR-102)
+- [X] T153 [US5] Ensure the create-ticket flow never asks the author whether the ticket changes the interface in `apps/web/src/routes/(app)/tickets/new/+page.svelte` (FR-101)
 
 ### The design step
 
-- [ ] T154 [US5] Implement the `design_cli` engine in `apps/runner/src/engines/design-cli.ts` — writes the design source at the configured path and exports one image per screen at the configured scale (FR-103)
-- [ ] T155 [US5] Pass the existing design source back in on a repeat — a change request or a run retry — so the tool **revises** rather than starting from an empty canvas in `apps/runner/src/engines/design-cli.ts` (FR-106)
-- [ ] T156 [US5] Fail the design step when the design source is absent or no image was exported, retaining what was produced in `apps/runner/src/outputs/design.ts` (FR-104)
-- [ ] T157 [US5] Commit the design source and the exported screens to the run branch so the design travels with the code in `apps/runner/src/container/commit.ts` (FR-105)
-- [ ] T158 [US5] Stream the design step's output as log chunks, naming the command, on the same terms as an agent step in `apps/runner/src/stream/logs.ts` (FR-107)
-- [ ] T159 [US5] Count the design step's cost against the same run budget and ceilings as every other step in `apps/runner/src/engines/usage.ts` (FR-108)
-- [ ] T160 [US5] Make the produced screens available to the planning and implementing steps that follow in `apps/runner/src/container/config.ts` (FR-109)
+- [X] T154 [US5] Implement the `design_cli` engine in `apps/runner/src/engines/design-cli.ts` — writes the design source at the configured path and exports one image per screen at the configured scale (FR-103)
+- [X] T155 [US5] Pass the existing design source back in on a repeat — a change request or a run retry — so the tool **revises** rather than starting from an empty canvas in `apps/runner/src/engines/design-cli.ts` (FR-106)
+- [X] T156 [US5] Fail the design step when the design source is absent or no image was exported, retaining what was produced in `apps/runner/src/outputs/design.ts` (FR-104)
+- [X] T157 [US5] Commit the design source and the exported screens to the run branch so the design travels with the code in `apps/runner/src/container/commit.ts` (FR-105)
+- [X] T158 [US5] Stream the design step's output as log chunks, naming the command, on the same terms as an agent step in `apps/runner/src/stream/logs.ts` (FR-107)
+- [X] T159 [US5] Count the design step's cost against the same run budget and ceilings as every other step in `apps/runner/src/engines/usage.ts` (FR-108)
+- [X] T160 [US5] Make the produced screens available to the planning and implementing steps that follow in `apps/runner/src/container/config.ts` (FR-109)
 
 ### Design review and visibility
 
-- [ ] T161 [P] [US5] Show every document **and every screen** produced so far at a gate in `apps/web/src/routes/(app)/tickets/[id]/approve/+page.svelte` (FR-064c)
-- [ ] T162 [P] [US5] Design Review screen (14) in `apps/web/src/routes/(app)/tickets/[id]/design/+page.svelte` — each screen as an image openable at full size, the acceptance criteria beside them, the classification reason, and a statement that no code has been written yet (FR-064d)
-- [ ] T163 [P] [US5] Offer a link opening the committed design source in the design service, at that gate in `apps/web/src/routes/(app)/tickets/[id]/design/+page.svelte` (FR-064e)
-- [ ] T164 [US5] Re-run the design step with the feedback and return to the same gate with the revised screens, on a change request there in `apps/web/src/lib/services/gate.ts` (FR-061a)
-- [ ] T165 [P] [US5] Screen gallery component in `apps/web/src/components/ScreenGallery.svelte` — thumbnails opening a full-size viewer with next and previous (FR-077)
-- [ ] T166 [P] [US5] Distinguish conditional from always-running steps in the pre-flight preview, stating each condition in words in `apps/web/src/lib/services/estimate.ts` (FR-019a)
-- [ ] T167 [P] [US5] Show a skipped step in the run's step list, marked, carrying its reason, rather than omitting it in `apps/web/src/components/StepTracker.svelte` (FR-075a)
-- [ ] T168 [US5] Embed the screens in the merge request description above the change summary and link the committed design source below them in `apps/web/src/lib/services/merge-request.ts` (FR-067a)
-- [ ] T169 [US5] Additionally label a merge request whose ticket was classified as interface work in `apps/web/src/lib/services/merge-request.ts` (FR-068a)
-- [ ] T170 [US5] Supply the design credential only to runs whose pipeline contains a design step in `apps/runner/src/container/secrets.ts` (FR-083a)
-- [ ] T171 [US5] Detect a missing or rejected design credential when such a run starts, failing the design step immediately with a message naming where it is configured in `apps/runner/src/container/secrets.ts` (FR-083b)
+- [X] T161 [P] [US5] Show every document **and every screen** produced so far at a gate in `apps/web/src/routes/(app)/tickets/[id]/approve/+page.svelte` (FR-064c)
+- [X] T162 [P] [US5] Design Review screen (14) in `apps/web/src/routes/(app)/tickets/[id]/design/+page.svelte` — each screen as an image openable at full size, the acceptance criteria beside them, the classification reason, and a statement that no code has been written yet (FR-064d)
+- [X] T163 [P] [US5] Offer a link opening the committed design source in the design service, at that gate in `apps/web/src/routes/(app)/tickets/[id]/design/+page.svelte` (FR-064e)
+- [X] T164 [US5] Re-run the design step with the feedback and return to the same gate with the revised screens, on a change request there in `apps/web/src/lib/services/gate.ts` (FR-061a)
+- [X] T165 [P] [US5] Screen gallery component in `apps/web/src/components/ScreenGallery.svelte` — thumbnails opening a full-size viewer with next and previous (FR-077)
+- [X] T166 [P] [US5] Distinguish conditional from always-running steps in the pre-flight preview, stating each condition in words in `apps/web/src/lib/services/estimate.ts` (FR-019a)
+- [X] T167 [P] [US5] Show a skipped step in the run's step list, marked, carrying its reason, rather than omitting it in `apps/web/src/components/StepTracker.svelte` (FR-075a)
+- [X] T168 [US5] Embed the screens in the merge request description above the change summary and link the committed design source below them in `apps/web/src/lib/services/merge-request.ts` (FR-067a)
+- [X] T169 [US5] Additionally label a merge request whose ticket was classified as interface work in `apps/web/src/lib/services/merge-request.ts` (FR-068a)
+- [X] T170 [US5] Supply the design credential only to runs whose pipeline contains a design step in `apps/runner/src/container/secrets.ts` (FR-083a)
+- [X] T171 [US5] Detect a missing or rejected design credential when such a run starts, failing the design step immediately with a message naming where it is configured in `apps/runner/src/container/secrets.ts` (FR-083b)
 
 **Checkpoint**: Stories 1–5 work. Interface work is designed and reviewed before it is built.
 

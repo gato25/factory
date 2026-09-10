@@ -9,6 +9,7 @@ import { agentSlug, substitute } from '../container/config';
 import type { ContainerHost } from '../container/host';
 import { WORKDIR } from '../container/start';
 import { checkRequiredOutputs } from '../outputs/check';
+import { parseClassification } from '../outputs/classification';
 import type { LogSink } from '../stream/logs';
 import { applyLimits, effectiveLimits, timeoutMsFor } from './limits';
 import { usageFromClaudeJson } from './usage';
@@ -106,7 +107,10 @@ export async function runClaudeStep(
         outputs: [],
         error: {
           reason: 'command_failed',
-          detail: result.stderr.trim().slice(0, 4000) || `the CLI exited ${result.exitCode}`,
+          // Redacted: a failure detail is retained and shown (FR-084).
+          detail:
+            input.logs.clean(result.stderr.trim()).slice(0, 4000) ||
+            `the CLI exited ${result.exitCode}`,
         },
       },
       limits,
@@ -130,6 +134,12 @@ export async function runClaudeStep(
     };
   }
 
+  // The specification step also decides whether the ticket changes the
+  // interface, in a block at the end of its document (FR-099). An
+  // unparseable block returns nothing, and the app makes that visible rather
+  // than guessing (FR-102).
+  const classification = await classify(host, input);
+
   // A step that produced everything asked of it can still have overspent its
   // own limit; the limit is what a person needs told, not the output (FR-080).
   return applyLimits(
@@ -144,8 +154,23 @@ export async function runClaudeStep(
         path,
         version: 1,
       })),
+      ...(classification ? { classification } : {}),
     },
     limits,
     { agentName: input.agent.name, exitCode: 0 },
   );
+}
+
+/**
+ * Reads the decision block out of whichever document the step produced. A
+ * step that writes no document classifies nothing — the block lives in the
+ * specification, not in the CLI's own output.
+ */
+async function classify(host: ContainerHost, input: ClaudeStepInput) {
+  for (const path of input.step.output_files ?? []) {
+    const content = await host.readFile(input.containerId, `${WORKDIR}/${path}`);
+    const parsed = parseClassification(content);
+    if (parsed) return parsed;
+  }
+  return null;
 }

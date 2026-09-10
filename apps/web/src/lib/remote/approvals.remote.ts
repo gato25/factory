@@ -5,7 +5,7 @@ import { db } from '$lib/db';
 import { formIndex } from '$lib/forms';
 import { editArtifact } from '$lib/services/artifact';
 import { canDecide } from '$lib/services/authz';
-import { decide, gateDetail } from '$lib/services/gate';
+import { decide, designReview, gateDetail } from '$lib/services/gate';
 import { artifactContent } from '$lib/services/run-view';
 
 /**
@@ -56,6 +56,19 @@ export const gate = query(GateArgs, async ({ runId, stepIndex }) => {
     // Anyone may read; only the gate's approvers may act (FR-064). The
     // predicate travels with the data so the screen shows the object without
     // its actions rather than erroring after the fact.
+    mayDecide: canDecide(user, detail.gate.approvers, detail.gate.ticketCreatedBy),
+  };
+});
+
+/**
+ * A gate that follows a design step (FR-064d, FR-064e). Same authorisation as
+ * any gate: anyone may look, only an approver may decide.
+ */
+export const design = query(GateArgs, async ({ runId, stepIndex }) => {
+  const user = requireUser();
+  const detail = await designReview(db(), runId, stepIndex);
+  return {
+    ...detail,
     mayDecide: canDecide(user, detail.gate.approvers, detail.gate.ticketCreatedBy),
   };
 });
