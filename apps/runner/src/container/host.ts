@@ -1,0 +1,154 @@
+import { FactoryError } from '@factory/shared';
+
+/**
+ * The container host, behind one interface. The Runner is the only component
+ * with rights here (research.md D5), and putting the boundary in an interface
+ * means the lifecycle logic is testable without a daemon.
+ */
+
+export interface ContainerSpec {
+  image: string;
+  /** Ceilings from the workspace settings (FR-085). */
+  cpu: number;
+  memoryMb: number;
+  wallClockMinutes: number;
+  /** Network reach while code is being written (FR-085). */
+  network: boolean;
+  /** Credentials arrive as environment, never as files (FR-083). */
+  env: Record<string, string>;
+  workdir: string;
+}
+
+export interface ExecResult {
+  exitCode: number;
+  stdout: string;
+  stderr: string;
+}
+
+export interface ExecOptions {
+  cwd?: string;
+  env?: Record<string, string>;
+  timeoutMs?: number;
+  /** Called as output arrives, so the live log is live (FR-076). */
+  onOutput?: (stream: 'stdout' | 'stderr', text: string) => void;
+}
+
+export interface ContainerHost {
+  create(spec: ContainerSpec): Promise<string>;
+  exec(containerId: string, argv: string[], options?: ExecOptions): Promise<ExecResult>;
+  writeFile(containerId: string, path: string, content: string): Promise<void>;
+  readFile(containerId: string, path: string): Promise<string | null>;
+  /** Null when the path does not exist. Size distinguishes empty from absent. */
+  stat(containerId: string, path: string): Promise<{ size: number } | null>;
+  destroy(containerId: string): Promise<void>;
+}
+
+/** Shells out to the Docker CLI. One fresh container per run, never reused. */
+export const dockerHost: ContainerHost = {
+  async create(spec) {
+    const argv = [
+      'run',
+      '--detach',
+      '--user',
+      // Non-root: an agent runs arbitrary code against a customer repository.
+      '1000:1000',
+      '--cpus',
+      String(spec.cpu),
+      '--memory',
+      `${spec.memoryMb}m`,
+      '--workdir',
+      spec.workdir,
+      ...(spec.network ? [] : ['--network', 'none']),
+      ...Object.keys(spec.env).flatMap((key) => ['--env', key]),
+      spec.image,
+      'sleep',
+      String(spec.wallClockMinutes * 60),
+    ];
+    const result = await run('docker', argv, { env: spec.env });
+    if (result.exitCode !== 0) {
+      throw new FactoryError('sandbox_lost', 'could not create the sandbox', {
+        detail: result.stderr.trim(),
+      });
+    }
+    return result.stdout.trim();
+  },
+
+  async exec(containerId, argv, options) {
+    const env = options?.env ?? {};
+    const docker = [
+      'exec',
+      ...(options?.cwd ? ['--workdir', options.cwd] : []),
+      ...Object.keys(env).flatMap((key) => ['--env', key]),
+      containerId,
+      ...argv,
+    ];
+    return run('docker', docker, { env, ...options });
+  },
+
+  async writeFile(containerId, path, content) {
+    const result = await run('docker', ['exec', '-i', containerId, 'sh', '-c', `cat > '${path}'`], {
+      stdin: content,
+    });
+    if (result.exitCode !== 0) {
+      throw new FactoryError('sandbox_lost', `could not write ${path}`, {
+        detail: result.stderr.trim(),
+      });
+    }
+  },
+
+  async readFile(containerId, path) {
+    const result = await run('docker', ['exec', containerId, 'cat', path]);
+    return result.exitCode === 0 ? result.stdout : null;
+  },
+
+  async stat(containerId, path) {
+    const result = await run('docker', [
+      'exec',
+      containerId,
+      'sh',
+      '-c',
+      `test -f '${path}' && wc -c < '${path}'`,
+    ]);
+    if (result.exitCode !== 0) return null;
+    const size = Number(result.stdout.trim());
+    return Number.isFinite(size) ? { size } : null;
+  },
+
+  async destroy(containerId) {
+    await run('docker', ['rm', '--force', containerId]);
+  },
+};
+
+async function run(
+  command: string,
+  argv: string[],
+  options: { env?: Record<string, string>; stdin?: string } & ExecOptions = {},
+): Promise<ExecResult> {
+  const proc = Bun.spawn([command, ...argv], {
+    env: { ...process.env, ...options.env },
+    stdin: options.stdin ? new TextEncoder().encode(options.stdin) : 'ignore',
+    stdout: 'pipe',
+    stderr: 'pipe',
+  });
+
+  const [stdout, stderr] = await Promise.all([
+    drain(proc.stdout, (text) => options.onOutput?.('stdout', text)),
+    drain(proc.stderr, (text) => options.onOutput?.('stderr', text)),
+  ]);
+  const exitCode = await proc.exited;
+  return { exitCode, stdout, stderr };
+}
+
+async function drain(
+  stream: ReadableStream<Uint8Array>,
+  onChunk?: (text: string) => void,
+): Promise<string> {
+  const decoder = new TextDecoder();
+  let all = '';
+  for await (const chunk of stream) {
+    const text = decoder.decode(chunk, { stream: true });
+    all += text;
+    onChunk?.(text);
+  }
+  return all;
+}
