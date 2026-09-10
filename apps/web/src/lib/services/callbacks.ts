@@ -10,7 +10,7 @@ import {
 } from '@factory/shared';
 import { eq } from 'drizzle-orm';
 import { addCost, captureArtifacts, recordStep } from '$lib/ledger/record';
-import { notifyDashboard, notifyRun, type RunEvent } from './notify';
+import { notifyApprovers, notifyDashboard, notifyRun, type RunEvent } from './notify';
 import { setRunStatus } from './run';
 import { setTicketStatus } from './ticket';
 
@@ -136,6 +136,28 @@ export async function applyCallback(
         .where(eq(runs.id, runId));
       await mirrorTicket(database, runId, 'waiting_approval');
       await announce(database, runId, { event: 'run_changed' });
+
+      // The gate's configured approvers are told it is waiting (FR-058).
+      const run = await runFor(database, runId);
+      const snapshot = run.snapshot as PipelineSnapshot;
+      const step = snapshot.pipeline.steps[stepIndex];
+      const [ticket] = await database
+        .select()
+        .from(tickets)
+        .where(eq(tickets.id, run.ticketId))
+        .limit(1);
+      if (ticket) {
+        await notifyApprovers(database, {
+          runId,
+          stepIndex,
+          ticketReference: ticket.reference,
+          ticketTitle: ticket.title,
+          gateLabel: step?.type === 'checkpoint' ? 'checkpoint' : null,
+          url: `/tickets/${ticket.id}/approve`,
+          approvers: step?.approvers ?? 'anyone',
+          ticketCreatedBy: ticket.createdBy,
+        });
+      }
       return { applied: true };
     }
 

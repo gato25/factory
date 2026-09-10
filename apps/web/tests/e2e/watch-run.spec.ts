@@ -16,7 +16,10 @@ const DATABASE_URL =
   process.env.DATABASE_URL ?? 'postgres://postgres:postgres@localhost:5432/factory';
 const SESSION_SECRET = process.env.SESSION_SECRET ?? '';
 
-const sql = postgres(DATABASE_URL, { max: 2, onnotice: () => {} });
+// Idle connections close themselves, so the pool is never explicitly
+// ended: with fully-parallel runs a worker can be handed another test
+// from this file after an `afterAll` already fired.
+const sql = postgres(DATABASE_URL, { max: 2, idle_timeout: 2, onnotice: () => {} });
 
 type Seeded = { ticketId: string; runId: string; secret: string; userId: string };
 
@@ -108,10 +111,6 @@ function sessionToken(userId: string): string {
   const signature = createHmac('sha256', SESSION_SECRET).update(body).digest('base64url');
   return `${body}.${signature}`;
 }
-
-test.afterAll(async () => {
-  await sql.end();
-});
 
 test.describe('watching a run', () => {
   test.skip(

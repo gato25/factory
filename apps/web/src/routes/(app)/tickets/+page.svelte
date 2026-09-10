@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import ApprovalPanel from '$components/ApprovalPanel.svelte';
   import TicketCard from '$components/TicketCard.svelte';
   import { subscribeToRun } from '$lib/events/subscribe';
   import { repositories } from '$lib/remote/repositories.remote';
@@ -36,6 +37,9 @@
         (!pipelineId || t.pipelineId === pipelineId) &&
         (!createdBy || t.createdBy === createdBy)
     )}
+
+    <!-- Grouped by the state that needs a person, before the board (FR-059). -->
+    <ApprovalPanel heading="Waiting approval" compact />
 
     <div class="controls card">
       <label>

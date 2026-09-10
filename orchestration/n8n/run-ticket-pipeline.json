@@ -369,7 +369,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ run_id: $json.run_id, attempt: $json.attempt, step_index: $json.step_index ?? 0, event: 'waiting_approval', ...($json.callback_extra ?? {}) }) }}",
+        "jsonBody": "={{ JSON.stringify({ run_id: $json.run_id, attempt: $json.attempt, step_index: $json.step_index, event: 'waiting_approval', resume_url: $execution.resumeUrl, approvers: $json.step.approvers ?? 'anyone' }) }}",
         "options": {}
       },
       "id": "callback-waiting-approval",
@@ -391,7 +391,7 @@
     },
     {
       "parameters": {
-        "jsCode": "\n// Carries forward what the step established, then advances. The classification\n// is the only fact today and comes from the specification step (FR-099).\nconst state = $input.first().json;\nconst result = state.result ?? {};\nconst facts = { ...(state.facts ?? {}) };\nif (result.classification) facts.hasUi = result.classification.has_ui;\n\n// A ceiling reached is a failure, checked after every step (FR-081).\nconst spent = Number(state.spent_usd ?? 0) + Number(result.costUsd ?? 0);\nconst ceiling = Number(state.limits.cost_ceiling_usd);\nif (spent > ceiling) {\n  return [{ json: { ...state, facts, spent_usd: spent, action: 'fail',\n    reason: 'budget_exceeded',\n    detail: `the run reached its ceiling of $${ceiling.toFixed(4)}` } }];\n}\nreturn [{ json: { ...state, facts, spent_usd: spent, index: (state.step_index ?? 0) + 1 } }];\n"
+        "jsCode": "\n// Carries forward what the step established, then advances. The classification\n// is the only fact today and comes from the specification step (FR-099).\nconst state = $input.first().json;\nconst result = state.result ?? {};\nconst facts = { ...(state.facts ?? {}) };\nif (result.classification) facts.hasUi = result.classification.has_ui;\n\n// A ceiling reached is a failure, checked after every step (FR-081).\nconst spent = Number(state.spent_usd ?? 0) + Number(result.costUsd ?? 0);\nconst ceiling = Number(state.limits.cost_ceiling_usd);\nif (spent > ceiling) {\n  return [{ json: { ...state, facts, spent_usd: spent, action: 'fail',\n    reason: 'budget_exceeded',\n    detail: `the run reached its ceiling of $${ceiling.toFixed(4)}` } }];\n}\n// A change request at a checkpoint re-runs the PRECEDING step with the\n// feedback, then returns to the same checkpoint (FR-061).\nconst decision = state.resume?.decision ?? state.decision;\nif (decision === 'changes_requested') {\n  const steps = state.pipeline.steps;\n  let back = (state.step_index ?? 0) - 1;\n  while (back >= 0 && !['agent', 'design', 'shell'].includes(steps[back].type)) back--;\n  if (back >= 0) {\n    return [{ json: { ...state, facts, spent_usd: spent, index: back,\n      feedback: state.resume?.feedback ?? state.feedback, returning_to: state.step_index } }];\n  }\n}\n// After a re-run triggered by a change request, come back to the checkpoint.\nif (state.returning_to !== undefined && state.returning_to !== null) {\n  const target = state.returning_to;\n  return [{ json: { ...state, facts, spent_usd: spent, index: target,\n    returning_to: null, feedback: null } }];\n}\nreturn [{ json: { ...state, facts, spent_usd: spent, index: (state.step_index ?? 0) + 1 } }];\n"
       },
       "id": "advance",
       "name": "Advance",

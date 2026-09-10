@@ -85,6 +85,9 @@
               {connection === 'retrying' ? 'reconnecting…' : 'connecting…'}
             </span>
           {/if}
+          {#if loaded.run.status === 'waiting_approval'}
+            <a class="review" href="/tickets/{ticketId}/approve">Review</a>
+          {/if}
           <!-- Pause and Cancel arrive with user story 4 (T131, T132) -->
           <button type="button" disabled title="Arrives with the recovery story">Pause</button>
           <button type="button" disabled title="Arrives with the recovery story">Cancel run</button>
@@ -163,6 +166,14 @@
   button:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+  }
+  .review {
+    padding: 7px 14px;
+    border-radius: var(--r-sm);
+    background: var(--accent);
+    color: #fff;
+    text-decoration: none;
+    font-weight: 600;
   }
   .failure {
     border-left: 3px solid var(--bad);

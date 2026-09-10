@@ -237,27 +237,27 @@ re-runs the previous step with the feedback and returns to the same gate.
 
 ### Tests for User Story 3
 
-- [ ] T103 [P] [US3] Contract test for the resume hand-off in `apps/web/tests/contract/resume.test.ts` — all four decisions (`contracts/orchestrator.md` §4)
-- [ ] T104 [P] [US3] Integration test asserting one decision per gate in `apps/web/tests/integration/approval.test.ts` — the second decider's insert fails and they are told the gate is already decided (FR-064a)
-- [ ] T105 [P] [US3] Integration test for each timeout behaviour — wait indefinitely, continue, fail — in `apps/web/tests/integration/gate-timeout.test.ts` (FR-064b)
-- [ ] T106 [P] [US3] End-to-end test in `apps/web/tests/e2e/approve.spec.ts` covering all three decisions plus a non-approver who can read everything and decide nothing (quickstart.md scenario C)
+- [X] T103 [P] [US3] Contract test for the resume hand-off in `apps/web/tests/contract/resume.test.ts` — all four decisions (`contracts/orchestrator.md` §4)
+- [X] T104 [P] [US3] Integration test asserting one decision per gate in `apps/web/tests/integration/approval.test.ts` — the second decider's insert fails and they are told the gate is already decided (FR-064a)
+- [X] T105 [P] [US3] Integration test for each timeout behaviour — wait indefinitely, continue, fail — in `apps/web/tests/integration/gate-timeout.test.ts` (FR-064b)
+- [X] T106 [P] [US3] End-to-end test in `apps/web/tests/e2e/approve.spec.ts` covering all three decisions plus a non-approver who can read everything and decide nothing (quickstart.md scenario C)
 
 ### Implementation for User Story 3
 
-- [ ] T107 [US3] Add the checkpoint branch to the workflow in `orchestration/n8n/run-ticket-pipeline.json` — post `waiting_approval` carrying the resume address, then enter a wait that can hold indefinitely (FR-056)
-- [ ] T108 [US3] Store `resume_url` on the run when `waiting_approval` arrives, so a gate stays drivable even if the orchestrator execution is lost (research.md risk 2)
-- [ ] T109 [US3] Set both run and ticket to waiting-for-approval while paused, in `apps/web/src/lib/services/gate.ts` (FR-057)
-- [ ] T110 [US3] Notify the gate's configured approvers when a run reaches it, in `apps/web/src/lib/services/notify.ts` (FR-058)
-- [ ] T111 [P] [US3] Surface every run awaiting approval on the dashboard as its most prominent call to action, and in the tickets view grouped by that state in `apps/web/src/components/ApprovalPanel.svelte` (FR-059)
-- [ ] T112 [US3] Implement the four decisions in `apps/web/src/lib/services/gate.ts` — approve and continue, edit a document and continue, request changes with feedback, cancel (FR-060)
-- [ ] T113 [US3] Continue at the next step on approval, and re-run the **preceding** step with the feedback before returning to the same gate on a change request in `apps/web/src/lib/services/gate.ts` (FR-061)
-- [ ] T114 [US3] Make change-request feedback available to the agent that runs again because of it in `apps/runner/src/container/config.ts` (FR-038)
-- [ ] T115 [US3] Write a human's edit as a new artifact version and carry it into every subsequent step as the version they read, retaining the previous one in `apps/web/src/lib/services/artifact.ts` (FR-062, FR-054)
-- [ ] T116 [US3] Record every decision with who decided, what they decided, any feedback, and when — including a gate that continued or failed without a human in `apps/web/src/lib/services/gate.ts` (FR-063, FR-064b)
-- [ ] T117 [US3] Restrict deciding to the gate's configured approvers — anyone in the workspace, the ticket's author, or a named list — while letting anyone read the ticket and its artifacts in `apps/web/src/lib/services/authz.ts` (FR-064)
-- [ ] T118 [P] [US3] Remote functions for gate decisions in `apps/web/src/lib/remote/approvals.remote.ts` — a `form` per decision so the buttons work without JavaScript, invalidating the run query on success
-- [ ] T119 [P] [US3] Approval Checkpoint screen (07) in `apps/web/src/routes/(app)/tickets/[id]/approve/+page.svelte` — the banner, every document produced so far, and a chronological record of the run (FR-064c)
-- [ ] T120 [US3] Release the sandbox and leave the branch intact when a run is cancelled at a gate in `apps/web/src/lib/services/gate.ts` (FR-064c, FR-097)
+- [X] T107 [US3] Add the checkpoint branch to the workflow in `orchestration/n8n/run-ticket-pipeline.json` — post `waiting_approval` carrying the resume address, then enter a wait that can hold indefinitely (FR-056)
+- [X] T108 [US3] Store `resume_url` on the run when `waiting_approval` arrives, so a gate stays drivable even if the orchestrator execution is lost (research.md risk 2)
+- [X] T109 [US3] Set both run and ticket to waiting-for-approval while paused, in `apps/web/src/lib/services/gate.ts` (FR-057)
+- [X] T110 [US3] Notify the gate's configured approvers when a run reaches it, in `apps/web/src/lib/services/notify.ts` (FR-058)
+- [X] T111 [P] [US3] Surface every run awaiting approval on the dashboard as its most prominent call to action, and in the tickets view grouped by that state in `apps/web/src/components/ApprovalPanel.svelte` (FR-059)
+- [X] T112 [US3] Implement the four decisions in `apps/web/src/lib/services/gate.ts` — approve and continue, edit a document and continue, request changes with feedback, cancel (FR-060)
+- [X] T113 [US3] Continue at the next step on approval, and re-run the **preceding** step with the feedback before returning to the same gate on a change request in `apps/web/src/lib/services/gate.ts` (FR-061)
+- [X] T114 [US3] Make change-request feedback available to the agent that runs again because of it in `apps/runner/src/container/config.ts` (FR-038)
+- [X] T115 [US3] Write a human's edit as a new artifact version and carry it into every subsequent step as the version they read, retaining the previous one in `apps/web/src/lib/services/artifact.ts` (FR-062, FR-054)
+- [X] T116 [US3] Record every decision with who decided, what they decided, any feedback, and when — including a gate that continued or failed without a human in `apps/web/src/lib/services/gate.ts` (FR-063, FR-064b)
+- [X] T117 [US3] Restrict deciding to the gate's configured approvers — anyone in the workspace, the ticket's author, or a named list — while letting anyone read the ticket and its artifacts in `apps/web/src/lib/services/authz.ts` (FR-064)
+- [X] T118 [P] [US3] Remote functions for gate decisions in `apps/web/src/lib/remote/approvals.remote.ts` — a `form` per decision so the buttons work without JavaScript, invalidating the run query on success
+- [X] T119 [P] [US3] Approval Checkpoint screen (07) in `apps/web/src/routes/(app)/tickets/[id]/approve/+page.svelte` — the banner, every document produced so far, and a chronological record of the run (FR-064c)
+- [X] T120 [US3] Release the sandbox and leave the branch intact when a run is cancelled at a gate in `apps/web/src/lib/services/gate.ts` (FR-064c, FR-097)
 
 **Checkpoint**: Stories 1–3 work. Oversight can now be inserted anywhere in a pipeline.
 

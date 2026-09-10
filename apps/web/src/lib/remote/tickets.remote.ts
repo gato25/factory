@@ -3,6 +3,7 @@ import * as v from 'valibot';
 import { command, form, getRequestEvent, query } from '$app/server';
 import { loadWebConfig } from '$lib/config';
 import { db } from '$lib/db';
+import { formBoolean } from '$lib/forms';
 import { previewRun, verificationWarning } from '$lib/services/estimate';
 import {
   deliverTrigger,
@@ -47,7 +48,8 @@ const CreateSchema = v.object({
   // One criterion per line, as the form presents it.
   acceptanceCriteria: v.optional(v.string(), ''),
   pipelineId: v.optional(v.string(), ''),
-  start: v.optional(v.boolean(), false),
+  // A checkbox sends its value when ticked and nothing when not.
+  start: formBoolean(),
 });
 
 /**

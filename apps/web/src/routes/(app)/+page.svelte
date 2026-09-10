@@ -1,13 +1,13 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import ActiveRuns from '$components/ActiveRuns.svelte';
+  import ApprovalPanel from '$components/ApprovalPanel.svelte';
   import ActivityFeed from '$components/ActivityFeed.svelte';
   import { subscribeToRun } from '$lib/events/subscribe';
   import { active, activity, tiles } from '$lib/remote/runs.remote';
   import { ticketBoard } from '$lib/remote/tickets.remote';
 
   const t = $derived(tiles());
-  const board = $derived(ticketBoard());
 
   /** The dashboard watches one workspace-wide channel (FR-074). */
   onMount(() =>
@@ -41,29 +41,11 @@
 </div>
 
 <!--
-  The most important call to action on the page (FR-059). It lives above the
+  The most important call to action on the page (FR-059). It sits above the
   active-run list on purpose: a paused run is the only thing here that cannot
   make progress without a person.
 -->
-{#if board.ready}
-  {@const waiting = board.current.filter((row) => row.status === 'waiting_approval')}
-    {#if waiting.length > 0}
-      <section class="card approvals">
-        <h2 class="section">Waiting for your approval</h2>
-        <ul>
-          {#each waiting as ticket (ticket.id)}
-            <li>
-              <span>
-                <strong>{ticket.reference}</strong> {ticket.title}
-                <span class="muted small">{ticket.strip.text}</span>
-              </span>
-              <a class="review" href="/tickets/{ticket.id}">Review</a>
-            </li>
-          {/each}
-        </ul>
-      </section>
-  {/if}
-{/if}
+<ApprovalPanel />
 
 <div class="stack">
   <ActiveRuns />
@@ -94,39 +76,6 @@
     font-weight: 600;
     color: var(--ink);
     line-height: 1.2;
-  }
-  .approvals {
-    margin-bottom: 16px;
-    border-left: 3px solid var(--warn);
-  }
-  .approvals ul {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-  }
-  .approvals li {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 12px;
-    padding: 8px 2px;
-    border-top: 1px solid var(--line-2);
-  }
-  .approvals li:first-child {
-    border-top: 0;
-  }
-  .approvals li span {
-    display: flex;
-    flex-direction: column;
-  }
-  .review {
-    padding: 7px 14px;
-    border-radius: var(--r-sm);
-    background: var(--accent);
-    color: #fff;
-    text-decoration: none;
-    font-weight: 600;
-    white-space: nowrap;
   }
   .stack {
     display: flex;

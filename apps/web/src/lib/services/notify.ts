@@ -1,4 +1,6 @@
 import type { Database } from '@factory/db';
+import { users } from '@factory/db/schema';
+import { type ApproverRule, createLogger } from '@factory/shared';
 import { sql } from 'drizzle-orm';
 
 /**
@@ -52,4 +54,56 @@ export const DASHBOARD_CHANNEL = 'factory_dashboard';
 
 export async function notifyDashboard(database: Database, message: RunEvent): Promise<void> {
   await database.execute(sql`select pg_notify(${DASHBOARD_CHANNEL}, ${JSON.stringify(message)})`);
+}
+
+// --- approver notification (FR-058) ---
+
+/**
+ * Notification reaches people in the application and by email (spec
+ * Assumptions). The in-application path is the dashboard's approval panel,
+ * which reads run state directly — so it needs nothing here. Email needs a
+ * mailer, and there is no notifications table in the data model, so this is a
+ * seam rather than a store: a deployment supplies a Notifier, and until one is
+ * configured the dispatch is recorded in the log rather than silently dropped.
+ */
+export interface ApproverNotice {
+  runId: string;
+  stepIndex: number;
+  ticketReference: string;
+  ticketTitle: string;
+  gateLabel: string | null;
+  url: string;
+  recipients: { id: string; name: string; email: string }[];
+}
+
+export type Notifier = (notice: ApproverNotice) => Promise<void>;
+
+const logOnly: Notifier = async (notice) => {
+  createLogger('web').info('checkpoint reached, approvers notified', {
+    run_id: notice.runId,
+    step_index: notice.stepIndex,
+    ticket: notice.ticketReference,
+    recipients: notice.recipients.map((r) => r.email).join(', ') || '(nobody)',
+  });
+};
+
+/** Resolves who may decide, then dispatches once. */
+export async function notifyApprovers(
+  database: Database,
+  notice: Omit<ApproverNotice, 'recipients'> & { approvers: ApproverRule; ticketCreatedBy: string },
+  notifier: Notifier = logOnly,
+): Promise<{ recipients: number }> {
+  const everyone = await database
+    .select({ id: users.id, name: users.name, email: users.email })
+    .from(users);
+
+  const recipients =
+    notice.approvers === 'anyone'
+      ? everyone
+      : notice.approvers === 'ticket_creator'
+        ? everyone.filter((u) => u.id === notice.ticketCreatedBy)
+        : everyone.filter((u) => (notice.approvers as string[]).includes(u.id));
+
+  await notifier({ ...notice, recipients });
+  return { recipients: recipients.length };
 }

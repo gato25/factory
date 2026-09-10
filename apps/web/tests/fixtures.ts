@@ -10,7 +10,7 @@ import {
   users,
   workspaces,
 } from '@factory/db/schema';
-import type { Step } from '@factory/shared';
+import type { ApproverRule, Step, TimeoutBehaviour } from '@factory/shared';
 import { sql } from 'drizzle-orm';
 
 export function connect() {
@@ -157,3 +157,25 @@ export async function seed(
 }
 
 export { agents, pipelineVersions, runs, tickets };
+
+/**
+ * A three-step pipeline with a checkpoint in the middle, for gate tests:
+ * spec agent -> checkpoint -> implement agent.
+ */
+export const withCheckpoint =
+  (
+    approvers: ApproverRule = 'anyone',
+    timeoutHours?: number,
+    onTimeout: TimeoutBehaviour = 'wait',
+  ) =>
+  (specId: string, implId: string): Step[] => [
+    { type: 'agent', condition: 'always', agent_id: specId, output_files: ['docs/spec.md'] },
+    {
+      type: 'checkpoint',
+      condition: 'always',
+      approvers,
+      timeout_hours: timeoutHours,
+      on_timeout: onTimeout,
+    },
+    { type: 'agent', condition: 'always', agent_id: implId, output_files: [] },
+  ];

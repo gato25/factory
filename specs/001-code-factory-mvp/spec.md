@@ -832,9 +832,10 @@ recorded here so they can be challenged rather than discovered later.
 
 ### Divergences from the source product specification
 
-This specification now tracks the conditional design stage as `main` describes it. Three
-divergences remain, all from the answers to this feature's open questions rather than from the
-design stage. Those documents should be updated to match, or this specification revisited.
+This specification now tracks the conditional design stage as `main` describes it. Four
+divergences remain — three from the answers to this feature's open questions rather than from the
+design stage, and one found while building. Those documents should be updated to match, or this
+specification revisited.
 
 - **No verification stage of the system's own.** Source §5.2 step 4 has the system running the
   repository's test command before opening the merge request, and §10 lists "Tests fail at Verify"
@@ -847,6 +848,15 @@ design stage. Those documents should be updated to match, or this specification 
 - **Pipelines, agents and skills have owners.** The source data model scopes them to the workspace
   with no owner. They now record one (FR-006a): any member may create and change their own without
   an administrator, and only the owner or an administrator may change a given one (FR-006c).
+- **A screen needs JavaScript to render, though its forms do not need it to submit.**
+  `contracts/ui-data.md` claims a `form` mutation works without JavaScript. The mutation does; the
+  screen carrying it does not. In SvelteKit 2.70.3 a component that reads a remote `query` renders
+  only its pending state on the server — the resolved data is embedded for hydration but not used
+  in the server-rendered markup — so with scripting off a person never reaches the buttons. Measured
+  on the approval checkpoint screen: scripting on renders the gate and four decision buttons,
+  scripting off renders "Loading…". This is a limit of the experimental API, not of the
+  application's shape, so the forms stay forms and the claim is narrowed rather than the design
+  changed.
 
 ### Dependencies
 

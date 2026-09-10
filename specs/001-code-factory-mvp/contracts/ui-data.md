@@ -12,7 +12,7 @@ thin — validate, then call a service module. No business logic lives in them (
 | Kind | Used for | Examples |
 | --- | --- | --- |
 | `query` | Reads | dashboard tiles, active runs, ticket list, one run with its steps, artifacts, a pipeline, agents, skills |
-| `form` | Mutations that must work without JavaScript | connect a repository, create a ticket, decide at a gate, save an agent |
+| `form` | Mutations whose submission must not depend on JavaScript | connect a repository, create a ticket, decide at a gate, save an agent |
 | `command` | Mutations from a control, not a form | pause, cancel, retry, reorder a pipeline step, attach a skill |
 | `prerender` | Nothing in this feature | — |
 

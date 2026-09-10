@@ -35,19 +35,85 @@ test('only query, command and form are used — prerender is not needed here', (
   }
 });
 
+/**
+ * The source text of a call's first argument, found by matching brackets
+ * rather than by regex, so a schema spanning lines and a schema passed by
+ * name on one line are read the same way.
+ */
+function firstArgument(source: string, openParen: number): string {
+  let depth = 0;
+  for (let i = openParen; i < source.length; i++) {
+    const c = source[i];
+    if (c === '(' || c === '[' || c === '{') depth++;
+    else if (c === ')' || c === ']' || c === '}') {
+      depth--;
+      if (depth === 0) return source.slice(openParen + 1, i);
+    } else if (c === ',' && depth === 1) return source.slice(openParen + 1, i);
+  }
+  return source.slice(openParen + 1);
+}
+
+/** Every `command`/`form` declaration in a file, with its first argument. */
+function declarations(source: string, kinds = ['command', 'form']) {
+  const found: { name: string; kind: string; validator: string }[] = [];
+  for (const match of source.matchAll(/export const (\w+) = (query|command|form)\(/g)) {
+    const [whole, name, kind] = match;
+    if (!kinds.includes(kind as string)) continue;
+    const open = (match.index ?? 0) + whole.length - 1;
+    found.push({
+      name: name as string,
+      kind: kind as string,
+      validator: firstArgument(source, open),
+    });
+  }
+  return found;
+}
+
+/** A named schema's own declaration, so a field can be traced to it. */
+function schemaBodies(source: string, validator: string): string[] {
+  const bodies = [validator];
+  for (const match of validator.matchAll(/\b([A-Z]\w*(?:Schema|Args))\b/g)) {
+    const index = source.search(new RegExp(`const ${match[1]} = `));
+    if (index === -1) continue;
+    const open = source.indexOf('(', index);
+    if (open !== -1) bodies.push(firstArgument(source, open));
+  }
+  return bodies;
+}
+
 test('every mutation validates its input with a schema, not by hand', () => {
   for (const file of remoteFiles) {
     const source = read(file);
-    // Each command/form declaration must pass a validator as its first
-    // argument. A declaration may wrap across lines, so look at a window
-    // rather than the rest of one line.
-    const declarations = [...source.matchAll(/export const (\w+) = (command|form)\(/g)];
-    for (const match of declarations) {
-      const [, name, kind] = match;
-      const window = source.slice(match.index ?? 0, (match.index ?? 0) + 240);
-      const validated =
-        window.includes('v.') || window.includes('Schema') || window.includes("'unchecked'");
-      expect(validated, `${file}: ${kind} ${name} takes no validator`).toBe(true);
+    for (const { name, kind, validator } of declarations(source)) {
+      // The first argument must be a validator — a schema expression, a named
+      // schema, or the explicit `'unchecked'` opt-out. If it is the handler
+      // itself, the input reaches the body unvalidated.
+      const isHandler = /^\s*(async\b|function\b|\()/.test(validator);
+      expect(isHandler, `${file}: ${kind} ${name} takes no validator`).toBe(false);
+    }
+  }
+});
+
+/**
+ * Everything a browser sends in a form is a string, so a `form` schema that
+ * declares `v.number()` or `v.boolean()` for a field rejects its own form's
+ * input — and a rejected form does not run at all, so the button silently
+ * does nothing. `$lib/forms` has coercing schemas for exactly this.
+ */
+test('a form never validates a field as a raw number or boolean', () => {
+  for (const file of remoteFiles) {
+    const source = read(file);
+    for (const { name, validator } of declarations(source, ['form'])) {
+      for (const body of schemaBodies(source, validator)) {
+        const raw = [...body.matchAll(/(\w+):\s*(?:v\.optional\(\s*)?v\.(number|boolean)\(/g)].map(
+          (m) => m[0],
+        );
+        expect(
+          raw,
+          `${file}: form ${name} validates ${raw.join(', ')} as a raw value — ` +
+            'a form sends strings, so use the coercing schemas in $lib/forms',
+        ).toEqual([]);
+      }
     }
   }
 });

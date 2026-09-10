@@ -71,6 +71,17 @@ export async function writeAgentConfig(
     `${workdir}/.factory`,
   ]);
 
+  // A change request re-runs the preceding step; the reviewer's words are put
+  // where the agent can read them, not only interpolated into a prompt that
+  // may not mention {{feedback}} at all (FR-038).
+  if (context.feedback?.trim()) {
+    await host.writeFile(
+      containerId,
+      `${workdir}/.factory/feedback.md`,
+      `# Requested changes\n\nA reviewer read your last output and asked for changes:\n\n${context.feedback.trim()}\n`,
+    );
+  }
+
   // Ticket context, so a step can read it without us re-templating everything.
   await host.writeFile(
     containerId,
@@ -84,6 +95,7 @@ export async function writeAgentConfig(
         branch: snapshot.repo.branch,
         attempt: snapshot.attempt,
         has_ui: context.hasUi ?? null,
+        feedback: context.feedback?.trim() || null,
       },
       null,
       2,
