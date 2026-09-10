@@ -237,30 +237,51 @@ export async function artifactContent(database: Database, artifactId: string) {
   return row;
 }
 
-/** The four dashboard tiles (FR-071). */
+/**
+ * The four dashboard tiles (FR-071).
+ *
+ * Each carries a second line, as the design's tiles do: a bare number tells
+ * you how many, and the line under it tells you enough to decide whether to
+ * look. "6" is a fact; "2 GitLab · 4 GitHub" is the beginning of an answer.
+ */
 export async function dashboardTiles(database: Database) {
   const weekAgo = new Date(Date.now() - 7 * 24 * 3_600_000);
-  const [connected] = await database
-    .select({ n: count() })
+
+  const byProvider = await database
+    .select({ provider: repositories.provider, n: count() })
     .from(repositories)
-    .where(eq(repositories.status, 'connected'));
-  const [running] = await database
-    .select({ n: count() })
+    .where(eq(repositories.status, 'connected'))
+    .groupBy(repositories.provider);
+
+  const runningRows = await database
+    .select({ repositoryId: tickets.repositoryId })
     .from(tickets)
     .where(inArray(tickets.status, ['queued', 'running']));
+
   const [awaiting] = await database
     .select({ n: count() })
     .from(tickets)
     .where(eq(tickets.status, 'waiting_approval'));
-  const [merged] = await database
-    .select({ n: count() })
+
+  const doneThisWeek = await database
+    .select({ mergeRequestUrl: tickets.mergeRequestUrl })
     .from(tickets)
     .where(and(eq(tickets.status, 'done'), gte(tickets.updatedAt, weekAgo)));
+
+  const gitlab = byProvider.find((row) => row.provider === 'gitlab')?.n ?? 0;
+  const github = byProvider.find((row) => row.provider === 'github')?.n ?? 0;
+  // A merge request that was opened but has no address is one the provider
+  // never confirmed, and counting it as merged would overstate the week.
+  const opened = doneThisWeek.filter((row) => row.mergeRequestUrl !== null).length;
+
   return {
-    repositoriesConnected: connected?.n ?? 0,
-    ticketsRunning: running?.n ?? 0,
+    repositoriesConnected: gitlab + github,
+    repositoriesByProvider: { gitlab, github },
+    ticketsRunning: runningRows.length,
+    ticketsRunningAcrossRepositories: new Set(runningRows.map((row) => row.repositoryId)).size,
     awaitingApproval: awaiting?.n ?? 0,
-    mergeRequestsThisWeek: merged?.n ?? 0,
+    mergeRequestsThisWeek: doneThisWeek.length,
+    mergeRequestsOpened: opened,
   };
 }
 

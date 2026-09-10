@@ -83,24 +83,30 @@ export interface Resolved {
 }
 
 /**
- * One node, with its component expanded, its overrides applied and its
- * variables substituted.
+ * A set of overrides, and where we currently are inside the reference that
+ * carried them.
  *
- * `path` is the override key: a reference patches its descendants by the
- * slash-joined ids beneath it, so the path has to be tracked separately from
- * the node itself.
+ * Two of these can be live at once, which is the whole subtlety. The sidebar
+ * reference patches `WTdjt/aYPyE` — the icon inside its Dashboard nav row —
+ * while that row is ITSELF a reference to the Nav Item component, whose own
+ * patches are keyed from its own root. Tracking one path lost the outer one,
+ * and the active nav item silently kept the inactive colour.
  */
+interface Scope {
+  overrides: Record<string, Record<string, unknown>>;
+  path: string;
+}
+
 function resolveNode(
   node: PenNode,
   byId: Map<string, PenNode>,
   variables: Record<string, PenVariable>,
-  overrides: Record<string, Record<string, unknown>>,
-  path: string,
+  scopes: Scope[],
   seen: Set<string>,
 ): Resolved {
   let source = node;
   let from: string | undefined;
-  let inherited = overrides;
+  let active = scopes;
 
   if (node.type === 'ref' && typeof node.ref === 'string') {
     const target = byId.get(node.ref);
@@ -115,17 +121,19 @@ function resolveNode(
     seen = new Set([...seen, node.ref]);
     source = target;
     from = target.name;
-    // The reference's own overrides are relative to the reference, so they
-    // start a fresh path space; overrides from an enclosing reference still
-    // apply, so both are merged.
-    inherited = { ...overrides, ...(node.descendants ?? {}) };
+    // The reference's own patches start a fresh path space; the enclosing
+    // ones keep counting from where they were.
+    active = node.descendants ? [...scopes, { overrides: node.descendants, path: '' }] : scopes;
   }
 
-  const patch = inherited[path] ?? {};
+  // Every scope that names this node contributes, outermost first, so a
+  // patch closer to the use wins.
   const props: Record<string, unknown> = {};
-  for (const [key, raw] of Object.entries({ ...source, ...node, ...patch })) {
-    if (['children', 'type', 'id', 'name', 'ref', 'descendants', 'reusable'].includes(key))
+  const patches = active.map((scope) => scope.overrides[scope.path] ?? {});
+  for (const [key, raw] of Object.entries(Object.assign({}, source, node, ...patches))) {
+    if (['children', 'type', 'id', 'name', 'ref', 'descendants', 'reusable'].includes(key)) {
       continue;
+    }
     props[key] = value(raw, variables);
   }
 
@@ -134,10 +142,10 @@ function resolveNode(
       child,
       byId,
       variables,
-      inherited,
-      // Paths are relative to the nearest reference, so a resolved component's
-      // children start from their own id rather than the reference's.
-      path && node.type !== 'ref' ? `${path}/${child.id}` : (child.id ?? ''),
+      active.map((scope) => ({
+        overrides: scope.overrides,
+        path: scope.path ? `${scope.path}/${child.id}` : (child.id ?? ''),
+      })),
       seen,
     ),
   );
@@ -156,7 +164,7 @@ export function artboards(file: PenFile = load()): Resolved[] {
   const byId = index(file);
   return file.children
     .filter((child) => child.name !== 'Components')
-    .map((child) => resolveNode(child, byId, file.variables, {}, child.id ?? '', new Set()));
+    .map((child) => resolveNode(child, byId, file.variables, [], new Set()));
 }
 
 /** Every string a screen displays, in document order. */

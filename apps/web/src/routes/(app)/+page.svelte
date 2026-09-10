@@ -1,8 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import ActiveRuns from '$components/ActiveRuns.svelte';
-  import ApprovalPanel from '$components/ApprovalPanel.svelte';
   import ActivityFeed from '$components/ActivityFeed.svelte';
+  import ApprovalPanel from '$components/ApprovalPanel.svelte';
+  import StatTile from '$components/StatTile.svelte';
   import { subscribeToRun } from '$lib/events/subscribe';
   import { active, activity, tiles } from '$lib/remote/runs.remote';
   import { setup } from '$lib/remote/settings.remote';
@@ -33,18 +34,39 @@
 
 <div class="tiles">
   {#if !t.ready}
-    <div class="tile muted">Loading…</div>
+    <p class="card muted">Loading…</p>
   {:else}
-    <div class="tile">
-      <span class="n">{t.current.repositoriesConnected}</span> connected repositories
-    </div>
-    <div class="tile"><span class="n">{t.current.ticketsRunning}</span> tickets running</div>
-    <div class="tile" class:attention={t.current.awaitingApproval > 0}>
-      <span class="n">{t.current.awaitingApproval}</span> waiting for approval
-    </div>
-    <div class="tile">
-      <span class="n">{t.current.mergeRequestsThisWeek}</span> merge requests this week
-    </div>
+    {@const d = t.current}
+    <StatTile
+      label="Connected repos"
+      value={d.repositoriesConnected}
+      caption="{d.repositoriesByProvider.gitlab} GitLab &middot; {d.repositoriesByProvider
+        .github} GitHub"
+      icon="git-branch"
+    />
+    <StatTile
+      label="Tickets running"
+      value={d.ticketsRunning}
+      caption="across {d.ticketsRunningAcrossRepositories} {d.ticketsRunningAcrossRepositories === 1
+        ? 'repo'
+        : 'repos'}"
+      icon="loader"
+    />
+    <StatTile
+      label="Waiting for approval"
+      value={d.awaitingApproval}
+      caption={d.awaitingApproval === 0 ? 'nothing to review' : 'needs your review'}
+      icon="hand"
+      tone="warning"
+    />
+    <StatTile
+      label="Merge requests this week"
+      value={d.mergeRequestsThisWeek}
+      caption="{d.mergeRequestsOpened} opened &middot; {d.mergeRequestsThisWeek -
+        d.mergeRequestsOpened} without an address"
+      icon="git-pull-request"
+      tone="success"
+    />
   {/if}
 </div>
 
@@ -70,15 +92,17 @@
 {/if}
 
 <!--
-  The most important call to action on the page (FR-059). It sits above the
-  active-run list on purpose: a paused run is the only thing here that cannot
-  make progress without a person.
+  The design's Mid: the run list fills the row, and a 380px column beside it
+  carries what needs a person and what just happened. Approvals sit at the
+  top of that column because a paused run is the only thing here that cannot
+  make progress without somebody (FR-059).
 -->
-<ApprovalPanel />
-
-<div class="stack">
+<div class="mid">
   <ActiveRuns />
-  <ActivityFeed />
+  <div class="side">
+    <ApprovalPanel />
+    <ActivityFeed />
+  </div>
 </div>
 
 <style>
@@ -89,32 +113,34 @@
     color: #8a6100;
   }
   .tiles {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 12px;
-    margin-bottom: 16px;
+    display: flex;
+    gap: 16px;
+    margin-bottom: 28px;
   }
-  .tile {
-    background: var(--surface);
-    border-radius: var(--r-md);
-    padding: 16px;
-    color: var(--text-2);
-    font-size: 13px;
+  @media (max-width: 900px) {
+    .tiles {
+      flex-wrap: wrap;
+    }
   }
-  .tile.attention {
-    outline: 2px solid var(--warning);
-    outline-offset: -2px;
+  /* The design's Mid: a filling column and a 380px one, 24px apart. */
+  .mid {
+    display: flex;
+    align-items: flex-start;
+    gap: 24px;
   }
-  .n {
-    display: block;
-    font-size: 26px;
-    font-weight: 600;
-    color: var(--text);
-    line-height: 1.2;
-  }
-  .stack {
+  .side {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 24px;
+    width: 380px;
+    flex: none;
+  }
+  @media (max-width: 1100px) {
+    .mid {
+      flex-direction: column;
+    }
+    .side {
+      width: 100%;
+    }
   }
 </style>

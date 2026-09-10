@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { page } from '$app/state';
   import ApprovalPanel from '$components/ApprovalPanel.svelte';
   import TicketCard from '$components/TicketCard.svelte';
   import { subscribeToRun } from '$lib/events/subscribe';
@@ -9,6 +10,9 @@
   const board = $derived(ticketBoard());
   const repos = $derived(repositories());
   let view = $state<'board' | 'list'>('board');
+  // Where the frame's search lands. It arrives in the address so a search is
+  // linkable and survives a reload, rather than living only in this page.
+  const search = $derived((page.url.searchParams.get('q') ?? '').trim().toLowerCase());
   let repositoryId = $state('');
   let pipelineId = $state('');
   let createdBy = $state('');
@@ -35,11 +39,23 @@
       (t) =>
         (!repositoryId || t.repositoryId === repositoryId) &&
         (!pipelineId || t.pipelineId === pipelineId) &&
-        (!createdBy || t.createdBy === createdBy)
+        (!createdBy || t.createdBy === createdBy) &&
+        // "Search tickets, repos" — the repository's name counts, which is
+        // what makes one field able to answer both.
+        (!search ||
+          `${t.reference} ${t.title} ${t.repository ?? ''}`.toLowerCase().includes(search))
     )}
 
     <!-- Grouped by the state that needs a person, before the board (FR-059). -->
     <ApprovalPanel heading="Waiting approval" compact />
+
+    {#if search}
+      <!-- An empty board after a search should say why it is empty. -->
+      <p class="searching card">
+        Showing tickets matching <strong>{search}</strong>.
+        <a href="/tickets">Clear the search</a>
+      </p>
+    {/if}
 
     <div class="controls card">
       <label>
@@ -111,6 +127,13 @@
 {/if}
 
 <style>
+  .searching {
+    display: flex;
+    gap: 10px;
+    align-items: baseline;
+    padding: 12px 16px;
+  }
+
   .controls {
     display: flex;
     gap: 10px;
