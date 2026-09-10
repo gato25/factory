@@ -273,27 +273,27 @@ and confirm a second attempt exists while the first remains readable.
 
 ### Tests for User Story 4
 
-- [ ] T121 [P] [US4] Integration test for ceiling enforcement in `apps/web/tests/integration/ceilings.test.ts` — no run exceeds its cost ceiling by more than 5% (SC-006)
-- [ ] T122 [P] [US4] Integration test for attempt history in `apps/web/tests/integration/retry.test.ts` — a new attempt keeps the previous attempt's records, output and documents (FR-090)
-- [ ] T123 [P] [US4] Integration test for sandbox loss mid-step in `apps/runner/tests/integration/recovery.test.ts` — attempted once more from the last commit, then failed (FR-093)
-- [ ] T124 [P] [US4] End-to-end test in `apps/web/tests/e2e/recover.spec.ts` — both forced failures, retry, and edit-and-retry in at most two interactions (quickstart.md scenario D, SC-009)
+- [X] T121 [P] [US4] Integration test for ceiling enforcement in `apps/web/tests/integration/ceilings.test.ts` — no run exceeds its cost ceiling by more than 5% (SC-006)
+- [X] T122 [P] [US4] Integration test for attempt history in `apps/web/tests/integration/retry.test.ts` — a new attempt keeps the previous attempt's records, output and documents (FR-090)
+- [X] T123 [P] [US4] Integration test for sandbox loss mid-step in `apps/runner/tests/integration/recovery.test.ts` — attempted once more from the last commit, then failed (FR-093)
+- [X] T124 [P] [US4] End-to-end test in `apps/web/tests/e2e/recover.spec.ts` — both forced failures, retry, and edit-and-retry in at most two interactions (quickstart.md scenario D, SC-009)
 
 ### Implementation for User Story 4
 
-- [ ] T125 [US4] Enforce the run's cost and time ceilings in `apps/web/src/lib/ledger/enforce.ts` (FR-079)
-- [ ] T126 [US4] Enforce each agent's own cost, time and turn limits within a step, in `apps/runner/src/engines/limits.ts` (FR-080)
-- [ ] T127 [US4] Kill the work and fail the run when a ceiling is reached, naming the ceiling as the reason and showing what was consumed in `apps/web/src/lib/ledger/enforce.ts` (FR-081)
-- [ ] T128 [US4] Present a failed run's failing step and a reason in language that does not require reading raw output, in `apps/web/src/lib/services/failure.ts` (FR-087, SC-008)
-- [ ] T129 [P] [US4] Remote functions for retry, edit-and-retry, pause and cancel in `apps/web/src/lib/remote/run-actions.remote.ts` — `command`s, since these are controls rather than forms
-- [ ] T130 [US4] Implement retry in `apps/web/src/lib/services/run.ts` — a further attempt on the same ticket with the same pipeline version and a fresh sandbox (FR-088)
-- [ ] T131 [US4] Implement edit-and-retry as one action in `apps/web/src/lib/services/run.ts` (FR-089)
-- [ ] T132 [US4] Retain every previous attempt's records, output and documents when a new attempt is created in `apps/web/src/lib/services/run.ts` (FR-090)
-- [ ] T133 [US4] Reset the run branch to a known state when an attempt begins on a branch a previous attempt already wrote to, in `apps/runner/src/container/reset.ts` (FR-091)
-- [ ] T134 [US4] Hold the implementing agent responsible for leaving the repository's tests passing within its own step, using the tools it has been permitted — there is no verification stage of the system's own in `apps/web/src/lib/services/agent-defaults.ts` (FR-092)
-- [ ] T135 [US4] Attempt a step once more in a new container from the last commit when the sandbox or host becomes unavailable, then fail in `apps/runner/src/container/recover.ts` (FR-093)
-- [ ] T136 [US4] Implement pause — the current step concludes, no further step begins in `apps/web/src/lib/services/run.ts` (FR-096)
-- [ ] T137 [US4] Implement cancel at any point — sandbox released, branch left intact in `apps/web/src/lib/services/run.ts` (FR-097)
-- [ ] T138 [P] [US4] Show the failed step highlighted with its error and a Retry action on screen 06 in `apps/web/src/components/StepTracker.svelte` (FR-087)
+- [X] T125 [US4] Enforce the run's cost and time ceilings in `apps/web/src/lib/ledger/enforce.ts` (FR-079)
+- [X] T126 [US4] Enforce each agent's own cost, time and turn limits within a step, in `apps/runner/src/engines/limits.ts` (FR-080)
+- [X] T127 [US4] Kill the work and fail the run when a ceiling is reached, naming the ceiling as the reason and showing what was consumed in `apps/web/src/lib/ledger/enforce.ts` (FR-081)
+- [X] T128 [US4] Present a failed run's failing step and a reason in language that does not require reading raw output, in `apps/web/src/lib/services/failure.ts` (FR-087, SC-008)
+- [X] T129 [P] [US4] Remote functions for retry, edit-and-retry, pause and cancel in `apps/web/src/lib/remote/run-actions.remote.ts` — `command`s, since these are controls rather than forms
+- [X] T130 [US4] Implement retry in `apps/web/src/lib/services/run.ts` — a further attempt on the same ticket with the same pipeline version and a fresh sandbox (FR-088)
+- [X] T131 [US4] Implement edit-and-retry as one action in `apps/web/src/lib/services/run.ts` (FR-089)
+- [X] T132 [US4] Retain every previous attempt's records, output and documents when a new attempt is created in `apps/web/src/lib/services/run.ts` (FR-090)
+- [X] T133 [US4] Reset the run branch to a known state when an attempt begins on a branch a previous attempt already wrote to, in `apps/runner/src/container/reset.ts` (FR-091)
+- [X] T134 [US4] Hold the implementing agent responsible for leaving the repository's tests passing within its own step, using the tools it has been permitted — there is no verification stage of the system's own in `apps/web/src/lib/services/agent-defaults.ts` (FR-092)
+- [X] T135 [US4] Attempt a step once more in a new container from the last commit when the sandbox or host becomes unavailable, then fail in `apps/runner/src/container/recover.ts` (FR-093)
+- [X] T136 [US4] Implement pause — the current step concludes, no further step begins in `apps/web/src/lib/services/run.ts` (FR-096)
+- [X] T137 [US4] Implement cancel at any point — sandbox released, branch left intact in `apps/web/src/lib/services/run.ts` (FR-097)
+- [X] T138 [P] [US4] Show the failed step highlighted with its error and a Retry action on screen 06 in `apps/web/src/components/StepTracker.svelte` (FR-087)
 
 **Checkpoint**: Stories 1–4 work. Failures are now survivable day to day.
 

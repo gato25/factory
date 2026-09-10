@@ -129,9 +129,9 @@ test('a 5xx IS retried, then succeeds', async () => {
   expect(calls).toBe(3);
 });
 
-/** contracts/orchestrator.md §3 — the eleven events. */
-test('the callback vocabulary is exactly eleven events', () => {
-  expect(CALLBACK_EVENTS).toHaveLength(11);
+/** contracts/orchestrator.md §3 — the twelve events. */
+test('the callback vocabulary is exactly twelve events', () => {
+  expect(CALLBACK_EVENTS).toHaveLength(12);
   expect([...CALLBACK_EVENTS]).toEqual([
     'started',
     'step_started',
@@ -139,6 +139,7 @@ test('the callback vocabulary is exactly eleven events', () => {
     'step_skipped',
     'ticket_classified',
     'waiting_approval',
+    'paused',
     'log_chunk',
     'mr_opened',
     'done',

@@ -12,6 +12,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { idColumn, money, timestamps } from './_shared';
 import { tickets } from './ticket';
+import { users } from './workspace';
 
 export const runStatus = pgEnum('run_status', [
   'queued',
@@ -56,6 +57,13 @@ export const runs = pgTable(
     costUsd: money('cost_usd').notNull().default('0.0000'),
     costCeilingUsd: money('cost_ceiling_usd').notNull(),
     timeCeilingMinutes: integer('time_ceiling_minutes').notNull(),
+    /**
+     * A pause is a request, not a state: the current step concludes and no
+     * further step begins (FR-096). Keeping it separate from `status` means
+     * the run stays exactly as legible as it was while its step finishes.
+     */
+    pauseRequestedAt: timestamp('pause_requested_at', { withTimezone: true }),
+    pauseRequestedBy: uuid('pause_requested_by').references(() => users.id),
     failureReason: text('failure_reason'),
     failureStepIndex: integer('failure_step_index'),
     startedAt: timestamp('started_at', { withTimezone: true }),

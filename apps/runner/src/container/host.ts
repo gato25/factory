@@ -1,4 +1,5 @@
 import { FactoryError } from '@factory/shared';
+import { TIMEOUT_EXIT_CODE } from '../engines/limits';
 
 /**
  * The container host, behind one interface. The Runner is the only component
@@ -119,7 +120,12 @@ export const dockerHost: ContainerHost = {
   },
 };
 
-async function run(
+/**
+ * Exported so the deadline can be proven against a real process. An agent's
+ * time limit is only a limit if something enforces it (FR-080), and that
+ * something is here.
+ */
+export async function run(
   command: string,
   argv: string[],
   options: { env?: Record<string, string>; stdin?: string } & ExecOptions = {},
@@ -131,12 +137,33 @@ async function run(
     stderr: 'pipe',
   });
 
-  const [stdout, stderr] = await Promise.all([
-    drain(proc.stdout, (text) => options.onOutput?.('stdout', text)),
-    drain(proc.stderr, (text) => options.onOutput?.('stderr', text)),
-  ]);
-  const exitCode = await proc.exited;
-  return { exitCode, stdout, stderr };
+  // An agent's time limit is only a limit if something enforces it (FR-080).
+  // The deadline kills the process and reports the same code `timeout(1)`
+  // uses, so the caller can tell a deadline from an ordinary failure.
+  let killedAtDeadline = false;
+  const deadline = options.timeoutMs
+    ? setTimeout(() => {
+        killedAtDeadline = true;
+        proc.kill('SIGKILL');
+      }, options.timeoutMs)
+    : null;
+
+  try {
+    const [stdout, stderr] = await Promise.all([
+      drain(proc.stdout, (text) => options.onOutput?.('stdout', text)),
+      drain(proc.stderr, (text) => options.onOutput?.('stderr', text)),
+    ]);
+    const exitCode = await proc.exited;
+    return killedAtDeadline
+      ? {
+          exitCode: TIMEOUT_EXIT_CODE,
+          stdout,
+          stderr: `${stderr}\nstopped after ${options.timeoutMs}ms`.trim(),
+        }
+      : { exitCode, stdout, stderr };
+  } finally {
+    if (deadline) clearTimeout(deadline);
+  }
 }
 
 async function drain(

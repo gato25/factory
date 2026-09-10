@@ -44,6 +44,8 @@ export interface RunView {
     costCeilingUsd: string;
     timeCeilingMinutes: number;
     currentStepIndex: number | null;
+    /** Set while a pause has been asked for and the step is still finishing. */
+    pauseRequestedAt: Date | null;
     failureReason: string | null;
     failureStepIndex: number | null;
     startedAt: Date | null;
@@ -55,6 +57,9 @@ export interface RunView {
     id: string;
     reference: string;
     title: string;
+    /** Carried so editing and retrying can be one action (FR-089). */
+    description: string | null;
+    acceptanceCriteria: string[];
     status: string;
     branchName: string | null;
     mergeRequestUrl: string | null;
@@ -145,6 +150,7 @@ export async function runView(database: Database, runId: string): Promise<RunVie
       costCeilingUsd: run.costCeilingUsd,
       timeCeilingMinutes: run.timeCeilingMinutes,
       currentStepIndex: run.currentStepIndex,
+      pauseRequestedAt: run.pauseRequestedAt,
       failureReason: run.failureReason,
       failureStepIndex: run.failureStepIndex,
       startedAt: run.startedAt,
@@ -156,6 +162,8 @@ export async function runView(database: Database, runId: string): Promise<RunVie
       id: ticket.id,
       reference: ticket.reference,
       title: ticket.title,
+      description: ticket.description,
+      acceptanceCriteria: ticket.acceptanceCriteria,
       status: ticket.status,
       branchName: ticket.branchName,
       mergeRequestUrl: ticket.mergeRequestUrl,

@@ -6,6 +6,14 @@
   import RunDetails from '$components/RunDetails.svelte';
   import StepTracker from '$components/StepTracker.svelte';
   import { subscribeToRun } from '$lib/events/subscribe';
+  import {
+    cancel,
+    editRetry,
+    failure,
+    pause,
+    retry,
+    unpause
+  } from '$lib/remote/run-actions.remote';
   import { log, run, runForTicket } from '$lib/remote/runs.remote';
 
   const ticketId = $derived(page.params.id as string);
@@ -13,6 +21,47 @@
   const view = $derived(runForTicket(ticketId));
   let selected = $state<number | null>(null);
   let connection = $state<'connecting' | 'live' | 'retrying'>('connecting');
+  /** What the last control said, whether it worked or not. */
+  let notice = $state<string | null>(null);
+  let working = $state(false);
+  let editing = $state(false);
+  let draftTitle = $state('');
+  let draftDescription = $state('');
+  let draftCriteria = $state('');
+
+  const failed = $derived(
+    view.ready && view.current ? failure(view.current.run.id) : null
+  );
+
+  /**
+   * SC-009 — retrying takes at most two interactions. Retry is one; editing
+   * and retrying is one action, so opening the editor and submitting it is
+   * two. Nothing here asks a person to re-create the ticket.
+   */
+  async function act(
+    work: () => Promise<{ ok: boolean; message: string }>,
+    options: { announce?: boolean } = {}
+  ) {
+    working = true;
+    try {
+      const result = await work();
+      // Some outcomes are visible on the page as a lasting state. Saying the
+      // same thing twice reads as two events rather than one.
+      notice = options.announce === false ? null : result.message;
+      await runForTicket(ticketId).refresh();
+    } finally {
+      working = false;
+    }
+  }
+
+  function startEditing(loaded: {
+    ticket: { title: string; description: string | null; acceptanceCriteria: string[] };
+  }) {
+    draftTitle = loaded.ticket.title;
+    draftDescription = loaded.ticket.description ?? '';
+    draftCriteria = loaded.ticket.acceptanceCriteria.join('\n');
+    editing = true;
+  }
 
   /**
    * A query cannot push, so the push arrives over the stream and the refresh
@@ -64,6 +113,10 @@
   {:else}
       {@const status = STATUS[loaded.run.status] ?? { label: loaded.run.status, tone: '' }}
       {@const step = loaded.steps[selected ?? loaded.run.currentStepIndex ?? 0]}
+      {@const inFlight = ['queued', 'running', 'waiting_approval', 'opening_mr'].includes(
+        loaded.run.status
+      )}
+      {@const retryable = loaded.run.status === 'failed' || loaded.run.status === 'cancelled'}
 
       <header class="card head">
         <div>
@@ -88,17 +141,126 @@
           {#if loaded.run.status === 'waiting_approval'}
             <a class="review" href="/tickets/{ticketId}/approve">Review</a>
           {/if}
-          <!-- Pause and Cancel arrive with user story 4 (T131, T132) -->
-          <button type="button" disabled title="Arrives with the recovery story">Pause</button>
-          <button type="button" disabled title="Arrives with the recovery story">Cancel run</button>
+
+          <!-- Pause lets the current step conclude (FR-096); cancel releases
+               the sandbox and leaves the branch alone (FR-097). -->
+          {#if inFlight}
+            {#if loaded.run.pauseRequestedAt}
+              <button
+                type="button"
+                disabled={working}
+                onclick={() => act(() => unpause(loaded.run.id))}>Continue</button
+              >
+            {:else}
+              <button
+                type="button"
+                disabled={working}
+                onclick={() => act(() => pause(loaded.run.id), { announce: false })}
+                >Pause</button
+              >
+            {/if}
+            <button
+              type="button"
+              class="danger"
+              disabled={working}
+              onclick={() => act(() => cancel(loaded.run.id))}>Cancel run</button
+            >
+          {:else if retryable}
+            <button
+              type="button"
+              class="primary"
+              disabled={working}
+              onclick={() => act(() => retry(ticketId))}>Retry</button
+            >
+            <button type="button" disabled={working} onclick={() => startEditing(loaded)}>
+              Edit &amp; retry
+            </button>
+          {/if}
         </div>
       </header>
 
-      {#if loaded.run.failureReason}
-        <p class="card failure" role="alert">
-          <strong>Step {(loaded.run.failureStepIndex ?? 0) + 1} failed.</strong>
-          {loaded.run.failureReason}
+      {#if notice}
+        <p class="card notice" role="status">{notice}</p>
+      {/if}
+
+      {#if loaded.run.pauseRequestedAt && inFlight}
+        <p class="card notice" role="status">
+          Pausing. The step running now will finish, and nothing further will start.
         </p>
+      {/if}
+
+      <!--
+        Which step failed and why, in language that does not require reading
+        raw output (FR-087, SC-008). The engine's own words are below it, for
+        whoever wants them, rather than instead of it.
+      -->
+      {#if failed?.ready && failed.current}
+        {@const f = failed.current}
+        <section class="card failure" role="alert">
+          <h2>
+            {#if f.stepLabel}{f.stepLabel} — step {(f.stepIndex ?? 0) + 1}{:else}This run{/if}
+            did not finish
+          </h2>
+          <p>{f.what}</p>
+          <p class="next">{f.next}</p>
+          {#if f.stoppedByACeiling}
+            <p class="small muted">Spent ${f.spentUsd} of a ${f.ceilingUsd} ceiling.</p>
+          {/if}
+          {#if f.produced.length > 0}
+            <p class="small muted">
+              A retry starts again from the ticket, but what this attempt produced is still
+              readable: {f.produced.map((d) => d.path).join(', ')}.
+            </p>
+          {/if}
+          {#if f.detail}
+            <details>
+              <summary class="small">What the step itself reported</summary>
+              <pre>{f.detail}</pre>
+            </details>
+          {/if}
+        </section>
+      {:else if loaded.run.failureReason}
+        <p class="card failure" role="alert">{loaded.run.failureReason}</p>
+      {/if}
+
+      <!-- Editing and retrying is ONE action, not an edit then a retry (FR-089) -->
+      {#if editing}
+        <section class="card editor">
+          <h2>Edit and retry</h2>
+          <label>
+            <span class="small muted">Title</span>
+            <input bind:value={draftTitle} />
+          </label>
+          <label>
+            <span class="small muted">Description</span>
+            <textarea bind:value={draftDescription} rows="4"></textarea>
+          </label>
+          <label>
+            <span class="small muted">Acceptance criteria, one per line</span>
+            <textarea bind:value={draftCriteria} rows="4"></textarea>
+          </label>
+          <div class="row">
+            <button type="button" onclick={() => (editing = false)}>Discard</button>
+            <button
+              type="button"
+              class="primary"
+              disabled={working}
+              onclick={async () => {
+                await act(() =>
+                  editRetry({
+                    ticketId,
+                    title: draftTitle,
+                    description: draftDescription,
+                    acceptanceCriteria: draftCriteria
+                  })
+                );
+                editing = false;
+              }}
+            >
+              Save &amp; retry
+            </button>
+          </div>
+        </section>
       {/if}
 
       <div class="layout">
@@ -108,6 +270,8 @@
             run={loaded.run}
             selected={selected ?? loaded.run.currentStepIndex ?? 0}
             onSelect={(index) => (selected = index)}
+            onRetry={retryable ? () => act(() => retry(ticketId)) : undefined}
+            retrying={working}
           />
           {#if step}
             <LiveLog
@@ -174,6 +338,78 @@
     color: #fff;
     text-decoration: none;
     font-weight: 600;
+  }
+  .notice {
+    border-left: 3px solid var(--accent);
+    margin: 0 0 16px;
+    padding: 12px 16px;
+  }
+  .failure h2 {
+    margin: 0 0 6px;
+    font-size: 15px;
+  }
+  .failure p {
+    margin: 0 0 6px;
+  }
+  .failure .next {
+    color: var(--ink-2);
+  }
+  .failure details {
+    margin-top: 8px;
+  }
+  .failure summary {
+    cursor: pointer;
+    color: var(--ink-3);
+  }
+  .failure pre {
+    margin: 8px 0 0;
+    padding: 10px;
+    background: var(--line-2);
+    border-radius: var(--r-sm);
+    font: 12px/1.6 ui-monospace, monospace;
+    white-space: pre-wrap;
+    max-height: 240px;
+    overflow: auto;
+  }
+  .editor {
+    margin-bottom: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .editor h2 {
+    margin: 0;
+    font-size: 15px;
+  }
+  .editor label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .editor input,
+  .editor textarea {
+    padding: 9px 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+    font: inherit;
+    width: 100%;
+    box-sizing: border-box;
+    resize: vertical;
+  }
+  .row {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+  }
+  .actions button.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+    font-weight: 600;
+  }
+  .actions button.danger {
+    color: var(--bad);
+    border-color: #f3c7c4;
   }
   .failure {
     border-left: 3px solid var(--bad);

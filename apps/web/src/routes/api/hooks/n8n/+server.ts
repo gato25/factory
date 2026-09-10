@@ -1,6 +1,7 @@
 import { type Callback, FactoryError } from '@factory/shared';
 import { db } from '$lib/db';
 import { applyCallback, authenticateCallback } from '$lib/services/callbacks';
+import { isPaused } from '$lib/services/run';
 import type { RequestHandler } from './$types';
 
 /**
@@ -31,9 +32,14 @@ export const POST: RequestHandler = async ({ request }) => {
 
   try {
     const { applied } = await applyCallback(db(), callback);
+    // The reply carries whether the run may continue. A pause is asked for
+    // here rather than polled for, because the orchestrator already posts
+    // after every step: the step that is running concludes and the answer to
+    // this call is what stops the next one beginning (FR-096).
+    const paused = await isPaused(db(), callback.run_id);
     // 200 either way: a duplicate is a successful no-op, not an error, so the
     // orchestrator does not retry it forever (FR-095).
-    return Response.json({ applied });
+    return Response.json({ applied, paused, continue: !paused });
   } catch (error) {
     if (error instanceof FactoryError) {
       return Response.json(

@@ -98,3 +98,23 @@ export async function recordExecutionId(
     })
     .where(eq(runs.id, runId));
 }
+
+/**
+ * Handing a started run to the orchestrator and recording what came of it.
+ * Every caller that starts a run needs the same three steps in the same
+ * order, and getting the order wrong would leave a run looking failed when it
+ * is merely queued (FR-094).
+ */
+export async function handOver(
+  database: Database,
+  input: { runId: string; snapshot: PipelineSnapshot },
+  deps: Pick<TriggerDeps, 'baseUrl' | 'apiKey' | 'fetch' | 'sleep' | 'workflowPath'>,
+): Promise<{ delivered: boolean; detail?: string }> {
+  const delivery = await deliverTrigger(input.snapshot, deps);
+  if (!delivery.delivered) {
+    await recordDeliveryFailure(database, input.runId, delivery.lastError);
+    return { delivered: false, detail: delivery.lastError };
+  }
+  await recordExecutionId(database, input.runId, delivery.executionId);
+  return { delivered: true };
+}

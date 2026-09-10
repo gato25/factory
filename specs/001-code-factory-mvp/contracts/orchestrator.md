@@ -36,6 +36,9 @@ For each step in order (FR-049):
    - `checkpoint` → post `waiting_approval` carrying the resume address, then wait
    - `notify` → send on the configured channel
 3. After each step: if it failed, or a ceiling is exceeded, go to the failure path (FR-055).
+4. **Before beginning the next step**, honour a pause. The reply to every callback carries
+   `paused`; when it is true the step that was running has already concluded and nothing further
+   begins — post `paused` carrying the resume address, then wait (FR-096).
 
 Then push the branch, open the merge request (FR-065), post `done`, and destroy the container.
 
@@ -51,6 +54,7 @@ Then push the branch, open the merge request (FR-065), post `done`, and destroy 
 | `step_skipped` | `condition_not_met` | Step → `skipped`, run continues (FR-111) |
 | `ticket_classified` | `has_ui, rationale` | Sets the ticket's classification (FR-099, FR-100) |
 | `waiting_approval` | `resume_url, approvers` | Run and ticket → `waiting_approval`; approvers notified (FR-057, FR-058) |
+| `paused` | `resume_url` | Resume address stored; run keeps its status, so the interface shows where it stopped (FR-096) |
 | `log_chunk` | `seq, stream, text` | Appended; pushed to viewers (FR-076) |
 | `mr_opened` | `merge_request_url` | Stored on the ticket (FR-069) |
 | `done` | `merge_request_url, cost_usd` | Ticket → `done` (FR-070a) |
@@ -61,9 +65,14 @@ Then push the branch, open the merge request (FR-065), post `done`, and destroy 
 not advance the run twice (FR-095). Authenticated with `resume_secret`; unauthenticated calls are
 rejected without revealing whether the run exists.
 
+**Every reply carries whether the run may continue**: `{ applied, paused, continue }`. A pause is
+answered here rather than polled for, because the orchestrator already posts after every step — the
+step in flight concludes and this reply is what stops the next one beginning (FR-096).
+
 ## 4. Resume — app → orchestrator
 
-`POST {resume_url}` when a human decides at a gate (FR-060, FR-061):
+`POST {resume_url}` when a human decides at a gate (FR-060, FR-061), or `{ paused: false }` when a
+pause is withdrawn and the run continues from where it stopped (FR-096):
 
 ```
 { decision: "approved" | "changes_requested" | "edited" | "cancelled",

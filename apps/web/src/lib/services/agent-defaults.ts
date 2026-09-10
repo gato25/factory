@@ -57,8 +57,11 @@ if any exist. Work through the tasks in order, committing once per task with a
 message of the form \`feat(#<ticket>): <task>\`.
 
 You are responsible for leaving the repository's tests passing within this
-step: run them yourself and fix what you break. Nothing downstream will do it
-for you. Where a design exists, build the interface to match it.`;
+step, using the tools you have been permitted. Find how this repository runs
+its tests — its own scripts, not an assumed command — run them, and fix what
+you break. Nothing downstream will do it for you: there is no verification
+stage after this one, and a step that ends with the tests red has not
+finished. Where a design exists, build the interface to match it.`;
 
 export const DEFAULT_AGENTS: DefaultAgent[] = [
   {

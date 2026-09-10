@@ -80,7 +80,7 @@
     },
     {
       "parameters": {
-        "jsCode": "\n// Mirrors packages/shared/src/step-loop.ts \u2014 the orchestrator's ONLY logic:\n// evaluate the condition, then branch on the type. It knows nothing about what\n// a specification, a design or a plan is (Constitution Principle III).\nconst state = $input.first().json;\nconst steps = state.pipeline.steps;\nconst index = state.index ?? 0;\nconst facts = state.facts ?? {};\n\nfunction conditionHolds(condition) {\n  if (condition === 'always') return true;\n  if (condition === 'ticket_has_ui') return facts.hasUi === true;\n  if (condition === 'ticket_has_no_ui') return facts.hasUi !== true;\n  return true;\n}\n\nconst CONDITION_TEXT = {\n  ticket_has_ui: 'ticket has no UI change',\n  ticket_has_no_ui: 'ticket changes the interface'\n};\n\nif (index >= steps.length) {\n  return [{ json: { ...state, action: 'finish' } }];\n}\nconst step = steps[index];\nif (conditionHolds(step.condition)) {\n  return [{ json: { ...state, action: 'run', step, step_index: index } }];\n}\nreturn [\n  {\n    json: {\n      ...state,\n      action: 'skip',\n      step,\n      step_index: index,\n      condition_not_met: CONDITION_TEXT[step.condition] ?? 'never'\n    }\n  }\n];\n"
+        "jsCode": "\n// Mirrors packages/shared/src/step-loop.ts \u2014 the orchestrator's ONLY logic:\n// evaluate the condition, then branch on the type. It knows nothing about what\n// a specification, a design or a plan is (Constitution Principle III).\nconst state = $input.first().json;\nconst steps = state.pipeline.steps;\nconst index = state.index ?? 0;\nconst facts = state.facts ?? {};\n\nfunction conditionHolds(condition) {\n  if (condition === 'always') return true;\n  if (condition === 'ticket_has_ui') return facts.hasUi === true;\n  if (condition === 'ticket_has_no_ui') return facts.hasUi !== true;\n  return true;\n}\n\nconst CONDITION_TEXT = {\n  ticket_has_ui: 'ticket has no UI change',\n  ticket_has_no_ui: 'ticket changes the interface'\n};\n\nif (index >= steps.length) {\n  return [{ json: { ...state, action: 'finish' } }];\n}\n// A pause was asked for: the step that was running has already concluded and\n// been reported, and nothing further begins (FR-096). The run keeps its\n// status, so the interface shows exactly where it stopped.\nif (state.paused === true) {\n  return [{ json: { ...state, action: 'hold', step_index: index } }];\n}\nconst step = steps[index];\nif (conditionHolds(step.condition)) {\n  return [{ json: { ...state, action: 'run', step, step_index: index } }];\n}\nreturn [\n  {\n    json: {\n      ...state,\n      action: 'skip',\n      step,\n      step_index: index,\n      condition_not_met: CONDITION_TEXT[step.condition] ?? 'never'\n    }\n  }\n];\n"
       },
       "id": "decide-next-step",
       "name": "Decide next step",
@@ -151,6 +151,26 @@
                 "combinator": "and"
               },
               "outputKey": "finish"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "hold",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "outputKey": "hold"
             }
           ]
         },
@@ -391,7 +411,7 @@
     },
     {
       "parameters": {
-        "jsCode": "\n// Carries forward what the step established, then advances. The classification\n// is the only fact today and comes from the specification step (FR-099).\nconst state = $input.first().json;\nconst result = state.result ?? {};\nconst facts = { ...(state.facts ?? {}) };\nif (result.classification) facts.hasUi = result.classification.has_ui;\n\n// A ceiling reached is a failure, checked after every step (FR-081).\nconst spent = Number(state.spent_usd ?? 0) + Number(result.costUsd ?? 0);\nconst ceiling = Number(state.limits.cost_ceiling_usd);\nif (spent > ceiling) {\n  return [{ json: { ...state, facts, spent_usd: spent, action: 'fail',\n    reason: 'budget_exceeded',\n    detail: `the run reached its ceiling of $${ceiling.toFixed(4)}` } }];\n}\n// A change request at a checkpoint re-runs the PRECEDING step with the\n// feedback, then returns to the same checkpoint (FR-061).\nconst decision = state.resume?.decision ?? state.decision;\nif (decision === 'changes_requested') {\n  const steps = state.pipeline.steps;\n  let back = (state.step_index ?? 0) - 1;\n  while (back >= 0 && !['agent', 'design', 'shell'].includes(steps[back].type)) back--;\n  if (back >= 0) {\n    return [{ json: { ...state, facts, spent_usd: spent, index: back,\n      feedback: state.resume?.feedback ?? state.feedback, returning_to: state.step_index } }];\n  }\n}\n// After a re-run triggered by a change request, come back to the checkpoint.\nif (state.returning_to !== undefined && state.returning_to !== null) {\n  const target = state.returning_to;\n  return [{ json: { ...state, facts, spent_usd: spent, index: target,\n    returning_to: null, feedback: null } }];\n}\nreturn [{ json: { ...state, facts, spent_usd: spent, index: (state.step_index ?? 0) + 1 } }];\n"
+        "jsCode": "\n// Carries forward what the step established, then advances. The classification\n// is the only fact today and comes from the specification step (FR-099).\nconst state = $input.first().json;\nconst result = state.result ?? {};\n// The callback reply says whether a pause has been asked for.\nconst paused = state.callback?.paused === true || state.paused === true;\nconst facts = { ...(state.facts ?? {}) };\nif (result.classification) facts.hasUi = result.classification.has_ui;\n\n// A ceiling reached is a failure, checked after every step (FR-081).\nconst spent = Number(state.spent_usd ?? 0) + Number(result.costUsd ?? 0);\nconst ceiling = Number(state.limits.cost_ceiling_usd);\nif (spent > ceiling) {\n  return [{ json: { ...state, facts, spent_usd: spent, action: 'fail',\n    reason: 'budget_exceeded',\n    detail: `the run reached its ceiling of $${ceiling.toFixed(4)}` } }];\n}\n// A change request at a checkpoint re-runs the PRECEDING step with the\n// feedback, then returns to the same checkpoint (FR-061).\nconst decision = state.resume?.decision ?? state.decision;\nif (decision === 'changes_requested') {\n  const steps = state.pipeline.steps;\n  let back = (state.step_index ?? 0) - 1;\n  while (back >= 0 && !['agent', 'design', 'shell'].includes(steps[back].type)) back--;\n  if (back >= 0) {\n    return [{ json: { ...state, facts, spent_usd: spent, index: back,\n      feedback: state.resume?.feedback ?? state.feedback, returning_to: state.step_index } }];\n  }\n}\n// After a re-run triggered by a change request, come back to the checkpoint.\nif (state.returning_to !== undefined && state.returning_to !== null) {\n  const target = state.returning_to;\n  return [{ json: { ...state, facts, spent_usd: spent, index: target,\n    returning_to: null, feedback: null } }];\n}\nreturn [{ json: { ...state, facts, paused, spent_usd: spent, index: (state.step_index ?? 0) + 1 } }];\n"
       },
       "id": "advance",
       "name": "Advance",
@@ -554,6 +574,51 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
       "position": [1580, 620]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.callback_url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "authorization",
+              "value": "=Bearer {{ $json.resume_secret }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ run_id: $json.run_id, attempt: $json.attempt, step_index: $json.step_index, event: 'paused', resume_url: $execution.resumeUrl }) }}",
+        "options": {}
+      },
+      "id": "callback-paused",
+      "name": "Callback: paused",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [720, 700]
+    },
+    {
+      "parameters": {
+        "resume": "webhook",
+        "options": {}
+      },
+      "id": "wait-while-paused",
+      "name": "Wait while paused",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [920, 700]
+    },
+    {
+      "parameters": {
+        "jsCode": "\n// Continuing after a pause. The request was cleared before this webhook was\n// called, so the flag is dropped here too and the run picks up at the step\n// it had reached \u2014 not the one that had already concluded (FR-096).\nconst state = $input.first().json;\nreturn [{ json: { ...state, paused: false, index: state.step_index ?? state.index ?? 0 } }];\n"
+      },
+      "id": "cleared-to-continue",
+      "name": "Cleared to continue",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 700]
     }
   ],
   "connections": {
@@ -631,6 +696,13 @@
         [
           {
             "node": "Runner: verify and push",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Callback: paused",
             "type": "main",
             "index": 0
           }
@@ -802,6 +874,39 @@
         [
           {
             "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Callback: paused": {
+      "main": [
+        [
+          {
+            "node": "Wait while paused",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait while paused": {
+      "main": [
+        [
+          {
+            "node": "Cleared to continue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cleared to continue": {
+      "main": [
+        [
+          {
+            "node": "Decide next step",
             "type": "main",
             "index": 0
           }

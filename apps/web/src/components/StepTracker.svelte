@@ -5,17 +5,39 @@
     steps,
     run,
     onSelect,
-    selected
+    selected,
+    onRetry,
+    retrying = false
   }: {
     steps: RunView['steps'];
     run: RunView['run'];
     onSelect?: (index: number) => void;
     selected?: number;
+    /** Absent when the viewer has nothing to retry — a live run. */
+    onRetry?: () => void;
+    retrying?: boolean;
   } = $props();
+
+  /**
+   * The step that failed, so it is the one the eye lands on and the one the
+   * Retry action sits beside (FR-087). The run's own record of where it
+   * failed wins over a step row, because a ceiling stops a run between steps.
+   */
+  const failedIndex = $derived(
+    run.failureStepIndex ?? steps.find((step) => step.state === 'failed')?.index ?? null
+  );
 
   const spentPercent = $derived(
     Math.min(100, Math.round((Number(run.costUsd) / Number(run.costCeilingUsd)) * 100))
   );
+
+  /** Enough to recognise the failure, not enough to bury the list. */
+  function firstLine(detail: string | null | undefined): string {
+    if (!detail) return 'failed';
+    const line = detail.split('\n')[0]?.trim() ?? '';
+    if (!line) return 'failed';
+    return line.length > 100 ? `${line.slice(0, 100)}…` : line;
+  }
 
   const MARK: Record<RunView['steps'][number]['state'], string> = {
     done: '✓',
@@ -31,7 +53,11 @@
 
   <ol>
     {#each steps as step (step.index)}
-      <li class={step.state} class:selected={selected === step.index}>
+      <li
+        class={step.state}
+        class:selected={selected === step.index}
+        class:culprit={step.index === failedIndex}
+      >
         <button type="button" onclick={() => onSelect?.(step.index)}>
           <span class="mark" aria-hidden="true">{MARK[step.state]}</span>
           <span class="body">
@@ -44,8 +70,16 @@
             <!-- A skipped step is shown with its reason, never omitted (FR-075a) -->
             {#if step.state === 'skipped'}
               <span class="muted small">skipped — {step.conditionNotMet}</span>
+            {:else if step.index === failedIndex && run.failureReason}
+              <!-- The run's own reason, which is written for a person. A
+                   ceiling also stops a run between steps, where the step
+                   itself recorded no error of its own. -->
+              <span class="fail small">{run.failureReason}</span>
             {:else if step.state === 'failed'}
-              <span class="fail small">{step.errorDetail ?? 'failed'}</span>
+              <!-- A step that failed without ending the run (FR-111). Its
+                   first line only: the raw output belongs in the log, not
+                   in a list someone is scanning. -->
+              <span class="fail small">{firstLine(step.errorDetail)}</span>
             {:else if step.summary}
               <span class="muted small">{step.summary}</span>
             {/if}
@@ -55,6 +89,16 @@
             {#if step.costUsd && step.costUsd !== '0.0000'}&middot; ${step.costUsd}{/if}
           </span>
         </button>
+        {#if step.index === failedIndex && onRetry}
+          <div class="retry">
+            <button type="button" class="action" onclick={onRetry} disabled={retrying}>
+              {retrying ? 'Retrying…' : 'Retry from here'}
+            </button>
+            <span class="muted small">
+              A new attempt on this ticket. This one stays readable.
+            </span>
+          </div>
+        {/if}
       </li>
     {/each}
     <li class="implicit">
@@ -114,6 +158,31 @@
   li.done .mark { color: var(--ok); }
   li.running .mark { color: var(--accent); }
   li.failed .mark { color: var(--bad); }
+  li.culprit {
+    border-left: 3px solid var(--bad);
+    background: #fdf6f5;
+  }
+  .retry {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding: 0 4px 10px 34px;
+  }
+  .retry button.action {
+    display: inline-block;
+    width: auto;
+    padding: 7px 14px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+    background: var(--surface);
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .retry button.action:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
   li.skipped .mark { color: var(--ink-3); }
   .body {
     display: flex;

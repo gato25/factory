@@ -5,11 +5,7 @@ import { loadWebConfig } from '$lib/config';
 import { db } from '$lib/db';
 import { formBoolean } from '$lib/forms';
 import { previewRun, verificationWarning } from '$lib/services/estimate';
-import {
-  deliverTrigger,
-  recordDeliveryFailure,
-  recordExecutionId,
-} from '$lib/services/orchestrator';
+import { handOver } from '$lib/services/orchestrator';
 import { startRun } from '$lib/services/run';
 import { createTicket, getTicket, listTickets } from '$lib/services/ticket';
 
@@ -82,27 +78,26 @@ export const create = form(CreateSchema, async (data) => {
     callbackBaseUrl: config.publicBaseUrl,
   });
 
-  const delivery = await deliverTrigger(snapshot, {
-    baseUrl: config.orchestratorBaseUrl,
-    apiKey: config.orchestratorApiKey || undefined,
-  });
+  const delivery = await handOver(
+    db(),
+    { runId: run.id, snapshot },
+    { baseUrl: config.orchestratorBaseUrl, apiKey: config.orchestratorApiKey || undefined },
+  );
 
   if (!delivery.delivered) {
-    await recordDeliveryFailure(db(), run.id, delivery.lastError);
     log.warn('ticket queued but not started', {
       ticket: created.reference,
-      lastError: delivery.lastError,
+      lastError: delivery.detail,
     });
     return {
       id: created.id,
       reference: created.reference,
       started: false,
       queuedNotStarted: true,
-      detail: delivery.lastError,
+      detail: delivery.detail,
     };
   }
 
-  await recordExecutionId(db(), run.id, delivery.executionId);
   return { id: created.id, reference: created.reference, started: true, runId: run.id };
 });
 
@@ -114,15 +109,11 @@ export const start = command(v.pipe(v.string(), v.uuid()), async (ticketId) => {
     ticketId,
     callbackBaseUrl: config.publicBaseUrl,
   });
-  const delivery = await deliverTrigger(snapshot, {
-    baseUrl: config.orchestratorBaseUrl,
-    apiKey: config.orchestratorApiKey || undefined,
-  });
-  if (!delivery.delivered) {
-    await recordDeliveryFailure(db(), run.id, delivery.lastError);
-  } else {
-    await recordExecutionId(db(), run.id, delivery.executionId);
-  }
+  const delivery = await handOver(
+    db(),
+    { runId: run.id, snapshot },
+    { baseUrl: config.orchestratorBaseUrl, apiKey: config.orchestratorApiKey || undefined },
+  );
   await tickets().refresh();
   return { runId: run.id, started: delivery.delivered };
 });

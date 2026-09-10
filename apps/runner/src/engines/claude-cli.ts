@@ -10,6 +10,7 @@ import type { ContainerHost } from '../container/host';
 import { WORKDIR } from '../container/start';
 import { checkRequiredOutputs } from '../outputs/check';
 import type { LogSink } from '../stream/logs';
+import { applyLimits, effectiveLimits, timeoutMsFor } from './limits';
 import { usageFromClaudeJson } from './usage';
 
 /**
@@ -25,6 +26,8 @@ export interface ClaudeStepInput {
   agent: SnapshotAgent;
   containerId: string;
   logs: LogSink;
+  /** What the run has already spent, so this step's limit is what is left. */
+  spentSoFarUsd?: string;
   feedback?: string;
   hasUi?: boolean;
   designScreens?: string[];
@@ -80,9 +83,11 @@ export async function runClaudeStep(
   const prompt = buildPrompt(input);
   const argv = buildArgv(input, prompt);
 
+  // The agent's own limits, capped at what the run may still consume (FR-080).
+  const limits = effectiveLimits(input.agent, input.snapshot.limits, input.spentSoFarUsd);
   const result = await host.exec(input.containerId, argv, {
     cwd: WORKDIR,
-    timeoutMs: input.agent.limits.max_minutes ? input.agent.limits.max_minutes * 60_000 : undefined,
+    timeoutMs: timeoutMsFor(limits),
     onOutput: (stream, text) => input.logs.write(stream, text),
   });
   input.logs.end();
@@ -92,17 +97,21 @@ export async function runClaudeStep(
   const durationS = Math.max(1, Math.round((usage.durationMs ?? Date.now() - started) / 1000));
 
   if (result.exitCode !== 0) {
-    return {
-      status: 'failed',
-      costUsd: usage.costUsd,
-      durationS,
-      sessionId: usage.sessionId,
-      outputs: [],
-      error: {
-        reason: 'command_failed',
-        detail: result.stderr.trim().slice(0, 4000) || `the CLI exited ${result.exitCode}`,
+    return applyLimits(
+      {
+        status: 'failed',
+        costUsd: usage.costUsd,
+        durationS,
+        sessionId: usage.sessionId,
+        outputs: [],
+        error: {
+          reason: 'command_failed',
+          detail: result.stderr.trim().slice(0, 4000) || `the CLI exited ${result.exitCode}`,
+        },
       },
-    };
+      limits,
+      { agentName: input.agent.name, exitCode: result.exitCode },
+    );
   }
 
   try {
@@ -121,16 +130,22 @@ export async function runClaudeStep(
     };
   }
 
-  return {
-    status: 'done',
-    costUsd: usage.costUsd,
-    durationS,
-    sessionId: usage.sessionId,
-    summary: `${input.agent.name} finished in ${durationS}s`,
-    outputs: (input.step.output_files ?? []).map((path) => ({
-      kind: 'document' as const,
-      path,
-      version: 1,
-    })),
-  };
+  // A step that produced everything asked of it can still have overspent its
+  // own limit; the limit is what a person needs told, not the output (FR-080).
+  return applyLimits(
+    {
+      status: 'done',
+      costUsd: usage.costUsd,
+      durationS,
+      sessionId: usage.sessionId,
+      summary: `${input.agent.name} finished in ${durationS}s`,
+      outputs: (input.step.output_files ?? []).map((path) => ({
+        kind: 'document' as const,
+        path,
+        version: 1,
+      })),
+    },
+    limits,
+    { agentName: input.agent.name, exitCode: 0 },
+  );
 }

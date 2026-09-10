@@ -161,6 +161,24 @@ export async function applyCallback(
       return { applied: true };
     }
 
+    /**
+     * A pause took effect: the step that was running concluded and nothing
+     * further began (FR-096). The resume address is stored so continuing does
+     * not depend on holding the execution in memory.
+     */
+    case 'paused': {
+      await database
+        .update(runs)
+        .set({
+          resumeUrl: callback.resume_url,
+          currentStepIndex: stepIndex,
+          updatedAt: new Date(),
+        })
+        .where(eq(runs.id, runId));
+      await announce(database, runId, { event: 'run_changed' });
+      return { applied: true };
+    }
+
     case 'log_chunk': {
       // Redacted at ingest, never at display (Principle V).
       const run = await runFor(database, runId);
@@ -219,6 +237,16 @@ export async function applyCallback(
     case 'failed': {
       const run = await runFor(database, runId);
       if (run.status === 'failed') return { applied: false };
+      // The STEP is recorded as failed too, carrying the engine's own words.
+      // Without this the run knows it failed but nothing knows where, so the
+      // step tracker cannot point at it and the reason has no detail to
+      // stand behind it (FR-087).
+      await recordStep(database, {
+        runId,
+        stepIndex: callback.step_index,
+        status: 'failed',
+        errorDetail: callback.detail ?? callback.reason,
+      });
       await setRunStatus(database, runId, 'failed', {
         failureReason: callback.reason,
         failureStepIndex: callback.step_index,

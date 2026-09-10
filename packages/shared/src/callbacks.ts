@@ -1,4 +1,4 @@
-/** The eleven events in contracts/orchestrator.md §3. */
+/** The twelve events in contracts/orchestrator.md §3. */
 export type CallbackEvent =
   | 'started'
   | 'step_started'
@@ -6,6 +6,7 @@ export type CallbackEvent =
   | 'step_skipped'
   | 'ticket_classified'
   | 'waiting_approval'
+  | 'paused'
   | 'log_chunk'
   | 'mr_opened'
   | 'done'
@@ -19,6 +20,7 @@ export const CALLBACK_EVENTS: readonly CallbackEvent[] = [
   'step_skipped',
   'ticket_classified',
   'waiting_approval',
+  'paused',
   'log_chunk',
   'mr_opened',
   'done',
@@ -57,6 +59,8 @@ export type CallbackPayload =
   | { event: 'step_skipped'; condition_not_met: string }
   | { event: 'ticket_classified'; has_ui: boolean; rationale: string }
   | { event: 'waiting_approval'; resume_url: string; approvers: string[] }
+  /** A pause was asked for; the step concluded and nothing further began. */
+  | { event: 'paused'; resume_url: string }
   | { event: 'log_chunk'; seq: number; stream: 'stdout' | 'stderr'; text: string }
   | { event: 'mr_opened'; merge_request_url: string }
   | { event: 'done'; merge_request_url: string; cost_usd: string }
