@@ -1,7 +1,7 @@
 # Code Factory — Product Specification
 
 Version 0.1 · 2026-09-10
-Design reference: `design.pen` (screens 00–13)
+Design reference: `design.pen` (screens 00–14)
 
 ---
 
@@ -213,21 +213,12 @@ Right panel **What will happen** lists every step of the chosen pipeline with th
 Footer shows an estimated cost and duration. Actions: **Save as draft**, **Create & start pipeline**.
 **Behavior:** on create, the ticket is stored with the pipeline version pinned, status becomes `queued`, and the webhook fires (see §5). The user does not declare whether the ticket has UI work; the Spec agent decides that at the first step (§8.6).
 
-### 06a Design Review
-**Purpose:** look at the screens the Design step produced and decide whether to build them.
-Reached when a checkpoint follows a design step, and openable read-only at any later point from the run's artifacts.
-- Banner naming the checkpoint and stating that no code has been written yet.
-- **Screen gallery**: every exported image as a large thumbnail with its screen name. Clicking one opens it full size with next and previous.
-- Side panel: the ticket's acceptance criteria, so the reviewer can check the screens against them, and the Spec agent's reason for classifying the ticket as UI work.
-- Actions: **Approve & continue**, **Request changes** with a feedback box, **Open in pen.dev** (link to the committed `.pen` file), **Cancel run**.
-**Behavior:** approving continues the pipeline to Plan. Requesting changes re-runs the design step with the feedback appended, which revises the existing `.pen` file rather than starting a new one (§8.6), then returns here with the new screens.
-
 ### 06 Ticket Run
 **Purpose:** watch one run and understand exactly where it is.
 - Header: breadcrumb, title, status badge, branch name, creator, start time, cost so far. Actions: **Pause**, **Cancel run**.
 - **Pipeline steps** tracker: Spec, Design, Plan, Tasks, Implement, Merge request. Each shows done (green check), running (blue), upcoming (grey) or skipped (grey, struck through, with the reason "no UI change"), plus duration and cost.
 - **Live log**: streamed terminal output of the current step, with the exact command shown in the header. This is the Claude CLI for agent steps and the pen.dev CLI for design steps.
-- **Artifacts**: `spec.md`, the design screens, `plan.md`, `tasks.md`, commits on the branch, and the merge request once it exists. Documents open in a viewer. Screens appear as a row of thumbnails that opens the gallery (06a).
+- **Artifacts**: `spec.md`, the design screens, `plan.md`, `tasks.md`, commits on the branch, and the merge request once it exists. Documents open in a viewer. Screens appear as a row of thumbnails that opens the gallery (14).
 - **Run details**: pipeline, attempt, sandbox image, n8n execution id (deep link), budget used of cap.
 **Behavior:** the page is the visual form of the run state machine (§6). When the run finishes, the MR link appears and the ticket closes. When it fails, the failed step is highlighted, the log shows the error, and a **Retry** action creates a new attempt.
 
@@ -274,6 +265,15 @@ Sections: Workspace, **Orchestration (n8n)**, **Sandbox (Docker)**, Claude CLI &
 
 ### 13 System Architecture
 Diagram artboard for the team, not an application screen. Shows User → Factory App → n8n → Runner + Docker → Git provider and the eight-step ticket lifecycle.
+
+### 14 Design Review
+**Purpose:** look at the screens the Design step produced and decide whether to build them.
+Reached when a checkpoint follows a design step, and openable read-only at any later point from the run's artifacts.
+- Banner naming the checkpoint and stating that no code has been written yet.
+- **Screen gallery**: every exported image as a large thumbnail with its screen name. Clicking one opens it full size with next and previous.
+- Side panel: the ticket's acceptance criteria, so the reviewer can check the screens against them, and the Spec agent's reason for classifying the ticket as UI work.
+- Actions: **Approve & continue**, **Request changes** with a feedback box, **Open in pen.dev** (link to the committed `.pen` file), **Cancel run**.
+**Behavior:** approving continues the pipeline to Plan. Requesting changes re-runs the design step with the feedback appended, which revises the existing `.pen` file rather than starting a new one (§8.6), then returns here with the new screens.
 
 ---
 
