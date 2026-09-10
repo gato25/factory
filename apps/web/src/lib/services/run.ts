@@ -4,6 +4,7 @@ import { runs, tickets } from '@factory/db/schema';
 import { conflict, FactoryError, notFound } from '@factory/shared';
 import { desc, eq, sql } from 'drizzle-orm';
 import { resolveSnapshot } from '$lib/snapshot/resolve';
+import type { ReleaseSandbox } from './sandbox';
 
 /**
  * One run per attempt, numbered in sequence on its ticket (FR-045), and at
@@ -285,7 +286,7 @@ export async function isPaused(database: Database, runId: string): Promise<boole
 
 export interface CancelDeps {
   /** Releasing the sandbox; the branch is deliberately left alone (FR-097). */
-  releaseSandbox?: (containerId: string) => Promise<void>;
+  releaseSandbox?: ReleaseSandbox;
 }
 
 /**
@@ -322,10 +323,23 @@ export async function cancelRunNow(
 
   if (run.containerId && deps.releaseSandbox) {
     try {
-      await deps.releaseSandbox(run.containerId);
+      await deps.releaseSandbox({
+        runId,
+        containerId: run.containerId,
+        outcome: 'cancelled',
+      });
+      // Recording the release is what makes a leak visible. Left set, the
+      // row claims the run still holds a container, and nothing — no
+      // operator, no audit, no reconciler — can tell a released sandbox
+      // from one nobody reclaimed (SC-012).
+      await database
+        .update(runs)
+        .set({ containerId: null, updatedAt: new Date() })
+        .where(eq(runs.id, runId));
     } catch {
-      // The run is cancelled either way. The sandbox's own lifetime limit
-      // reclaims it if this did not (FR-085).
+      // The run is cancelled either way, and the container id stays on the
+      // row on purpose: it is the only handle anything has for reclaiming
+      // it. The sandbox's own lifetime limit is the backstop (FR-085).
     }
   }
   return { cancelled: true };

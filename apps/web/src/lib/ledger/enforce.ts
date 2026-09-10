@@ -2,6 +2,7 @@ import type { Database } from '@factory/db';
 import { runs, stepResults } from '@factory/db/schema';
 import { createLogger } from '@factory/shared';
 import { eq, sql } from 'drizzle-orm';
+import type { ReleaseSandbox } from '$lib/services/sandbox';
 
 /**
  * The ceilings a run may not exceed (FR-079), and what happens when it does
@@ -123,7 +124,7 @@ export async function mayStartAnotherStep(
 
 export interface EnforceDeps {
   /** Releasing the sandbox is the "stop the work" half of FR-081. */
-  releaseSandbox?: (containerId: string) => Promise<void>;
+  releaseSandbox?: ReleaseSandbox;
 }
 
 /**
@@ -168,10 +169,23 @@ export async function enforceCeilings(
 
   if (run.containerId && deps.releaseSandbox) {
     try {
-      await deps.releaseSandbox(run.containerId);
+      await deps.releaseSandbox({
+        runId,
+        containerId: run.containerId,
+        // A run stopped at a ceiling has failed, so the Runner's retention
+        // rule applies to it (FR-086).
+        outcome: 'failed',
+      });
+      // Recording the release is what makes a leak visible (SC-012).
+      await database
+        .update(runs)
+        .set({ containerId: null, updatedAt: new Date() })
+        .where(eq(runs.id, runId));
     } catch (error) {
       // The run is failed either way; a leaked sandbox is a smaller problem
-      // than a run that looks alive but cannot progress.
+      // than a run that looks alive but cannot progress. The container id
+      // stays on the row: it is the only handle anything has for reclaiming
+      // it, and this log line is what says it needs reclaiming.
       log.error('could not release the sandbox of a run stopped at its ceiling', {
         run_id: runId,
         container_id: run.containerId,

@@ -95,13 +95,20 @@ test('the sandbox is released when a ceiling stops the run', async () => {
   await db.update(runs).set({ containerId: 'container-42' }).where(eq(runs.id, runId));
   await spend(0, '2.0000');
 
-  const released: string[] = [];
+  const released: { runId: string; containerId: string; outcome: string }[] = [];
   await enforceCeilings(db, runId, {
-    releaseSandbox: async (id) => {
-      released.push(id);
+    releaseSandbox: async (sandbox) => {
+      released.push(sandbox);
     },
   });
-  expect(released).toEqual(['container-42']);
+  // The Runner keys sandboxes by run and applies its own retention rule, so
+  // the request has to say which run ended and how (FR-086).
+  expect(released).toEqual([{ runId, containerId: 'container-42', outcome: 'failed' }]);
+
+  // And the release is recorded: a row still naming a container cannot be
+  // told apart from a leaked one (SC-012).
+  const [after] = await db.select().from(runs).where(eq(runs.id, runId)).limit(1);
+  expect(after?.containerId).toBeNull();
 });
 
 test('a sandbox that will not release still leaves the run failed', async () => {
@@ -116,6 +123,9 @@ test('a sandbox that will not release still leaves the run failed', async () => 
   expect(result.failed).toBe(true);
   const [run] = await db.select().from(runs).where(eq(runs.id, runId)).limit(1);
   expect(run?.status).toBe('failed');
+  // The container id stays: it is the only handle anything has for
+  // reclaiming the sandbox, so clearing it would strand the container.
+  expect(run?.containerId).toBe('container-43');
 });
 
 test('enforcing twice does not change the reason the second time', async () => {

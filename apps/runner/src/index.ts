@@ -1,7 +1,7 @@
 import { FactoryError } from '@factory/shared';
 import { authenticate } from './auth';
 import { loadRunnerConfig } from './config';
-import { dockerHost } from './container/host';
+import { dockerHost, run } from './container/host';
 import { log, toResponse } from './errors';
 import {
   callbackSender,
@@ -90,6 +90,36 @@ const routes: Route[] = [
     async handle(match) {
       const outcome = await verifyAndPush(dockerHost, store, match[1] as string);
       return Response.json(outcome);
+    },
+  },
+  {
+    // Readiness, behind authentication on purpose. `/health` answers
+    // liveness to anyone, which means it can never tell a good credential
+    // from a bad one — an operator with the wrong token was being told the
+    // Runner "accepted our credential" (FR-005a). This route is the one the
+    // settings screen probes, so a wrong token comes back 401.
+    method: 'GET',
+    pattern: /^\/ready$/,
+    async handle() {
+      // A Runner that cannot reach its container host is useless, and that
+      // is worth saying here rather than at the first run.
+      const probe = await run('docker', ['version', '--format', '{{.Server.Version}}'], {
+        timeoutMs: 4000,
+      });
+      const reachable = probe.exitCode === 0;
+      return Response.json(
+        {
+          status: reachable ? 'ok' : 'degraded',
+          service: 'runner',
+          container_host: reachable ? 'reachable' : 'unreachable',
+          detail: reachable
+            ? `docker ${probe.stdout.trim()}`
+            : 'the container host is not answering, so no run can start',
+        },
+        // Not a 5xx: the Runner itself is answering, and the credential was
+        // accepted. Saying otherwise would hide which of the two is wrong.
+        { status: 200 },
+      );
     },
   },
   {

@@ -59,7 +59,7 @@ export function createRedactor(secrets: Iterable<string> = []): Redactor {
   };
 }
 
-/** True when nothing credential-shaped survives. Used by the audit in T224. */
+/** True when nothing credential-shaped survives. Used by the T225 audit. */
 export function isClean(text: string, secrets: Iterable<string> = []): boolean {
   return createRedactor(secrets)(text) === text;
 }

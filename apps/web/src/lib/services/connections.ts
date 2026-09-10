@@ -41,6 +41,11 @@ const STATE_TEXT: Record<ConnectionState, string> = {
 export interface ProbeDeps {
   fetch?: (url: string, init?: RequestInit) => Promise<Response>;
   timeoutMs?: number;
+  /**
+   * The Runner's token. Read from the environment when absent; passed only
+   * where the environment is not the source, which is a test.
+   */
+  authToken?: string;
 }
 
 /**
@@ -125,11 +130,26 @@ export async function testRunner(
   requireAdmin(user);
   const workspace = await getWorkspace(database);
   const base = workspace.runnerBaseUrl;
+  // The Runner's token is deployment configuration, not a workspace setting:
+  // it comes from the environment, and `getWorkspace` deliberately never
+  // returns it (FR-011). Read directly rather than through `loadWebConfig`,
+  // whose job is to fail at startup over the WHOLE environment — going
+  // through it here would report a missing session secret as a Runner
+  // connection fault.
+  const token = deps.authToken ?? process.env.RUNNER_AUTH_TOKEN ?? '';
   return probe(
     'runner',
-    base ? `${base.replace(/\/+$/, '')}/health` : null,
-    // The Runner's own health route answers this shape and nothing else does.
-    { expect: (body) => body.includes('"service":"runner"') },
+    // `/ready`, not `/health`: health is unauthenticated by design, so
+    // probing it can only ever report "reachable" — a wrong token would be
+    // reported as accepted, which is the one fault an operator most needs to
+    // see (FR-005a).
+    base ? `${base.replace(/\/+$/, '')}/ready` : null,
+    {
+      headers: token ? { authorization: `Bearer ${token}` } : undefined,
+      // Reachable and authorised is still not enough: something else could
+      // be listening on that port and answering 200 to everything.
+      expect: (body) => body.includes('"service":"runner"'),
+    },
     deps,
   );
 }

@@ -6,6 +6,8 @@
       "name": "code-factory",
       "devDependencies": {
         "@biomejs/biome": "2.5.12",
+        "@factory/db": "workspace:*",
+        "@factory/shared": "workspace:*",
         "@types/bun": "^1.4.2",
         "bun-types": "^1.4.2",
         "typescript": "5.9.3",
