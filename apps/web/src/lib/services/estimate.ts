@@ -1,6 +1,6 @@
 import type { Database } from '@factory/db';
 import { agents, pipelineVersions, runs, workspaces } from '@factory/db/schema';
-import { notFound, type Step } from '@factory/shared';
+import { CONDITION_DESCRIPTION, notFound, type Step } from '@factory/shared';
 import { and, eq, inArray, isNotNull } from 'drizzle-orm';
 import { verifies } from './pipeline-defaults';
 
@@ -34,12 +34,6 @@ export interface RunPreview {
   verifies: boolean;
   estimate: Estimate;
 }
-
-const CONDITION_TEXT: Record<Step['condition'], string | undefined> = {
-  always: undefined,
-  ticket_has_ui: 'only if this ticket changes the interface',
-  ticket_has_no_ui: 'only if this ticket does not change the interface',
-};
 
 const TYPE_LABEL: Record<Step['type'], string> = {
   agent: 'Agent',
@@ -76,7 +70,7 @@ export async function previewRun(
         agent?.name ?? (step.type === 'shell' ? (step.command ?? 'shell') : TYPE_LABEL[step.type]),
       model: agent?.model,
       conditional: step.condition !== 'always',
-      conditionText: CONDITION_TEXT[step.condition],
+      conditionText: CONDITION_DESCRIPTION[step.condition],
     };
   });
 

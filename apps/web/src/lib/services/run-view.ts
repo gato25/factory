@@ -10,7 +10,7 @@ import {
   users,
   workspaces,
 } from '@factory/db/schema';
-import { notFound, type PipelineSnapshot, type Step } from '@factory/shared';
+import { CONDITION_DESCRIPTION, notFound, type PipelineSnapshot, type Step } from '@factory/shared';
 import { and, count, desc, eq, gte, inArray, sql } from 'drizzle-orm';
 
 /**
@@ -83,12 +83,6 @@ export interface RunView {
     hasContent: boolean;
   }[];
 }
-
-const CONDITION_TEXT: Record<Step['condition'], string | undefined> = {
-  always: undefined,
-  ticket_has_ui: 'only if this ticket changes the interface',
-  ticket_has_no_ui: 'only if this ticket does not change the interface',
-};
 
 export async function runView(database: Database, runId: string): Promise<RunView> {
   const [run] = await database.select().from(runs).where(eq(runs.id, runId)).limit(1);

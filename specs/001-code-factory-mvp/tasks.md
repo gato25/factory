@@ -372,26 +372,26 @@ before the edit continues on the old arrangement.
 
 ### Tests for User Story 6
 
-- [ ] T172 [P] [US6] Integration test for version pinning in `apps/web/tests/integration/pipeline-version.test.ts` — saving advances the version and changes the behaviour of zero runs in flight (FR-027, SC-010)
-- [ ] T173 [P] [US6] Integration test for all three save-time refusals in `apps/web/tests/integration/pipeline-validation.test.ts` — no code-producing step (FR-028), a design step before the classifying step (FR-032e), and a condition depending on a fact not yet established (FR-032d), each with a stated reason
-- [ ] T174 [P] [US6] End-to-end test in `apps/web/tests/e2e/pipeline-builder.spec.ts` (quickstart.md scenario F)
+- [X] T172 [P] [US6] Integration test for version pinning in `apps/web/tests/integration/pipeline-version.test.ts` — saving advances the version and changes the behaviour of zero runs in flight (FR-027, SC-010)
+- [X] T173 [P] [US6] Integration test for all three save-time refusals in `apps/web/tests/integration/pipeline-validation.test.ts` — no code-producing step (FR-028), a design step before the classifying step (FR-032e), and a condition depending on a fact not yet established (FR-032d), each with a stated reason
+- [X] T174 [P] [US6] End-to-end test in `apps/web/tests/e2e/pipeline-builder.spec.ts` (quickstart.md scenario F)
 
 ### Implementation for User Story 6
 
-- [ ] T175 [US6] Represent a pipeline as an ordered list of steps held as data, with no step order or meaning hard-coded, in `apps/web/src/lib/services/pipeline.ts` (FR-024, Principle III)
-- [ ] T176 [US6] Support all five step kinds in the builder — agent, design, review gate, shell command, notification in `apps/web/src/components/PipelineBuilder.svelte` (FR-025)
-- [ ] T177 [US6] Implement reorder, insert between any two steps, and remove, in `apps/web/src/lib/services/pipeline.ts` (FR-026)
-- [ ] T178 [US6] Advance the version on every save by writing a new insert-only `pipeline_versions` row, leaving runs in flight on the version they started with in `apps/web/src/lib/services/pipeline.ts` (FR-027, Principle IV)
-- [ ] T179 [US6] Refuse to save a pipeline containing no code-producing step, while allowing verification, gates and notifications to follow it in `apps/web/src/lib/services/pipeline-validate.ts` (FR-028)
-- [ ] T180 [US6] Refuse to save a pipeline whose design step precedes the classifying step, naming the offending step in `apps/web/src/lib/services/pipeline-validate.ts` (FR-032e)
-- [ ] T181 [US6] Refuse to save a condition at a point where the fact it depends on is not yet established, naming the step and the fact in `apps/web/src/lib/services/pipeline-validate.ts` (FR-032d)
-- [ ] T182 [US6] Treat opening the merge request as implicit and always last, not a step a user can move or remove in `apps/web/src/lib/services/pipeline.ts` (FR-029)
-- [ ] T183 [US6] Let each agent step declare its required documents, and each gate declare approvers, waiting time and expiry behaviour in `apps/web/src/components/StepEditor.svelte` (FR-032)
-- [ ] T184 [P] [US6] Remote functions for the builder in `apps/web/src/lib/remote/pipelines.remote.ts` — a `query` for one pipeline, a `form` for save, `command`s for reorder, insert, remove and duplicate
-- [ ] T185 [P] [US6] Pipeline Builder screen (08) in `apps/web/src/routes/(app)/pipelines/[id]/+page.svelte` — the vertical flow, the step palette, drag to reorder, and a + on each connector
-- [ ] T186 [P] [US6] Mark conditional steps as conditional wherever a pipeline is shown, stating the condition **in words rather than as a code** in `apps/web/src/components/StepNode.svelte` (FR-032f)
-- [ ] T187 [P] [US6] Show how many repositories use a pipeline, before anyone changes it in `apps/web/src/routes/(app)/pipelines/[id]/+page.svelte` (FR-030)
-- [ ] T188 [P] [US6] Implement duplicate in `apps/web/src/lib/services/pipeline.ts` (FR-031)
+- [X] T175 [US6] Represent a pipeline as an ordered list of steps held as data, with no step order or meaning hard-coded, in `apps/web/src/lib/services/pipeline.ts` (FR-024, Principle III)
+- [X] T176 [US6] Support all five step kinds in the builder — agent, design, review gate, shell command, notification in `apps/web/src/components/PipelineBuilder.svelte` (FR-025)
+- [X] T177 [US6] Implement reorder, insert between any two steps, and remove, in `apps/web/src/lib/services/pipeline.ts` (FR-026)
+- [X] T178 [US6] Advance the version on every save by writing a new insert-only `pipeline_versions` row, leaving runs in flight on the version they started with in `apps/web/src/lib/services/pipeline.ts` (FR-027, Principle IV)
+- [X] T179 [US6] Refuse to save a pipeline containing no code-producing step, while allowing verification, gates and notifications to follow it in `apps/web/src/lib/services/pipeline-validate.ts` (FR-028)
+- [X] T180 [US6] Refuse to save a pipeline whose design step precedes the classifying step, naming the offending step in `apps/web/src/lib/services/pipeline-validate.ts` (FR-032e)
+- [X] T181 [US6] Refuse to save a condition at a point where the fact it depends on is not yet established, naming the step and the fact in `apps/web/src/lib/services/pipeline-validate.ts` (FR-032d)
+- [X] T182 [US6] Treat opening the merge request as implicit and always last, not a step a user can move or remove in `apps/web/src/lib/services/pipeline.ts` (FR-029)
+- [X] T183 [US6] Let each agent step declare its required documents, and each gate declare approvers, waiting time and expiry behaviour in `apps/web/src/components/StepEditor.svelte` (FR-032)
+- [X] T184 [P] [US6] Remote functions for the builder in `apps/web/src/lib/remote/pipelines.remote.ts` — a `query` for one pipeline, a `form` for save, `command`s for reorder, insert, remove and duplicate
+- [X] T185 [P] [US6] Pipeline Builder screen (08) in `apps/web/src/routes/(app)/pipelines/[id]/+page.svelte` — the vertical flow, the step palette, drag to reorder, and a + on each connector
+- [X] T186 [P] [US6] Mark conditional steps as conditional wherever a pipeline is shown, stating the condition **in words rather than as a code** in `apps/web/src/components/StepNode.svelte` (FR-032f)
+- [X] T187 [P] [US6] Show how many repositories use a pipeline, before anyone changes it in `apps/web/src/routes/(app)/pipelines/[id]/+page.svelte` (FR-030)
+- [X] T188 [P] [US6] Implement duplicate in `apps/web/src/lib/services/pipeline.ts` (FR-031)
 
 **Checkpoint**: Stories 1–6 work. Teams can shape their own oversight.
 

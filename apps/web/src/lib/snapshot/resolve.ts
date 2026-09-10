@@ -16,7 +16,7 @@ import {
   type SnapshotAgent,
   type Step,
 } from '@factory/shared';
-import { eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { type Ceilings, resolveCeilings } from './ceilings';
 
 /**
@@ -64,12 +64,18 @@ export async function resolveSnapshot(
   }
 
   // The pinned version, never the pipeline's current one (FR-027, SC-010).
+  // Matched in the query: filtering after a limit would pick one arbitrary
+  // row and then reject it, so every run on an edited pipeline would fail.
   const [version] = await database
     .select()
     .from(pipelineVersions)
-    .where(eq(pipelineVersions.pipelineId, ticket.pipelineId))
-    .limit(1)
-    .then((rows) => rows.filter((row) => row.version === ticket.pipelineVersion));
+    .where(
+      and(
+        eq(pipelineVersions.pipelineId, ticket.pipelineId),
+        eq(pipelineVersions.version, ticket.pipelineVersion),
+      ),
+    )
+    .limit(1);
   if (!version) {
     throw notFound(`pipeline version ${ticket.pipelineVersion} no longer exists`);
   }

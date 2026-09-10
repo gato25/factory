@@ -20,10 +20,31 @@ export type StepDecision =
   | { action: 'skip'; index: number; step: Step; conditionNotMet: string }
   | { action: 'finish' };
 
+/**
+ * A condition is stated in words wherever a pipeline or a run is shown, never
+ * as a code (FR-032f). Two phrasings, because they answer different
+ * questions: what a step is waiting for, and what turned out not to be true.
+ */
+export const CONDITION_DESCRIPTION: Record<StepCondition, string | undefined> = {
+  always: undefined,
+  ticket_has_ui: 'only if this ticket changes the interface',
+  ticket_has_no_ui: 'only if this ticket does not change the interface',
+};
+
+/** The fact each condition depends on, for a message that names it. */
+export const CONDITION_FACT: Record<StepCondition, string | undefined> = {
+  always: undefined,
+  ticket_has_ui: 'whether the ticket changes the interface',
+  ticket_has_no_ui: 'whether the ticket changes the interface',
+};
+
+/** Why a step did not run, in the past tense — what a skipped step shows. */
 const CONDITION_TEXT: Record<Exclude<StepCondition, 'always'>, string> = {
   ticket_has_ui: 'ticket has no UI change',
   ticket_has_no_ui: 'ticket changes the interface',
 };
+
+export const CONDITION_NOT_MET = CONDITION_TEXT;
 
 /** True when the condition holds. An unestablished fact reads as false. */
 export function conditionHolds(condition: StepCondition, facts: RunFacts): boolean {
@@ -92,8 +113,9 @@ export function validateStepOrder(
       problems.push({
         index,
         message:
-          `Step ${index + 1} runs only "${step.condition}", but whether the ticket changes ` +
-          'the interface is not known yet at that point. Move it after the specification step.',
+          `Step ${index + 1} runs ${CONDITION_DESCRIPTION[step.condition]}, but ` +
+          `${CONDITION_FACT[step.condition]} is not known yet at that point. ` +
+          'Move it after the step that writes the specification.',
       });
     }
     if (step.type === 'design' && (classifyingIndex === null || index <= classifyingIndex)) {
