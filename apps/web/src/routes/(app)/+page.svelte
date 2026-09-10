@@ -2,8 +2,7 @@
   import { health } from '$lib/remote/health.remote';
 </script>
 
-<h1>Code Factory</h1>
-<p>Turn a ticket into a reviewable merge request.</p>
+<p>Dashboard tiles, active runs and the approval panel arrive with user story 2 (T094–T096).</p>
 
 <svelte:boundary>
   <p>service: {await health().then((r) => r.status)}</p>

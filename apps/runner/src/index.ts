@@ -1,4 +1,6 @@
+import { authenticate } from './auth';
 import { loadRunnerConfig } from './config';
+import { log, toResponse } from './errors';
 
 /**
  * The Runner is the only component with rights on the container host
@@ -11,11 +13,18 @@ const server = Bun.serve({
   port: config.port,
   fetch(request) {
     const url = new URL(request.url);
-    if (url.pathname === '/health' && request.method === 'GET') {
-      return Response.json({ status: 'ok', service: 'runner' });
+    try {
+      // Unauthenticated: liveness only, revealing nothing about any run.
+      if (url.pathname === '/health' && request.method === 'GET') {
+        return Response.json({ status: 'ok', service: 'runner' });
+      }
+      authenticate(request, config.authToken);
+      // Run lifecycle endpoints arrive with user story 1 (T066–T077).
+      return Response.json({ error: 'not found' }, { status: 404 });
+    } catch (error) {
+      return toResponse(error);
     }
-    return new Response('Not found', { status: 404 });
   },
 });
 
-console.log(`runner listening on :${server.port}`);
+log.info('runner listening', { port: server.port });

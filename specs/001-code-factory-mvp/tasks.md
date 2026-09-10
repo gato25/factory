@@ -84,22 +84,22 @@ All money columns are `numeric(10,4)` — never a float, because ceilings are en
 - [X] T022 [P] Define the pipeline snapshot type in `packages/shared/src/snapshot.ts` — the step shape from data-model.md: `type`, `condition` (defaulting to `always`), `agent_id`, `output_files`, `design`, `approvers`, `timeout_hours`, `on_timeout`, `command`, `channel`, `template`
 - [X] T023 [P] Define the callback vocabulary in `packages/shared/src/callbacks.ts` — all eleven events from `contracts/orchestrator.md` §3, each carrying `run_id`, `attempt`, `step_index`, `event`
 - [X] T024 [P] Define the step-engine interface in `packages/shared/src/step.ts` — `StepEngine`, `StepContext`, `StepOutcome` per `contracts/step-engines.md`
-- [ ] T025 [P] Contract test asserting the snapshot and callback types in `packages/shared` are the only definitions, in `packages/shared/tests/contracts.test.ts` — a divergence between the app's and the Runner's idea of a step result corrupts runs silently (plan.md)
+- [X] T025 [P] Contract test asserting the snapshot and callback types in `packages/shared` are the only definitions, in `packages/shared/tests/contracts.test.ts` — a divergence between the app's and the Runner's idea of a step result corrupts runs silently (plan.md)
 
 ### Cross-cutting services
 
-- [ ] T026 Implement credential encryption at rest in `apps/web/src/lib/secrets/store.ts` — encrypted with a key held only by the application, and **never readable back in full through any interface** (FR-011, Principle V)
-- [ ] T027 [P] Implement credential redaction in `packages/shared/src/redact.ts`, applied **where output is ingested, not where it is displayed**, so a later viewer change cannot un-redact stored history (FR-084, Principle V)
-- [ ] T028 [P] Integration test for redaction at ingest in `packages/shared/tests/redact.test.ts` — assert a credential written by a step never reaches `log_chunks`, `artifacts`, or a merge request body (SC-011)
-- [ ] T029 Implement sign-in with GitLab, GitHub and email-with-password, plus session handling, in `apps/web/src/lib/services/auth.ts` (FR-001)
-- [ ] T030 Create the user record on first successful sign-in, requiring no connected repository (FR-002), in `apps/web/src/lib/services/auth.ts`
-- [ ] T031 Implement the authorization helper in `apps/web/src/lib/services/authz.ts` with exactly three rules from `contracts/ui-data.md`: administrator-only, owner-or-administrator, and gate-approvers — checked **inside** each remote function, never in a component (FR-004, FR-006c, FR-064)
-- [ ] T032 [P] Integration test for the three authorization rules in `apps/web/tests/integration/authz.test.ts` — a caller who may read but not change sees the object and no action
-- [ ] T033 [P] Build the shared application frame — left sidebar and top bar — in `apps/web/src/routes/(app)/+layout.svelte` (spec.md §4 frame)
-- [ ] T034 [P] Implement error handling and structured logging in `apps/web/src/lib/errors.ts` and `apps/runner/src/errors.ts`
-- [ ] T035 [P] Implement environment configuration loading with validation in `apps/web/src/lib/config.ts` and `apps/runner/src/config.ts`
-- [ ] T036 [P] Implement the login screen (00) in `apps/web/src/routes/login/+page.svelte` with the three sign-in paths
-- [ ] T037 Implement authenticated Runner calls in `apps/runner/src/auth.ts` — the Runner is never reachable from the public internet and authenticates per run (`contracts/runner.md`)
+- [X] T026 Implement credential encryption at rest in `apps/web/src/lib/secrets/store.ts` — encrypted with a key held only by the application, and **never readable back in full through any interface** (FR-011, Principle V)
+- [X] T027 [P] Implement credential redaction in `packages/shared/src/redact.ts`, applied **where output is ingested, not where it is displayed**, so a later viewer change cannot un-redact stored history (FR-084, Principle V)
+- [X] T028 [P] Integration test for redaction at ingest in `packages/shared/tests/redact.test.ts` — assert a credential written by a step never reaches `log_chunks`, `artifacts`, or a merge request body (SC-011)
+- [X] T029 Implement sign-in with GitLab, GitHub and email-with-password, plus session handling, in `apps/web/src/lib/services/auth.ts` (FR-001)
+- [X] T030 Create the user record on first successful sign-in, requiring no connected repository (FR-002), in `apps/web/src/lib/services/auth.ts`
+- [X] T031 Implement the authorization helper in `apps/web/src/lib/services/authz.ts` with exactly three rules from `contracts/ui-data.md`: administrator-only, owner-or-administrator, and gate-approvers — checked **inside** each remote function, never in a component (FR-004, FR-006c, FR-064)
+- [X] T032 [P] Integration test for the three authorization rules in `apps/web/tests/integration/authz.test.ts` — a caller who may read but not change sees the object and no action
+- [X] T033 [P] Build the shared application frame — left sidebar and top bar — in `apps/web/src/routes/(app)/+layout.svelte` (spec.md §4 frame)
+- [X] T034 [P] Implement error handling and structured logging in `apps/web/src/lib/errors.ts` and `apps/runner/src/errors.ts`
+- [X] T035 [P] Implement environment configuration loading with validation in `apps/web/src/lib/config.ts` and `apps/runner/src/config.ts`
+- [X] T036 [P] Implement the login screen (00) in `apps/web/src/routes/login/+page.svelte` with the three sign-in paths
+- [X] T037 Implement authenticated Runner calls in `apps/runner/src/auth.ts` — the Runner is never reachable from the public internet and authenticates per run (`contracts/runner.md`)
 
 **Checkpoint**: schema migrated, contracts shared, sign-in working, frame rendering. User story work
 can begin.
