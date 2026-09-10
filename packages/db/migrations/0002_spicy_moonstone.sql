@@ -1,0 +1,1 @@
+ALTER TABLE "workspaces" ADD COLUMN "sandbox_wall_clock_minutes" integer DEFAULT 90 NOT NULL;

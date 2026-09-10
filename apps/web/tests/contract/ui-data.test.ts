@@ -88,8 +88,12 @@ test('every mutation validates its input with a schema, not by hand', () => {
       // The first argument must be a validator — a schema expression, a named
       // schema, or the explicit `'unchecked'` opt-out. If it is the handler
       // itself, the input reaches the body unvalidated.
+      //
+      // A handler taking NO parameter is the exception: it receives no input,
+      // so there is nothing for a schema to check.
       const isHandler = /^\s*(async\b|function\b|\()/.test(validator);
-      expect(isHandler, `${file}: ${kind} ${name} takes no validator`).toBe(false);
+      const takesNothing = /^\s*async\s*\(\s*\)|^\s*\(\s*\)\s*=>/.test(validator);
+      expect(isHandler && !takesNothing, `${file}: ${kind} ${name} takes no validator`).toBe(false);
     }
   }
 });

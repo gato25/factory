@@ -114,15 +114,22 @@ export async function resolveSnapshot(
     ? await database.select().from(skills).where(inArray(skills.id, skillIds))
     : [];
 
-  const [workspace] = await database.select().from(workspaces).limit(1);
+  const [workspace] = await database
+    .select()
+    .from(workspaces)
+    .orderBy(workspaces.createdAt)
+    .limit(1);
   if (!workspace) throw invalidInput('the workspace is not configured');
 
+  // The run's ceiling comes from the workspace (FR-079). An agent's own
+  // limits are per-STEP and travel on the agent below, capped in the runner
+  // against what the run has left (FR-080) — folding them in here would let
+  // one step's limit cap the whole run.
   const ceilings = resolveCeilings({
     workspace: {
       costUsd: workspace.defaultCostCeilingUsd,
       minutes: workspace.defaultTimeCeilingMinutes,
     },
-    agents: agentRows.map((a) => ({ costUsd: a.maxCostUsd, minutes: a.maxMinutes })),
   });
 
   const snapshotAgents: SnapshotAgent[] = agentRows.map((agent) => ({

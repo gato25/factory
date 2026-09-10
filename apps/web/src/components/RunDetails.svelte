@@ -1,4 +1,5 @@
 <script lang="ts">
+  import QueuePosition from '$components/QueuePosition.svelte';
   import { position } from '$lib/remote/runs.remote';
   import type { RunView } from '$lib/services/run-view';
 
@@ -45,9 +46,9 @@
     <dd>${view.run.costUsd} of ${view.run.costCeilingUsd}</dd>
   </dl>
 
-  {#if place?.ready && place.current !== null}
+  {#if place?.ready}
     <!-- Runs beyond the concurrency ceiling wait, and see where (FR-082) -->
-    <p class="badge warn">Waiting for a free sandbox — position {place.current} in the queue</p>
+    <QueuePosition position={place.current} />
   {/if}
 
   {#if view.ticket.classificationMissing}

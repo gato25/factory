@@ -447,23 +447,23 @@ concurrency cap waits and reports its position.
 
 ### Tests for User Story 8
 
-- [ ] T211 [P] [US8] Integration test for the concurrency cap and queue position in `apps/web/tests/integration/concurrency.test.ts` (FR-082)
-- [ ] T212 [P] [US8] Integration test asserting a member-set agent limit cannot raise consumption beyond the workspace ceiling, and the member is told which limit applies in `apps/web/tests/integration/limit-cap.test.ts` (FR-079a)
-- [ ] T213 [P] [US8] Integration test asserting no stored credential is readable back in full through any interface in `apps/web/tests/integration/credentials.test.ts` (FR-011)
-- [ ] T214 [P] [US8] End-to-end test in `apps/web/tests/e2e/governance.spec.ts` (quickstart.md scenario H)
+- [X] T211 [P] [US8] Integration test for the concurrency cap and queue position in `apps/web/tests/integration/concurrency.test.ts` (FR-082)
+- [X] T212 [P] [US8] Integration test asserting a member-set agent limit cannot raise consumption beyond the workspace ceiling, and the member is told which limit applies in `apps/web/tests/integration/limit-cap.test.ts` (FR-079a)
+- [X] T213 [P] [US8] Integration test asserting no stored credential is readable back in full through any interface in `apps/web/tests/integration/credentials.test.ts` (FR-011)
+- [X] T214 [P] [US8] End-to-end test in `apps/web/tests/e2e/governance.spec.ts` (quickstart.md scenario H)
 
 ### Implementation for User Story 8
 
-- [ ] T215 [US8] Restrict workspace credentials, dependency connections, cost ceilings and membership to administrators in `apps/web/src/lib/services/authz.ts` (FR-004)
-- [ ] T216 [US8] Let administrators invite users and change a user's role in `apps/web/src/lib/services/members.ts` (FR-005)
-- [ ] T217 [US8] Let administrators record the design service connection, its default model and export settings, and test it — required only where a pipeline contains a design step in `apps/web/src/lib/services/connections.ts` (FR-005a)
-- [ ] T218 [US8] Implement connection tests distinguishing reachable-and-authorised from unreachable or unauthorised, for the orchestrator, the container host and the design service, in `apps/web/src/lib/services/connections.ts` (FR-005a)
-- [ ] T219 [US8] Enforce the workspace concurrency limit, holding further runs in a queue that shows each author their position in `apps/web/src/lib/services/queue.ts` (FR-082)
-- [ ] T220 [US8] Let administrators constrain a sandbox's processing power, memory, wall-clock lifetime, and network reach while code is being written in `apps/web/src/lib/services/workspace.ts` (FR-085)
-- [ ] T221 [US8] Let administrators have failed runs' sandboxes retained for a bounded period for diagnosis, destroyed after in `apps/web/src/lib/services/workspace.ts` (FR-086)
-- [ ] T222 [P] [US8] Settings screen (12) in `apps/web/src/routes/(app)/settings/+page.svelte` — Workspace, Orchestration, Sandbox, model credentials, Design, Cost limits, Members, Notifications
-- [ ] T223 [P] [US8] Remote functions for settings in `apps/web/src/lib/remote/settings.remote.ts`, every one checking the administrator rule inside
-- [ ] T224 [P] [US8] Show queue position on the ticket and dashboard for a run waiting on the concurrency cap in `apps/web/src/components/QueuePosition.svelte` (FR-082)
+- [X] T215 [US8] Restrict workspace credentials, dependency connections, cost ceilings and membership to administrators in `apps/web/src/lib/services/authz.ts` (FR-004)
+- [X] T216 [US8] Let administrators invite users and change a user's role in `apps/web/src/lib/services/members.ts` (FR-005)
+- [X] T217 [US8] Let administrators record the design service connection, its default model and export settings, and test it — required only where a pipeline contains a design step in `apps/web/src/lib/services/connections.ts` (FR-005a)
+- [X] T218 [US8] Implement connection tests distinguishing reachable-and-authorised from unreachable or unauthorised, for the orchestrator, the container host and the design service, in `apps/web/src/lib/services/connections.ts` (FR-005a)
+- [X] T219 [US8] Enforce the workspace concurrency limit, holding further runs in a queue that shows each author their position in `apps/web/src/lib/services/queue.ts` (FR-082)
+- [X] T220 [US8] Let administrators constrain a sandbox's processing power, memory, wall-clock lifetime, and network reach while code is being written in `apps/web/src/lib/services/workspace.ts` (FR-085)
+- [X] T221 [US8] Let administrators have failed runs' sandboxes retained for a bounded period for diagnosis, destroyed after in `apps/web/src/lib/services/workspace.ts` (FR-086)
+- [X] T222 [P] [US8] Settings screen (12) in `apps/web/src/routes/(app)/settings/+page.svelte` — Workspace, Orchestration, Sandbox, model credentials, Design, Cost limits, Members, Notifications
+- [X] T223 [P] [US8] Remote functions for settings in `apps/web/src/lib/remote/settings.remote.ts`, every one checking the administrator rule inside
+- [X] T224 [P] [US8] Show queue position on the ticket and dashboard for a run waiting on the concurrency cap in `apps/web/src/components/QueuePosition.svelte` (FR-082)
 
 **Checkpoint**: All eight stories work. The product is complete against the specification.
 

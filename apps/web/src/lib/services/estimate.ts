@@ -90,7 +90,11 @@ async function estimate(database: Database, pipelineId: string): Promise<Estimat
 
   const comparable = past.filter((row) => row.startedAt && row.finishedAt);
   if (comparable.length === 0) {
-    const [workspace] = await database.select().from(workspaces).limit(1);
+    const [workspace] = await database
+      .select()
+      .from(workspaces)
+      .orderBy(workspaces.createdAt)
+      .limit(1);
     return {
       kind: 'unknown',
       ceilingUsd: workspace?.defaultCostCeilingUsd ?? '5.0000',

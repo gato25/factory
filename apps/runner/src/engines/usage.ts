@@ -20,10 +20,33 @@ export function normaliseCost(value: unknown): string {
   return n.toFixed(4);
 }
 
+/**
+ * The LAST JSON object on the stream. The CLI prints its result as JSON, but
+ * anything it said first is still on stdout — and parsing the whole stream
+ * would then yield zero, which is enforced against a ceiling as if the step
+ * were free.
+ */
+function lastJsonObject(raw: string): string | null {
+  const end = raw.lastIndexOf('}');
+  if (end === -1) return null;
+  // Walk back to the matching brace rather than guessing at the first one.
+  let depth = 0;
+  for (let i = end; i >= 0; i--) {
+    if (raw[i] === '}') depth++;
+    else if (raw[i] === '{') {
+      depth--;
+      if (depth === 0) return raw.slice(i, end + 1);
+    }
+  }
+  return null;
+}
+
 /** The JSON the Claude CLI prints with --output-format json. */
 export function usageFromClaudeJson(raw: string): Usage {
   try {
-    const parsed = JSON.parse(raw) as {
+    const json = lastJsonObject(raw);
+    if (!json) return { costUsd: ZERO };
+    const parsed = JSON.parse(json) as {
       total_cost_usd?: number;
       duration_ms?: number;
       session_id?: string;
@@ -43,7 +66,9 @@ export function usageFromClaudeJson(raw: string): Usage {
 /** The usage file the design CLI writes with --usage. */
 export function usageFromDesignJson(raw: string): Usage {
   try {
-    const parsed = JSON.parse(raw) as { cost_usd?: number; duration_ms?: number };
+    const json = lastJsonObject(raw);
+    if (!json) return { costUsd: ZERO };
+    const parsed = JSON.parse(json) as { cost_usd?: number; duration_ms?: number };
     return { costUsd: normaliseCost(parsed.cost_usd), durationMs: parsed.duration_ms };
   } catch {
     return { costUsd: ZERO };

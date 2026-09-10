@@ -76,51 +76,81 @@ test('resolution refuses a pipeline whose agent has been deleted', async () => {
   await expect(resolveFor(scenario)).rejects.toThrow(/no longer exists/);
 });
 
-// --- ceiling arithmetic (FR-079a) ---
+// --- ceiling arithmetic (FR-079, FR-079a) ---
 
 test('the workspace ceiling applies when nothing lower is set', () => {
   const c = resolveCeilings({ workspace: { costUsd: '5.0000', minutes: 45 } });
   expect(c).toMatchObject({ costUsd: '5.0000', minutes: 45, costFrom: 'workspace' });
 });
 
-test("a member's lower agent limit binds", () => {
+test("a pipeline's lower ceiling binds, and the message names it (FR-079)", async () => {
+  const { explainCeilings } = await import('../../src/lib/snapshot/ceilings');
   const c = resolveCeilings({
     workspace: { costUsd: '5.0000', minutes: 45 },
-    agents: [{ costUsd: '1.2500', minutes: 10 }],
+    pipeline: { costUsd: '3.0000', minutes: 30 },
   });
-  expect(c.costUsd).toBe('1.2500');
-  expect(c.costFrom).toBe('agent');
-  expect(c.minutes).toBe(10);
+  expect(c.costUsd).toBe('3.0000');
+  expect(c.costFrom).toBe('pipeline');
+  expect(c.minutes).toBe(30);
+  expect(explainCeilings(c)).toContain('$3.0000 per run (from the pipeline)');
 });
 
-test('a member CANNOT raise consumption above the workspace ceiling (FR-079a)', () => {
+test('a pipeline CANNOT raise consumption above the workspace ceiling (FR-079a)', () => {
   const c = resolveCeilings({
     workspace: { costUsd: '5.0000', minutes: 45 },
-    agents: [{ costUsd: '999.0000', minutes: 6000 }],
+    pipeline: { costUsd: '999.0000', minutes: 6000 },
   });
   expect(c.costUsd).toBe('5.0000');
   expect(c.minutes).toBe(45);
   expect(c.costFrom).toBe('workspace');
 });
 
-test('the lowest of several agents binds, and the message names which limit applies', async () => {
-  const { explainCeilings } = await import('../../src/lib/snapshot/ceilings');
+/**
+ * An agent's limits are per-STEP (FR-080) and deliberately do not enter the
+ * run's ceiling. Folding them in would mean an agent allowed $0.75 a step,
+ * inside a five-step pipeline, capped the whole run at $0.75 — so the run
+ * would fail after its first step for consuming exactly what it was allowed.
+ */
+test("an agent's per-step limit does not become the run's ceiling", () => {
+  const c = resolveCeilings({ workspace: { costUsd: '5.0000', minutes: 45 } });
+  expect(c.costUsd).toBe('5.0000');
+  expect(c.minutes).toBe(45);
+});
+
+test('cost is compared as scaled integers, so a fraction of a cent cannot drift', () => {
   const c = resolveCeilings({
-    workspace: { costUsd: '5.0000', minutes: 45 },
-    pipeline: { costUsd: '3.0000', minutes: 30 },
-    agents: [
-      { costUsd: '2.0000', minutes: 40 },
-      { costUsd: '4.0000', minutes: 5 },
-    ],
+    workspace: { costUsd: '0.3000', minutes: 45 },
+    pipeline: { costUsd: '0.1000', minutes: 45 },
   });
-  expect(c.costUsd).toBe('2.0000');
-  expect(c.minutes).toBe(5);
-  expect(explainCeilings(c)).toContain('$2.0000 per run (from the agent)');
+  expect(c.costUsd).toBe('0.1000');
+  // And an equal value does not change the source, so the message stays true.
+  const equal = resolveCeilings({
+    workspace: { costUsd: '2.0000', minutes: 45 },
+    pipeline: { costUsd: '2.0000', minutes: 45 },
+  });
+  expect(equal.costFrom).toBe('workspace');
 });
 
 test('ceilings resolved at snapshot time are stored on the snapshot, not recomputed', async () => {
-  await db.update(agents).set({ maxCostUsd: '0.5000' }).where(eq(agents.id, scenario.specAgentId));
+  const { workspaces } = await import('@factory/db/schema');
+  await db.update(workspaces).set({ defaultCostCeilingUsd: '2.5000' });
   const { snapshot, ceilings } = await resolveFor(scenario);
-  expect(ceilings.costUsd).toBe('0.5000');
-  expect(snapshot.limits.cost_ceiling_usd).toBe('0.5000');
+
+  expect(ceilings.costUsd).toBe('2.5000');
+  expect(snapshot.limits.cost_ceiling_usd).toBe('2.5000');
+
+  // Changing it afterwards does not reach the snapshot already taken.
+  await db.update(workspaces).set({ defaultCostCeilingUsd: '9.0000' });
+  expect(snapshot.limits.cost_ceiling_usd).toBe('2.5000');
+});
+
+test("an agent's per-step limit travels on the agent, not on the run", async () => {
+  await db.update(agents).set({ maxCostUsd: '0.5000' }).where(eq(agents.id, scenario.specAgentId));
+  const { snapshot } = await resolveFor(scenario);
+
+  // On the agent, where the runner caps the step against it (FR-080).
+  const spec = snapshot.agents.find((agent) => agent.id === scenario.specAgentId);
+  expect(spec?.limits.max_cost_usd).toBe('0.5000');
+  // Not on the run: a step's limit is not the run's ceiling (FR-079).
+  expect(snapshot.limits.cost_ceiling_usd).toBe('5.0000');
 });

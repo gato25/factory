@@ -1,23 +1,28 @@
 /**
- * A member may set their own agent's limits (FR-006), so a limit set from
- * below must never raise what a run may consume: the effective ceiling is the
- * LEAST of the agent's, the pipeline's and the workspace's (FR-079a). Resolved
- * once at snapshot time and stored on the run, so the arithmetic cannot drift
- * mid-run.
+ * What a single RUN may consume: taken from the pipeline or, failing that,
+ * the workspace (FR-079), and never above the workspace's own (FR-079a).
+ *
+ * An agent's limits are deliberately NOT folded in here. Those are per-STEP
+ * limits (FR-080): an agent allowed $0.75 a step inside a five-step pipeline
+ * must not cap the whole run at $0.75, which is what including it would do —
+ * the run would fail after its first step. The per-step cap lives in the
+ * runner, against what the run has left.
+ *
+ * Resolved once at snapshot time and stored on the run, so the arithmetic
+ * cannot drift mid-run.
  */
 
 export interface CeilingInputs {
   workspace: { costUsd: string; minutes: number };
   pipeline?: { costUsd?: string | null; minutes?: number | null };
-  agents?: { costUsd?: string | null; minutes?: number | null }[];
 }
 
 export interface Ceilings {
   costUsd: string;
   minutes: number;
   /** Which level supplied the binding value, so the interface can say so. */
-  costFrom: 'workspace' | 'pipeline' | 'agent';
-  minutesFrom: 'workspace' | 'pipeline' | 'agent';
+  costFrom: 'workspace' | 'pipeline';
+  minutesFrom: 'workspace' | 'pipeline';
 }
 
 /** Money is compared as scaled integers; never as floats (data-model.md). */
@@ -37,27 +42,17 @@ export function resolveCeilings(inputs: CeilingInputs): Ceilings {
   let minutes = inputs.workspace.minutes;
   let minutesFrom: Ceilings['minutesFrom'] = 'workspace';
 
-  const consider = (
-    cost: string | null | undefined,
-    mins: number | null | undefined,
-    source: 'pipeline' | 'agent',
-  ) => {
-    if (cost != null) {
-      const candidate = toTenthsOfCent(cost);
-      if (candidate < costUsd) {
-        costUsd = candidate;
-        costFrom = source;
-      }
+  // A pipeline may lower the ceiling; it can never raise it (FR-079a).
+  if (inputs.pipeline?.costUsd != null) {
+    const candidate = toTenthsOfCent(inputs.pipeline.costUsd);
+    if (candidate < costUsd) {
+      costUsd = candidate;
+      costFrom = 'pipeline';
     }
-    if (mins != null && mins < minutes) {
-      minutes = mins;
-      minutesFrom = source;
-    }
-  };
-
-  consider(inputs.pipeline?.costUsd, inputs.pipeline?.minutes, 'pipeline');
-  for (const agent of inputs.agents ?? []) {
-    consider(agent.costUsd, agent.minutes, 'agent');
+  }
+  if (inputs.pipeline?.minutes != null && inputs.pipeline.minutes < minutes) {
+    minutes = inputs.pipeline.minutes;
+    minutesFrom = 'pipeline';
   }
 
   return { costUsd: fromTenthsOfCent(costUsd), minutes, costFrom, minutesFrom };

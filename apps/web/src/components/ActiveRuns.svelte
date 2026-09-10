@@ -32,8 +32,22 @@
                     ></span>
                   {/each}
                 </span>
-                <span class="badge {row.status === 'waiting_approval' ? 'warn' : 'live'}">
-                  {row.status === 'waiting_approval' ? 'needs approval' : row.status}
+                <!--
+                  A waiting run says where it is rather than just "queued":
+                  the number is the only part a reader can act on (FR-082).
+                -->
+                <span
+                  class="badge {row.status === 'waiting_approval' || row.queuePosition !== null
+                    ? 'warn'
+                    : 'live'}"
+                >
+                  {#if row.queuePosition !== null}
+                    position {row.queuePosition} in the queue
+                  {:else if row.status === 'waiting_approval'}
+                    needs approval
+                  {:else}
+                    {row.status}
+                  {/if}
                 </span>
               </a>
             </li>

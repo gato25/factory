@@ -12,6 +12,7 @@ import {
 } from '@factory/db/schema';
 import { CONDITION_DESCRIPTION, notFound, type PipelineSnapshot, type Step } from '@factory/shared';
 import { and, count, desc, eq, gte, inArray, sql } from 'drizzle-orm';
+import { queueState } from './queue';
 
 /**
  * Everything the run page and the dashboard read. The stream carries changes;
@@ -284,6 +285,12 @@ export async function activeRuns(database: Database) {
     .where(inArray(runs.status, ['queued', 'running', 'waiting_approval', 'opening_mr']))
     .orderBy(desc(runs.createdAt));
 
+  // The list covers the same statuses the queue does, so one pass over the
+  // queue answers "where is it?" for every waiting run here. Asking per row
+  // would be the same work repeated once per run, and "queued" on its own
+  // tells the reader nothing they can act on (FR-082).
+  const queue = await queueState(database);
+
   return rows.map((row) => {
     const snapshot = row.snapshot as PipelineSnapshot;
     return {
@@ -297,6 +304,7 @@ export async function activeRuns(database: Database) {
       costUsd: row.costUsd,
       stepCount: snapshot.pipeline.steps.length,
       currentStepIndex: row.currentStepIndex,
+      queuePosition: queue.entries.find((entry) => entry.runId === row.runId)?.position ?? null,
       stepLabels: snapshot.pipeline.steps.map(
         (step) => snapshot.agents.find((a) => a.id === step.agent_id)?.name ?? labelFor(step.type),
       ),
@@ -438,17 +446,13 @@ export async function board(database: Database): Promise<BoardTicket[]> {
 }
 
 /** Position in the queue when the concurrency ceiling is full (FR-082). */
+/**
+ * Delegated, so there is one answer to "where am I in the queue" rather than
+ * two that disagree (FR-082).
+ */
 export async function queuePosition(database: Database, runId: string): Promise<number | null> {
-  const [workspace] = await database.select().from(workspaces).limit(1);
-  const cap = workspace?.maxConcurrentRuns ?? 6;
-  const queued = await database
-    .select({ id: runs.id })
-    .from(runs)
-    .where(inArray(runs.status, ['queued', 'running', 'opening_mr']))
-    .orderBy(runs.createdAt);
-  const index = queued.findIndex((r) => r.id === runId);
-  if (index < 0 || index < cap) return null;
-  return index - cap + 1;
+  const { positionOf } = await import('./queue');
+  return positionOf(database, runId);
 }
 
 /**

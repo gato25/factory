@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "workspaces_singleton" ON "workspaces" USING btree ((true));

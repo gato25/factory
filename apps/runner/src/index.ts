@@ -1,17 +1,116 @@
+import { FactoryError } from '@factory/shared';
 import { authenticate } from './auth';
 import { loadRunnerConfig } from './config';
+import { dockerHost } from './container/host';
 import { log, toResponse } from './errors';
+import {
+  callbackSender,
+  destroyRun,
+  fetchCredentials,
+  memoryStore,
+  type RunContext,
+  runStep,
+  type StepRequest,
+  startRun,
+  verifyAndPush,
+} from './runs';
 
 /**
  * The Runner is the only component with rights on the container host
- * (research.md D5). It is never reachable from the public internet and
- * authenticates every call per run (contracts/runner.md).
+ * (research.md D5). It exposes the four operations in contracts/runner.md, is
+ * never reachable from the public internet, and authenticates every call.
+ *
+ * The routing is thin on purpose: everything below it is in runs.ts, where it
+ * can be driven by a test without a server.
  */
 const config = loadRunnerConfig();
+const store = memoryStore();
+
+interface Route {
+  method: string;
+  pattern: RegExp;
+  handle: (match: RegExpMatchArray, request: Request) => Promise<Response>;
+}
+
+const routes: Route[] = [
+  {
+    method: 'POST',
+    pattern: /^\/runs\/([^/]+)\/start$/,
+    async handle(match, request) {
+      const runId = match[1] as string;
+      const body = (await request.json()) as {
+        snapshot?: RunContext['snapshot'];
+      } & Partial<RunContext>;
+      if (!body.snapshot) throw new FactoryError('invalid_input', 'expected a snapshot');
+      // The snapshot carries credential REFERENCES; the values come from the
+      // app, so the orchestration service never holds one (FR-083).
+      const credentials = body.credentials ?? (await fetchCredentials(body.snapshot));
+
+      const result = await startRun(dockerHost, store, {
+        snapshot: body.snapshot,
+        credentials,
+        sandbox: body.sandbox ?? {
+          image: config.sandboxImage,
+          cpu: 2,
+          memoryMb: 4096,
+          wallClockMinutes: 90,
+          networkDuringImplement: false,
+        },
+      });
+      log.info('sandbox created', { run_id: runId, container_id: result.container_id });
+      return Response.json(result);
+    },
+  },
+  {
+    method: 'POST',
+    pattern: /^\/runs\/([^/]+)\/steps\/(\d+)$/,
+    async handle(match, request) {
+      const runId = match[1] as string;
+      const stepIndex = Number(match[2]);
+      const body = (await request.json()) as StepRequest;
+      if (!body?.step) throw new FactoryError('invalid_input', 'expected a step');
+
+      const state = store.get(runId);
+      if (!state) throw new FactoryError('not_found', 'that run has no sandbox — start it first');
+
+      const outcome = await runStep(
+        dockerHost,
+        store,
+        runId,
+        stepIndex,
+        body,
+        callbackSender(state.snapshot),
+      );
+      return Response.json(outcome);
+    },
+  },
+  {
+    method: 'POST',
+    pattern: /^\/runs\/([^/]+)\/verify-and-push$/,
+    async handle(match) {
+      const outcome = await verifyAndPush(dockerHost, store, match[1] as string);
+      return Response.json(outcome);
+    },
+  },
+  {
+    method: 'DELETE',
+    pattern: /^\/runs\/([^/]+)$/,
+    async handle(match, request) {
+      const url = new URL(request.url);
+      const outcome = url.searchParams.get('outcome');
+      const result = await destroyRun(dockerHost, store, match[1] as string, {
+        outcome:
+          outcome === 'failed' || outcome === 'cancelled' || outcome === 'done' ? outcome : 'done',
+        retainFailedHours: Number(url.searchParams.get('retain_failed_hours') ?? '0') || 0,
+      });
+      return Response.json(result);
+    },
+  },
+];
 
 const server = Bun.serve({
   port: config.port,
-  fetch(request) {
+  async fetch(request) {
     const url = new URL(request.url);
     try {
       // Unauthenticated: liveness only, revealing nothing about any run.
@@ -19,7 +118,12 @@ const server = Bun.serve({
         return Response.json({ status: 'ok', service: 'runner' });
       }
       authenticate(request, config.authToken);
-      // Run lifecycle endpoints arrive with user story 1 (T066–T077).
+
+      for (const route of routes) {
+        if (route.method !== request.method) continue;
+        const match = url.pathname.match(route.pattern);
+        if (match) return await route.handle(match, request);
+      }
       return Response.json({ error: 'not found' }, { status: 404 });
     } catch (error) {
       return toResponse(error);

@@ -5,8 +5,13 @@ is never reachable from the public internet. Calls are authenticated per run.
 
 ## `POST /runs/{run_id}/start`
 
-Creates the sandbox and prepares the workspace. Body carries the snapshot's `repo` block, resolved
-credentials, the sandbox ceilings, and the agent and skill definitions to write.
+Creates the sandbox and prepares the workspace. Body carries the snapshot — which holds credential
+REFERENCES, never values, because FR-083 forbids the orchestration service persisting one.
+
+The Runner exchanges those references itself, by posting to
+`POST /api/runs/{run_id}/credentials` on the app with the run's own secret. That keeps the
+orchestrator out of the credential path entirely: it carries a reference it cannot use, and the two
+components that need the value talk directly.
 
 Sequence (FR-046–FR-048):
 
