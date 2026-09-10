@@ -32,19 +32,66 @@ export interface KeyRing {
   previous?: { version: string; key: Buffer }[];
 }
 
+function decode(raw: string, name: string): Buffer {
+  const key = Buffer.from(raw, 'base64');
+  if (key.length !== KEY_BYTES) {
+    throw new FactoryError(
+      'invalid_input',
+      `${name} must decode to ${KEY_BYTES} bytes, got ${key.length}`,
+    );
+  }
+  return key;
+}
+
+/**
+ * The keys this deployment can decrypt with.
+ *
+ * `SECRET_ENCRYPTION_KEYS_PREVIOUS` holds the retired ones, as
+ * `version:base64,version:base64`. Without them, rotating
+ * `SECRET_ENCRYPTION_KEY` would make every credential already stored
+ * undecryptable — every repository would stop working at once, and the only
+ * remedy would be re-entering every token. `KeyRing.previous` was there for
+ * this from the start and nothing ever filled it, so rotation was a
+ * documented capability that would have destroyed the workspace.
+ */
 export function keyRingFromEnv(env: NodeJS.ProcessEnv = process.env): KeyRing {
   const raw = env.SECRET_ENCRYPTION_KEY;
   if (!raw) {
     throw new FactoryError('credential_missing', 'SECRET_ENCRYPTION_KEY is not set');
   }
-  const key = Buffer.from(raw, 'base64');
-  if (key.length !== KEY_BYTES) {
-    throw new FactoryError(
-      'invalid_input',
-      `SECRET_ENCRYPTION_KEY must decode to ${KEY_BYTES} bytes, got ${key.length}`,
-    );
-  }
-  return { current: { version: env.SECRET_ENCRYPTION_KEY_VERSION ?? 'v1', key } };
+  const version = env.SECRET_ENCRYPTION_KEY_VERSION ?? 'v1';
+
+  const previous = (env.SECRET_ENCRYPTION_KEYS_PREVIOUS ?? '')
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .map((entry) => {
+      const at = entry.indexOf(':');
+      if (at < 1) {
+        throw new FactoryError(
+          'invalid_input',
+          'SECRET_ENCRYPTION_KEYS_PREVIOUS entries must be version:base64',
+        );
+      }
+      const retired = entry.slice(0, at);
+      if (retired === version) {
+        // Silently ignoring this would leave two keys claiming one version,
+        // and which one decrypted a credential would be an accident.
+        throw new FactoryError(
+          'invalid_input',
+          `SECRET_ENCRYPTION_KEYS_PREVIOUS repeats the current version ${version}`,
+        );
+      }
+      return {
+        version: retired,
+        key: decode(entry.slice(at + 1), `SECRET_ENCRYPTION_KEYS_PREVIOUS ${retired}`),
+      };
+    });
+
+  return {
+    current: { version, key: decode(raw, 'SECRET_ENCRYPTION_KEY') },
+    previous,
+  };
 }
 
 export function seal(plaintext: string, ring: KeyRing): SealedCredential {

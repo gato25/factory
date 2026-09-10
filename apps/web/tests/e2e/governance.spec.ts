@@ -46,9 +46,16 @@ async function seed(options: { tickets?: number; cap?: number } = {}): Promise<S
   if (existing.length === 0) {
     await sql`insert into workspaces (name) values ('E2E')`;
   }
+  // The addresses are cleared as well as the ceilings. A test that asserts
+  // nothing claims to be reachable is otherwise asserting that nothing
+  // happens to be running on this machine, which is not a fact about the
+  // product — the five connection states are pinned in
+  // tests/integration/connections.test.ts, against a stub.
   await sql`update workspaces set max_concurrent_runs = ${options.cap ?? 2},
               default_cost_ceiling_usd = '5.0000', default_time_ceiling_minutes = 45,
-              model_credential_id = null, design_credential_id = null`;
+              model_credential_id = null, design_credential_id = null,
+              orchestrator_base_url = null, orchestrator_workflow_id = null,
+              runner_base_url = null`;
 
   const [admin] = await sql`
     insert into users (name, email, role)
@@ -183,16 +190,20 @@ test.describe('setting up and governing the workspace', () => {
     expect(w!.sandbox_wall_clock_minutes).toBe(120);
     expect(w!.retain_failed_sandboxes_hours).toBe(6);
 
-    // A connection test distinguishes its three faults (FR-005a). Nothing is
-    // configured or running here, so each reports honestly rather than "ok".
+    // A connection test reports each dependency separately (FR-005a). This
+    // seed configured none of them, so each must say so rather than "ok" —
+    // and none may claim to have had a credential accepted, since none was
+    // ever presented.
     await page.getByRole('button', { name: 'Test every connection' }).click();
     const results = page.locator('.results li');
     await expect(results).toHaveCount(3, { timeout: 20_000 });
     await expect(page.locator('.results')).toContainText('Orchestration service');
     await expect(page.locator('.results')).toContainText('Container host');
     await expect(page.locator('.results')).toContainText('Design service');
-    // None of them claims to be reachable, because none of them is.
     await expect(page.locator('.results')).not.toContainText('Reachable, and it accepted');
+    // "Not configured yet" is a step not taken, and the screen must not
+    // dress it up as a fault an administrator should go looking for.
+    await expect(results.filter({ hasText: 'Not configured yet.' })).toHaveCount(2);
   });
 
   test('a ceiling of zero is refused, because it would stop every run', async ({

@@ -1,5 +1,7 @@
 import type { Database } from '@factory/db';
+import { repositories } from '@factory/db/schema';
 import { createLogger } from '@factory/shared';
+import { eq } from 'drizzle-orm';
 import type { SessionUser } from './auth';
 import { requireAdmin } from './authz';
 import { getWorkspace } from './workspace';
@@ -201,12 +203,27 @@ export async function testEverything(
   return results;
 }
 
-/** Whether the workspace can start a run at all, and what is missing if not. */
+/**
+ * Whether the workspace can start a run at all, and what is missing if not.
+ *
+ * A connected repository is on the list because no ticket exists without one
+ * (FR-012), so a deployment without one cannot start a run however well
+ * configured it is. It is also the one item on the list a member can fix
+ * themselves.
+ */
 export async function readiness(database: Database) {
   const workspace = await getWorkspace(database);
   const missing: string[] = [];
   if (!workspace.orchestratorBaseUrl) missing.push('the orchestration service address');
   if (!workspace.runnerBaseUrl) missing.push('the runner address');
   if (!workspace.hasModelCredential) missing.push('a model credential');
+
+  const [repository] = await database
+    .select({ id: repositories.id })
+    .from(repositories)
+    .where(eq(repositories.status, 'connected'))
+    .limit(1);
+  if (!repository) missing.push('a connected repository');
+
   return { ready: missing.length === 0, missing };
 }

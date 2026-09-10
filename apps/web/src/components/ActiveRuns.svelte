@@ -11,7 +11,13 @@
   {:else}
     {@const rows = runs.current}
       {#if rows.length === 0}
-        <p class="muted small">Nothing running. Create a ticket to start a pipeline.</p>
+        <!--
+          No advice here about creating a ticket: whether that would work
+          depends on whether the workspace is configured, which the notice
+          above this list answers. Telling somebody to do a thing that cannot
+          work is worse than saying nothing.
+        -->
+        <p class="muted small">Nothing running.</p>
       {:else}
         <ul>
           {#each rows as row (row.runId)}

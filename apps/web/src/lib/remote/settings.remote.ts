@@ -37,6 +37,23 @@ export const settings = query(async () => {
   return { workspace: await getWorkspace(db()), readiness: await readiness(db()) };
 });
 
+/**
+ * Whether the deployment can start a run at all, and what is missing.
+ *
+ * Not administrator-only, deliberately. A member cannot fix any of it
+ * (FR-004), but without this the dashboard of an unconfigured deployment
+ * says "create a ticket to start a pipeline" — advice that cannot work, and
+ * that sends a new user into a form which refuses them for a reason nothing
+ * has explained. What a member can do about it differs from what an
+ * administrator can, so `canFix` says which.
+ */
+export const setup = query(async () => {
+  const user = requireUser();
+  // What a member can do about it differs from what an administrator can, so
+  // `canFix` says which — everything else is the same question.
+  return { ...(await readiness(db())), canFix: user.role === 'admin' };
+});
+
 export const members = query(async () => {
   const user = requireUser();
   return listMembers(db(), user);

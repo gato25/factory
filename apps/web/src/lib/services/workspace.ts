@@ -1,6 +1,6 @@
 import type { Database } from '@factory/db';
 import { credentials, workspaces } from '@factory/db/schema';
-import { invalidInput, notFound } from '@factory/shared';
+import { invalidInput } from '@factory/shared';
 import { eq } from 'drizzle-orm';
 import { type KeyRing, seal } from '$lib/secrets/store';
 import type { SessionUser } from './auth';
@@ -47,9 +47,19 @@ export async function theWorkspace(database: Database) {
   return row;
 }
 
+/**
+ * The workspace's settings.
+ *
+ * The row is created if it is not there, rather than reported missing. A
+ * deployment has exactly one workspace by definition; the row is where its
+ * settings live, not a thing somebody creates. Reporting its absence made a
+ * fresh deployment answer 500 on `/settings` — the first screen an
+ * administrator must visit, and the only place they could have configured
+ * anything. There was no way out of that by hand: every write path already
+ * created the row, and none of them was reachable.
+ */
 export async function getWorkspace(database: Database): Promise<WorkspaceSettings> {
-  const row = await theWorkspace(database);
-  if (!row) throw notFound('this deployment has no workspace yet');
+  const row = await ensureWorkspace(database);
 
   return {
     id: row.id,
@@ -75,9 +85,20 @@ export async function getWorkspace(database: Database): Promise<WorkspaceSetting
 export async function ensureWorkspace(database: Database, name = 'Workspace') {
   const existing = await theWorkspace(database);
   if (existing) return existing;
-  const [created] = await database.insert(workspaces).values({ name }).returning();
-  if (!created) throw new Error('could not create the workspace');
-  return created;
+
+  try {
+    const [created] = await database.insert(workspaces).values({ name }).returning();
+    if (created) return created;
+  } catch (error) {
+    // Two first requests arriving together both see nothing and both insert;
+    // the `workspaces_singleton` index refuses the second. That is the index
+    // doing its job, not a failure — the row it wanted now exists.
+    if (!flatten(error).includes('workspaces_singleton')) throw error;
+  }
+
+  const row = await theWorkspace(database);
+  if (!row) throw new Error('could not create the workspace');
+  return row;
 }
 
 export interface WorkspaceInput {
@@ -276,4 +297,21 @@ export async function storeCredential(
     )
     .where(eq(workspaces.id, workspace.id));
   return { stored: true };
+}
+
+/**
+ * Drizzle wraps the driver's error, so a constraint name is on the cause
+ * rather than the message. Walking the chain is the only way to recognise
+ * which constraint refused a write.
+ */
+function flatten(error: unknown): string {
+  const parts: string[] = [];
+  let current: unknown = error;
+  while (current instanceof Error) {
+    parts.push(current.message);
+    const constraint = (current as { constraint_name?: string }).constraint_name;
+    if (constraint) parts.push(constraint);
+    current = current.cause;
+  }
+  return parts.join(' | ');
 }

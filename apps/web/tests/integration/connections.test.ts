@@ -8,6 +8,7 @@ import {
   testOrchestrator,
   testRunner,
 } from '../../src/lib/services/connections';
+import { ensureWorkspace } from '../../src/lib/services/workspace';
 import { connect, seed } from '../fixtures';
 
 /**
@@ -194,6 +195,9 @@ test('readiness names what is missing rather than only refusing', async () => {
     'the runner address',
     'a model credential',
   ]);
+  // seed() connects a repository, so that one is not on the list. A run
+  // needs one as much as it needs an address, which is why it is checked
+  // here rather than only on the screen.
 
   await db.update(workspaces).set({
     orchestratorBaseUrl: 'http://n8n:5678',
@@ -202,4 +206,31 @@ test('readiness names what is missing rather than only refusing', async () => {
   });
   const after = await readiness(db);
   expect(after.missing).toEqual(['a model credential']);
+
+  // `credential_expired` is a real status and it blocks new runs (FR-013).
+  await raw`update repositories set status = 'credential_expired'`;
+  expect((await readiness(db)).missing).toEqual(['a model credential', 'a connected repository']);
+});
+
+test('a fresh deployment can read its settings rather than answering 500', async () => {
+  // The workspaces row is a singleton whose absence carries no information,
+  // and every write path already created it — so reporting it missing made
+  // `/settings` fail on a fresh deployment, which is the one screen an
+  // administrator has to reach before anything else works.
+  await raw`truncate table workspaces cascade`;
+  const state = await readiness(db);
+  expect(state.ready).toBe(false);
+  expect(state.missing.length).toBeGreaterThan(0);
+
+  const [row] = await db.select().from(workspaces);
+  expect(row).toBeDefined();
+});
+
+test('two first requests together do not make a second workspace', async () => {
+  await raw`truncate table workspaces cascade`;
+  // Both see nothing and both insert; the singleton index refuses one, which
+  // is the index doing its job rather than a failure to report.
+  const [a, b] = await Promise.all([ensureWorkspace(db), ensureWorkspace(db)]);
+  expect(a.id).toBe(b.id);
+  expect(await db.select().from(workspaces)).toHaveLength(1);
 });

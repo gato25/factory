@@ -450,6 +450,45 @@
       "position": [500, 620]
     },
     {
+      "id": "compose-merge-request",
+      "name": "Compose merge request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [610, 740],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.callback_url.replace(\"/api/hooks/n8n\", \"/api/runs/\" + $json.run_id + \"/merge-request\") }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "authorization",
+              "value": "=Bearer {{ $json.resume_secret }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "merge-request-ready",
+      "name": "Merge request ready",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [720, 740],
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ JSON.stringify({ ...$('Runner: verify and push').item.json, merge_request: $json.repo?.provider === \"gitlab\" ? { source_branch: $json.source_branch, target_branch: $json.target_branch, title: $json.title, description: $json.description, labels: $json.labels } : { head: $json.source_branch, base: $json.target_branch, title: $json.title, body: $json.description } }) }}",
+        "options": {}
+      }
+    },
+    {
       "parameters": {
         "method": "POST",
         "url": "={{ $json.repo.provider === 'gitlab' ? 'https://gitlab.com/api/v4/projects/' + encodeURIComponent($json.repo.full_path) + '/merge_requests' : 'https://api.github.com/repos/' + $json.repo.full_path + '/pulls' }}",
@@ -818,7 +857,7 @@
       "main": [
         [
           {
-            "node": "Open merge request",
+            "node": "Compose merge request",
             "type": "main",
             "index": 0
           }
@@ -907,6 +946,28 @@
         [
           {
             "node": "Decide next step",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compose merge request": {
+      "main": [
+        [
+          {
+            "node": "Merge request ready",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge request ready": {
+      "main": [
+        [
+          {
+            "node": "Open merge request",
             "type": "main",
             "index": 0
           }

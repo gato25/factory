@@ -144,3 +144,48 @@ test('a ceiling reached is checked after every step (FR-081)', () => {
   expect(code).toContain('cost_ceiling_usd');
   expect(code).toContain("action: 'fail'");
 });
+
+test('the merge request body is composed by the application, not the workflow', () => {
+  // The body needs the run's whole record — the ticket's criteria, the
+  // specification and plan, the screens' addresses, which steps did not run,
+  // what it cost — and the orchestration service holds only the snapshot. So
+  // it fetches the body rather than assembling one, and a reviewer who never
+  // saw the ticket can judge the change from the merge request alone
+  // (SC-014).
+  //
+  // This exists because the opening node once read `$json.merge_request`
+  // that nothing had ever set: the composer had no caller at all, so a real
+  // merge request would have been opened with an undefined body.
+  const compose = workflow.nodes.find((n) => n.name === 'Compose merge request');
+  expect(compose, 'nothing fetches the merge request body').toBeDefined();
+  const url = JSON.stringify(compose?.parameters);
+  expect(url).toContain('/merge-request');
+  // Authenticated with the run's own secret, as every other callback is.
+  expect(url).toContain('$json.resume_secret');
+
+  const open = workflow.nodes.find((n) => n.name === 'Open merge request');
+  const body = JSON.stringify(open?.parameters);
+  expect(body).toContain('merge_request');
+
+  // And it is reached from the composer, not before it.
+  const reaches = (from: string, to: string) =>
+    (workflow.connections[from]?.main ?? []).some((outputs) =>
+      outputs.some((output) => output.node === to),
+    );
+  expect(reaches('Runner: verify and push', 'Open merge request')).toBe(false);
+  expect(reaches('Runner: verify and push', 'Compose merge request')).toBe(true);
+});
+
+test('both providers get the field names they expect', () => {
+  // GitLab and GitHub disagree about every field of a merge request: one
+  // takes source_branch/target_branch/description, the other
+  // head/base/body. Sending one shape to both opens nothing, and the
+  // provider's error would arrive as an unexplained 400.
+  const ready = workflow.nodes.find((n) => n.name === 'Merge request ready');
+  expect(ready, 'nothing shapes the body per provider').toBeDefined();
+  const shaping = JSON.stringify(ready?.parameters);
+  for (const field of ['source_branch', 'target_branch', 'description', 'head', 'base', 'body']) {
+    expect(shaping.includes(field), `${field} is not set for either provider`).toBe(true);
+  }
+  expect(shaping).toContain('gitlab');
+});

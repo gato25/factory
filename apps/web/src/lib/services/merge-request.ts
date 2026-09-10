@@ -1,5 +1,5 @@
 import type { Database } from '@factory/db';
-import { artifacts, runs, tickets } from '@factory/db/schema';
+import { artifacts, runs, stepResults, tickets } from '@factory/db/schema';
 import { desc, eq, sql } from 'drizzle-orm';
 
 /**
@@ -18,8 +18,12 @@ export interface MergeRequestContent {
 
 export interface ComposeOptions {
   ticketUrl: string;
-  /** Screens embedded above the summary arrive with user story 5 (FR-067a). */
-  screenUrls?: string[];
+  /**
+   * Screens embedded above the summary (FR-067a). Each carries its name: a
+   * page of images all captioned "screen" tells a reviewer nothing about
+   * which is which, and the name is already on the artifact.
+   */
+  screens?: { url: string; name: string | null }[];
   designSourceUrl?: string;
 }
 
@@ -43,9 +47,18 @@ export async function composeMergeRequest(
     .where(sql`${artifacts.runId} = ${runId}::uuid and ${artifacts.kind} = 'document'`)
     .orderBy(desc(artifacts.version));
 
-  const latest = (path: string) => documents.find((d) => d.path === path)?.content ?? null;
+  const latest = (path: string) => documents.find((d) => d.path === path);
   const spec = latest('docs/spec.md');
   const plan = latest('docs/plan.md');
+
+  // A step that did not run is part of what a reviewer needs to know: a
+  // ticket labelled `ui` with no screens is otherwise just puzzling
+  // (FR-111).
+  const skipped = await database
+    .select({ index: stepResults.stepIndex, why: stepResults.conditionNotMet })
+    .from(stepResults)
+    .where(sql`${stepResults.runId} = ${runId}::uuid and ${stepResults.status} = 'skipped'`)
+    .orderBy(stepResults.stepIndex);
 
   const durationMinutes =
     run.startedAt && run.finishedAt
@@ -58,9 +71,14 @@ export async function composeMergeRequest(
 
   // Screens go above the summary, so a reviewer sees the intended interface
   // before reading the diff (FR-067a).
-  if (options.screenUrls?.length) {
+  if (options.screens?.length) {
     sections.push(
-      ['## Screens', ...options.screenUrls.map((url) => `![screen](${url})`)].join('\n\n'),
+      [
+        '## Screens',
+        ...options.screens.map(
+          (screen, i) => `![${screen.name ?? `Screen ${i + 1}`}](${screen.url})`,
+        ),
+      ].join('\n\n'),
     );
     if (options.designSourceUrl) {
       sections.push(`[Open the design source](${options.designSourceUrl})`);
@@ -73,16 +91,39 @@ export async function composeMergeRequest(
     );
   }
 
-  if (spec) sections.push(collapsible('Specification', spec));
-  if (plan) sections.push(collapsible('Plan', plan));
+  // The specification is NOT collapsed. It is the part a reviewer needs to
+  // judge whether the change is the right change, and SC-014 asks that they
+  // can do that from the merge request alone — behind a disclosure triangle
+  // is a place things go to be unread. The plan stays collapsed: it is how
+  // the work was done, which the diff already shows.
+  if (spec) {
+    sections.push(`## Specification${edited(spec)}\n\n${spec.content ?? ''}`);
+  }
+  if (plan) sections.push(collapsible(`Plan${edited(plan)}`, plan.content ?? ''));
+
+  if (skipped.length > 0) {
+    sections.push(
+      [
+        '## Steps that did not run',
+        ...skipped.map(
+          (step) => `- Step ${step.index + 1}: ${step.why ?? 'its condition was not met'}`,
+        ),
+      ].join('\n'),
+    );
+  }
 
   sections.push(
     [
       '## Run',
-      `- Cost: $${run.costUsd}`,
+      `- Cost: $${trimMoney(run.costUsd)}`,
       durationMinutes ? `- Duration: ${durationMinutes} min` : null,
-      `- Attempt: ${run.attempt}`,
+      // "Attempt 2" without saying so reads as a detail; saying it plainly
+      // tells a reviewer this change has been tried before.
+      run.attempt === 1 ? '- First attempt' : `- Attempt ${run.attempt} for this ticket`,
       `- [Open ticket ${ticket.reference}](${options.ticketUrl})`,
+      // The system never merges (FR-070), and a reviewer should not be left
+      // wondering whether it is about to.
+      '- Opened by Code Factory, which never merges: this waits for a person.',
     ]
       .filter(Boolean)
       .join('\n'),
@@ -120,6 +161,21 @@ function slug(value: string): string {
 
 function collapsible(summary: string, body: string): string {
   return `<details>\n<summary>${summary}</summary>\n\n${body}\n\n</details>`;
+}
+
+/**
+ * Whether a person changed this document at a gate. It changes how much
+ * weight a reviewer should give it — an edited specification is a human's
+ * words, not an agent's — and `created_by` already records it, so saying
+ * nothing was throwing the fact away.
+ */
+function edited(document: { createdBy: string | null }): string {
+  return document.createdBy ? ' (edited by a person at a review gate)' : '';
+}
+
+/** `1.8400` reads like machine output; `1.84` reads like money. */
+function trimMoney(value: string): string {
+  return value.includes('.') ? value.replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '') : value;
 }
 
 /**

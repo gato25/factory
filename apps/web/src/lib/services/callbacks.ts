@@ -1,4 +1,3 @@
-import { timingSafeEqual } from 'node:crypto';
 import type { Database } from '@factory/db';
 import { logChunks, runs, tickets } from '@factory/db/schema';
 import {
@@ -10,6 +9,7 @@ import {
 } from '@factory/shared';
 import { eq } from 'drizzle-orm';
 import { addCost, captureArtifacts, recordStep } from '$lib/ledger/record';
+import { matches } from '$lib/secrets/store';
 import { notifyApprovers, notifyDashboard, notifyRun, type RunEvent } from './notify';
 import { setRunStatus } from './run';
 import {
@@ -39,9 +39,9 @@ export async function authenticateCallback(
 ): Promise<{ snapshot: PipelineSnapshot }> {
   const [run] = await database.select().from(runs).where(eq(runs.id, runId)).limit(1);
   const expected = (run?.snapshot as PipelineSnapshot | undefined)?.resume_secret ?? '';
-  const a = Buffer.from(presented);
-  const b = Buffer.from(expected);
-  const ok = expected.length > 0 && a.length === b.length && timingSafeEqual(a, b);
+  // One constant-time comparison in the codebase, not one per call site: a
+  // second implementation is a second chance to write `===` by accident.
+  const ok = expected.length > 0 && matches(presented, expected);
   if (!run || !ok) throw notAuthorised('unauthorised');
   return { snapshot: run.snapshot as PipelineSnapshot };
 }
