@@ -42,18 +42,18 @@ Per plan.md's Structure Decision — a Bun-workspace monorepo with two deployabl
 
 **Purpose**: Bring the monorepo into existence with the toolchain the plan specifies.
 
-- [ ] T001 Create the monorepo directory structure per plan.md's Structure Decision: `apps/web`, `apps/runner`, `packages/db`, `packages/shared`, `orchestration/n8n`, `infra/sandbox`
-- [ ] T002 Initialize the Bun workspace root in `package.json` with `workspaces: ["apps/*", "packages/*"]`, and pin the exact Bun version in `.bun-version`
-- [ ] T003 Initialize `apps/web` as a SvelteKit project on Svelte 5, pinning an **exact** SvelteKit version ≥ 2.27 (remote functions are experimental — research.md risk 1)
-- [ ] T004 Enable remote functions in `apps/web/svelte.config.js`: `kit.experimental.remoteFunctions: true` and `compilerOptions.experimental.async: true` — both are required, neither works alone
-- [ ] T005 [P] Initialize `apps/runner` as a Bun HTTP service with `apps/runner/src/index.ts` and a health route
-- [ ] T006 [P] Initialize `packages/db` with Drizzle ORM and `drizzle-kit`, and a `db:migrate` script at the workspace root
-- [ ] T007 [P] Initialize `packages/shared` as a types-only package consumed by both `apps/web` and `apps/runner`
-- [ ] T008 [P] Configure linting and formatting at the workspace root, applying to all workspaces in `biome.json`
-- [ ] T009 [P] Add `docker-compose.yml` at the repository root running Postgres 16 for local development and integration tests
-- [ ] T010 [P] Create `infra/sandbox/Dockerfile`: non-root user, git, the Claude CLI, the design CLI, and a `/work` workspace directory (FR-046)
-- [ ] T011 [P] Configure `bun test` for unit and integration suites in `bunfig.toml`
-- [ ] T012 [P] Configure Playwright in `apps/web/playwright.config.ts` for the eight end-to-end journeys
+- [X] T001 Create the monorepo directory structure per plan.md's Structure Decision: `apps/web`, `apps/runner`, `packages/db`, `packages/shared`, `orchestration/n8n`, `infra/sandbox`
+- [X] T002 Initialize the Bun workspace root in `package.json` with `workspaces: ["apps/*", "packages/*"]`, and pin the exact Bun version in `.bun-version`
+- [X] T003 Initialize `apps/web` as a SvelteKit project on Svelte 5, pinning an **exact** SvelteKit version ≥ 2.27 (remote functions are experimental — research.md risk 1)
+- [X] T004 Enable remote functions in `apps/web/svelte.config.js`: `kit.experimental.remoteFunctions: true` and `compilerOptions.experimental.async: true` — both are required, neither works alone
+- [X] T005 [P] Initialize `apps/runner` as a Bun HTTP service with `apps/runner/src/index.ts` and a health route
+- [X] T006 [P] Initialize `packages/db` with Drizzle ORM and `drizzle-kit`, and a `db:migrate` script at the workspace root
+- [X] T007 [P] Initialize `packages/shared` as a types-only package consumed by both `apps/web` and `apps/runner`
+- [X] T008 [P] Configure linting and formatting at the workspace root, applying to all workspaces in `biome.json`
+- [X] T009 [P] Add `docker-compose.yml` at the repository root running Postgres 16 for local development and integration tests
+- [X] T010 [P] Create `infra/sandbox/Dockerfile`: non-root user, git, the Claude CLI, the design CLI, and a `/work` workspace directory (FR-046)
+- [X] T011 [P] Configure `bun test` for unit and integration suites in `bunfig.toml`
+- [X] T012 [P] Configure Playwright in `apps/web/playwright.config.ts` for the eight end-to-end journeys
 
 ---
 
