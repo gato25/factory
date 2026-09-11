@@ -47,7 +47,11 @@
       "class_name": "SpikeSmall",
       "image": "./../../infra/sandbox/Dockerfile",
       "instance_type": { "vcpu": 1, "memory_mib": 4096, "disk_mb": 8000 },
-      "max_instances": 2
+      // Four distinct sandboxes live here — ping, non-root, egress, size-small
+      // — and a cancelled request leaks one. At 2 the third request could never
+      // start and the SDK retried for ~140s, which is what "it hangs for two
+      // minutes" was. Headroom costs nothing while they sleep after 2m.
+      "max_instances": 6
     },
     {
       "class_name": "SpikeLarge",
