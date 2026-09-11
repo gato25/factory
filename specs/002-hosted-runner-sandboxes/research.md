@@ -95,7 +95,32 @@ anybody chose.
 not told. The alternative — one binding per distinct workspace configuration — was rejected as
 unbounded, and is recorded in the plan's Complexity Tracking.
 
-**Confidence**: the instance-type mechanism is documented; the routing design has not been run.
+**Measured, 2026-09-11 — and it is narrower than documented.** The first spike deploy was refused
+at validation:
+
+> `VALIDATE_INPUT` — memory Must have at least 3 GiB memory for each of the first 4 vCPUs. With 2
+> vCPU(s), you need at least 6 GiB of memory.
+
+So vCPU and memory are not independent: the floor is **3 GiB per vCPU for the first four vCPUs**.
+1 vCPU needs ≥ 3 GiB, 2 vCPU ≥ 6 GiB, 4 vCPU ≥ 12 GiB. That matches the predefined sizes
+(standard-2 at 1 vCPU / 6 GiB, standard-3 at 2 vCPU / 8 GiB, standard-4 at 4 vCPU / 12 GiB) rather
+than contradicting them — the constraint was simply never stated alongside the maxima.
+
+**The consequence, which is a defect in this feature's own defaults**: the shipped workspace default
+of **2 vCPU / 4096 MiB cannot exist on this provider at all**. Two vCPUs demand 6 GiB, which exceeds
+the memory ceiling. Under FR-009 the largest allocation fitting *within* those ceilings is
+**1 vCPU / 4 GiB** — so a default workspace gets half the processing power it asked for, silently.
+FR-009 is behaving as designed, and erring downwards is the direction chosen deliberately, but the
+default itself is now wrong.
+
+Two further things follow. **T045 is unsatisfiable as written**: it requires an offered size
+matching 2 vCPU / 4096 MiB exactly, and no such size can be declared. And the workspace defaults in
+`packages/db/src/schema/workspace.ts` need a decision — accept 1 vCPU, or raise the memory default
+to 6144 MiB so that 2 vCPU stays available. That decision belongs to the product owner and is
+recorded here rather than resolved.
+
+**Confidence**: the per-vCPU memory floor is measured, from the provider refusing a deploy. The
+routing design itself still has not been run.
 
 ---
 
