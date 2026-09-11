@@ -3,6 +3,8 @@ import { FactoryError } from '@factory/shared';
 import type { ContainerHost, ContainerSpec, ExecResult } from './host';
 import { commandLine, outerTimeoutMs, WORK_USER } from './hosted-command';
 import { quoteOne } from './shell';
+import { chooseSize, sandboxId, sizeOf } from './sizes';
+import { annotateUnreachable } from './unreachable';
 
 /**
  * The managed sandbox host: the same six methods as `dockerHost`, against a
@@ -43,6 +45,16 @@ const CAPACITY_RETRY_MS = 30_000;
 type SandboxNamespace = DurableObjectNamespace<Sandbox<unknown>>;
 
 /**
+ * One namespace per offered size, keyed by size name (D4).
+ *
+ * Processing power and memory are deploy-time configuration here, so a
+ * deployment declares a container binding per size and a run is routed to one.
+ * Which one a sandbox belongs to travels in its identifier, because `exec`,
+ * `readFile`, `stat` and `destroy` are given nothing else — see `sandboxId`.
+ */
+export type SandboxNamespaces = Readonly<Record<string, SandboxNamespace>>;
+
+/**
  * A host bound to one Durable Object namespace.
  *
  * A factory rather than a constant, because the namespace arrives on a Worker's
@@ -50,16 +62,49 @@ type SandboxNamespace = DurableObjectNamespace<Sandbox<unknown>>;
  * therefore takes a thunk that calls this, so nothing outside `worker.ts` has
  * to import the SDK — see the note in `hosts.ts`.
  */
-export function hostedHost(namespace: SandboxNamespace): ContainerHost {
+export function hostedHost(namespaces: SandboxNamespaces | SandboxNamespace): ContainerHost {
+  /**
+   * The namespace a sandbox identifier belongs to.
+   *
+   * A single namespace is still accepted, and that is not just convenience:
+   * it is how a run started before the sized bindings existed still reaches
+   * its sandbox, and how the alarm in `worker.ts` releases one without
+   * needing to know which size it was.
+   */
+  const namespaceFor = (containerId: string): SandboxNamespace => {
+    if (isSingleNamespace(namespaces)) return namespaces;
+    const size = sizeOf(containerId);
+    const chosen = size ? namespaces[size.name] : undefined;
+    if (!chosen) {
+      // Every size in OFFERED_SIZES must have a binding, so this is a
+      // deployment mistake rather than a run's problem — said plainly, because
+      // the alternative presents as a sandbox that vanished.
+      throw new FactoryError(
+        'sandbox_lost',
+        `this deployment declares no sandbox binding for '${containerId.split('.')[0]}', so that ` +
+          "run's sandbox cannot be reached — every size in sizes.ts needs a container binding",
+      );
+    }
+    return chosen;
+  };
+
   const open = (containerId: string) =>
-    getSandbox(namespace, containerId, { sleepAfter: SLEEP_AFTER });
+    getSandbox(namespaceFor(containerId), containerId, { sleepAfter: SLEEP_AFTER });
 
   return {
     async create(spec: ContainerSpec): Promise<string> {
+      // Routed to the largest offered size that fits WITHIN the workspace's
+      // ceilings, which is what makes those ceilings upper bounds rather than
+      // targets (FR-005, FR-009). Throws here, before anything is created,
+      // when nothing fits — naming the ceiling that ruled it out.
+      const size = chooseSize({ cpu: spec.cpu, memoryMb: spec.memoryMb });
+
       // The identifier is ours to mint, and it addresses the Durable Object for
       // the life of the run — the caller persists it, so every later request
-      // reaches the same sandbox and the same workspace (FR-006).
-      const containerId = crypto.randomUUID();
+      // reaches the same sandbox and the same workspace (FR-006). It carries
+      // the size because nothing else will be given to the methods that need
+      // it.
+      const containerId = sandboxId(size, crypto.randomUUID());
       const sandbox = open(containerId);
 
       await withCapacityRetry(async () => {
@@ -105,7 +150,19 @@ export function hostedHost(namespace: SandboxNamespace): ContainerHost {
           timeout: outerTimeoutMs(options?.timeoutMs),
           ...(options?.onOutput ? { stream: true as const, onOutput: options.onOutput } : {}),
         });
-        return { exitCode: result.exitCode, stdout: result.stdout, stderr: result.stderr };
+        return {
+          exitCode: result.exitCode,
+          stdout: result.stdout,
+          // A failure that was really a dependency being unreachable says so,
+          // naming the address (FR-013). Only on the failure path, and only
+          // appended: the tooling's own message is what a developer wants, and
+          // a registry that is down and a mistyped hostname look identical
+          // without this line.
+          stderr:
+            result.exitCode === 0
+              ? result.stderr
+              : annotateUnreachable(result.stderr, result.stdout),
+        };
       } catch (error) {
         throw asFactoryError(error, 'the sandbox stopped answering while a step was running');
       }
@@ -211,6 +268,17 @@ async function withCapacityRetry<T>(work: () => Promise<T>): Promise<T> {
       delay *= 2;
     }
   }
+}
+
+/**
+ * Whether a single namespace was passed rather than a map of them.
+ *
+ * A `DurableObjectNamespace` has methods; a record of them does not. Checked by
+ * shape rather than by a flag, so a caller cannot pass the wrong thing and have
+ * it silently treated as the other.
+ */
+function isSingleNamespace(value: SandboxNamespaces | SandboxNamespace): value is SandboxNamespace {
+  return typeof (value as SandboxNamespace).idFromName === 'function';
 }
 
 /** Anything the SDK throws, as something `runs.ts` can branch on. */

@@ -2,8 +2,9 @@ import { DurableObject } from 'cloudflare:workers';
 import { Sandbox as BaseSandbox } from '@cloudflare/sandbox';
 import { loadRunnerConfig } from './config';
 import type { ContainerHost } from './container/host';
-import { hostedHost } from './container/hosted';
+import { hostedHost, type SandboxNamespaces } from './container/hosted';
 import { hostFor } from './container/hosts';
+import { OFFERED_SIZES, type SandboxSize, sizeOf } from './container/sizes';
 import { log } from './errors';
 import { handlerFor } from './router';
 import { deadlineFor, type RunObjectState } from './run-object-state';
@@ -37,8 +38,19 @@ import type { RunRecord, RunStore } from './runs';
 export { ContainerProxy } from '@cloudflare/sandbox';
 
 export interface WorkerEnv {
-  /** One sandbox per run, addressed by the id `hostedHost` mints (FR-006). */
-  SANDBOX: DurableObjectNamespace<BaseSandbox<unknown>>;
+  /**
+   * One binding per offered sandbox size (D4, T045).
+   *
+   * Processing power and memory are deploy-time configuration on this host, so
+   * a run is ROUTED to a size rather than given one — which means a binding
+   * per size and no way around it. The names match `OFFERED_SIZES` in
+   * `container/sizes.ts` exactly; a size named there with no binding here
+   * fails on a real ticket, so `sandboxNamespaces` checks rather than assumes.
+   */
+  sandbox_1x3: DurableObjectNamespace<BaseSandbox<unknown>>;
+  sandbox_1x4: DurableObjectNamespace<BaseSandbox<unknown>>;
+  sandbox_2x6: DurableObjectNamespace<BaseSandbox<unknown>>;
+  sandbox_4x12: DurableObjectNamespace<BaseSandbox<unknown>>;
   /** One run's state per run id — what replaces `memoryStore()` (D3). */
   RUN: DurableObjectNamespace<RunObject>;
   RUNNER_AUTH_TOKEN: string;
@@ -48,10 +60,43 @@ export interface WorkerEnv {
 }
 
 /**
- * The container class the sandbox binding names.
+ * The sized namespaces, as `hostedHost` wants them, with every declared size
+ * proven present.
  *
- * A subclass rather than a re-export for one reason: `enableInternet` is stated
- * here instead of inherited. The library's default happens to be `true` today,
+ * Checked rather than assumed because the failure it prevents is specific: a
+ * size listed in `sizes.ts` with no binding declared in `wrangler.jsonc`
+ * presents at run time as a sandbox that cannot be reached, on a real ticket,
+ * with an error about an undefined namespace. Here it is a deployment mistake
+ * named at the first request instead.
+ */
+function sandboxNamespaces(env: WorkerEnv): SandboxNamespaces {
+  const namespaces: Record<string, DurableObjectNamespace<BaseSandbox<unknown>>> = {};
+  const missing: string[] = [];
+  for (const size of OFFERED_SIZES) {
+    const binding = (
+      env as unknown as Record<string, DurableObjectNamespace<BaseSandbox<unknown>>>
+    )[size.name];
+    if (binding) namespaces[size.name] = binding;
+    else missing.push(size.name);
+  }
+  if (missing.length > 0) {
+    throw new Error(
+      `runner: sizes.ts offers ${missing.join(', ')} but this deployment declares no container ` +
+        'binding for them — add one per size to wrangler.jsonc, each with its own migration tag',
+    );
+  }
+  return namespaces;
+}
+
+/**
+ * The container class every sandbox binding names.
+ *
+ * One class serves every size: the size is deploy-time configuration attached
+ * to the BINDING, not to the class, so four bindings of one class is the whole
+ * mechanism. There is nothing per-size to write here.
+ *
+ * A subclass rather than a re-export of the SDK's for one reason:
+ * `enableInternet` is stated here instead of inherited. The library's default happens to be `true` today,
  * and a step driven by a model is itself a call to a model service — so a
  * version that flipped that default would break every run, silently, with a
  * failure that looks like the model being down rather than like a config
@@ -64,9 +109,23 @@ export interface WorkerEnv {
  * as enforcement and enforces nothing. FR-011a requires the setting to be
  * presented as unavailable instead — see `container/hosted.ts`.
  */
-export class Sandbox extends BaseSandbox<WorkerEnv> {
+class FactorySandbox extends BaseSandbox<WorkerEnv> {
   override enableInternet: boolean = true;
 }
+
+/**
+ * One exported class per size, because a container binding names a class and
+ * `instance_type` is attached to the binding.
+ *
+ * They are identical by design — the size is the deployment's, not the code's.
+ * Subclasses rather than four bindings of one class because Wrangler requires
+ * a distinct class per container binding; there is nothing per-size to write
+ * inside them, and anything written here would have to be written four times.
+ */
+export class Sandbox1x3 extends FactorySandbox {}
+export class Sandbox1x4 extends FactorySandbox {}
+export class Sandbox2x6 extends FactorySandbox {}
+export class Sandbox4x12 extends FactorySandbox {}
 
 /**
  * One run's state, for the length of that run.
@@ -133,7 +192,10 @@ export class RunObject extends DurableObject<WorkerEnv> {
       // Never throws, by the execution host contract — which matters here more
       // than anywhere, because an alarm that throws is retried and a backstop
       // that retries forever is not a backstop.
-      await hostedHost(this.env.SANDBOX).destroy(containerId);
+      // Given the identifier's own namespace rather than the whole map: the
+      // alarm's job is to release ONE sandbox, and it should not fail to do
+      // that because some other size's binding is missing.
+      await hostedHost(namespaceForId(this.env, containerId)).destroy(containerId);
     }
     log.warn(retained ? 'released a retained sandbox' : 'released a sandbox at its deadline', {
       container_id: containerId,
@@ -141,6 +203,27 @@ export class RunObject extends DurableObject<WorkerEnv> {
     });
     await this.forget();
   }
+}
+
+/**
+ * The one namespace an existing sandbox identifier belongs to.
+ *
+ * Used by the alarm, which holds an identifier and needs only to destroy it.
+ * Falls back to the smallest size's binding for an identifier that carries no
+ * size — one minted before sizes existed. That fallback cannot release the
+ * sandbox if it was really in another namespace, so it is a best effort on a
+ * path that has no better option; `sleepAfter` is the second line underneath
+ * it (D5).
+ */
+function namespaceForId(
+  env: WorkerEnv,
+  containerId: string,
+): DurableObjectNamespace<BaseSandbox<unknown>> {
+  const size = sizeOf(containerId);
+  const bindings = env as unknown as Record<string, DurableObjectNamespace<BaseSandbox<unknown>>>;
+  return bindings[size?.name ?? (OFFERED_SIZES[0] as SandboxSize).name] as DurableObjectNamespace<
+    BaseSandbox<unknown>
+  >;
 }
 
 /**
@@ -174,13 +257,18 @@ export function durableStore(namespace: DurableObjectNamespace<RunObject>): RunS
  * run fail to get a sandbox needs to know the check never covered that.
  */
 async function probeHostedHost(env: WorkerEnv): Promise<{ reachable: boolean; detail: string }> {
-  const missing = [env.SANDBOX ? undefined : 'SANDBOX', env.RUN ? undefined : 'RUN'].filter(
-    (name): name is string => name !== undefined,
-  );
+  const missing = [
+    ...OFFERED_SIZES.filter((size) => !(env as unknown as Record<string, unknown>)[size.name]).map(
+      (size) => size.name,
+    ),
+    ...(env.RUN ? [] : ['RUN']),
+  ];
   if (missing.length > 0) {
     return {
       reachable: false,
-      detail: `this deployment is missing the ${missing.join(' and ')} binding, so no run can start`,
+      detail:
+        `this deployment is missing the ${missing.join(', ')} ` +
+        `binding${missing.length > 1 ? 's' : ''}, so no run can start`,
     };
   }
   try {
@@ -190,7 +278,9 @@ async function probeHostedHost(env: WorkerEnv): Promise<{ reachable: boolean; de
     await durableStore(env.RUN).get('readiness-probe');
     return {
       reachable: true,
-      detail: 'sandbox and run bindings present and storage answering; no sandbox was started',
+      detail:
+        `all ${OFFERED_SIZES.length} sandbox sizes and the run binding are present and storage ` +
+        'is answering; no sandbox was started',
     };
   } catch (error) {
     return {
@@ -206,7 +296,9 @@ export default {
     // request and there is no module-scope moment in a Worker at which it
     // exists. Cheap — it is a handful of string reads.
     const config = loadRunnerConfig(env as unknown as Record<string, string | undefined>);
-    const host: ContainerHost = hostFor(config.executionHost, () => hostedHost(env.SANDBOX));
+    const host: ContainerHost = hostFor(config.executionHost, () =>
+      hostedHost(sandboxNamespaces(env)),
+    );
     const handle = handlerFor({
       config,
       host,

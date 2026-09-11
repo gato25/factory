@@ -35,10 +35,15 @@
   // calls back about still terminates (FR-010). It starts no container.
   "durable_objects": {
     "bindings": [
-      {
-        "name": "SANDBOX",
-        "class_name": "Sandbox"
-      },
+      // One binding per offered sandbox size. `instance_type` is deploy-time
+      // configuration — there is no runtime API to size a sandbox — so a
+      // deployment declares the sizes it offers and `container/sizes.ts`
+      // routes a run to the largest that fits WITHIN the workspace's ceilings.
+      // The names must match OFFERED_SIZES exactly.
+      { "name": "sandbox_1x3", "class_name": "Sandbox1x3" },
+      { "name": "sandbox_1x4", "class_name": "Sandbox1x4" },
+      { "name": "sandbox_2x6", "class_name": "Sandbox2x6" },
+      { "name": "sandbox_4x12", "class_name": "Sandbox4x12" },
       {
         "name": "RUN",
         "class_name": "RunObject"
@@ -58,22 +63,52 @@
   "migrations": [
     {
       "tag": "v1",
-      "new_sqlite_classes": ["Sandbox", "RunObject"]
+      "new_sqlite_classes": ["Sandbox1x3", "Sandbox1x4", "Sandbox2x6", "Sandbox4x12", "RunObject"]
     }
   ],
 
-  // The sandbox image. `infra/sandbox/Dockerfile` layers our CLIs over the
-  // SDK's published base image (T033) — the base carries the control server
-  // the SDK talks to, so the entrypoint is not ours to replace (D10).
+  // The sandbox image, once per size. `infra/sandbox/Dockerfile` layers our
+  // CLIs over the SDK's published base image (T033) — the base carries the
+  // control server the SDK talks to, so the entrypoint is not ours to replace
+  // (D10). One image, four sizes: the size is the binding's, not the image's.
   //
-  // `instance_type` is deploy-time configuration: there is no runtime API to
-  // size a sandbox. T045 declares the offered sizes here, one binding each,
-  // including one matching the shipped workspace defaults exactly.
+  // **The per-vCPU memory floor, measured.** The provider requires at least
+  // 3 GiB for each of the first four vCPUs; a first deploy at 2 vCPU /
+  // 4096 MiB was refused outright with "you need at least 6 GiB of memory".
+  // So the shipped workspace default of 2 vCPU / 4096 MiB CANNOT be offered,
+  // and a default workspace routes to 1 vCPU / 4096 MiB instead — half the
+  // processing power it asked for. FR-009 is working as designed; the default
+  // is what is wrong, and raising it to 6144 MiB is a product decision
+  // recorded in research.md D4.
+  //
+  // `max_instances` is per class, and exceeding it is NOT a transient refusal
+  // that clears: the message names `max_instances` and only a deploy fixes it
+  // (see `withCapacityRetry`). Sized separately because the small sizes carry
+  // the ordinary load.
   "containers": [
     {
-      "class_name": "Sandbox",
+      "class_name": "Sandbox1x3",
       "image": "./../../infra/sandbox/Dockerfile",
+      "instance_type": { "vcpu": 1, "memory_mib": 3072, "disk_mb": 8000 },
       "max_instances": 10
+    },
+    {
+      "class_name": "Sandbox1x4",
+      "image": "./../../infra/sandbox/Dockerfile",
+      "instance_type": { "vcpu": 1, "memory_mib": 4096, "disk_mb": 8000 },
+      "max_instances": 10
+    },
+    {
+      "class_name": "Sandbox2x6",
+      "image": "./../../infra/sandbox/Dockerfile",
+      "instance_type": { "vcpu": 2, "memory_mib": 6144, "disk_mb": 12000 },
+      "max_instances": 6
+    },
+    {
+      "class_name": "Sandbox4x12",
+      "image": "./../../infra/sandbox/Dockerfile",
+      "instance_type": { "vcpu": 4, "memory_mib": 12288, "disk_mb": 20000 },
+      "max_instances": 3
     }
   ],
 
