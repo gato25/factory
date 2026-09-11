@@ -11,12 +11,44 @@ import { FactoryError } from '@factory/shared';
  * authentication, non-disclosure on refusal, and credential replaceability as
  * obligations rather than leaving them to a feature to remember.
  */
-export function authenticate(request: Request, expectedToken: string): void {
+export function authenticate(
+  request: Request,
+  expectedToken: string,
+  previousToken?: string,
+): void {
   const header = request.headers.get('authorization') ?? '';
   const presented = header.startsWith('Bearer ') ? header.slice(7) : '';
-  if (!constantTimeEqual(presented, expectedToken)) {
+  if (!accepts(presented, expectedToken, previousToken)) {
     throw new FactoryError('not_authorised', 'unauthorised');
   }
+}
+
+/**
+ * Whether a presented credential is one this deployment currently accepts
+ * (002 FR-018a).
+ *
+ * The problem this solves: replacing the credential is a two-sided change — the
+ * service is told the new one and every caller is told the new one — and those
+ * two cannot happen in the same instant. With one accepted credential, the gap
+ * between them fails every request, which means failing runs in flight for a
+ * routine rotation. So a deployment may name the outgoing credential as well,
+ * and BOTH are accepted until it is removed.
+ *
+ * The window is closed by configuration, not by a timer here, because only the
+ * operator knows when the last caller has been updated. Removing the variable
+ * is what refuses the replaced credential — one deploy, and immediate.
+ *
+ * Both comparisons always run. Returning as soon as the current credential
+ * matches would make a request carrying it measurably faster than one carrying
+ * the previous, which tells an attacker which of the two they hold.
+ */
+export function accepts(presented: string, current: string, previous?: string): boolean {
+  const matchesCurrent = constantTimeEqual(presented, current);
+  // An empty or absent previous credential must never match, including when the
+  // presented credential is itself empty — which is what a request with no
+  // authorization header at all presents.
+  const matchesPrevious = previous ? constantTimeEqual(presented, previous) : false;
+  return matchesCurrent || matchesPrevious;
 }
 
 /**

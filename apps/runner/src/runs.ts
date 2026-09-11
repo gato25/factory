@@ -77,8 +77,44 @@ export interface RunContext {
   executionHost?: ExecutionHostName;
 }
 
-/** A run's state between the separate requests that make up the run. */
-export type RunRecord = RunContext & { containerId?: string };
+/**
+ * A run's state between the separate requests that make up the run.
+ *
+ * `credentials` is optional here where it is required on `RunContext`, and the
+ * difference is the whole of FR-016's retention rule: a failed run's sandbox
+ * may be kept for diagnosis, and when it is, the record loses its credentials
+ * while keeping its sandbox. Nothing about reading a workspace needs a live
+ * token, and a token left behind for a day is a token nobody is watching.
+ *
+ * So a record with no credentials is a FINISHED run. `liveRun` refuses to serve
+ * a step from one, which is what stops the optionality from becoming a
+ * `state.credentials?.gitToken` that pushes to nowhere.
+ */
+export type RunRecord = Omit<RunContext, 'credentials'> & {
+  containerId?: string;
+  credentials?: ResolvedCredentials;
+  /** When a retained failed sandbox may be released (FR-086). */
+  retainedUntil?: string;
+  /** `running`, or the terminal outcome the destroy call reported. */
+  outcome?: 'running' | 'done' | 'failed' | 'cancelled';
+};
+
+/**
+ * The record a step or a push needs, or a refusal.
+ *
+ * Both refusals are worded alike on purpose (FR-007, FR-019): a caller learns
+ * that the run is not one this service can act on, and nothing about whether a
+ * run by that name ever existed. A message separating "never started" from
+ * "already finished" would let anyone holding the service's credential
+ * enumerate run identifiers.
+ */
+export async function liveRun(store: RunStore, runId: string): Promise<Required<RunRecord>> {
+  const state = await store.get(runId);
+  if (!state?.containerId || !state.credentials) {
+    throw new FactoryError('not_found', 'that run has no sandbox — start it first');
+  }
+  return state as Required<RunRecord>;
+}
 
 /**
  * Where a run's state lives between calls.
@@ -165,7 +201,7 @@ export async function startRun(
     }
   }
 
-  await store.set(snapshot.run_id, { ...context, containerId });
+  await store.set(snapshot.run_id, { ...context, containerId, outcome: 'running' });
   return { container_id: containerId };
 }
 
@@ -191,10 +227,7 @@ export async function runStep(
   request: StepRequest,
   send: CallbackSender,
 ): Promise<StepOutcome> {
-  const state = await store.get(runId);
-  if (!state?.containerId) {
-    throw new FactoryError('not_found', 'that run has no sandbox — start it first');
-  }
+  const state = await liveRun(store, runId);
   const { snapshot, credentials } = state;
 
   const logs = new LogSink({
@@ -323,10 +356,7 @@ async function dispatch(
  * (FR-055a, FR-055b).
  */
 export async function verifyAndPush(host: ContainerHost, store: RunStore, runId: string) {
-  const state = await store.get(runId);
-  if (!state?.containerId) {
-    throw new FactoryError('not_found', 'that run has no sandbox');
-  }
+  const state = await liveRun(store, runId);
   // A second attempt replaces the branch it reset, so the push carries a
   // lease rather than blindly overwriting (FR-091).
   const outcome = await pushBranch(
@@ -357,9 +387,20 @@ export async function destroyRun(
     outcome: options.outcome ?? 'done',
     retainFailedHours: options.retainFailedHours ?? 0,
   });
-  // A retained sandbox is still this run's, so the mapping stays until it
-  // is actually released; whatever sweeps it up needs the container id.
-  if (result.destroyed) await store.delete(runId);
+  if (result.destroyed) {
+    await store.delete(runId);
+  } else {
+    // A retained sandbox is still this run's, so the mapping stays until it is
+    // actually released; whatever sweeps it up needs the container id. What
+    // does NOT stay is the credentials: retention exists for diagnosis, and
+    // nothing about reading a workspace needs a live token (FR-016).
+    const { credentials: _dropped, ...withoutCredentials } = state;
+    await store.set(runId, {
+      ...withoutCredentials,
+      outcome: options.outcome ?? 'done',
+      ...(result.retainedUntil ? { retainedUntil: result.retainedUntil } : {}),
+    });
+  }
   return { released: result.destroyed, retainedUntil: result.retainedUntil };
 }
 

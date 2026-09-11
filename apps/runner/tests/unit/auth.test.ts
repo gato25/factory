@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { FactoryError } from '@factory/shared';
 import { authenticate, constantTimeEqual } from '../../src/auth';
+import { loadRunnerConfig } from '../../src/config';
 
 /**
  * Authentication used to be defence in depth behind a private network. Once
@@ -89,5 +90,53 @@ describe('constantTimeEqual', () => {
     const late = median(wrongAtEnd);
     const ratio = Math.max(early, late) / Math.min(early, late);
     expect(ratio).toBeLessThan(3);
+  });
+});
+
+describe('what a hosted deployment refuses to start without', () => {
+  /**
+   * The change of threat model that came with hosting, as a test rather than a
+   * comment. On the locally administered host the credential was defence in
+   * depth behind a private network, and a development default was harmless. A
+   * Worker has a public address by construction, so the same default would be
+   * a service anyone who read the repository could drive.
+   */
+  test("EXECUTION_HOST='hosted' will not start on the development credential", () => {
+    expect(() => loadRunnerConfig({ EXECUTION_HOST: 'hosted' })).toThrow(
+      /requires RUNNER_AUTH_TOKEN to be set explicitly/,
+    );
+  });
+
+  test('the locally administered host still starts with nothing configured', () => {
+    // Deliberately unchanged. An existing deployment that has not been told
+    // about any of this keeps working exactly as it did (FR-025).
+    const config = loadRunnerConfig({});
+    expect(config.executionHost).toBe('docker');
+    expect(config.authToken).toBe('dev-only-token');
+  });
+
+  test('a hosted deployment starts once the credential is set', () => {
+    const config = loadRunnerConfig({
+      EXECUTION_HOST: 'hosted',
+      RUNNER_AUTH_TOKEN: 'a-real-secret',
+    });
+    expect(config.executionHost).toBe('hosted');
+    expect(config.previousAuthToken).toBeUndefined();
+  });
+
+  test('the rotation window is read, and an empty value closes it', () => {
+    const open = loadRunnerConfig({
+      EXECUTION_HOST: 'hosted',
+      RUNNER_AUTH_TOKEN: 'new',
+      RUNNER_AUTH_TOKEN_PREVIOUS: 'old',
+    });
+    expect(open.previousAuthToken).toBe('old');
+
+    const closed = loadRunnerConfig({
+      EXECUTION_HOST: 'hosted',
+      RUNNER_AUTH_TOKEN: 'new',
+      RUNNER_AUTH_TOKEN_PREVIOUS: '',
+    });
+    expect(closed.previousAuthToken).toBeUndefined();
   });
 });

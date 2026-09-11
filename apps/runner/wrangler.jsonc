@@ -19,15 +19,29 @@
     "cpu_ms": 300000
   },
 
-  // One run's sandbox is one Durable Object, addressed by run id. That is what
-  // makes the four operations in contracts/runner.md reach the same sandbox and
-  // the same workspace across separate requests (FR-006), and what makes a
-  // second `start` for one run impossible rather than merely unlikely (FR-008).
+  // Two classes, and the distinction matters.
+  //
+  // `Sandbox` is one run's container — the thing that costs money and holds the
+  // workspace. `RunObject` is one run's STATE: the snapshot, the credentials,
+  // the sandbox id and the deadline. Both are addressed by run id, which is
+  // what makes the four operations in contracts/runner.md reach the same
+  // sandbox and the same workspace across separate requests (FR-006) and what
+  // makes a second `start` for one run impossible rather than merely unlikely
+  // (FR-008) — the platform guarantees one instance per id, so no lock of ours
+  // can race.
+  //
+  // `RunObject` also holds the alarm that releases a sandbox at its wall-clock
+  // ceiling. That is the constitution's 2.0.0 invariant: a run nothing ever
+  // calls back about still terminates (FR-010). It starts no container.
   "durable_objects": {
     "bindings": [
       {
         "name": "SANDBOX",
         "class_name": "Sandbox"
+      },
+      {
+        "name": "RUN",
+        "class_name": "RunObject"
       }
     ]
   },
@@ -35,12 +49,16 @@
   // Append-only, and a tag is immutable once applied. Adding a class to a tag
   // that has already shipped is silently ignored and the deploy then fails with
   // "Cannot create binding for class X because it is not currently configured
-  // to implement Durable Objects" — learned on the spike. New classes, such as
-  // the sized bindings T045 adds, need a new tag.
+  // to implement Durable Objects" — learned on the spike.
+  //
+  // Both classes sit in `v1` because `factory-runner` has NOT been deployed
+  // yet: the spike ran under a different worker name. Once this has shipped,
+  // `v1` is frozen, and any further class needs its own tag — including the
+  // sized bindings T045 adds.
   "migrations": [
     {
       "tag": "v1",
-      "new_sqlite_classes": ["Sandbox"]
+      "new_sqlite_classes": ["Sandbox", "RunObject"]
     }
   ],
 
@@ -61,7 +79,9 @@
 
   // Secrets are set with `wrangler secret put`, never here:
   //   RUNNER_AUTH_TOKEN           the credential on every request (FR-018)
-  //   RUNNER_AUTH_TOKEN_PREVIOUS  accepted during a rotation window (FR-018a)
+  //   RUNNER_AUTH_TOKEN_PREVIOUS  the outgoing credential, accepted alongside
+  //                               the new one while callers are updated, then
+  //                               REMOVED — which is what refuses it (FR-018a)
   // Everything else a run needs arrives in the request: the snapshot in the
   // body, and credentials fetched from the application with the run's own
   // secret. The runner holds no database connection (D11).
