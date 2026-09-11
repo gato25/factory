@@ -107,7 +107,7 @@ container daemon, start a ticket against a real repository, and confirm it reach
 - [X] T018 [P] [US1] Integration test in `apps/runner/tests/integration/run-state.test.ts` proving start, step, verify-and-push and destroy address one run's sandbox and workspace, that a document one step writes a later step reads, and that a second `start` returns the existing sandbox rather than creating another (FR-006, FR-008)
 - [X] T019 [P] [US1] Integration test in `apps/runner/tests/integration/auth-surface.test.ts` proving an unauthenticated request creates, inspects, uses and releases nothing, and that refusals naming an existing and a non-existent run are indistinguishable (FR-018, FR-019)
 - [X] T020 [P] [US1] Integration test in `apps/runner/tests/integration/credential-rotation.test.ts` proving a run already executing finishes across a credential replacement and the replaced credential is then refused (FR-018a, SC-012)
-- [ ] T021 [US1] End-to-end test in `apps/runner/tests/e2e/hosted-run.test.ts` running a real ticket against a real sandbox — User Story 1's Independent Test, excluded from `bun test` per T004 (SC-001)
+- [X] T021 [US1] End-to-end test in `apps/runner/tests/e2e/hosted-run.test.ts` running a real ticket against a real sandbox — User Story 1's Independent Test, excluded from `bun test` per T004 (SC-001) — skips on `E2E_RUNNER_URL` being absent and fails if it is set with anything else missing, so it can never pass while half configured
 
 ### Implementation for User Story 1
 
