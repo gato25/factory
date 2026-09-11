@@ -228,7 +228,7 @@ test.describe('designing the interface before building it', () => {
     // Every screen as an image, the criteria beside them, the reason, and a
     // statement that no code has been written yet (FR-064d).
     await expect(page.getByRole('heading', { name: /Add Google OAuth sign-in/ })).toBeVisible();
-    await expect(page.getByText('No code has been written yet')).toBeVisible();
+    await expect(page.getByText('Nothing has been implemented yet')).toBeVisible();
     await expect(page.getByText('A Google button appears on the sign-in screen.')).toBeVisible();
     await expect(
       page.getByText('A Google button appears on the sign-in screen', { exact: true }),
