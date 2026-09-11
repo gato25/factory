@@ -21,13 +21,26 @@ USER root
 
 # Both agent engines live here, never in our own services (001 research D6).
 #
-# No `|| true`. An image missing the Claude CLI builds fine and then fails
-# every agent step with an error that says nothing about the image, which is a
-# worse outcome than a failed build — so each install is verified and a broken
-# one stops the build here.
-RUN curl -fsSL https://claude.ai/install.sh | bash -s -- --bin-dir /usr/local/bin \
+# Installed from npm rather than by piping an install script. The previous
+# version of this file did the latter with `--bin-dir /usr/local/bin` and
+# `|| true` on the end — and the flag does not exist. `claude.ai/install.sh`
+# takes one positional argument (`stable`, `latest` or a version), so it printed
+# its usage and exited non-zero, and `|| true` swallowed that. **The Claude CLI
+# was never in this image.** Every agent step would have failed with an error
+# saying nothing about the cause.
+#
+# So: no `|| true`, exact versions, and each install verified by running the
+# binary. A broken install stops the build here, where the error names itself.
+#
+# The versions are pinned because FR-004 pins the sandbox IMAGE per run, which
+# only means anything if rebuilding a tag produces the same image. Bump them
+# deliberately.
+#
+# The base image carries Node 24; `@anthropic-ai/claude-code` needs >= 22.0.0
+# and `@pen.dev/cli` >= 22.19.0.
+RUN npm install -g @anthropic-ai/claude-code@2.1.268 \
     && claude --version
-RUN curl -fsSL https://pen.dev/install.sh | bash -s -- --bin-dir /usr/local/bin \
+RUN npm install -g @pen.dev/cli@0.3.7 \
     && pen --version
 
 # A step's work runs as this user, and the workspace belongs to it (002 FR-003).
