@@ -71,12 +71,13 @@ test('a second attempt brings the branch back to a known state (FR-091)', async 
 
   // The reset points the branch at the default branch, not at whatever the
   // previous attempt left. The clone also runs a `checkout -B`, so the
-  // assertion names the reset's own form.
+  // assertion names the reset's target — `origin/main` — which only the reset
+  // passes.
   expect(
     host.calls.some((call) =>
       call.argv
         .join(' ')
-        .includes("git checkout -B 'factory/142-add-google-oauth-sign-in' 'origin/main'"),
+        .includes('git checkout -B factory/142-add-google-oauth-sign-in origin/main'),
     ),
   ).toBe(true);
 });

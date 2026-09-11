@@ -146,14 +146,35 @@ carrying the model service, the design service, the run's git provider and the w
 permitted hosts. Before a step that FR-011 does not restrict, the policy is widened; after it, it is
 narrowed again.
 
-**Rationale**: this is what makes FR-011 buildable rather than aspirational. `allowedHosts` is a
-deny-by-default allowlist supporting glob patterns, where a host that does not match is blocked;
-`enableInternet` controls whether the container reaches the public internet at all; and
-`setOutboundHandler()` / `setOutboundByHost()` change the policy on a **running** container without
-restarting it. Per-step switching therefore does not cost a sandbox per step.
+**Rationale**: this is what makes FR-011 buildable rather than aspirational, and the API was read
+out of the installed package rather than from documentation. It is **not** on `Sandbox`'s own type
+surface — it is inherited from `Container` in `@cloudflare/containers@0.3.7`, which `Sandbox`
+extends, and which itself extends `DurableObject` (so D5's alarm is available on the same object):
 
-**Confidence**: the API surface is documented in the SDK's own egress guide; the switching sequence
-has not been run and is the first thing a spike should prove.
+- Construction: `enableInternet?: boolean`, `allowedHosts?: string[]`, `deniedHosts?: string[]`.
+- At runtime, on a container that is already running: `setAllowedHosts(hosts)`,
+  `setDeniedHosts(hosts)`, `allowHost(h)`, `denyHost(h)`, `removeAllowedHost(h)`,
+  `removeDeniedHost(h)`, plus `setOutboundHandler` / `setOutboundByHost` / `setOutboundByHosts` for
+  intercepting rather than merely permitting.
+
+Two semantics from the type definitions matter more than the method names. *"Allowed hosts get
+internet access even when `enableInternet` is false"* — so `enableInternet: false` plus an allowlist
+is precisely the deny-by-default shape FR-012 asks for, with no extra mechanism. And *"denied hosts
+are blocked unconditionally, even when `enableInternet` is true"* — so a deny list cannot be
+widened by anything else, which is what makes an administrator's emptied list (FR-012b) mean what
+it says.
+
+Per-step switching is therefore `setAllowedHosts` before and after each step, and costs no extra
+sandbox.
+
+**Confidence**: the API exists and its semantics are read from the installed package's type
+definitions. The switching sequence against a live sandbox has still not been run, and is the first
+thing the spike proves.
+
+**A correction worth keeping**: an earlier draft of this decision cited the SDK's outbound-traffic
+guide and named `setOutboundByHost` as the mechanism. The guide is right about the capability, but
+the method to use for a permitted SET is `setAllowedHosts`; `setOutboundByHost` is for routing a
+host through a handler. Citing a doc is not the same as reading the interface.
 
 ---
 

@@ -1,5 +1,6 @@
 import { FactoryError } from '@factory/shared';
 import type { ContainerHost } from '../container/host';
+import { quoteOne } from '../container/shell';
 
 /**
  * What a design step must have produced: an editable design source, and at
@@ -29,7 +30,8 @@ export async function collectDesignOutputs(
   const listing = await host.exec(containerId, [
     'sh',
     '-c',
-    `ls -1 '${workdir}/${exportDir}' 2>/dev/null || true`,
+    // `exportDir` is typed into the pipeline builder (002 FR-015).
+    `ls -1 ${quoteOne(`${workdir}/${exportDir}`)} 2>/dev/null || true`,
   ]);
   const screens = listing.stdout
     .split('\n')

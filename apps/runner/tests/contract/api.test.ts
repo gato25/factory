@@ -103,8 +103,8 @@ test('start clones the CURRENT default branch, then checks out the run branch (F
     },
   });
   const clone = host.calls.map((c) => c.argv.join(' ')).find((s) => s.includes('git clone'));
-  expect(clone).toContain("--branch 'main'");
-  expect(clone).toContain("git checkout -B 'factory/142-add-google-oauth-sign-in'");
+  expect(clone).toContain('--branch main');
+  expect(clone).toContain('git checkout -B factory/142-add-google-oauth-sign-in');
   // The stored remote must not keep the credential in it.
   expect(clone).toContain('git remote set-url origin');
 });

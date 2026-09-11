@@ -1,4 +1,5 @@
 import type { ContainerHost } from './host';
+import { quote, quoteOne } from './shell';
 import { WORKDIR } from './start';
 
 /**
@@ -28,7 +29,9 @@ export async function commitDesign(
 ): Promise<CommitOutcome> {
   if (input.paths.length === 0) return { committed: false, hash: null };
 
-  const quoted = input.paths.map((path) => `'${path}'`).join(' ');
+  // Design export paths come from the step's configuration, so they are
+  // quoted rather than wrapped in quote characters (002 FR-015).
+  const quoted = quote(input.paths);
   const subject = `design(${input.reference}): ${input.revising ? 'revise' : 'add'} screens`;
 
   // `--` keeps a path that looks like a flag from being read as one, and
@@ -37,7 +40,7 @@ export async function commitDesign(
   const script = [
     `git add -- ${quoted}`,
     `git diff --cached --quiet && echo NOTHING_TO_COMMIT && exit 0`,
-    `git commit -m '${subject.replace(/'/g, "'\\''")}' >/dev/null`,
+    `git commit -m ${quoteOne(subject)} >/dev/null`,
     'git rev-parse HEAD',
   ].join('\n');
 

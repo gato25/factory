@@ -1,6 +1,7 @@
 import { FactoryError, type PipelineSnapshot } from '@factory/shared';
 import type { ContainerHost } from './host';
-import { WORKDIR } from './start';
+import { quoteOne } from './shell';
+import { authenticatedRemote, WORKDIR } from './start';
 
 /**
  * Pushes the run's branch. It runs NO tests of its own — verification exists
@@ -19,16 +20,17 @@ export async function pushBranch(
   gitToken: string,
   options: { force?: boolean } = {},
 ): Promise<PushOutcome> {
-  const authenticated = snapshot.repo.clone_url.replace(
-    /^https:\/\//,
-    'https://oauth2:${GIT_TOKEN}@',
-  );
   // Force is used on a retry, where the branch is brought back to a known
   // state rather than accumulating two attempts' work (FR-091).
   const flag = options.force ? '--force-with-lease' : '';
   const result = await host.exec(
     containerId,
-    ['sh', '-c', `git push ${flag} "${authenticated}" '${snapshot.repo.branch}'`],
+    [
+      'sh',
+      '-c',
+      `git push ${flag} ${authenticatedRemote(snapshot.repo.clone_url)} ` +
+        quoteOne(snapshot.repo.branch),
+    ],
     { cwd: WORKDIR, env: { GIT_TOKEN: gitToken } },
   );
 
@@ -45,7 +47,8 @@ export async function pushBranch(
 
   const log = await host.exec(
     containerId,
-    ['sh', '-c', `git log --format='%h %s' '${snapshot.repo.default_branch}'..HEAD`],
+    // The range is one token, so a branch name is never shell syntax (002 FR-015).
+    ['sh', '-c', `git log --format='%h %s' ${quoteOne(`${snapshot.repo.default_branch}..HEAD`)}`],
     { cwd: WORKDIR },
   );
   const commits = log.stdout

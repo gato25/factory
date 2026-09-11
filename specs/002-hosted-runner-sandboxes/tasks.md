@@ -38,10 +38,10 @@ for the image, `apps/web/` and `packages/db/` for the one settings field.
 
 **Purpose**: make the Workers toolchain available without changing any behaviour
 
-- [ ] T001 Add `@cloudflare/sandbox@0.12.9` and `wrangler` to dependencies in `apps/runner/package.json`, pinning both exactly (D10 requires the image tag to match the SDK version)
-- [ ] T002 [P] Create `apps/runner/wrangler.jsonc` with the Worker entry, one Durable Object binding for the sandbox class, and `limits.cpu_ms` raised to 300000 per D9
-- [ ] T003 [P] Add Workers types to `apps/runner/tsconfig.json` so `bunx tsc -p apps/runner` typechecks both runtime targets
-- [ ] T004 Exclude `apps/runner/tests/e2e` from the `test` script in the root `package.json`, so `bun run verify` stays offline per FR-026
+- [X] T001 Add `@cloudflare/sandbox@0.12.9` and `wrangler` to dependencies in `apps/runner/package.json`, pinning both exactly (D10 requires the image tag to match the SDK version)
+- [X] T002 [P] Create `apps/runner/wrangler.jsonc` with the Worker entry, one Durable Object binding for the sandbox class, and `limits.cpu_ms` raised to 300000 per D9
+- [X] T003 [P] Add Workers types to `apps/runner/tsconfig.json` so `bunx tsc -p apps/runner` typechecks both runtime targets
+- [X] T004 Exclude `apps/runner/tests/e2e` from the `test` script in the root `package.json`, so `bun run verify` stays offline per FR-026
 
 **Checkpoint**: `bun run verify` still green, nothing behaves differently
 
@@ -55,6 +55,12 @@ any hosted infrastructure and is useful on the existing Docker host.
 **⚠️ CRITICAL**: T005–T007 gate everything after them. Each could change the design rather than the
 code, and the plan says so. Do not start Phase 3 until all three answer.
 
+**Status: the spike is written and typechecks against the installed SDK, but has NOT been run.**
+It needs a Cloudflare account, a published sandbox image and a deployed Worker; the environment it
+was written in had no `CLOUDFLARE_API_TOKEN`. `spikes/worker.ts` and `wrangler.spike.jsonc` are
+ready — deploy and call the three routes, then record the answers under D4, D6 and D7 (T061).
+Everything in Phase 3 onwards remains gated.
+
 ### The spike (research.md D4, D6, D7 — documented, not run)
 
 - [ ] T005 In `apps/runner/spikes/non-root.ts`, create one real sandbox and confirm a command runs as an unprivileged user and that `/work` is writable by it (D6, FR-003). Record the answer in `research.md` under D6
@@ -63,18 +69,20 @@ code, and the plan says so. Do not start Phase 3 until all three answer.
 
 ### The seam and its safety
 
-- [ ] T008 Add `permittedHosts: string[]` to `ContainerSpec` in `apps/runner/src/container/host.ts`, leaving all six method signatures unchanged per `contracts/execution-host.md` (FR-012c)
-- [ ] T009 [P] Apply `quote()` from `apps/runner/src/container/shell.ts` to the interpolated paths in `dockerHost.writeFile` and `dockerHost.stat` in `apps/runner/src/container/host.ts` — both currently interpolate into `sh -c` unquoted (FR-015, D8)
-- [ ] T010 [P] Apply `quote()` to the branch and URL interpolations in the git scripts in `apps/runner/src/container/start.ts` (`cloneRepository`) and `apps/runner/src/container/recover.ts` (`resumeFromBranch`) (FR-015, D8)
-- [ ] T011 [P] Replace `timingSafeEqual` from `node:crypto` with a constant-time comparison in `apps/runner/src/auth.ts`, removing the runner's only Node import (D12, FR-018)
-- [ ] T012 [P] Remove `databaseUrl` from `RunnerConfig` and `loadRunnerConfig` in `apps/runner/src/config.ts`, and `@factory/db` from `apps/runner/package.json` — neither is read anywhere in `apps/runner/src` (D11)
-- [ ] T013 Add `executionHost: 'docker' | 'hosted'` to `RunnerConfig` in `apps/runner/src/config.ts`, read from `EXECUTION_HOST` and defaulting to `docker`, and select the host from it at the five call sites in `apps/runner/src/index.ts` (FR-025)
+- [X] T008 Add `permittedHosts: string[]` to `ContainerSpec` in `apps/runner/src/container/host.ts`, leaving all six method signatures unchanged per `contracts/execution-host.md` (FR-012c)
+- [X] T009 [P] Apply `quote()` from `apps/runner/src/container/shell.ts` to the interpolated paths in `dockerHost.writeFile` and `dockerHost.stat` in `apps/runner/src/container/host.ts` — both currently interpolate into `sh -c` unquoted (FR-015, D8)
+  - **Done, and wider than written.** Four more files carried the same defect and were not enumerated here: `container/push.ts`, `container/reset.ts`, `container/commit.ts` and `outputs/design.ts`. FR-015 does not distinguish between them, so all six were fixed. `container/commit.ts` also had a hand-rolled single-quote escape, now `quoteOne`.
+- [X] T010 [P] Apply `quote()` to the branch and URL interpolations in the git scripts in `apps/runner/src/container/start.ts` (`cloneRepository`) and `apps/runner/src/container/recover.ts` (`resumeFromBranch`) (FR-015, D8)
+  - **Done.** The clone URL needed care rather than quoting: `$GIT_TOKEN` must stay shell-expandable, because that is how the credential reaches git without appearing in an argument list (FR-083). `authenticatedRemote()` in `start.ts` emits a quoted literal, the unquoted expansion and a quoted remainder, which a shell joins into one word. Proven through a real shell in `tests/unit/shell.test.ts`, including an adversarial token and an adversarial clone URL.
+- [X] T011 [P] Replace `timingSafeEqual` from `node:crypto` with a constant-time comparison in `apps/runner/src/auth.ts`, removing the runner's only Node import (D12, FR-018)
+- [X] T012 [P] Remove `databaseUrl` from `RunnerConfig` and `loadRunnerConfig` in `apps/runner/src/config.ts`, and `@factory/db` from `apps/runner/package.json` — neither is read anywhere in `apps/runner/src` (D11)
+- [X] T013 Add `executionHost: 'docker' | 'hosted'` to `RunnerConfig` in `apps/runner/src/config.ts`, read from `EXECUTION_HOST` and defaulting to `docker`, and select the host from it at the five call sites in `apps/runner/src/index.ts` (FR-025)
 
 ### Tests for the foundational phase
 
-- [ ] T014 [P] Extend `apps/runner/tests/unit/shell.test.ts` with cases proving a path containing shell syntax reaches `writeFile` and `stat` as a path and runs nothing (FR-015, SC-007)
-- [ ] T015 [P] Add `apps/runner/tests/unit/auth.test.ts` asserting the constant-time comparison rejects wrong credentials and that comparison time does not vary with how early the mismatch falls (D12, FR-018)
-- [ ] T016 [P] Add `apps/runner/tests/integration/host-selection.test.ts` proving the configured host is the one used with no code change between the two, and that a run started on one host is refused rather than executed on the other when the configuration changes mid-run (FR-025, FR-025a, SC-010)
+- [X] T014 [P] Extend `apps/runner/tests/unit/shell.test.ts` with cases proving a path containing shell syntax reaches `writeFile` and `stat` as a path and runs nothing (FR-015, SC-007)
+- [X] T015 [P] Add `apps/runner/tests/unit/auth.test.ts` asserting the constant-time comparison rejects wrong credentials and that comparison time does not vary with how early the mismatch falls (D12, FR-018)
+- [X] T016 [P] Add `apps/runner/tests/integration/host-selection.test.ts` proving the configured host is the one used with no code change between the two, and that a run started on one host is refused rather than executed on the other when the configuration changes mid-run (FR-025, FR-025a, SC-010)
 
 **Checkpoint**: the existing Docker path is safer than it was, the suite is still offline, and the
 three unknowns have answers

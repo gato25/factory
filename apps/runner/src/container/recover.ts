@@ -2,7 +2,8 @@ import { FactoryError, type PipelineSnapshot } from '@factory/shared';
 import { writeAgentConfig } from './config';
 import type { ContainerHost } from './host';
 import type { ResolvedCredentials } from './secrets';
-import { type StartInput, startRunWorkspace, WORKDIR } from './start';
+import { quoteOne } from './shell';
+import { authenticatedRemote, type StartInput, startRunWorkspace, WORKDIR } from './start';
 
 /**
  * A sandbox or its host can disappear mid-step. When that happens the step is
@@ -113,17 +114,18 @@ async function resumeFromBranch(
   credentials: ResolvedCredentials,
 ): Promise<string> {
   const branch = snapshot.repo.branch;
-  const authenticated = snapshot.repo.clone_url.replace(
-    /^https:\/\//,
-    'https://oauth2:${GIT_TOKEN}@',
-  );
+  // A branch name reaches here from the repository record, so it is quoted
+  // rather than interpolated (002 FR-015). The remote is the one fragment that
+  // must stay shell-expandable — see authenticatedRemote.
+  const refspec = quoteOne(`+refs/heads/${branch}:refs/remotes/origin/${branch}`);
+  const remoteRef = quoteOne(`refs/remotes/origin/${branch}`);
   const fetched = await host.exec(
     containerId,
     [
       'sh',
       '-c',
-      `git fetch "${authenticated}" '+refs/heads/${branch}:refs/remotes/origin/${branch}' && ` +
-        `git checkout -B '${branch}' 'refs/remotes/origin/${branch}' && git rev-parse HEAD`,
+      `git fetch ${authenticatedRemote(snapshot.repo.clone_url)} ${refspec} && ` +
+        `git checkout -B ${quoteOne(branch)} ${remoteRef} && git rev-parse HEAD`,
     ],
     { cwd: WORKDIR, env: { GIT_TOKEN: credentials.gitToken } },
   );

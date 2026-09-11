@@ -1,6 +1,7 @@
 import type { PipelineSnapshot } from '@factory/shared';
 import type { ContainerHost } from './host';
-import { WORKDIR } from './start';
+import { quoteOne } from './shell';
+import { authenticatedRemote, WORKDIR } from './start';
 
 /**
  * An attempt beginning on a branch a previous attempt already wrote to starts
@@ -31,11 +32,6 @@ export async function resetRunBranch(
 ): Promise<ResetOutcome> {
   const branch = snapshot.repo.branch;
   const base = snapshot.repo.default_branch;
-  const authenticated = snapshot.repo.clone_url.replace(
-    /^https:\/\//,
-    'https://oauth2:${GIT_TOKEN}@',
-  );
-
   // A branch no previous attempt pushed simply is not there; that is not an
   // error, so the fetch's failure is the answer rather than a throw.
   const fetched = await host.exec(
@@ -43,7 +39,8 @@ export async function resetRunBranch(
     [
       'sh',
       '-c',
-      `git fetch "${authenticated}" '+refs/heads/${branch}:refs/remotes/origin/${branch}'`,
+      `git fetch ${authenticatedRemote(snapshot.repo.clone_url)} ` +
+        quoteOne(`+refs/heads/${branch}:refs/remotes/origin/${branch}`),
     ],
     { cwd: WORKDIR, env: { GIT_TOKEN: gitToken } },
   );
@@ -61,7 +58,11 @@ export async function resetRunBranch(
 
   const reset = await host.exec(
     containerId,
-    ['sh', '-c', `git checkout -B '${branch}' 'origin/${base}' && git rev-parse HEAD`],
+    [
+      'sh',
+      '-c',
+      `git checkout -B ${quoteOne(branch)} ${quoteOne(`origin/${base}`)} && git rev-parse HEAD`,
+    ],
     { cwd: WORKDIR },
   );
   if (reset.exitCode !== 0) {
@@ -86,13 +87,14 @@ export async function branchExistsRemotely(
   snapshot: PipelineSnapshot,
   gitToken: string,
 ): Promise<boolean> {
-  const authenticated = snapshot.repo.clone_url.replace(
-    /^https:\/\//,
-    'https://oauth2:${GIT_TOKEN}@',
-  );
   const result = await host.exec(
     containerId,
-    ['sh', '-c', `git ls-remote --exit-code --heads "${authenticated}" '${snapshot.repo.branch}'`],
+    [
+      'sh',
+      '-c',
+      `git ls-remote --exit-code --heads ${authenticatedRemote(snapshot.repo.clone_url)} ` +
+        quoteOne(snapshot.repo.branch),
+    ],
     { cwd: WORKDIR, env: { GIT_TOKEN: gitToken } },
   );
   return result.exitCode === 0;

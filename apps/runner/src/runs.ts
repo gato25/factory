@@ -13,7 +13,7 @@ import { pushBranch } from './container/push';
 import { isSandboxLoss, withSandboxRecovery } from './container/recover';
 import { resetRunBranch } from './container/reset';
 import { type ResolvedCredentials, secretValues } from './container/secrets';
-import { startRunWorkspace, WORKDIR } from './container/start';
+import { type SandboxLimits, startRunWorkspace, WORKDIR } from './container/start';
 import { runClaudeStep } from './engines/claude-cli';
 import { runDesignStep } from './engines/design-cli';
 import { runShellStep } from './engines/shell';
@@ -64,13 +64,7 @@ export async function fetchCredentials(
 export interface RunContext {
   snapshot: PipelineSnapshot;
   credentials: ResolvedCredentials;
-  sandbox: {
-    image: string;
-    cpu: number;
-    memoryMb: number;
-    wallClockMinutes: number;
-    networkDuringImplement: boolean;
-  };
+  sandbox: SandboxLimits;
 }
 
 /** Where a run's container id is remembered between calls. */

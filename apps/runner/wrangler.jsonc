@@ -1,0 +1,70 @@
+{
+  // The execution service, deployed as a Worker (specs/002-hosted-runner-sandboxes, D1).
+  //
+  // This file is deliberately a skeleton: it carries the one Durable Object
+  // binding the sandbox SDK needs and the compute limit a long-held step
+  // request needs. The SIZED container bindings that serve a workspace's
+  // processing-power and memory ceilings are added by T045, because which
+  // sizes to offer depends on what T007's spike finds.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "factory-runner",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-09-11",
+
+  // Per-invocation CPU time. The default is 30s; a step's request is held open
+  // for the length of the step, but that time is I/O wait and does not count
+  // here — what counts is request parsing and log forwarding, far below this.
+  // Raised anyway because the failure mode is a step dying mid-run (D9).
+  "limits": {
+    "cpu_ms": 300000
+  },
+
+  // One run's sandbox is one Durable Object, addressed by run id. That is what
+  // makes the four operations in contracts/runner.md reach the same sandbox and
+  // the same workspace across separate requests (FR-006), and what makes a
+  // second `start` for one run impossible rather than merely unlikely (FR-008).
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "SANDBOX",
+        "class_name": "Sandbox"
+      }
+    ]
+  },
+
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["Sandbox"]
+    }
+  ],
+
+  // The sandbox image. `infra/sandbox/Dockerfile` layers our CLIs over the
+  // SDK's published base image (T033) — the base carries the control server
+  // the SDK talks to, so the entrypoint is not ours to replace (D10).
+  //
+  // `instance_type` is deploy-time configuration: there is no runtime API to
+  // size a sandbox. T045 declares the offered sizes here, one binding each,
+  // including one matching the shipped workspace defaults exactly.
+  "containers": [
+    {
+      "class_name": "Sandbox",
+      "image": "./../../infra/sandbox/Dockerfile",
+      "max_instances": 10
+    }
+  ],
+
+  // Secrets are set with `wrangler secret put`, never here:
+  //   RUNNER_AUTH_TOKEN           the credential on every request (FR-018)
+  //   RUNNER_AUTH_TOKEN_PREVIOUS  accepted during a rotation window (FR-018a)
+  // Everything else a run needs arrives in the request: the snapshot in the
+  // body, and credentials fetched from the application with the run's own
+  // secret. The runner holds no database connection (D11).
+  "vars": {
+    "EXECUTION_HOST": "hosted"
+  },
+
+  "observability": {
+    "enabled": true
+  }
+}

@@ -1,7 +1,8 @@
 import { FactoryError } from '@factory/shared';
 import { authenticate } from './auth';
 import { loadRunnerConfig } from './config';
-import { dockerHost, run } from './container/host';
+import { run } from './container/host';
+import { hostFor } from './container/hosts';
 import { log, toResponse } from './errors';
 import {
   callbackSender,
@@ -25,6 +26,10 @@ import {
  */
 const config = loadRunnerConfig();
 const store = memoryStore();
+// Which execution host this deployment uses, resolved once (002 FR-025). A
+// deployment configured for a host that cannot be built fails here, at
+// startup, rather than by accepting a ticket and then failing it.
+const host = hostFor(config.executionHost);
 
 interface Route {
   method: string;
@@ -51,7 +56,7 @@ const routes: Route[] = [
       // resort for a snapshot written before this field existed — used
       // silently, they meant nothing anybody configured had any effect.
       const limits = body.snapshot.sandbox;
-      const result = await startRun(dockerHost, store, {
+      const result = await startRun(host, store, {
         snapshot: body.snapshot,
         credentials,
         sandbox: body.sandbox ?? {
@@ -60,6 +65,8 @@ const routes: Route[] = [
           memoryMb: limits?.memory_mb ?? 4096,
           wallClockMinutes: limits?.wall_clock_minutes ?? 90,
           networkDuringImplement: limits?.network_during_implement ?? false,
+          // Absent means empty, not "the shipped default" (002 FR-012c).
+          permittedHosts: limits?.permitted_hosts ?? [],
         },
       });
       if (!limits) {
@@ -84,7 +91,7 @@ const routes: Route[] = [
       if (!state) throw new FactoryError('not_found', 'that run has no sandbox — start it first');
 
       const outcome = await runStep(
-        dockerHost,
+        host,
         store,
         runId,
         stepIndex,
@@ -98,7 +105,7 @@ const routes: Route[] = [
     method: 'POST',
     pattern: /^\/runs\/([^/]+)\/verify-and-push$/,
     async handle(match) {
-      const outcome = await verifyAndPush(dockerHost, store, match[1] as string);
+      const outcome = await verifyAndPush(host, store, match[1] as string);
       return Response.json(outcome);
     },
   },
@@ -138,7 +145,7 @@ const routes: Route[] = [
     async handle(match, request) {
       const url = new URL(request.url);
       const outcome = url.searchParams.get('outcome');
-      const result = await destroyRun(dockerHost, store, match[1] as string, {
+      const result = await destroyRun(host, store, match[1] as string, {
         outcome:
           outcome === 'failed' || outcome === 'cancelled' || outcome === 'done' ? outcome : 'done',
         retainFailedHours: Number(url.searchParams.get('retain_failed_hours') ?? '0') || 0,

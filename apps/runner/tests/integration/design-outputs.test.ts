@@ -181,8 +181,12 @@ test('a passing design step commits both the source and the screens (FR-105)', a
 
   expect(outcome.status).toBe('done');
   const script = host.calls.find((c) => c.argv.join(' ').includes('git add'))?.argv.join(' ') ?? '';
-  expect(script).toContain(`'${SOURCE}'`);
-  expect(script).toContain(`'${EXPORTS}/00-login.png'`);
+  // Asserted as arguments rather than as quoted text: whether a path needs
+  // quoting is the quoting helper's business, and `shell.test.ts` proves that
+  // through a real shell. What matters here is that both paths are staged.
+  expect(script).toContain(`git add -- `);
+  expect(script).toContain(SOURCE);
+  expect(script).toContain(`${EXPORTS}/00-login.png`);
 });
 
 test('nothing about the failure leaks a credential', async () => {
