@@ -137,6 +137,24 @@ matching 2 vCPU / 4096 MiB exactly, and no such size can be declared. And the wo
 to 6144 MiB so that 2 vCPU stays available. That decision belongs to the product owner and is
 recorded here rather than resolved.
 
+**Measured, 2026-09-11 (T067) — memory also caps DISK, and that is a second undocumented
+coupling.** The first real deploy was rejected:
+
+> `VALIDATE_INPUT` — disk Cannot have more GB disk than 2X your memory allotment in GiB. With 3
+> GiB of memory, maximum disk is 6 GB.
+
+So the three figures are not three independent dials. Memory has a floor set by vCPU *and* a ceiling
+it imposes on disk, which means **a small sandbox is small in all three dimensions** whether or not
+that is what anybody wanted. The smallest offered size (1 vCPU / 3 GiB) may have at most 6 GB of
+workspace — the size where a large dependency install is most likely to run out of room.
+
+The declared figures now sit a margin below that ceiling (5/7/11/20 GB) rather than on it. The
+provider states the limit in GB while the field is named `disk_mb`, and at the exact boundary a
+MB-versus-MiB reading on their side decides whether the deploy succeeds; a few hundred MB of
+ephemeral workspace is worth less than a failed deploy. `container/sizes.ts` holds the same numbers
+and a test compares the two files, because only one of them is checked by the provider and that
+check happens at the most expensive moment.
+
 **Measured, 2026-09-11 (T007) — bindings deliver what they declare.** Two bindings, read from
 inside:
 

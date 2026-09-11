@@ -25,6 +25,40 @@ export interface SandboxSize {
   name: string;
   vcpu: number;
   memoryMiB: number;
+  /**
+   * Workspace disk, in MB, and it is NOT freely chosen — see `diskCeilingMb`.
+   *
+   * Declared here rather than only in `wrangler.jsonc` so the provider's
+   * constraint can be checked by a test instead of by a deploy.
+   */
+  diskMb: number;
+}
+
+/**
+ * The most disk a size may declare: twice its memory (002 D4, measured).
+ *
+ * Learned from a rejected deploy, and it is the second undocumented coupling
+ * this provider has between the three figures:
+ *
+ *   VALIDATE_INPUT — disk Cannot have more GB disk than 2X your memory
+ *   allotment in GiB. With 3 GiB of memory, maximum disk is 6 GB.
+ *
+ * So memory does not merely have its own floor per vCPU, it also caps disk. A
+ * small sandbox is small in all three dimensions whether or not that is what
+ * anybody wanted.
+ *
+ * `OFFERED_SIZES` stays a margin below this rather than hugging it. The
+ * provider states the limit in GB while the field is named `size_mb`, and at
+ * the exact boundary a MB-versus-MiB reading decides whether a deploy succeeds.
+ * A few hundred MB of ephemeral workspace is worth less than a failed deploy.
+ */
+export function diskCeilingMb(memoryMiB: number): number {
+  return (memoryMiB / 1024) * 2 * 1000;
+}
+
+/** Kept honest by a test rather than by a comment. */
+export function diskWithinCeiling(size: SandboxSize): boolean {
+  return size.diskMb <= diskCeilingMb(size.memoryMiB);
 }
 
 /**
@@ -55,14 +89,17 @@ export interface SandboxSize {
  * quietly arbitrary rather than wrong in a visible way.
  */
 export const OFFERED_SIZES: readonly SandboxSize[] = [
-  // The smallest the provider permits: 1 vCPU at its 3 GiB floor.
-  { name: 'sandbox_1x3', vcpu: 1, memoryMiB: 3072 },
+  // The smallest the provider permits: 1 vCPU at its 3 GiB floor. Its disk
+  // ceiling is 6 GB, so this is the size where a big `npm install` is most
+  // likely to run out of room — the price of the lowest memory ceiling.
+  { name: 'sandbox_1x3', vcpu: 1, memoryMiB: 3072, diskMb: 5000 },
   // Where a default workspace lands today, and measured working on the spike.
-  { name: 'sandbox_1x4', vcpu: 1, memoryMiB: 4096 },
+  { name: 'sandbox_1x4', vcpu: 1, memoryMiB: 4096, diskMb: 7000 },
   // The smallest size at which 2 vCPU is legal at all.
-  { name: 'sandbox_2x6', vcpu: 2, memoryMiB: 6144 },
-  // The provider's cap: 4 vCPU, 12 GiB. Also measured on the spike.
-  { name: 'sandbox_4x12', vcpu: 4, memoryMiB: 12288 },
+  { name: 'sandbox_2x6', vcpu: 2, memoryMiB: 6144, diskMb: 11000 },
+  // The provider's cap: 4 vCPU, 12 GiB. Also measured on the spike. Disk is
+  // capped at 20 GB in absolute terms here, well under twice the memory.
+  { name: 'sandbox_4x12', vcpu: 4, memoryMiB: 12288, diskMb: 20000 },
 ] as const;
 
 /** Kept honest by a test rather than by a comment. */

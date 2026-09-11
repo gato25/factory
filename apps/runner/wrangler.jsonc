@@ -81,6 +81,15 @@
   // is what is wrong, and raising it to 6144 MiB is a product decision
   // recorded in research.md D4.
   //
+  // **The disk ceiling, also measured.** A deploy was rejected with "disk
+  // Cannot have more GB disk than 2X your memory allotment in GiB. With 3 GiB
+  // of memory, maximum disk is 6 GB." So memory caps disk as well as having
+  // its own per-vCPU floor, and a small sandbox is small in all three
+  // dimensions. These sit a margin below the ceiling rather than on it: the
+  // limit is stated in GB while the field is `disk_mb`, and at the exact
+  // boundary a MB-versus-MiB reading decides whether the deploy succeeds.
+  // `container/sizes.ts` holds the same figures and a test compares them.
+  //
   // `max_instances` is per class, and exceeding it is NOT a transient refusal
   // that clears: the message names `max_instances` and only a deploy fixes it
   // (see `withCapacityRetry`). Sized separately because the small sizes carry
@@ -89,19 +98,19 @@
     {
       "class_name": "Sandbox1x3",
       "image": "./../../infra/sandbox/Dockerfile",
-      "instance_type": { "vcpu": 1, "memory_mib": 3072, "disk_mb": 8000 },
+      "instance_type": { "vcpu": 1, "memory_mib": 3072, "disk_mb": 5000 },
       "max_instances": 10
     },
     {
       "class_name": "Sandbox1x4",
       "image": "./../../infra/sandbox/Dockerfile",
-      "instance_type": { "vcpu": 1, "memory_mib": 4096, "disk_mb": 8000 },
+      "instance_type": { "vcpu": 1, "memory_mib": 4096, "disk_mb": 7000 },
       "max_instances": 10
     },
     {
       "class_name": "Sandbox2x6",
       "image": "./../../infra/sandbox/Dockerfile",
-      "instance_type": { "vcpu": 2, "memory_mib": 6144, "disk_mb": 12000 },
+      "instance_type": { "vcpu": 2, "memory_mib": 6144, "disk_mb": 11000 },
       "max_instances": 6
     },
     {

@@ -2,6 +2,8 @@ import { describe, expect, test } from 'bun:test';
 import { FactoryError } from '@factory/shared';
 import {
   chooseSize,
+  diskCeilingMb,
+  diskWithinCeiling,
   OFFERED_SIZES,
   type SandboxSize,
   sandboxId,
@@ -47,6 +49,30 @@ describe('the offered sizes themselves', () => {
     }
   });
 
+  test('no size asks for more disk than the provider allows', () => {
+    // The second undocumented coupling, learned from a rejected deploy: "disk
+    // Cannot have more GB disk than 2X your memory allotment in GiB. With 3
+    // GiB of memory, maximum disk is 6 GB." Memory caps disk as well as having
+    // its own per-vCPU floor, so a small sandbox is small in all three
+    // dimensions whether or not that is what anybody wanted.
+    for (const size of OFFERED_SIZES) {
+      expect(
+        diskWithinCeiling(size),
+        `${size.name}: ${size.diskMb} MB exceeds the ${diskCeilingMb(size.memoryMiB)} MB ceiling`,
+      ).toBe(true);
+    }
+  });
+
+  test('the sizes keep a margin below the disk ceiling rather than hugging it', () => {
+    // The limit is stated in GB while the field is named `disk_mb`. At the
+    // exact boundary, a MB-versus-MiB reading on the provider's side decides
+    // whether the deploy succeeds — and a failed deploy costs more than the
+    // few hundred MB of ephemeral workspace this gives up.
+    for (const size of OFFERED_SIZES) {
+      expect(size.diskMb).toBeLessThan(diskCeilingMb(size.memoryMiB));
+    }
+  });
+
   test('the declared names are the container bindings wrangler declares', async () => {
     // A size named in code with no binding in configuration presents at run
     // time, on a real ticket, as a sandbox that cannot be reached. Cheap to
@@ -56,6 +82,27 @@ describe('the offered sizes themselves', () => {
       expect(config, `wrangler.jsonc declares no binding named ${size.name}`).toContain(
         `"name": "${size.name}"`,
       );
+    }
+  });
+
+  test('wrangler declares the same figures this file does', async () => {
+    // Two places hold the numbers and only one of them is checked by the
+    // provider — at deploy, which is the expensive moment to find out. This
+    // makes them disagree here instead.
+    const config = await Bun.file('apps/runner/wrangler.jsonc').text();
+    const declared = [...config.matchAll(/"instance_type":\s*\{([^}]*)\}/g)].map((match) => {
+      const read = (field: string) =>
+        Number(new RegExp(`"${field}":\\s*(\\d+)`).exec(match[1] as string)?.[1]);
+      return { vcpu: read('vcpu'), memoryMiB: read('memory_mib'), diskMb: read('disk_mb') };
+    });
+
+    expect(declared).toHaveLength(OFFERED_SIZES.length);
+    for (const [index, size] of OFFERED_SIZES.entries()) {
+      expect(declared[index], `${size.name} differs between sizes.ts and wrangler.jsonc`).toEqual({
+        vcpu: size.vcpu,
+        memoryMiB: size.memoryMiB,
+        diskMb: size.diskMb,
+      });
     }
   });
 });
@@ -72,11 +119,8 @@ describe('choosing a size within a workspace’s ceilings', () => {
   test('the largest size WITHIN the ceilings is chosen, not merely one that fits', () => {
     // Erring downwards must not mean erring all the way down: a workspace
     // permitting 4 vCPU and 12 GiB should get 4 vCPU and 12 GiB.
-    expect(chooseSize({ cpu: 4, memoryMb: 12_288 })).toEqual({
-      name: 'sandbox_4x12',
-      vcpu: 4,
-      memoryMiB: 12_288,
-    });
+    expect(chooseSize({ cpu: 4, memoryMb: 12_288 }).name).toBe('sandbox_4x12');
+    expect(chooseSize({ cpu: 4, memoryMb: 12_288 }).vcpu).toBe(4);
     expect(chooseSize({ cpu: 2, memoryMb: 6144 }).name).toBe('sandbox_2x6');
   });
 
