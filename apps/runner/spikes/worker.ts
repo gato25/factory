@@ -38,16 +38,44 @@ export { ContainerProxy } from '@cloudflare/sandbox';
  * FR-012 asks for. With internet enabled, `setAllowedHosts` would have nothing
  * to prove and the check would report a false negative.
  */
-export class SpikeSmall extends Sandbox<Env> {
-  override enableInternet = false;
+export class SpikeSmall extends Sandbox<Env> {}
+export class SpikeLarge extends Sandbox<Env> {}
+
+/**
+ * Three classes, because the egress ladder has to separate three explanations
+ * for the same symptom, and `enableInternet` / `allowedHosts` are read when the
+ * container STARTS — so they cannot be varied at runtime on one class.
+ *
+ * The first attempt set `enableInternet = false` and then called
+ * `setAllowedHosts` at runtime. Everything was blocked, including the host on
+ * the allowlist from the first probe. That rules nothing out on its own: it is
+ * equally consistent with "internet off means off", "the allowlist must be set
+ * before start", and "the allowlist only governs proxied HTTP, not raw TCP".
+ */
+
+/** Baseline. If curl fails HERE, the container has no egress at all and no list matters. */
+export class SpikeOpen extends Sandbox<Env> {
+  override enableInternet = true;
 }
-export class SpikeLarge extends Sandbox<Env> {
+
+/** Deny-list with internet ON. The types say denied hosts are blocked unconditionally. */
+export class SpikeDeny extends Sandbox<Env> {
+  override enableInternet = true;
+  override deniedHosts?: string[] = ['registry.npmjs.org'];
+}
+
+/** Allow-list with internet OFF, declared BEFORE start rather than applied after. */
+export class SpikeAllow extends Sandbox<Env> {
   override enableInternet = false;
+  override allowedHosts?: string[] = ['api.anthropic.com'];
 }
 
 interface Env {
   SPIKE_SMALL: DurableObjectNamespace<SpikeSmall>;
   SPIKE_LARGE: DurableObjectNamespace<SpikeLarge>;
+  SPIKE_OPEN: DurableObjectNamespace<SpikeOpen>;
+  SPIKE_DENY: DurableObjectNamespace<SpikeDeny>;
+  SPIKE_ALLOW: DurableObjectNamespace<SpikeAllow>;
 }
 
 /**
@@ -171,51 +199,63 @@ async function nonRoot(env: Env): Promise<unknown> {
  * enableInternet is false".
  */
 async function egress(env: Env): Promise<unknown> {
-  const sandbox = sandboxFor(env.SPIKE_SMALL, 'egress');
-  // Both hosts probed in ONE round trip, so a policy change sits between two
-  // measurements rather than between four.
-  const probe = () =>
+  // Both hosts in one round trip. `%{http_code}` prints 000 when curl never
+  // connects, and the `|| echo blocked` appends to it — so `000blocked` means
+  // no connection at all, while a bare status code means it reached something.
+  const probe = (namespace: DurableObjectNamespace<Sandbox<Env>>, id: string) =>
     script(
-      sandbox,
+      sandboxFor(namespace, id),
       [
         "echo model=$(curl -s -o /dev/null -m 8 -w '%{http_code}' https://api.anthropic.com/ 2>/dev/null || echo blocked)",
         "echo registry=$(curl -s -o /dev/null -m 8 -w '%{http_code}' https://registry.npmjs.org/ 2>/dev/null || echo blocked)",
+        // Separates "cannot resolve" from "resolved but refused", which the
+        // http_code alone cannot: both show as 000.
+        'echo dns=$(getent hosts api.anthropic.com >/dev/null 2>&1 && echo resolves || echo no-dns)',
+        'echo proxy_env=$(env | grep -ci "_proxy=" || true)',
       ],
       40_000,
     );
 
-  await sandbox.setAllowedHosts(['api.anthropic.com']);
-  const narrow = await probe();
+  const reached = (v?: string) => Boolean(v) && !v?.startsWith('000');
 
-  // The half that matters: widen WITHOUT restarting.
-  await sandbox.setAllowedHosts(['api.anthropic.com', 'registry.npmjs.org']);
-  const wide = await probe();
+  // Rung 1 — internet on, no lists. If this fails, nothing below means anything.
+  const open = await probe(env.SPIKE_OPEN, 'egress-open');
+  // Rung 2 — internet on, one host denied. Types: denied is unconditional.
+  const deny = await probe(env.SPIKE_DENY, 'egress-deny');
+  // Rung 3 — internet off, allowlist declared BEFORE start rather than after.
+  const allow = await probe(env.SPIKE_ALLOW, 'egress-allow');
 
-  // And narrow again, which is what happens after a restricted step ends.
-  await sandbox.setAllowedHosts(['api.anthropic.com']);
-  const narrowAgain = await probe();
-
-  const blocked = (v?: string) => v === 'blocked' || v === '000';
-  const switchedOpen = blocked(narrow.out.registry) && !blocked(wide.out.registry);
-  const switchedShut = !blocked(wide.out.registry) && blocked(narrowAgain.out.registry);
+  const baselineWorks = reached(open.out.model) && reached(open.out.registry);
+  const denyWorks = reached(deny.out.model) && !reached(deny.out.registry);
+  const allowWorks = reached(allow.out.model) && !reached(allow.out.registry);
 
   return {
     check: 'T006 / D7 / FR-011, FR-012',
-    elapsedMs: narrow.elapsedMs + wide.elapsedMs + narrowAgain.elapsedMs,
-    allowlistOnly: narrow.out,
-    afterWidening: wide.out,
-    afterNarrowingAgain: narrowAgain.out,
-    verdict:
-      switchedOpen && switchedShut
-        ? 'reach opens AND shuts on a running sandbox — per-step restriction costs no extra sandbox'
-        : switchedOpen
-          ? 'reach opens on a running sandbox but did not shut again — a restricted step could ' +
-            "inherit an earlier step's wider reach, which FR-011 forbids"
-          : 'reach did not change without a restart — FR-011 needs a sandbox per step, or a ' +
-            'different mechanism, and D7 is wrong',
+    elapsedMs: open.elapsedMs + deny.elapsedMs + allow.elapsedMs,
+    rung1_internetOn_noLists: open.out,
+    rung2_internetOn_denyRegistry: deny.out,
+    rung3_internetOff_allowModel: allow.out,
+    verdict: !baselineWorks
+      ? 'THE CONTAINER HAS NO EGRESS AT ALL, even with enableInternet true. Nothing about ' +
+        'allowlists matters until that is understood — check `dns` and `proxy_env`: if dns is ' +
+        'no-dns, name resolution is the barrier; if proxy_env is non-zero, traffic is expected ' +
+        'to go through a proxy and raw curl never will.'
+      : allowWorks
+        ? 'an allowlist declared before start works — FR-012 is buildable as specified, but it ' +
+          'must be set at creation, NOT with setAllowedHosts at runtime. That means per-step ' +
+          'reach (FR-011) needs a sandbox per restriction level, and D7 is wrong about the ' +
+          'runtime switch even though FR-012 survives.'
+        : denyWorks
+          ? 'only the DENY list works. FR-012 describes a permitted SET, which cannot be ' +
+            'expressed as a deny list without enumerating the whole internet — so FR-012 needs ' +
+            'rewriting around denial, or a proxy (see proxy_env), and D7 is wrong.'
+          : 'lists had no effect in either direction while the baseline works — reach is ' +
+            'all-or-nothing on this platform, and FR-011 and FR-012 both need rewriting.',
     note:
-      'The model service must stay reachable throughout: a restricted step IS a call to it, ' +
-      'so `model` blocked at any point would make every agent step fail (FR-012).',
+      'What each rung isolates: rung 1 is "is there any egress"; rung 2 is "does denial work ' +
+      'with internet on"; rung 3 is "does permission work when declared before start". The ' +
+      'first attempt combined internet-off with a RUNTIME setAllowedHosts and could not tell ' +
+      'these apart.',
   };
 }
 
