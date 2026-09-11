@@ -202,8 +202,8 @@ test.describe('approving before work continues', () => {
 
     // The banner says what is paused and after which step.
     await expect(page.getByRole('heading', { name: /Add Google OAuth sign-in/ })).toBeVisible();
-    await expect(page.getByText(/paused.*step 2/)).toBeVisible();
-    await expect(page.getByText(/after.*Planner/)).toBeVisible();
+    await expect(page.getByText(/paused at step 2/)).toBeVisible();
+    await expect(page.getByText(/Planner finished/)).toBeVisible();
     // Every document produced so far is readable here (FR-064c).
     await page.getByRole('button', { name: /docs\/plan\.md/ }).click();
     await expect(page.getByText('Add a Google button')).toBeVisible();
@@ -240,9 +240,9 @@ test.describe('approving before work continues', () => {
 
     await page.goto(`/tickets/${seeded.ticketId}/approve`);
     await page.getByRole('button', { name: /docs\/plan\.md/ }).click();
-    await expect(page.getByText('v1')).toBeVisible();
+    await expect(page.getByText('Version 1')).toBeVisible();
 
-    await page.getByRole('button', { name: 'Edit this document' }).click();
+    await page.getByRole('button', { name: 'Edit plan' }).click();
     const edited = '# Plan\n\nUse the existing OAuth helper, not a new one.\n';
     await page.locator('textarea[name="content"]').fill(edited);
     await page.getByRole('button', { name: 'Save & continue' }).click();
@@ -265,7 +265,7 @@ test.describe('approving before work continues', () => {
     await expect(page.getByText('edited').first()).toBeVisible();
     await page.getByRole('button', { name: /docs\/plan\.md/ }).click();
     await expect(page.getByText('Use the existing OAuth helper')).toBeVisible();
-    await expect(page.getByText('v2')).toBeVisible();
+    await expect(page.getByText('Version 2')).toBeVisible();
   });
 
   test('requested changes re-run the preceding step and come back to the same gate (FR-061)', async ({
@@ -278,7 +278,7 @@ test.describe('approving before work continues', () => {
 
     await page.goto(`/tickets/${seeded.ticketId}/approve`);
     // The screen says which step will run again, so the decision is informed.
-    await expect(page.getByText(/Planner runs again with your feedback/)).toBeVisible();
+    await expect(page.getByText(/sent back to Planner/)).toBeVisible();
 
     // Empty feedback is refused: the text is what the agent reads.
     await page.getByRole('button', { name: 'Request changes' }).click();
@@ -336,7 +336,7 @@ test.describe('approving before work continues', () => {
     await runToGate(page.request, seeded);
 
     await page.goto(`/tickets/${seeded.ticketId}/approve`);
-    await expect(page.getByText(/The sandbox is released/)).toBeVisible();
+    await expect(page.getByText(/releases the sandbox/)).toBeVisible();
     await page.getByRole('button', { name: 'Cancel run' }).click();
 
     await expect(page.getByText(/Already decided:\s*cancelled/)).toBeVisible({ timeout: 10_000 });
@@ -373,7 +373,7 @@ test.describe('approving before work continues', () => {
     await expect(page.getByRole('button', { name: 'Approve & continue' })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Request changes' })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Cancel run' })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: 'Edit this document' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Edit plan' })).toHaveCount(0);
 
     // And the gate is still open for the person it belongs to.
     const [run] = await sql`select status from runs where id = ${seeded.runId}`;

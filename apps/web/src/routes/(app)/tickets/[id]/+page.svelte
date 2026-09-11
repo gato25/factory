@@ -6,6 +6,7 @@
   import LiveLog from '$components/LiveLog.svelte';
   import RunDetails from '$components/RunDetails.svelte';
   import StepTracker from '$components/StepTracker.svelte';
+  import TicketHead from '$components/TicketHead.svelte';
   import { subscribeToRun } from '$lib/events/subscribe';
   import {
     cancel,
@@ -16,7 +17,6 @@
     unpause
   } from '$lib/remote/run-actions.remote';
   import { log, run, runForTicket } from '$lib/remote/runs.remote';
-  import { ago, exact } from '$lib/format';
 
   /**
    * Screen 06 — Ticket Run, built to `design.pen`: a crumb, the title with
@@ -127,44 +127,29 @@
       )}
       {@const retryable = loaded.run.status === 'failed' || loaded.run.status === 'cancelled'}
 
-      <header class="head">
-        <div class="l">
-          <p class="crumb">
-            <a href="/tickets">Tickets</a>
-            <Icon name="chevron-right" size={14} />
-            <span>{loaded.repository.name}</span>
-            <Icon name="chevron-right" size={14} />
-            <span class="id">{loaded.ticket.reference}</span>
-          </p>
-
-          <div class="title-row">
-            <h1>{loaded.ticket.title}</h1>
-            <span class="badge {status.tone}">
-              <span class="dot"></span>
-              {status.label}{#if loaded.run.status === 'running' && step}{` · ${step.label}`}{/if}
+      <TicketHead
+        {ticketId}
+        repositoryName={loaded.repository.name}
+        reference={loaded.ticket.reference}
+        title={loaded.ticket.title}
+        branchName={loaded.ticket.branchName}
+        createdByName={loaded.ticket.createdByName}
+        startedAt={loaded.run.startedAt}
+        costUsd={loaded.run.costUsd}
+        status={{
+          label:
+            loaded.run.status === 'running' && step
+              ? `${status.label} · ${step.label}`
+              : status.label,
+          tone: status.tone,
+        }}
+      >
+        {#snippet actions()}
+          {#if connection !== 'live' && loaded.run.status === 'running'}
+            <span class="reconnecting" title="Reconnecting to the live stream">
+              {connection === 'retrying' ? 'reconnecting…' : 'connecting…'}
             </span>
-            {#if connection !== 'live' && loaded.run.status === 'running'}
-              <span class="badge" title="Reconnecting to the live stream">
-                <span class="dot"></span>
-                {connection === 'retrying' ? 'reconnecting…' : 'connecting…'}
-              </span>
-            {/if}
-          </div>
-
-          <div class="meta">
-            <span><Icon name="git-branch" size={14} />{loaded.ticket.branchName}</span>
-            <span><Icon name="user" size={14} />Created by {loaded.ticket.createdByName ??
-                'unknown'}</span>
-            {#if loaded.run.startedAt}
-              <span title={exact(loaded.run.startedAt)}>
-                <Icon name="timer" size={14} />Started {ago(loaded.run.startedAt)}
-              </span>
-            {/if}
-            <span><Icon name="coins" size={14} />${loaded.run.costUsd} so far</span>
-          </div>
-        </div>
-
-        <div class="actions">
+          {/if}
           {#if loaded.run.status === 'waiting_approval'}
             <a class="review" href="/tickets/{ticketId}/approve">
               <Icon name="hand" size={16} />
@@ -225,8 +210,8 @@
               <span>Edit &amp; retry</span>
             </button>
           {/if}
-        </div>
-      </header>
+        {/snippet}
+      </TicketHead>
 
       {#if notice}
         <p class="card notice" role="status">{notice}</p>
@@ -344,114 +329,11 @@
 {/if}
 
 <style>
-  .head {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 24px;
-    margin-bottom: 20px;
-  }
-  .l {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    min-width: 0;
-  }
-  .crumb {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin: 0;
-    font-size: 12px;
-    color: var(--text-3);
-  }
-  .crumb a {
-    color: var(--text-3);
-    text-decoration: none;
-  }
-  .crumb a:hover {
-    color: var(--accent-text);
-  }
-  .crumb .id {
-    color: var(--text-2);
-  }
-
-  .title-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-  h1 {
-    margin: 0;
-    font-family: var(--font-head);
-    font-size: 22px;
-    font-weight: 700;
-    color: var(--text);
-  }
-
-  .meta {
-    display: flex;
-    align-items: center;
-    gap: 18px;
-    flex-wrap: wrap;
-    font-size: 12px;
-    color: var(--text-2);
-  }
-  .meta span {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-  }
-  .meta :global(svg) {
-    color: var(--text-3);
-    flex: none;
-  }
-
-  .badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 10px;
-    border-radius: 999px;
-    background: var(--surface-2);
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--text-2);
-  }
-  .badge.live {
-    background: var(--accent-soft);
-    color: var(--accent-text);
-  }
-  .badge.warn {
-    background: var(--warning-soft);
-    color: var(--warning);
-  }
-  .badge.ok {
-    background: var(--success-soft);
-    color: var(--success);
-  }
-  .badge.bad {
-    background: var(--danger-soft);
-    color: var(--danger);
-  }
-  .dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 999px;
-    background: currentcolor;
-    flex: none;
-  }
-
-  .actions {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex: none;
-    flex-wrap: wrap;
-  }
-  .actions button,
-  .review {
+  /* The buttons the head takes as a snippet, styled here because this is
+     where they live. */
+  .review,
+  button.secondary,
+  button.primary {
     display: inline-flex;
     align-items: center;
     gap: 8px;
@@ -474,16 +356,20 @@
   .secondary:hover:not(:disabled) {
     border-color: var(--accent);
   }
-  .actions button.primary,
+  button.primary,
   .review {
     border: 1px solid var(--accent);
     background: var(--accent);
     color: var(--text-inv);
     font-weight: 600;
   }
-  .actions button:disabled {
+  button:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+  }
+  .reconnecting {
+    font-size: 12px;
+    color: var(--text-3);
   }
 
   /* The log fills; the column beside it is the artboard's 360px. */
@@ -583,9 +469,6 @@
   }
 
   @media (max-width: 1100px) {
-    .head {
-      flex-direction: column;
-    }
     .lower {
       flex-direction: column;
     }

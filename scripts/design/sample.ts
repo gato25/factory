@@ -118,12 +118,32 @@ for (const [reference, title, repo, status, who] of TICKETS) {
           id: standard?.id,
           version: 1,
           name: 'Standard',
-          steps: STEPS.map((name) => ({
-            type: 'agent',
-            condition: 'always',
-            agent_id: agentIds[name],
-            output_files: [],
-          })),
+          // A run waiting for approval is waiting AT a checkpoint, so the
+          // snapshot has to contain one — screen 07 reads the step it is
+          // paused at and refuses anything that is not a gate.
+          steps:
+            status === 'waiting_approval'
+              ? [
+                  ...STEPS.slice(0, 2).map((name) => ({
+                    type: 'agent',
+                    condition: 'always',
+                    agent_id: agentIds[name],
+                    output_files: [],
+                  })),
+                  { type: 'checkpoint', condition: 'always', approvers: 'anyone' },
+                  ...STEPS.slice(2).map((name) => ({
+                    type: 'agent',
+                    condition: 'always',
+                    agent_id: agentIds[name],
+                    output_files: [],
+                  })),
+                ]
+              : STEPS.map((name) => ({
+                  type: 'agent',
+                  condition: 'always',
+                  agent_id: agentIds[name],
+                  output_files: [],
+                })),
         },
         agents: STEPS.map((name) => ({
           id: agentIds[name],
@@ -135,7 +155,7 @@ for (const [reference, title, repo, status, who] of TICKETS) {
           skills: [],
           limits: {},
         })),
-      })}::jsonb, ${runStatus}, ${status === 'running' ? 3 : 1}, '1.8400', '5.0000', 45, now())
+      })}::jsonb, ${runStatus}, ${status === 'running' ? 3 : 2}, '1.8400', '5.0000', 45, now())
       returning id`;
     if (!run) continue;
     await sql`update tickets set current_run_id = ${run.id} where id = ${ticket.id}`;
@@ -161,7 +181,7 @@ for (const [reference, title, repo, status, who] of TICKETS) {
         await sql`
           insert into artifacts (run_id, step_index, kind, path, version, content)
           values (${run.id}, ${index}, 'document', ${path}, 1,
-            ${`# ${STEPS[index]}\n\nWritten by the ${STEPS[index]} agent for ${ticket.reference}.`})`;
+            ${`# ${STEPS[index]}\n\nWritten by the ${STEPS[index]} agent for ${reference}.`})`;
       }
     }
 
