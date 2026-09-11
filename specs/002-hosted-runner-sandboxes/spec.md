@@ -28,6 +28,11 @@ service instead, with the run execution service itself hosted rather than run on
   list the administrator can edit, shipped pre-filled with the package registries in common use so
   a dependency install works untouched. Emptying the list is how an administrator gets total
   isolation.
+- Q: Which steps should the network restriction actually apply to, given that no step type is named
+  "implement"? → A: Every step whose work a model carries out — the agent and design types. Steps
+  that run commands a pipeline author wrote, wait on a person, or send a notification stay
+  unrestricted, because what they run was written and reviewed rather than decided in the moment.
+  The rule reads a step's declared type, so a new kind of step does not require rewriting it.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -76,8 +81,8 @@ run reaches a merge request. Delivers a usable product on infrastructure nobody 
 
 An administrator sets their workspace's sandbox ceilings — processing power, memory, wall-clock,
 and whether a code-writing step may reach the network. A run honours every one of them. The
-network restriction restricts only the step it names, and an agent step can always reach the
-services it must reach to work at all.
+network restriction covers the steps a model drives and leaves the pipeline author's own commands
+alone, and a restricted step can always reach the services it must reach to work at all.
 
 **Why this priority**: the ceilings are a workspace's only control over what a run may consume and
 touch, and moving execution to somebody else's infrastructure is exactly when that control must be
@@ -94,23 +99,25 @@ completes. Delivers the safety guarantee the product already claims.
 
 1. **Given** a workspace with a wall-clock ceiling of N minutes, **When** a run's sandbox has
    existed for N minutes, **Then** the sandbox is released whether or not anything asked for it.
-2. **Given** a workspace that forbids network reach while code is being written, **When** the
-   code-writing step runs, **Then** the step cannot reach an address outside the permitted set, and
-   **Then** the step can still reach the model service.
-3. **Given** that same workspace, **When** a step other than the code-writing step runs,
+2. **Given** a workspace that forbids network reach while code is being written, **When** a step
+   whose work a model carries out runs, **Then** the step cannot reach an address outside the
+   permitted set, and **Then** the step can still reach the model service.
+3. **Given** that same workspace, **When** a step that runs commands a pipeline author wrote runs,
    **Then** that step's network reach is unrestricted.
-4. **Given** a workspace whose permitted-host list has never been edited, **When** a code-writing
+4. **Given** that same workspace, **When** a design step runs, **Then** it can reach the design
+   service.
+5. **Given** a workspace whose permitted-host list has never been edited, **When** a code-writing
    step installs a dependency from a package registry in common use, **Then** the install succeeds.
-5. **Given** an administrator who has emptied the permitted-host list, **When** a code-writing step
+6. **Given** an administrator who has emptied the permitted-host list, **When** a code-writing step
    tries to reach a package registry, **Then** it is refused, and **Then** the failure names the
    address that was refused.
-6. **Given** an agent whose time limit is N seconds, **When** the step runs longer than N seconds,
+7. **Given** an agent whose time limit is N seconds, **When** the step runs longer than N seconds,
    **Then** the step is stopped and reported as having reached its limit, distinguishably from a
    step that failed on its own.
-7. **Given** a step whose command arguments contain text a person typed — a ticket title, reviewer
+8. **Given** a step whose command arguments contain text a person typed — a ticket title, reviewer
    feedback, a required document's path — **When** the step executes, **Then** no command runs
    other than the one the step declares, whatever that text contains.
-8. **Given** a workspace asking for more memory than the execution host will grant, **When** a run
+9. **Given** a workspace asking for more memory than the execution host will grant, **When** a run
    starts, **Then** the run fails naming the ceiling that could not be met, rather than starting
    with a lower one.
 
@@ -234,11 +241,14 @@ host and confirm runs execute on the other one with no code change.
   each run's sandbox.
 - **FR-010**: System MUST release a run's sandbox no later than its wall-clock ceiling, with no
   request required to trigger the release.
-- **FR-011**: System MUST apply the workspace's network restriction only to the steps the setting
-  names, and MUST NOT apply it to steps the setting does not name.
-- **FR-012**: System MUST permit a restricted step to reach the model service and the run's git
-  provider, and MUST refuse it every address that is neither of those nor on the workspace's
-  permitted-host list.
+- **FR-011**: System MUST apply the workspace's network restriction to every step whose work a model
+  carries out, and MUST NOT apply it to a step that runs commands a pipeline author wrote, waits on
+  a person, or sends a notification.
+- **FR-011a**: System MUST decide which steps the restriction covers from each step's declared type
+  alone, so that adding a kind of step does not require the rule to be rewritten.
+- **FR-012**: System MUST permit a restricted step to reach the model service, the design service,
+  and the run's git provider, and MUST refuse it every address that is none of those and not on the
+  workspace's permitted-host list.
 - **FR-012a**: Administrators MUST be able to edit the workspace's permitted-host list, and a
   workspace that has never been edited MUST start with a list that lets a step install a dependency
   from the package registries in common use.
@@ -360,10 +370,14 @@ host and confirm runs execute on the other one with no code change.
   pre-fills the list with is expected to change as ecosystems do; the list is data an administrator
   edits, so a stale default is a nuisance rather than a defect. The plan chooses the initial
   entries.
-- **Only the code-writing step is restricted.** `specs/001-code-factory-mvp` FR-085 restricts reach
-  "while code is being written", and the workspace setting is named for that step. Steps that
-  specify, review, verify or push are assumed unrestricted — which matters, because a verification
-  step commonly installs dependencies.
+- **"A step a model drives" means the agent and design step types.** Those are the two of the five
+  declared types whose work is decided in the moment rather than written down in advance, which is
+  what the restriction is for. A specification or review step is therefore restricted too — harmless,
+  since the model service is always permitted. A verification step is not, which matters because
+  such a step commonly installs dependencies.
+- **The shipped permitted-host list has to carry the design service.** Restricting design steps
+  means a design step reaches its service through the permitted set, so FR-012 names it alongside
+  the model service and the git provider rather than leaving it to the editable list.
 - **The hosted path becomes the default for deployed environments**, and the locally administered
   path is retained for development and for the automated suite. Both are expected to remain
   supported; neither is expected to be deleted by this feature.
@@ -436,11 +450,15 @@ model service and the run cannot succeed. FR-011 and FR-012 change that behaviou
 porting it. This is a correction of a defect against `specs/001-code-factory-mvp` FR-085, and is
 recorded as drift under Principle I rather than folded silently into the move.
 
-The same clarification also changes the setting's shape. FR-085 describes a yes/no — "whether it
-may reach the network while code is being written". FR-012a makes it a yes/no plus a list of hosts
-an administrator edits, because a code-writing step that may install a dependency needs somewhere
-to install it from and a fixed list would decide that for every workspace. FR-085 needs amending to
-match; until it is, the two specifications describe the same setting differently.
+Clarification also changed the setting's shape and its scope, and FR-085 needs amending on both
+counts. Its shape: FR-085 describes a yes/no — "whether it may reach the network while code is
+being written" — and FR-012a makes it a yes/no plus a list of hosts an administrator edits, because
+a step that may install a dependency needs somewhere to install it from and a fixed list would
+decide that for every workspace. Its scope: "while code is being written" names no step that
+exists, since the declared types are agent, design, checkpoint, shell and notify, and nothing
+distinguishes the agent step that writes code from the agent step that writes the specification.
+FR-011 therefore covers every model-driven step rather than one unnameable one. Until FR-085 is
+amended, the two specifications describe the same setting differently.
 
 **3. Argument handling changes shape, and the new shape is the riskier one.** The current execution
 host passes a step's arguments as a list, which no shell interprets. A managed sandbox service is
