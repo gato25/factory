@@ -1,7 +1,21 @@
 # Contract: Factory App / Orchestrator ⇄ Runner
 
-The Runner is the only component with rights on the container host. It exposes four operations and
-is never reachable from the public internet. Calls are authenticated per run.
+The Runner is the only component with rights on the execution host. It exposes four operations, and
+every one of them — `/health` excepted — requires the Runner's own credential.
+
+**Amended 2026-09-11 (002 FR-018, constitution 2.0.0).** This used to read "is never reachable from
+the public internet", which was true of a daemon on a private network and is no longer true of a
+deployment served as a Worker: such a deployment has a public address by construction. So the
+credential is not defence in depth any more, it is the whole boundary. Three obligations follow, and
+they are stated here rather than left to a reader to infer:
+
+- Every operation that creates, inspects, uses or releases a sandbox authenticates (002 FR-018).
+- A refusal reveals nothing about whether the run it names exists (002 FR-019).
+- The credential is replaceable without interrupting runs in flight: the outgoing one is accepted
+  alongside the new one for a window, and removing it is what refuses it (002 FR-018a).
+
+Calls are still authenticated per run for the callbacks in the other direction — the run's own
+secret — which is a separate credential from the Runner's.
 
 ## `POST /runs/{run_id}/start`
 

@@ -162,8 +162,10 @@ what answer here. The first version of this check compared only `memory_limit_by
 `unknown` with `unknown`, found them unequal, and reported "D4 is wrong" — a false negative from
 comparing a field that never resolved. Fixed to compare against the declarations.
 
-**Confidence**: the per-vCPU memory floor and the size delivery are both measured. The routing code
-that chooses between sizes is still unwritten (T044).
+**Confidence**: the per-vCPU memory floor and the size delivery are both measured. The routing is
+now written and tested (`apps/runner/src/container/sizes.ts`, T044) and the four sizes are declared
+(T045) — but the routing has only been exercised against the declarations, not against four real
+deployed bindings. T067 is what closes that gap.
 
 ---
 
@@ -232,7 +234,21 @@ than no check, because it produces a confident wrong answer.
 
 ---
 
-## D7 — Per-step network reach uses the allowlist, switched between steps
+## D7 — SUPERSEDED. Per-step network reach is not enforceable on this host
+
+**Decision, as it now stands**: a run's sandbox has outbound reach for the whole of its life, and
+reach is not varied between steps. The workspace's network restriction is presented as
+**unavailable** on this host, naming it as the reason, rather than accepted and silently ignored
+(FR-011, FR-011a). The owner chose this over routing traffic through a proxy that would look like
+enforcement without being any, and over changing host.
+
+**The original decision is kept below, unedited, because the reasoning was sound and the conclusion
+was wrong — which is the only kind of record worth keeping.** It read the interface out of the
+installed package rather than from documentation, and still got the answer wrong, because what the
+package exposes and what it enforces are different questions and only a deploy answers the second.
+
+<details>
+<summary>The superseded decision, as written before T006 ran</summary>
 
 **Decision**: the sandbox is created with outbound traffic denied by default and an allowlist
 carrying the model service, the design service, the run's git provider and the workspace's
@@ -259,6 +275,8 @@ it says.
 
 Per-step switching is therefore `setAllowedHosts` before and after each step, and costs no extra
 sandbox.
+
+</details>
 
 **MEASURED, 2026-09-11 (T006) — D7 IS WRONG. The lists do not govern a container's traffic.**
 
@@ -303,9 +321,14 @@ have finer-grained egress control, including changing it on a running sandbox. I
 restriction is a real requirement rather than a nice-to-have, that is an argument about the platform
 choice, not about the specification.
 
-**This is a product decision and it is recorded unresolved.** It also changes the basis on which
-Cloudflare was chosen: the earlier analysis told the product owner that per-step egress control was
-buildable here, and that was wrong.
+**RESOLVED, 2026-09-11: the owner chose B, all-or-nothing stated honestly.** Put to them with all
+three options and with the cost of each said plainly, including that this changes the basis on which
+Cloudflare was chosen — the earlier analysis told them per-step egress control was buildable here,
+and that was wrong. Option A was rejected as security theatre: an agent step executes arbitrary
+code, so it can ignore any proxy variable set for it. FR-011 was rewritten to say a sandbox has
+reach for its whole life, FR-011a added to require the setting to report itself unavailable, and
+T040, T042, T043, T046 and T047 were withdrawn — there is no permitted set to store, default,
+compute or apply.
 
 **A correction worth keeping**: an earlier draft of this decision cited the SDK's outbound-traffic
 guide and named `setOutboundByHost` as the mechanism. The guide is right about the capability, but

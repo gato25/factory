@@ -56,16 +56,29 @@ change the design rather than just the code. Prove them against one real sandbox
 
 Do not proceed to Phase B until all three answer.
 
-## Step 2 — Build and publish the sandbox image
+## Step 2 — The sandbox image
+
+**Amended after implementation: there is nothing to do here by hand.** `wrangler.jsonc` points each
+container binding at `infra/sandbox/Dockerfile`, so the deploy in Step 3 builds and publishes the
+image itself. It needs a working Docker CLI locally to do that, and it fails with a message naming
+Docker if there is not one.
+
+You can still build it alone to check it:
 
 ```bash
-docker buildx build --platform linux/amd64 -t <registry>/code-factory-sandbox:<tag> infra/sandbox
-docker push <registry>/code-factory-sandbox:<tag>
+docker build -t code-factory/sandbox:check infra/sandbox
+docker run --rm code-factory/sandbox:check setpriv --reuid=factory --regid=factory \
+  --clear-groups sh -c 'id -u && claude --version && command -v pen'
 ```
 
-**Expect**: an image that extends the SDK's base, carries the Claude CLI and the design CLI, keeps
-the SDK's entrypoint, and runs work as the unprivileged user (D10, D6). Set the workspace's
-`sandbox_image` to this exact tag — FR-004 pins it per run, so `:latest` defeats the point.
+**Expect**: a non-zero user id, a Claude CLI version, and a path for `pen` (D10, D6). The build
+verifies both CLIs are installed rather than trusting the installer — an earlier version used
+`|| true`, which hid that the Claude CLI had never been installed at all.
+
+**The workspace's `sandbox_image` setting has no effect on this host**, and Settings now says so
+rather than accepting a value it will ignore (FR-011a): the image is deploy-time configuration here.
+It still applies on the locally administered host, where FR-004 pins it per run — so `:latest`
+defeats the point there.
 
 ## Step 3 — Deploy the execution service
 
@@ -83,13 +96,27 @@ curl -s -H "authorization: Bearer $RUNNER_AUTH_TOKEN" "$RUNNER_BASE_URL/ready"
 curl -s -H "authorization: Bearer wrong" "$RUNNER_BASE_URL/ready"
 ```
 
-**Expect**, in order: `{"status":"ok"}`; `container_host: "reachable"`; and `401`. Those three
-answers being distinguishable is FR-020 — an operator with a wrong token must not be told the host
-is down.
+**Expect**, in order: `{"status":"ok"}`; `container_host: "reachable"` with
+`execution_host: "hosted"`; and `401`. Those three answers being distinguishable is FR-020 — an
+operator with a wrong token must not be told the host is down.
 
-**Expect for several minutes after a first deploy**: `container_host: "unreachable"` while the
-provider readies capacity. This is normal, is longer than the capacity retry window by design, and
-is why readiness is the place it shows (D13).
+**What readiness does and does not prove, amended after implementation.** It checks that every
+sized container binding and the run binding are present, and that Durable Object storage answers.
+It deliberately does **not** start a sandbox, and its `detail` says so. Two reasons: a readiness
+check that cost a container would be charged for every visit to the Settings screen, and — worse —
+it would report `degraded` whenever the instance limit was reached, which is exactly when runs are
+healthy and busy.
+
+So the earlier expectation here, that a first deploy reports `container_host: "unreachable"` for
+several minutes while the provider readies capacity, **is no longer what happens**: readiness
+answers `ok` straight away. That first-deploy delay is real and is still worth knowing about, but it
+shows up where the sandbox is actually needed:
+
+**Expect for several minutes after a first deploy**: `POST /runs/{id}/start` failing with "the
+execution host had no capacity for a sandbox" while the provider readies capacity. This is normal,
+it is longer than the 30-second capacity retry window by design, and the run's failure says to retry
+rather than to change anything (D13). Do Step 4 twice on a first deploy and expect the first
+attempt to fail this way.
 
 ## Step 4 — User Story 1: a run with no container daemon anywhere
 
@@ -170,6 +197,21 @@ Harder to force, so verify what you can and watch for the rest.
 ## The one thing to check before you trust any of this
 
 The orchestrator's HTTP request timeout must exceed the longest step's ceiling. A step's request is
-now held open for the length of the step, and a caller that disconnects **cancels the step** rather
-than merely losing the response (D9). A timeout set for the old deployment will look like steps
-failing at a suspiciously round number of minutes.
+held open for the length of the step, and a caller that disconnects **cancels the step** rather than
+merely losing the response (D9). A timeout set for the old deployment will look like steps failing
+at a suspiciously round number of minutes.
+
+**Done, and worth knowing how.** `orchestration/n8n/run-ticket-pipeline.json` set no timeout at all
+on the three calls that are held open, which meant n8n's own five-minute default — shorter than a
+great many legitimate agent steps. Those three nodes now set it from the run's own ceiling:
+
+```
+={{ (($json.sandbox && $json.sandbox.wall_clock_minutes) || 90) * 60000 + 120000 }}
+```
+
+Derived rather than fixed, so raising a workspace's wall-clock limit raises this with it. A
+hard-coded figure would have meant the limit silently failing to take effect, which is the failure
+hardest to attribute. `apps/runner/tests/contract/orchestrator-timeout.test.ts` evaluates the
+expression and asserts the result exceeds the ceiling, so this cannot regress quietly.
+
+If you run the orchestrator from something other than the shipped workflow, this is yours to set.
