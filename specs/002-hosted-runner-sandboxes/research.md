@@ -119,8 +119,33 @@ matching 2 vCPU / 4096 MiB exactly, and no such size can be declared. And the wo
 to 6144 MiB so that 2 vCPU stays available. That decision belongs to the product owner and is
 recorded here rather than resolved.
 
-**Confidence**: the per-vCPU memory floor is measured, from the provider refusing a deploy. The
-routing design itself still has not been run.
+**Measured, 2026-09-11 (T007) — bindings deliver what they declare.** Two bindings, read from
+inside:
+
+| Binding | Declared | `nproc` | `MemTotal` | Delta |
+|---|---|---|---|---|
+| small | 1 vCPU / 4096 MiB | **1** | 4,269,784 KB ≈ 4170 MiB | **+1.8%** |
+| large | 4 vCPU / 12288 MiB | **4** | 12,514,268 KB ≈ 12221 MiB | **−0.5%** |
+
+vCPU is exact. Memory lands within a couple of percent either side, which is how the platform
+accounts for it rather than a ceiling being ignored — `MemTotal` is never precisely the figure
+requested. **So D4 holds**: routing a run to the largest offered size within its workspace's
+ceilings is buildable.
+
+**One honest wrinkle for FR-009.** The small binding came back 1.8% *above* its declared memory, and
+FR-009 treats a workspace's figure as an upper bound. At 74 MiB on 4 GiB this is accounting noise,
+not the platform overshooting — but it means "never more than the ceiling" is true to within the
+provider's granularity and not absolutely. Worth a sentence in the plan rather than a change to
+FR-009.
+
+**The cgroup files are not readable at the usual paths** — both `memory.max` and
+`memory/memory.limit_in_bytes` came back empty, as did `cpu.max`. `nproc` and `/proc/meminfo` are
+what answer here. The first version of this check compared only `memory_limit_bytes`, so it compared
+`unknown` with `unknown`, found them unequal, and reported "D4 is wrong" — a false negative from
+comparing a field that never resolved. Fixed to compare against the declarations.
+
+**Confidence**: the per-vCPU memory floor and the size delivery are both measured. The routing code
+that chooses between sizes is still unwritten (T044).
 
 ---
 

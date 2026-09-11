@@ -1,6 +1,15 @@
 import { getSandbox, Sandbox } from '@cloudflare/sandbox';
 
 /**
+ * Required for egress interception, and not obvious: without it the SDK reports
+ * "ctx.exports.ContainerProxy is undefined, export ContainerProxy from the
+ * containers package in your worker entrypoint". It is a `WorkerEntrypoint`
+ * found through `ctx.exports`, so a plain re-export is all it needs — no
+ * wrangler binding. The real execution service will need this too (T047).
+ */
+export { ContainerProxy } from '@cloudflare/sandbox';
+
+/**
  * The spike for T005, T006 and T007 — the three decisions
  * `specs/002-hosted-runner-sandboxes/research.md` documents but has never run.
  *
@@ -220,39 +229,68 @@ async function egress(env: Env): Promise<unknown> {
  * break FR-009 outright, because a ceiling would stop being an upper bound.
  */
 async function sizes(env: Env): Promise<unknown> {
-  const observe = async (namespace: DurableObjectNamespace<Sandbox<Env>>, label: string) => {
+  // What each binding declares in wrangler.spike.jsonc, so the check compares
+  // against the declaration instead of leaving it to somebody's arithmetic.
+  const declared = {
+    small: { vcpu: 1, memoryMib: 4096 },
+    large: { vcpu: 4, memoryMib: 12288 },
+  };
+
+  const observe = async (
+    namespace: DurableObjectNamespace<Sandbox<Env>>,
+    label: 'small' | 'large',
+  ) => {
     const probe = await script(sandboxFor(namespace, `size-${label}`), [
-      // cgroup v2 first, then v1. `max` means no limit was set.
-      'echo memory_limit_bytes=$(cat /sys/fs/cgroup/memory.max 2>/dev/null || cat /sys/fs/cgroup/memory/memory.limit_in_bytes 2>/dev/null || echo unknown)',
-      'echo cpu_max=$(cat /sys/fs/cgroup/cpu.max 2>/dev/null || echo unknown)',
       'echo nproc=$(nproc)',
       "echo mem_total_kb=$(awk '/MemTotal/ {print $2}' /proc/meminfo)",
+      // Kept for the record even though both paths came back empty on this
+      // platform — /proc/meminfo and nproc are what actually answer here.
+      'echo memory_max=$(cat /sys/fs/cgroup/memory.max 2>/dev/null || cat /sys/fs/cgroup/memory/memory.limit_in_bytes 2>/dev/null || echo unavailable)',
+      'echo cpu_max=$(cat /sys/fs/cgroup/cpu.max 2>/dev/null || echo unavailable)',
     ]);
+    const want = declared[label];
+    const memMib = Number(probe.out.mem_total_kb) / 1024;
     return {
       binding: label,
       elapsedMs: probe.elapsedMs,
-      values: probe.out,
-      stderr: probe.stderr || undefined,
+      declared: `${want.vcpu} vCPU / ${want.memoryMib} MiB`,
+      nproc: Number(probe.out.nproc),
+      memoryMib: Math.round(memMib),
+      memoryDeltaPercent: Number((((memMib - want.memoryMib) / want.memoryMib) * 100).toFixed(1)),
+      cpuMatchesDeclared: Number(probe.out.nproc) === want.vcpu,
+      cgroup: { memory_max: probe.out.memory_max, cpu_max: probe.out.cpu_max },
     };
   };
 
   const small = await observe(env.SPIKE_SMALL, 'small');
   const large = await observe(env.SPIKE_LARGE, 'large');
+
+  const distinct = small.nproc !== large.nproc;
+  const accurate = small.cpuMatchesDeclared && large.cpuMatchesDeclared;
+  // The property FR-009 actually depends on: a ceiling must stay an UPPER
+  // bound, so a sandbox getting materially more than its binding declares
+  // would break it outright. Allow a few percent for how the platform accounts
+  // for memory — MemTotal is never exactly the figure requested.
+  const withinTolerance =
+    Math.abs(small.memoryDeltaPercent) < 5 && Math.abs(large.memoryDeltaPercent) < 5;
+
   return {
     check: 'T007 / D4 / FR-005, FR-009',
-    declared: {
-      small: '1 vCPU / 4096 MiB — what FR-009 routes a default workspace to',
-      large: '4 vCPU / 12288 MiB',
-    },
     small,
     large,
     verdict:
-      small.values.memory_limit_bytes !== large.values.memory_limit_bytes
-        ? 'bindings deliver distinct sizes — routing to the largest size within the ceilings is buildable'
-        : 'both bindings look identical — size routing needs a different shape, and D4 is wrong',
+      distinct && accurate && withinTolerance
+        ? 'bindings deliver what they declare — routing to the largest size within a ' +
+          "workspace's ceilings is buildable, and D4 holds"
+        : !distinct
+          ? 'both bindings delivered the same size — size routing needs a different shape, ' +
+            'and D4 is wrong'
+          : 'bindings differ but do not match their declarations — read memoryDeltaPercent ' +
+            'and cpuMatchesDeclared before trusting FR-009',
     note:
-      'Check each memory_limit_bytes against what its binding declares. 4096 MiB is ' +
-      '4294967296 bytes; 12288 MiB is 12884901888.',
+      'memoryDeltaPercent is the one to watch: a positive figure means the sandbox got MORE ' +
+      'than declared, and FR-009 treats a workspace ceiling as an upper bound. A couple of ' +
+      'percent is accounting; a large positive number would mean the ceiling is not one.',
   };
 }
 
