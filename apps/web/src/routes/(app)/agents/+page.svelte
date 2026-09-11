@@ -26,10 +26,14 @@
 </script>
 
 <header class="head">
-  <p class="muted small">
-    An agent is a set of instructions, a model, the tools it may use, and the skills it holds.
-    Anyone can make their own; anyone can use anyone else's.
-  </p>
+  <div class="page-head">
+    <h2>Agents</h2>
+    <p>
+      Each agent runs with its own instructions, model, tools and skills. The Design agent runs on
+      the pen.dev CLI; the rest run on the Claude CLI. Anyone can make their own; anyone can use
+      anyone else's.
+    </p>
+  </div>
   <input placeholder="Search agents" bind:value={filter} aria-label="Search agents" />
 </header>
 
@@ -47,18 +51,19 @@
       {#each shown as agent (agent.id)}
         <div class="cell">
           <AgentCard {agent} mine={agent.ownerId === data.user.id} />
-          <div class="row">
-            <a class="edit" href="/agents/{agent.id}">
-              {agent.mayChange ? 'Edit' : 'Look inside'}
-            </a>
-            <button
-              type="button"
-              onclick={async () => {
-                const result = await duplicate(agent.id);
-                notice = ('problem' in result ? result.problem : result.message) ?? null;
-              }}>Duplicate</button
-            >
-          </div>
+          <!--
+            Duplicating is how a shipped default becomes yours to change
+            (FR-031), and it is not on the design's card — so it sits under
+            it rather than being crowded into the foot.
+          -->
+          <button
+            type="button"
+            class="duplicate"
+            onclick={async () => {
+              const result = await duplicate(agent.id);
+              notice = ('problem' in result ? result.problem : result.message) ?? null;
+            }}>Duplicate</button
+          >
         </div>
       {/each}
     </div>
@@ -104,17 +109,47 @@
     align-items: flex-start;
     gap: 16px;
     flex-wrap: wrap;
-    margin-bottom: 16px;
+    margin-bottom: 28px;
   }
-  .head p { margin: 0; max-width: 60ch; }
+  .page-head {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .page-head h2 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .page-head p {
+    margin: 0;
+    max-width: 78ch;
+    font-size: 14px;
+    color: var(--text-2);
+  }
+  .duplicate {
+    align-self: flex-start;
+  }
   .notice { border-left: 3px solid var(--accent); margin-bottom: 16px; padding: 12px 16px; }
   .failure { border-left: 3px solid var(--danger); }
   .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 12px;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 16px;
   }
-  .cell { display: flex; flex-direction: column; gap: 8px; }
+  /* Cards line up across a row, as the design's grid does: ragged heights
+     make the set read as unrelated items rather than as one list. */
+  .cell {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+  }
+  .cell :global(.agent) {
+    flex: 1;
+    width: 100%;
+  }
   .row { display: flex; gap: 8px; }
   .row.end { justify-content: flex-end; }
   .new { margin-top: 16px; display: flex; flex-direction: column; gap: 10px; }

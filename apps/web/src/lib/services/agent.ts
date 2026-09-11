@@ -87,6 +87,10 @@ export async function listAgents(database: Database, user: SessionUser | null) {
     .select({ agentId: agentSkills.agentId, name: skills.name })
     .from(agentSkills)
     .innerJoin(skills, eq(skills.id, agentSkills.skillId));
+  // The card names whoever owns it (FR-006d), so the name has to travel with
+  // the row rather than being fetched again per card.
+  const { users } = await import('@factory/db/schema');
+  const owners = await database.select({ id: users.id, name: users.name }).from(users);
 
   return rows.map((row) => ({
     id: row.id,
@@ -100,6 +104,7 @@ export async function listAgents(database: Database, user: SessionUser | null) {
     allowedTools: row.allowedTools,
     skills: attached.filter((a) => a.agentId === row.id).map((a) => a.name),
     ownerId: row.ownerId,
+    ownerName: owners.find((owner) => owner.id === row.ownerId)?.name ?? null,
     isDefault: row.ownerId === null,
     mayChange: Boolean(user) && (user?.role === 'admin' || row.ownerId === user?.id),
     usage: usage.get(row.id) ?? { pipelines: 0, runs: 0, runsInFlight: 0 },

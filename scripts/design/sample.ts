@@ -22,8 +22,8 @@ import { installDefaults } from '../../apps/web/src/lib/services/install-default
 const { db, sql } = createClient();
 
 await sql`truncate table log_chunks, artifacts, approvals, step_results, runs,
-  tickets, pipeline_versions, pipelines, agent_skills, agents, skills, repositories,
-  credentials, users, workspaces cascade`;
+  tickets, pipeline_versions, pipelines, agent_skills, agents, skill_versions, skills,
+  repositories, credentials, users, workspaces cascade`;
 
 const [workspace] = await sql`
   insert into workspaces (name, max_concurrent_runs, default_cost_ceiling_usd,
@@ -141,5 +141,102 @@ for (const [reference, title, repo, status, who] of TICKETS) {
   }
 }
 
-console.log(`seeded ${REPOS.length} repositories and ${TICKETS.length} tickets`);
+/**
+ * The skills the artboard lists, so screen 11 can be held against it — each
+ * with a version or two behind it, because the History button is only worth
+ * looking at when there is something in it.
+ */
+const SKILLS: [string, string, string, number][] = [
+  [
+    'repo-conventions',
+    'Project structure, naming and lint rules for netgroup repos. Use before creating or moving files.',
+    [
+      '# Repo conventions',
+      '',
+      '## Folder layout',
+      '- `src/features/<name>/` holds UI, hooks and tests for one feature.',
+      '- Shared code goes to `src/shared/`. Never import across features.',
+      '',
+      '## Naming',
+      '- Files: kebab-case. React components: PascalCase.',
+      '- Tests live next to the file: `thing.spec.ts`.',
+      '',
+      '## Lint & format',
+      '- Run `npm run lint --fix` before every commit.',
+      '- Do not disable eslint rules inline. Fix the code instead.',
+      '',
+      '## Database',
+      '- Every schema change is a new migration in `db/migrations/`.',
+      '- Never edit an existing migration.',
+    ].join('\n'),
+    4,
+  ],
+  [
+    'commit-style',
+    'Conventional commits with ticket id. Use when writing any commit message.',
+    '# Commit style\n\n- `type(scope): summary`, then a blank line.\n- End the summary with the ticket id.',
+    1,
+  ],
+  [
+    'spec-template',
+    'Structure for docs/spec.md. Use when writing a specification.',
+    '# Spec template\n\n## Problem\n## Scope\n## Out of scope\n## Acceptance',
+    1,
+  ],
+  [
+    'ask-clarifying',
+    'How to resolve ambiguity without a human. Use when a ticket leaves a choice open.',
+    '# Ask clarifying\n\n- Write the assumption down in the spec.\n- Pick the reversible option.',
+    1,
+  ],
+  [
+    'owasp-checklist',
+    'Top-10 checks for reviewing a diff. Use when reviewing anything that reaches a request.',
+    '# OWASP checklist\n\n- Injection\n- Broken access control\n- Sensitive data in logs',
+    1,
+  ],
+  [
+    'docs-style',
+    'Tone and structure for README updates. Use when changing anything a reader will see.',
+    '# Docs style\n\n- Plain sentences. No exclamation marks.\n- Say what it does before how.',
+    1,
+  ],
+  [
+    'mn-localization',
+    'Mongolian i18n rules for UI strings. Use when adding or changing any visible string.',
+    '# Mongolian localisation\n\n- Keys are dotted and lower case.\n- Never concatenate translated fragments.',
+    0,
+  ],
+];
+
+const allAgents = await sql`select id, name from agents order by name`;
+for (const [name, description, content, held] of SKILLS) {
+  const [skill] = await sql`
+    insert into skills (name, description, content, owner_id, updated_by)
+    values (${name}, ${description}, ${content}, ${name === 'repo-conventions' ? null : me?.id},
+      ${other?.id}) returning id`;
+  if (!skill) continue;
+
+  // A first version, then the state it is in now — so History shows a change
+  // rather than a single row.
+  await sql`
+    insert into skill_versions (skill_id, version, name, description, content, created_by,
+      created_at)
+    values (${skill.id}, 1, ${name}, ${description}, ${content.split('\n').slice(0, 3).join('\n')},
+      ${me?.id}, now() - interval '9 days')`;
+  await sql`
+    insert into skill_versions (skill_id, version, name, description, content, created_by,
+      created_at)
+    values (${skill.id}, 2, ${name}, ${description}, ${content}, ${other?.id},
+      now() - interval '2 days')`;
+  await sql`update skills set updated_at = now() - interval '2 days' where id = ${skill.id}`;
+
+  for (const agent of allAgents.slice(0, held)) {
+    await sql`insert into agent_skills (agent_id, skill_id) values (${agent.id}, ${skill.id})`;
+  }
+}
+
+console.log(
+  `seeded ${REPOS.length} repositories, ${TICKETS.length} tickets and ${SKILLS.length} skills`,
+);
 await sql.end();

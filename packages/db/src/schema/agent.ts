@@ -1,4 +1,13 @@
-import { integer, jsonb, pgEnum, pgTable, primaryKey, text, uuid } from 'drizzle-orm/pg-core';
+import {
+  integer,
+  jsonb,
+  pgEnum,
+  pgTable,
+  primaryKey,
+  text,
+  uniqueIndex,
+  uuid,
+} from 'drizzle-orm/pg-core';
 import { idColumn, money, timestamps } from './_shared';
 import { users } from './workspace';
 
@@ -37,6 +46,32 @@ export const skills = pgTable('skills', {
   updatedBy: uuid('updated_by').references(() => users.id),
   ...timestamps(),
 });
+
+/**
+ * Every saved state of a skill, so a change can be read back.
+ *
+ * A skill is an instruction document several agents read, so "what did it say
+ * last week, and who changed it?" is a question somebody asks when a run does
+ * something unexpected. One row is written per save — version 1 is the skill
+ * as it was created — following the same shape as `pipeline_versions`, and a
+ * version can be restored by saving its content again.
+ */
+export const skillVersions = pgTable(
+  'skill_versions',
+  {
+    id: idColumn(),
+    skillId: uuid('skill_id')
+      .notNull()
+      .references(() => skills.id, { onDelete: 'cascade' }),
+    version: integer('version').notNull(),
+    name: text('name').notNull(),
+    description: text('description').notNull(),
+    content: text('content').notNull(),
+    createdBy: uuid('created_by').references(() => users.id),
+    ...timestamps(),
+  },
+  (t) => [uniqueIndex('skill_versions_skill_version_key').on(t.skillId, t.version)],
+);
 
 /** A skill attaches to any number of agents (FR-042). */
 export const agentSkills = pgTable(

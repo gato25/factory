@@ -107,6 +107,17 @@ async function signIn(context: BrowserContext, userId: string) {
   ]);
 }
 
+/**
+ * The Skills screen decides what to open once it is running in the browser —
+ * the artboard opens with a skill in the editor — so a click sent before
+ * then lands on markup with no handler behind it. Waiting for that decision
+ * is waiting for the page to be live.
+ */
+async function skillsReady(page: import('@playwright/test').Page) {
+  await page.goto('/skills');
+  await expect(page.getByText('Pick a skill on the left')).toHaveCount(0, { timeout: 15_000 });
+}
+
 test.describe('configuring the agents and their skills', () => {
   test.skip(
     !SESSION_SECRET,
@@ -121,13 +132,14 @@ test.describe('configuring the agents and their skills', () => {
     await signIn(context, seeded.memberId);
 
     // --- a skill first, so there is one to attach ---
-    await page.goto('/skills');
+    await skillsReady(page);
+    await page.getByRole('button', { name: 'New' }).click();
     await page.getByLabel('Name').fill(`house-style-${seeded.tag}`);
     await page
-      .getByLabel('When should an agent apply this?')
+      .getByLabel('Description (shown to the agent so it knows when to use this)')
       .fill('When writing anything a customer will read');
-    await page.getByLabel('Content').fill('Write plainly. No exclamation marks.');
-    await page.getByRole('button', { name: 'Create' }).click();
+    await page.getByLabel('Content (Markdown)').fill('Write plainly. No exclamation marks.');
+    await page.getByRole('button', { name: 'Create skill' }).click();
     await expect(page.getByText(`house-style-${seeded.tag}`).first()).toBeVisible({
       timeout: 15_000,
     });
@@ -312,5 +324,60 @@ test.describe('configuring the agents and their skills', () => {
       select owner_id, system_prompt from agents where name = ${`Shipped ${seeded.tag} (copy)`}`;
     expect(copy!.owner_id).toBe(seeded.memberId);
     expect(copy!.system_prompt).toBe('the shipped instructions');
+  });
+
+  test('a skill keeps what it said, and an old version can be brought back (T210)', async ({
+    page,
+    context,
+  }) => {
+    const seeded = await seed();
+    await signIn(context, seeded.memberId);
+
+    await skillsReady(page);
+    await page.getByRole('button', { name: 'New' }).click();
+    await page.getByLabel('Name').fill(`house-voice-${seeded.tag}`);
+    await page
+      .getByLabel('Description (shown to the agent so it knows when to use this)')
+      .fill('When writing anything a customer will read');
+    await page.getByLabel('Content (Markdown)').fill('# First\n- Write plainly.');
+    await page.getByRole('button', { name: 'Create skill' }).click();
+    await expect(
+      page.getByRole('button', { name: new RegExp(`house-voice-${seeded.tag}`) }).first(),
+    ).toBeVisible({ timeout: 15_000 });
+
+    // --- change it ---
+    await page
+      .getByRole('button', { name: new RegExp(`house-voice-${seeded.tag}`) })
+      .first()
+      .click();
+    await expect(page.getByLabel('Content (Markdown)')).toHaveValue('# First\n- Write plainly.');
+    await page.getByLabel('Content (Markdown)').fill('# Second\n- No exclamation marks.');
+    await page.getByRole('button', { name: 'Save skill' }).click();
+    await expect(page.getByRole('status').first()).toContainText('Saved as version 2', {
+      timeout: 15_000,
+    });
+
+    // --- the history holds both, and says who wrote each ---
+    await page.getByRole('button', { name: 'History' }).click();
+    await expect(page.getByRole('button', { name: /^v2 / })).toBeVisible({ timeout: 15_000 });
+    await page.getByRole('button', { name: /^v1 / }).click();
+    await expect(page.getByTestId('version-content')).toContainText('- Write plainly.');
+
+    // --- bringing an old one back is a new version, not a rewrite ---
+    await page.getByRole('button', { name: /Put version 1 in the editor/ }).click();
+    await expect(page.getByLabel('Content (Markdown)')).toHaveValue('# First\n- Write plainly.');
+    await page.getByRole('button', { name: 'Save skill' }).click();
+    await expect(page.getByRole('status').first()).toContainText('Saved as version 3', {
+      timeout: 15_000,
+    });
+
+    const kept = await sql`
+      select v.version, v.content from skill_versions v join skills s on s.id = v.skill_id
+      where s.name = ${`house-voice-${seeded.tag}`} order by v.version`;
+    expect(kept.map((row) => row.content)).toEqual([
+      '# First\n- Write plainly.',
+      '# Second\n- No exclamation marks.',
+      '# First\n- Write plainly.',
+    ]);
   });
 });

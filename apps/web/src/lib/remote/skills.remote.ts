@@ -2,7 +2,14 @@ import { FactoryError, notAuthorised } from '@factory/shared';
 import * as v from 'valibot';
 import { command, form, getRequestEvent, query } from '$app/server';
 import { db } from '$lib/db';
-import { createSkill, deleteSkill, getSkill, listSkills, updateSkill } from '$lib/services/skill';
+import {
+  createSkill,
+  deleteSkill,
+  getSkill,
+  listSkills,
+  skillHistory,
+  updateSkill,
+} from '$lib/services/skill';
 
 /**
  * Skills — named instruction documents attachable to any number of agents
@@ -38,6 +45,16 @@ export const skill = query(SkillId, async (id) => {
 });
 
 /**
+ * What the skill has said, newest first. Readable by anyone who may read the
+ * skill: a run that behaved oddly is explained by what the skill said then,
+ * regardless of who owns it now (FR-043b).
+ */
+export const history = query(SkillId, async (id) => {
+  requireUser();
+  return skillHistory(db(), id);
+});
+
+/**
  * The description is required, not optional: it is the sentence an agent
  * reads to decide whether to reach for the skill (FR-043).
  */
@@ -63,20 +80,22 @@ export const create = form(v.object(Fields), async (input) => {
 export const save = form(v.object({ skillId: SkillId, ...Fields }), async (input) => {
   const user = requireUser();
   return attempt(async () => {
-    const { reaches } = await updateSkill(
+    const { reaches, version } = await updateSkill(
       db(),
       input.skillId,
       { name: input.name, description: input.description, content: input.content },
       user,
     );
     await skill(input.skillId).refresh();
+    await history(input.skillId).refresh();
     await skills().refresh();
     return {
       message:
-        reaches.length === 0
-          ? 'Saved. No agent holds this skill yet.'
-          : `Saved. ${reaches.map((a) => a.name).join(', ')} will use it on the next run ` +
-            'they start; runs already in flight are unaffected.',
+        `Saved as version ${version}. ` +
+        (reaches.length === 0
+          ? 'No agent holds this skill yet.'
+          : `${reaches.map((a) => a.name).join(', ')} will use it on the next run they start; ` +
+            'runs already in flight are unaffected.'),
     };
   });
 });

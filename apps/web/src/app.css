@@ -289,6 +289,15 @@
      decision the design did not take. */
   --card-border: #e6e8ee;
 
+  /* The code surface. design.pen draws the skill editor and the run log on a
+     dark ground it never named: #0B1220 behind, #E2E8F0 text, #475569 line
+     numbers, #93C5FD for a Markdown heading. Literals in the file, tokenised
+     here because more than one screen stands on them. */
+  --code-bg: #0b1220;
+  --code-text: #e2e8f0;
+  --code-line: #475569;
+  --code-accent: #93c5fd;
+
   /* Radii */
   --r-sm: 8px;
   --r-md: 12px;

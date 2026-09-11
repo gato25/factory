@@ -21,8 +21,8 @@ export function connect() {
 
 export async function reset(db: Database) {
   await db.execute(sql`truncate table log_chunks, artifacts, approvals, step_results, runs,
-    tickets, pipeline_versions, pipelines, agent_skills, agents, skills, repositories,
-    credentials, users, workspaces cascade`);
+    tickets, pipeline_versions, pipelines, agent_skills, agents, skill_versions, skills,
+    repositories, credentials, users, workspaces cascade`);
 }
 
 function only<T>(rows: T[], what: string): T {

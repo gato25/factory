@@ -1,7 +1,7 @@
 import type { Database } from '@factory/db';
-import { agentSkills, skills } from '@factory/db/schema';
+import { agentSkills, skills, skillVersions } from '@factory/db/schema';
 import { conflict, invalidInput, notFound } from '@factory/shared';
-import { eq } from 'drizzle-orm';
+import { desc, eq } from 'drizzle-orm';
 import type { SessionUser } from './auth';
 import { ownershipOf, requireChangeable } from './ownership';
 import { agentsHolding, skillUsage } from './usage';
@@ -90,17 +90,30 @@ export async function createSkill(
   const fields = validate(input);
 
   try {
-    const [created] = await database
-      .insert(skills)
-      .values({
-        name: fields.name as string,
-        description: fields.description as string,
-        content: fields.content as string,
-        ownerId: user.id,
-        updatedBy: user.id,
-      })
-      .returning();
-    if (!created) throw conflict('could not create the skill');
+    const created = await database.transaction(async (tx) => {
+      const [row] = await tx
+        .insert(skills)
+        .values({
+          name: fields.name as string,
+          description: fields.description as string,
+          content: fields.content as string,
+          ownerId: user.id,
+          updatedBy: user.id,
+        })
+        .returning();
+      if (!row) throw conflict('could not create the skill');
+      // Version 1 is the skill as it was written, so the history has a
+      // beginning rather than starting at the first edit.
+      await tx.insert(skillVersions).values({
+        skillId: row.id,
+        version: 1,
+        name: row.name,
+        description: row.description,
+        content: row.content,
+        createdBy: user.id,
+      });
+      return row;
+    });
     return { id: created.id };
   } catch (error) {
     if (flatten(error).includes('skills_name_unique')) {
@@ -118,21 +131,38 @@ export async function updateSkill(
   skillId: string,
   input: SkillInput,
   user: SessionUser,
-): Promise<{ changed: true; reaches: { id: string; name: string }[] }> {
+): Promise<{ changed: true; version: number; reaches: { id: string; name: string }[] }> {
   await requireChangeable(database, 'skill', skillId, user);
   const fields = validate(input);
 
+  let version = 0;
   try {
-    await database
-      .update(skills)
-      .set({
-        ...(fields.name === undefined ? {} : { name: fields.name }),
-        ...(fields.description === undefined ? {} : { description: fields.description }),
-        ...(fields.content === undefined ? {} : { content: fields.content }),
-        updatedBy: user.id,
-        updatedAt: new Date(),
-      })
-      .where(eq(skills.id, skillId));
+    await database.transaction(async (tx) => {
+      const [saved] = await tx
+        .update(skills)
+        .set({
+          ...(fields.name === undefined ? {} : { name: fields.name }),
+          ...(fields.description === undefined ? {} : { description: fields.description }),
+          ...(fields.content === undefined ? {} : { content: fields.content }),
+          updatedBy: user.id,
+          updatedAt: new Date(),
+        })
+        .where(eq(skills.id, skillId))
+        .returning();
+      if (!saved) throw notFound('no such skill');
+      // The saved state, not the replaced one: the newest version and the
+      // skill row then say the same thing, and restoring a version is
+      // saving its content again.
+      version = (await latestVersion(tx, skillId)) + 1;
+      await tx.insert(skillVersions).values({
+        skillId,
+        version,
+        name: saved.name,
+        description: saved.description,
+        content: saved.content,
+        createdBy: user.id,
+      });
+    });
   } catch (error) {
     if (flatten(error).includes('skills_name_unique')) {
       throw conflict(`There is already a skill called “${input.name?.trim()}”.`);
@@ -143,7 +173,7 @@ export async function updateSkill(
   // What the change reaches — and, just as importantly, what it does not:
   // a run in flight read this skill's content once and never looks again
   // (FR-044, SC-010).
-  return { changed: true, reaches: await agentsHolding(database, skillId) };
+  return { changed: true, version, reaches: await agentsHolding(database, skillId) };
 }
 
 function validate(input: SkillInput) {
@@ -180,6 +210,76 @@ export async function deleteSkill(
   await database.delete(skills).where(eq(skills.id, skillId));
   return { deleted: true, detachedFrom };
 }
+
+export interface SkillVersion {
+  version: number;
+  name: string;
+  description: string;
+  content: string;
+  authorName: string | null;
+  createdAt: Date;
+  /** True for the version the skill currently holds. */
+  current: boolean;
+}
+
+/**
+ * What the skill has said, newest first (FR-043b).
+ *
+ * Ownership does not gate reading it: anyone who may read the skill may read
+ * how it got here, because a run that behaved oddly last week is explained by
+ * what the skill said last week, not by who owns it now.
+ */
+export async function skillHistory(database: Database, skillId: string): Promise<SkillVersion[]> {
+  const rows = await database
+    .select({
+      version: skillVersions.version,
+      name: skillVersions.name,
+      description: skillVersions.description,
+      content: skillVersions.content,
+      createdBy: skillVersions.createdBy,
+      createdAt: skillVersions.createdAt,
+    })
+    .from(skillVersions)
+    .where(eq(skillVersions.skillId, skillId))
+    .orderBy(desc(skillVersions.version));
+
+  const newest = rows[0]?.version ?? 0;
+  const names = new Map<string, string | null>();
+  const out: SkillVersion[] = [];
+  for (const row of rows) {
+    if (row.createdBy && !names.has(row.createdBy)) {
+      names.set(row.createdBy, await nameOf(database, row.createdBy));
+    }
+    out.push({
+      version: row.version,
+      name: row.name,
+      description: row.description,
+      content: row.content,
+      authorName: row.createdBy ? (names.get(row.createdBy) ?? null) : null,
+      createdAt: row.createdAt,
+      current: row.version === newest,
+    });
+  }
+  return out;
+}
+
+/**
+ * The highest version recorded, or 0 for a skill written before history was
+ * kept — in which case the next save becomes version 1 and the history
+ * starts from what is true now rather than pretending to know what was.
+ */
+async function latestVersion(database: Reader, skillId: string): Promise<number> {
+  const [row] = await database
+    .select({ version: skillVersions.version })
+    .from(skillVersions)
+    .where(eq(skillVersions.skillId, skillId))
+    .orderBy(desc(skillVersions.version))
+    .limit(1);
+  return row?.version ?? 0;
+}
+
+/** A database or a transaction — both can read. */
+type Reader = Pick<Database, 'select'>;
 
 async function nameOf(database: Database, userId: string): Promise<string | null> {
   const { users } = await import('@factory/db/schema');
