@@ -30,12 +30,25 @@ interface Env {
   SPIKE_LARGE: DurableObjectNamespace<SpikeLarge>;
 }
 
-/** Whatever the command said, with the noise trimmed. */
+/**
+ * Whatever the command said, with the noise trimmed.
+ *
+ * The timeout is not optional. The SDK's `exec` has NO default timeout, so a
+ * sandbox that never becomes ready — because the image has no control server
+ * listening, for instance — leaves the request hanging forever rather than
+ * telling you what is wrong. A spike that hangs teaches nothing.
+ */
 async function say(
-  sandbox: { exec: (command: string) => Promise<{ exitCode: number; stdout: string }> },
+  sandbox: {
+    exec: (
+      command: string,
+      options?: { timeout?: number },
+    ) => Promise<{ exitCode: number; stdout: string }>;
+  },
   command: string,
+  timeout = 30_000,
 ): Promise<string> {
-  const result = await sandbox.exec(command);
+  const result = await sandbox.exec(command, { timeout });
   return `${result.stdout}`.trim() || `(exit ${result.exitCode})`;
 }
 
@@ -90,7 +103,11 @@ async function nonRoot(env: Env): Promise<unknown> {
 async function egress(env: Env): Promise<unknown> {
   const sandbox = getSandbox(env.SPIKE_SMALL, `spike-egress-${Date.now()}`);
   const reach = (host: string) =>
-    say(sandbox, `curl -s -o /dev/null -m 8 -w '%{http_code}' https://${host}/ || echo blocked`);
+    say(
+      sandbox,
+      `curl -s -o /dev/null -m 8 -w '%{http_code}' https://${host}/ || echo blocked`,
+      20_000,
+    );
   try {
     // Deny by default, permit exactly one host.
     await sandbox.setAllowedHosts(['api.anthropic.com']);
@@ -168,10 +185,35 @@ async function sizes(env: Env): Promise<unknown> {
   };
 }
 
+/**
+ * The cheapest possible question: does a sandbox start and answer at all?
+ *
+ * Worth its own route because the first failure mode is not any of the three
+ * checks — it is an image the SDK cannot drive, which looks like a hang rather
+ * than an error. Run this first.
+ */
+async function ping(env: Env): Promise<unknown> {
+  const sandbox = getSandbox(env.SPIKE_SMALL, `spike-ping-${Date.now()}`);
+  try {
+    const said = await say(sandbox, 'echo ok', 20_000);
+    return {
+      check: 'readiness',
+      said,
+      verdict:
+        said === 'ok'
+          ? 'a sandbox starts and runs commands — the image carries the control server'
+          : `a sandbox answered unexpectedly: ${said}`,
+    };
+  } finally {
+    await sandbox.destroy();
+  }
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const { pathname } = new URL(request.url);
     const checks: Record<string, (env: Env) => Promise<unknown>> = {
+      '/ping': ping,
       '/non-root': nonRoot,
       '/egress': egress,
       '/sizes': sizes,
