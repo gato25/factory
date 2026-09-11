@@ -289,6 +289,10 @@
      decision the design did not take. */
   --card-border: #e6e8ee;
 
+  /* The scrim behind a modal: #0F172A at half weight, as design.pen 03
+     draws it. */
+  --scrim: #0f172a80;
+
   /* The builder's canvas. design.pen draws these and never names them:
      #CBD2DC is the flow line and every grip (47 uses), #FDE68A and #F59E0B
      the chip and edge of a checkpoint. #FBBF24 marks attention without

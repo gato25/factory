@@ -19,6 +19,10 @@ export interface StepPreview {
   index: number;
   type: Step['type'];
   label: string;
+  /** What the step is for, in the agent's own words (design.pen 05). */
+  description?: string;
+  /** The agent's own icon, so the preview and the builder agree. */
+  icon?: string;
   model?: string;
   conditional: boolean;
   /** The condition in words, never as a code (FR-032f). */
@@ -34,6 +38,15 @@ export interface RunPreview {
   verifies: boolean;
   estimate: Estimate;
 }
+
+/** What a step with no agent behind it is for. */
+const DESCRIPTION: Record<Step['type'], string | undefined> = {
+  agent: undefined,
+  design: undefined,
+  checkpoint: 'Pauses until someone approves',
+  shell: 'Runs a script in the sandbox',
+  notify: 'Sends a message',
+};
 
 const TYPE_LABEL: Record<Step['type'], string> = {
   agent: 'Agent',
@@ -68,6 +81,8 @@ export async function previewRun(
       type: step.type,
       label:
         agent?.name ?? (step.type === 'shell' ? (step.command ?? 'shell') : TYPE_LABEL[step.type]),
+      description: agent?.description ?? DESCRIPTION[step.type],
+      icon: agent?.icon ?? undefined,
       model: agent?.model,
       conditional: step.condition !== 'always',
       conditionText: CONDITION_DESCRIPTION[step.condition],
