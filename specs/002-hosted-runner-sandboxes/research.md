@@ -162,6 +162,31 @@ in Complexity Tracking rather than glossed.
 SDK's control server is how `exec`, `writeFile` and `readFile` reach the sandbox at all; replacing
 it means not using the SDK.
 
+**Measured, 2026-09-11 (T005) — it works, and `setpriv` is the mechanism.** Against a real sandbox
+built from `infra/sandbox/Dockerfile`:
+
+| Observed | Value |
+|---|---|
+| Default user for `exec` | `root`, uid `0` — expected, and not the finding |
+| `factory` user | exists, uid `1000` — the same uid `docker run --user 1000:1000` used |
+| `/work` owner | `factory:factory` |
+| `su factory -s /bin/sh -c …` | becomes `factory`, **can write** `/work` |
+| `setpriv --reuid=factory --regid=factory --clear-groups …` | becomes `factory`, **can write** `/work` |
+
+Both mechanisms work, so T025 has a choice. **Prefer `setpriv`**: it makes no TTY assumptions and
+goes nowhere near PAM, where `su` does both and is the likelier of the two to behave differently
+once a command carries a pipe, a heredoc or a long prompt. `su` is the fallback if `setpriv` ever
+leaves the base image.
+
+So Complexity Tracking row 2 stands exactly as written — the work is unprivileged, the control
+server supervising it is not — and it stays an accepted cost rather than becoming a blocker.
+
+**What the first version of this check got wrong**, recorded because the mistake is instructive: it
+only asked what the *default* user was, and would have declared D6 broken on finding `root`. But
+root is the default by construction — the SDK has no user field — and T025's whole job is the
+wrapping. A check that cannot tell "this host cannot do X" from "we have not built X yet" is worse
+than no check, because it produces a confident wrong answer.
+
 ---
 
 ## D7 — Per-step network reach uses the allowlist, switched between steps
@@ -299,6 +324,29 @@ sandboxes — far above the workspace concurrency ceiling that gates runs first.
 **Separately**: for several minutes after a first deployment, container requests can error while the
 provider readies capacity. That is longer than the retry window by design; it belongs in the deploy
 checklist, and the readiness endpoint (FR-020) is where it should be visible.
+
+---
+
+## D15 — Measured latency: ~700 ms warm, ~4 s cold, per sandbox
+
+**Measured, 2026-09-11**, incidentally to T005 and not planned as a check:
+
+| Call | Elapsed |
+|---|---|
+| One command, warm container | **710 ms** |
+| Eight commands in one script, cold container | **4,013 ms** |
+
+**Why it is worth recording.** SC-006 budgets 60 seconds to a run's first output at the 95th
+percentile, and that figure was a guess. A warm round trip at ~0.7 s and a cold start at ~4 s leave
+the budget dominated by the git clone and workspace preparation, not by the platform — which is the
+opposite of what the number implied.
+
+**And a caution about how to measure it.** An earlier version of the spike appeared to take two
+minutes, and none of that was the platform: `max_instances` was 2, every route asked for a
+brand-new sandbox, and a cancelled request leaked the containers it had created, so the SDK spent
+~140 s retrying a start that could never succeed. The lesson for T067 is that a round trip must be
+measured against a WARM sandbox reached by a stable id — measuring cold creates, one per call, is
+measuring a thing no run does.
 
 ---
 

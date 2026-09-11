@@ -63,7 +63,8 @@ Everything in Phase 3 onwards remains gated.
 
 ### The spike (research.md D4, D6, D7 — documented, not run)
 
-- [ ] T005 In `apps/runner/spikes/non-root.ts`, create one real sandbox and confirm a command runs as an unprivileged user and that `/work` is writable by it (D6, FR-003). Record the answer in `research.md` under D6
+- [X] T005 In `apps/runner/spikes/non-root.ts`, create one real sandbox and confirm a command runs as an unprivileged user and that `/work` is writable by it (D6, FR-003). Record the answer in `research.md` under D6
+  - **Answered 2026-09-11: it works.** `factory` exists at uid 1000, `/work` is `factory:factory`, and BOTH `su` and `setpriv` become `factory` and can write it. Recorded under D6, which now names `setpriv` as the mechanism T025 should use — no TTY assumptions and no PAM. Complexity Tracking row 2 stands as an accepted cost rather than a blocker. Implemented in `spikes/worker.ts` (one Worker, not three scripts: the SDK needs a Durable Object binding).
 - [ ] T006 [P] In `apps/runner/spikes/egress.ts`, set a deny-by-default allowlist, prove a permitted host reachable and a non-permitted host refused, then widen the policy on the **running** sandbox with `setOutboundByHost` and re-run (D7, FR-011, FR-012). Record the answer under D7
 - [ ] T007 [P] In `apps/runner/spikes/sizes.ts`, create sandboxes against two container bindings of different declared sizes and confirm each gets what its binding declares (D4, FR-005, FR-009). Record the answer under D4
 
@@ -110,7 +111,7 @@ container daemon, start a ticket against a real repository, and confirm it reach
 - [ ] T022 [US1] Implement `create`, `destroy` and the sandbox identifier in `apps/runner/src/container/hosted.ts` against `getSandbox`, satisfying C1, C2, C4, C7 and C9 — a failure leaves nothing running (FR-002, FR-004, FR-016)
 - [ ] T023 [US1] Implement `exec` in `apps/runner/src/container/hosted.ts`, joining `argv` through `quote()` before it becomes a command string, and mapping our `ExecOptions` onto the SDK's `timeout`/`env`/`cwd`/`onOutput` one-for-one. Output arriving from the SDK MUST reach `apps/runner/src/stream/logs.ts` before it is stored or streamed, so credentials are still removed where output is taken in rather than where it is shown (FR-015, FR-017, FR-027, E1, E2, E4)
 - [ ] T024 [P] [US1] Implement `writeFile`, `readFile` and `stat` in `apps/runner/src/container/hosted.ts` against the SDK's file methods, keeping `null` for a missing path distinct from a thrown `sandbox_lost` for an unreachable sandbox (F1–F4)
-- [ ] T025 [US1] Wrap every command in `apps/runner/src/container/hosted.ts` so it runs as the unprivileged user established in T033, per the answer recorded in T005 (FR-003, C3)
+- [ ] T025 [US1] Wrap every command in `apps/runner/src/container/hosted.ts` so it runs as the unprivileged user established in T033, using `setpriv --reuid=factory --regid=factory --clear-groups` as T005 measured (FR-003, C3). `su` is the fallback if `setpriv` ever leaves the base image
 - [ ] T026 [US1] Create `apps/runner/src/worker.ts` exporting the Worker `fetch` handler and the sandbox Durable Object class, delegating routing to the existing `Route[]` array in `apps/runner/src/index.ts` (FR-001)
 - [ ] T027 [US1] Replace `memoryStore()` in `apps/runner/src/runs.ts` with state held in the run's Durable Object — snapshot, credentials, `sandbox_id`, `size`, `execution_host`, `deadline`, `outcome`, `retain_until` per `data-model.md` (FR-006, FR-008, FR-025a, D3)
 - [ ] T028 [US1] Delete the run's credentials whenever its record is deleted, on every path in `data-model.md`'s state diagram including the alarm, and drop credentials from a retained failed sandbox's record (FR-016, D3)
