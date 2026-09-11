@@ -10,6 +10,16 @@
 executing runs on a container daemon the team operates, and execute them on a managed sandbox
 service instead, with the run execution service itself hosted rather than run on a local machine.
 
+## Clarifications
+
+### Session 2026-09-11
+
+- Q: Should the service that creates and runs sandboxes be allowed to sit at an address anyone on
+  the internet can reach, with a credential on every request as its only gate? → A: Yes — public
+  address, credential on every request, and the constitution's invariant reworded to say its
+  subject is the component serving user sessions rather than network reachability. A network-level
+  gate in front was considered and rejected as more setup than the risk warrants at this scale.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Run a ticket without operating a container host (Priority: P1)
@@ -44,6 +54,9 @@ run reaches a merge request. Delivers a usable product on infrastructure nobody 
    inspected, used or released.
 6. **Given** two such refused requests, one naming a run that exists and one naming a run that does
    not, **Then** the two refusals are indistinguishable.
+7. **Given** runs executing, **When** an operator replaces the credential that authenticates
+   requests to the execution service, **Then** those runs continue to completion, and **Then** the
+   replaced credential is refused once the replacement is in effect.
 
 ---
 
@@ -221,6 +234,9 @@ host and confirm runs execute on the other one with no code change.
 - **FR-018**: System MUST authenticate every operation that creates, inspects, uses or releases a
   sandbox, and MUST refuse an unauthenticated or wrongly-credentialed request without creating,
   inspecting or releasing anything.
+- **FR-018a**: Operators MUST be able to replace the credential that authenticates execution-service
+  operations without interrupting runs already executing, and the replaced credential MUST be
+  refused once its replacement is in effect.
 - **FR-019**: System MUST NOT reveal, in a refused request's answer, whether the named run exists.
 - **FR-020**: System MUST answer a readiness check with whether the execution host is reachable,
   such that an unreachable host, an unreachable service, and a rejected credential are three
@@ -248,6 +264,10 @@ host and confirm runs execute on the other one with no code change.
 
 ### Key Entities
 
+- **Execution service**: the component that creates sandboxes and executes steps inside them —
+  the component `specs/001-code-factory-mvp` calls the Runner. It serves no user interface, holds
+  no user session, and is the only component with rights on an execution host. It is reachable at
+  a public address and admits nothing without a valid credential.
 - **Sandbox**: the isolated workspace one run executes in. Has an identity the run can address
   across separate requests, ceilings on processing power, memory and lifetime, a permitted set of
   addresses that varies by step, and a lifetime that ends when the run ends or its ceiling passes.
@@ -286,6 +306,8 @@ host and confirm runs execute on the other one with no code change.
 - **SC-011**: Every requirement this specification carries that restates a guarantee from
   `specs/001-code-factory-mvp` produces the same observable behaviour on the new execution host as
   on the old one, demonstrated by the existing tests for those guarantees passing unchanged.
+- **SC-012**: Replacing the execution service's credential takes effect within 5 minutes and
+  interrupts 0 runs already executing.
 
 ## Assumptions
 
@@ -339,10 +361,21 @@ literally: it will have a public address. It is held to honour the second, on th
 invariant's subject is the *user-facing* application — the component that serves sessions and
 renders pages — and that the execution service remains a separate component serving no user
 interface and holding no session. That reading is a judgement, not a restatement, which is why it
-is recorded. FR-018 and FR-019 are the compensating requirements: every operation authenticated,
-and a refused request that reveals nothing about what exists. If the invariant is meant literally
-in the network sense, this feature violates it and the constitution needs amending before the
-feature is planned.
+is recorded — and it was put to the product owner and accepted (Clarifications, Session
+2026-09-11). Two things follow.
+
+First, the constitution's invariant and `contracts/runner.md` MUST be reworded to say that their
+subject is the component serving user sessions, not network reachability. Until that amendment
+lands, this feature stands in stated violation of both. The amendment is a prerequisite of
+planning, not of specifying.
+
+Second, the accepted risk is now explicit rather than implied: the credential on each request is
+the only thing between an outsider and a sandbox, so a leaked credential grants arbitrary code
+execution billed to whoever pays for sandbox capacity. FR-018, FR-018a and FR-019 are the
+compensating requirements — every operation authenticated, the credential replaceable without
+stopping work, and a refused request revealing nothing about what exists. A network-level gate in
+front of the service was considered and rejected as more setup than the risk warrants at this
+scale; it remains the upgrade path if a credential is ever exposed.
 
 **2. This feature corrects shipped behaviour, not only its location.** The network restriction is
 currently applied to a run's sandbox for its whole life rather than to the step the setting names.
