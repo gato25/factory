@@ -315,7 +315,7 @@
     color: var(--text-inv);
   }
   .trigger :global(svg) {
-    color: var(--trigger-mark);
+    color: var(--amber);
   }
   .finish {
     background: var(--success-soft);

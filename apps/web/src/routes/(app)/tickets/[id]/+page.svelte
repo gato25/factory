@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { page } from '$app/state';
   import ArtifactViewer from '$components/ArtifactViewer.svelte';
+  import Icon from '$components/Icon.svelte';
   import LiveLog from '$components/LiveLog.svelte';
   import RunDetails from '$components/RunDetails.svelte';
   import StepTracker from '$components/StepTracker.svelte';
@@ -15,6 +16,14 @@
     unpause
   } from '$lib/remote/run-actions.remote';
   import { log, run, runForTicket } from '$lib/remote/runs.remote';
+  import { ago, exact } from '$lib/format';
+
+  /**
+   * Screen 06 — Ticket Run, built to `design.pen`: a crumb, the title with
+   * where the run is, a meta row carrying the branch, the author, how long
+   * it has been going and what it has cost, then the horizontal tracker, and
+   * below it the live log beside a 360px column of artifacts and details.
+   */
 
   const ticketId = $derived(page.params.id as string);
   /** Reactive: `.current` updates on refresh, whereas `{#await}` would not. */
@@ -118,28 +127,49 @@
       )}
       {@const retryable = loaded.run.status === 'failed' || loaded.run.status === 'cancelled'}
 
-      <header class="card head">
-        <div>
-          <p class="small muted">
-            <a href="/tickets">Tickets</a> / {loaded.repository.fullPath}
+      <header class="head">
+        <div class="l">
+          <p class="crumb">
+            <a href="/tickets">Tickets</a>
+            <Icon name="chevron-right" size={14} />
+            <span>{loaded.repository.name}</span>
+            <Icon name="chevron-right" size={14} />
+            <span class="id">{loaded.ticket.reference}</span>
           </p>
-          <h1>{loaded.ticket.reference} {loaded.ticket.title}</h1>
-          <p class="small muted">
-            <code>{loaded.ticket.branchName}</code>
-            &middot; {loaded.ticket.createdByName ?? 'unknown'}
-            &middot; attempt {loaded.run.attempt}
-            &middot; ${loaded.run.costUsd} so far
-          </p>
-        </div>
-        <div class="actions">
-          <span class="badge {status.tone}">{status.label}</span>
-          {#if connection !== 'live' && loaded.run.status === 'running'}
-            <span class="badge small" title="Reconnecting to the live stream">
-              {connection === 'retrying' ? 'reconnecting…' : 'connecting…'}
+
+          <div class="title-row">
+            <h1>{loaded.ticket.title}</h1>
+            <span class="badge {status.tone}">
+              <span class="dot"></span>
+              {status.label}{#if loaded.run.status === 'running' && step}{` · ${step.label}`}{/if}
             </span>
-          {/if}
+            {#if connection !== 'live' && loaded.run.status === 'running'}
+              <span class="badge" title="Reconnecting to the live stream">
+                <span class="dot"></span>
+                {connection === 'retrying' ? 'reconnecting…' : 'connecting…'}
+              </span>
+            {/if}
+          </div>
+
+          <div class="meta">
+            <span><Icon name="git-branch" size={14} />{loaded.ticket.branchName}</span>
+            <span><Icon name="user" size={14} />Created by {loaded.ticket.createdByName ??
+                'unknown'}</span>
+            {#if loaded.run.startedAt}
+              <span title={exact(loaded.run.startedAt)}>
+                <Icon name="timer" size={14} />Started {ago(loaded.run.startedAt)}
+              </span>
+            {/if}
+            <span><Icon name="coins" size={14} />${loaded.run.costUsd} so far</span>
+          </div>
+        </div>
+
+        <div class="actions">
           {#if loaded.run.status === 'waiting_approval'}
-            <a class="review" href="/tickets/{ticketId}/approve">Review</a>
+            <a class="review" href="/tickets/{ticketId}/approve">
+              <Icon name="hand" size={16} />
+              <span>Review</span>
+            </a>
           {/if}
 
           <!-- Pause lets the current step conclude (FR-096); cancel releases
@@ -148,32 +178,51 @@
             {#if loaded.run.pauseRequestedAt}
               <button
                 type="button"
+                class="secondary"
                 disabled={working}
-                onclick={() => act(() => unpause(loaded.run.id))}>Continue</button
+                onclick={() => act(() => unpause(loaded.run.id))}
               >
+                <Icon name="play" size={16} />
+                <span>Continue</span>
+              </button>
             {:else}
               <button
                 type="button"
+                class="secondary"
                 disabled={working}
                 onclick={() => act(() => pause(loaded.run.id), { announce: false })}
-                >Pause</button
               >
+                <Icon name="pause" size={16} />
+                <span>Pause</span>
+              </button>
             {/if}
             <button
               type="button"
-              class="danger"
+              class="secondary"
               disabled={working}
-              onclick={() => act(() => cancel(loaded.run.id))}>Cancel run</button
+              onclick={() => act(() => cancel(loaded.run.id))}
             >
+              <Icon name="circle-x" size={16} />
+              <span>Cancel run</span>
+            </button>
           {:else if retryable}
             <button
               type="button"
               class="primary"
               disabled={working}
-              onclick={() => act(() => retry(ticketId))}>Retry</button
+              onclick={() => act(() => retry(ticketId))}
             >
-            <button type="button" disabled={working} onclick={() => startEditing(loaded)}>
-              Edit &amp; retry
+              <Icon name="rotate-ccw" size={16} />
+              <span>Retry</span>
+            </button>
+            <button
+              type="button"
+              class="secondary"
+              disabled={working}
+              onclick={() => startEditing(loaded)}
+            >
+              <Icon name="pencil" size={16} />
+              <span>Edit &amp; retry</span>
             </button>
           {/if}
         </div>
@@ -263,30 +312,32 @@
         </section>
       {/if}
 
-      <div class="layout">
-        <div class="column">
-          <StepTracker
-            steps={loaded.steps}
-            run={loaded.run}
-            selected={selected ?? loaded.run.currentStepIndex ?? 0}
-            onSelect={(index) => (selected = index)}
-            onRetry={retryable ? () => act(() => retry(ticketId)) : undefined}
-            retrying={working}
+      <!-- The tracker spans the width; the log and the column sit under it,
+           as the artboard lays them out. -->
+      <StepTracker
+        steps={loaded.steps}
+        run={loaded.run}
+        selected={selected ?? loaded.run.currentStepIndex ?? 0}
+        onSelect={(index) => (selected = index)}
+        onRetry={retryable ? () => act(() => retry(ticketId)) : undefined}
+        retrying={working}
+      />
+
+      <div class="lower">
+        {#if step}
+          <LiveLog
+            runId={loaded.run.id}
+            {step}
+            live={loaded.run.status === 'running' && step.state === 'running'}
           />
-          {#if step}
-            <LiveLog
-              runId={loaded.run.id}
-              {step}
-              live={loaded.run.status === 'running' && step.state === 'running'}
-            />
-          {/if}
-        </div>
-        <div class="column">
-          <RunDetails view={loaded} />
+        {/if}
+        <div class="right">
           <ArtifactViewer
             artifacts={loaded.artifacts}
             mergeRequestUrl={loaded.ticket.mergeRequestUrl}
+            branchName={loaded.ticket.branchName}
           />
+          <RunDetails view={loaded} />
         </div>
       </div>
   {/if}
@@ -295,54 +346,169 @@
 <style>
   .head {
     display: flex;
-    justify-content: space-between;
     align-items: flex-start;
-    gap: 16px;
-    flex-wrap: wrap;
-    margin-bottom: 16px;
+    justify-content: space-between;
+    gap: 24px;
+    margin-bottom: 20px;
   }
-  .head p {
-    margin: 0 0 4px;
+  .l {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+  }
+  .crumb {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    font-size: 12px;
+    color: var(--text-3);
+  }
+  .crumb a {
+    color: var(--text-3);
+    text-decoration: none;
+  }
+  .crumb a:hover {
+    color: var(--accent-text);
+  }
+  .crumb .id {
+    color: var(--text-2);
+  }
+
+  .title-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
   }
   h1 {
-    margin: 0 0 4px;
-    font-size: 20px;
+    margin: 0;
+    font-family: var(--font-head);
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text);
   }
-  code {
+
+  .meta {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    flex-wrap: wrap;
+    font-size: 12px;
+    color: var(--text-2);
+  }
+  .meta span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .meta :global(svg) {
+    color: var(--text-3);
+    flex: none;
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
     background: var(--surface-2);
-    padding: 1px 5px;
-    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-2);
   }
+  .badge.live {
+    background: var(--accent-soft);
+    color: var(--accent-text);
+  }
+  .badge.warn {
+    background: var(--warning-soft);
+    color: var(--warning);
+  }
+  .badge.ok {
+    background: var(--success-soft);
+    color: var(--success);
+  }
+  .badge.bad {
+    background: var(--danger-soft);
+    color: var(--danger);
+  }
+  .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: currentcolor;
+    flex: none;
+  }
+
   .actions {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
+    flex: none;
     flex-wrap: wrap;
   }
-  button {
-    padding: 7px 12px;
-    border: 1px solid var(--border);
+  .actions button,
+  .review {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
     border-radius: var(--r-sm);
-    background: var(--surface);
     font: inherit;
+    font-size: 14px;
+    font-weight: 500;
     cursor: pointer;
+    text-decoration: none;
   }
-  button:disabled {
+  .secondary {
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+  }
+  .secondary :global(svg) {
+    color: var(--text-2);
+  }
+  .secondary:hover:not(:disabled) {
+    border-color: var(--accent);
+  }
+  .actions button.primary,
+  .review {
+    border: 1px solid var(--accent);
+    background: var(--accent);
+    color: var(--text-inv);
+    font-weight: 600;
+  }
+  .actions button:disabled {
     opacity: 0.5;
     cursor: not-allowed;
   }
-  .review {
-    padding: 7px 14px;
-    border-radius: var(--r-sm);
-    background: var(--accent);
-    color: #fff;
-    text-decoration: none;
-    font-weight: 600;
+
+  /* The log fills; the column beside it is the artboard's 360px. */
+  .lower {
+    display: flex;
+    align-items: stretch;
+    gap: 24px;
+    margin-top: 16px;
   }
+  .right {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 360px;
+    flex: none;
+  }
+
   .notice {
     border-left: 3px solid var(--accent);
     margin: 0 0 16px;
     padding: 12px 16px;
+  }
+  .failure {
+    border-left: 3px solid var(--danger);
+    margin: 0 0 16px;
   }
   .failure h2 {
     margin: 0 0 6px;
@@ -366,11 +532,12 @@
     padding: 10px;
     background: var(--surface-2);
     border-radius: var(--r-sm);
-    font: 12px/1.6 ui-monospace, monospace;
+    font: 12px/1.6 var(--font-mono);
     white-space: pre-wrap;
     max-height: 240px;
     overflow: auto;
   }
+
   .editor {
     margin-bottom: 16px;
     display: flex;
@@ -393,43 +560,37 @@
     border-radius: var(--r-sm);
     font: inherit;
     width: 100%;
-    box-sizing: border-box;
     resize: vertical;
+  }
+  .editor button {
+    padding: 9px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--r-sm);
+    background: var(--surface);
+    font: inherit;
+    cursor: pointer;
+  }
+  .editor button.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--text-inv);
+    font-weight: 600;
   }
   .row {
     display: flex;
     gap: 8px;
     justify-content: flex-end;
   }
-  .actions button.primary {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: #fff;
-    font-weight: 600;
-  }
-  .actions button.danger {
-    color: var(--danger);
-    border-color: #f3c7c4;
-  }
-  .failure {
-    border-left: 3px solid var(--danger);
-    margin: 0 0 16px;
-  }
-  .layout {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 340px;
-    gap: 16px;
-    align-items: start;
-  }
-  .column {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    min-width: 0;
-  }
-  @media (max-width: 1000px) {
-    .layout {
-      grid-template-columns: 1fr;
+
+  @media (max-width: 1100px) {
+    .head {
+      flex-direction: column;
+    }
+    .lower {
+      flex-direction: column;
+    }
+    .right {
+      width: auto;
     }
   }
 </style>

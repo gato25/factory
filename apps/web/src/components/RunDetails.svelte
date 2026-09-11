@@ -9,13 +9,22 @@
 </script>
 
 <section class="card">
-  <h2 class="section">Run details</h2>
+  <h2>Run details</h2>
   <dl>
     <dt>Pipeline</dt>
     <dd>{view.pipeline.name} <span class="muted small">v{view.pipeline.version}</span></dd>
 
-    <dt>Attempt</dt>
-    <dd>{view.run.attempt}</dd>
+    <dt>Run</dt>
+    <dd>
+      {view.ticket.reference}-r{view.run.attempt}
+      <span class="muted">({view.run.attempt}{view.run.attempt === 1
+          ? 'st'
+          : view.run.attempt === 2
+            ? 'nd'
+            : view.run.attempt === 3
+              ? 'rd'
+              : 'th'} attempt)</span>
+    </dd>
 
     <dt>Repository</dt>
     <dd>{view.repository.fullPath}</dd>
@@ -33,7 +42,7 @@
     </dd>
 
     <!-- A reference identifying the execution in the orchestrator (FR-078) -->
-    <dt>Execution</dt>
+    <dt>n8n execution</dt>
     <dd>
       {#if view.run.orchestratorExecutionId}
         <code>{view.run.orchestratorExecutionId}</code>
@@ -43,7 +52,7 @@
     </dd>
 
     <dt>Budget</dt>
-    <dd>${view.run.costUsd} of ${view.run.costCeilingUsd}</dd>
+    <dd>${view.run.costUsd} of ${view.run.costCeilingUsd} cap</dd>
   </dl>
 
   {#if place?.ready}
@@ -66,29 +75,48 @@
 </section>
 
 <style>
+  .card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 16px;
+    background: var(--surface);
+    border: 1px solid var(--card-border);
+    border-radius: var(--r-lg);
+    box-shadow: 0 1px 2px #0f172a0a;
+  }
+  h2 {
+    margin: 0;
+    font-family: var(--font-head);
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+  }
   dl {
     display: grid;
     grid-template-columns: auto 1fr;
-    gap: 6px 14px;
+    gap: 8px 16px;
     margin: 0;
+    font-size: 12px;
   }
   dt {
-    color: var(--text-3);
-    font-size: 12px;
+    color: var(--text-2);
   }
   dd {
     margin: 0;
+    color: var(--text);
+    text-align: right;
     overflow-wrap: anywhere;
   }
   code {
     background: var(--surface-2);
     padding: 1px 5px;
     border-radius: 4px;
-    font-size: 12px;
+    font-size: 11px;
   }
   p.badge {
     display: block;
-    margin-top: 12px;
+    margin: 0;
     line-height: 1.5;
   }
 </style>

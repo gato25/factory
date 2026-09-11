@@ -145,7 +145,7 @@ test.describe('watching a run', () => {
     await expect(page.getByRole('heading', { name: /Add Google OAuth sign-in/ })).toBeVisible();
     await expect(page.getByText('Queued')).toBeVisible();
     // Three steps plus the implicit merge request.
-    await expect(page.getByText('Open merge request')).toBeVisible();
+    await expect(page.getByText('Merge request').first()).toBeVisible();
 
     // --- the run starts; the page must follow without a reload ---
     await callback({ step_index: 0, event: 'started', container_id: 'container-e2e' });

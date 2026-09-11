@@ -71,7 +71,7 @@ export interface RunView {
     createdByName: string | null;
     createdAt: Date;
   };
-  repository: { fullPath: string; provider: string; defaultBranch: string };
+  repository: { name: string; fullPath: string; provider: string; defaultBranch: string };
   pipeline: { name: string; version: number };
   steps: StepView[];
   artifacts: {
@@ -170,6 +170,8 @@ export async function runView(database: Database, runId: string): Promise<RunVie
       createdAt: ticket.createdAt,
     },
     repository: {
+      // The crumb names the repository, not its whole path (design.pen 06).
+      name: repository?.name ?? '',
       fullPath: repository?.fullPath ?? '',
       provider: repository?.provider ?? '',
       defaultBranch: repository?.defaultBranch ?? '',

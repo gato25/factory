@@ -137,7 +137,57 @@ for (const [reference, title, repo, status, who] of TICKETS) {
         })),
       })}::jsonb, ${runStatus}, ${status === 'running' ? 3 : 1}, '1.8400', '5.0000', 45, now())
       returning id`;
-    if (run) await sql`update tickets set current_run_id = ${run.id} where id = ${ticket.id}`;
+    if (!run) continue;
+    await sql`update tickets set current_run_id = ${run.id} where id = ${ticket.id}`;
+
+    // What the run has actually done, so screen 06 shows a tracker with
+    // history behind it rather than five identical "waiting" circles.
+    const reached = status === 'running' ? 4 : 2;
+    const TOOK = [130, 161, 222, 65];
+    const SPENT = ['0.1400', '0.4200', '0.5100', '0.0900'];
+    const DOC = ['docs/spec.md', 'docs/plan.md', 'docs/tasks.md', null];
+    for (let index = 0; index < reached; index += 1) {
+      const running = status === 'running' && index === reached - 1;
+      await sql`
+        insert into step_results (run_id, step_index, status, started_at, finished_at,
+          duration_s, cost_usd, summary)
+        values (${run.id}, ${index}, ${running ? 'running' : 'done'},
+          now() - interval '14 minutes', ${running ? null : new Date().toISOString()},
+          ${running ? null : TOOK[index]}, ${running ? '0.3800' : SPENT[index]},
+          ${running ? null : `${STEPS[index]} finished`})`;
+
+      const path = DOC[index];
+      if (!running && path) {
+        await sql`
+          insert into artifacts (run_id, step_index, kind, path, version, content)
+          values (${run.id}, ${index}, 'document', ${path}, 1,
+            ${`# ${STEPS[index]}\n\nWritten by the ${STEPS[index]} agent for ${ticket.reference}.`})`;
+      }
+    }
+
+    if (status === 'running') {
+      const LOG: [string, string][] = [
+        ['stdout', 'Reading docs/tasks.md · 6 tasks found'],
+        ['stdout', '✓ Task 1  Add the query parameters to the endpoint'],
+        ['stdout', '✓ Task 2  Page the results in the repository layer'],
+        ['stdout', '▶ Task 3  Write tests for the paging boundaries'],
+        ['stdout', '  $ bun test audit-log'],
+        ['stdout', '  ⚠ 1 failing: "rejects a negative page" — fixing'],
+        ['stdout', '  Edited src/audit/log.ts (+12 −3)'],
+        ['stdout', '  ✓ 14 passing'],
+      ];
+      let seq = 0;
+      for (const [stream, text] of LOG) {
+        seq += 1;
+        await sql`
+          insert into log_chunks (run_id, step_index, seq, stream, text, at)
+          values (${run.id}, ${reached - 1}, ${seq}, ${stream}, ${`${text}\n`},
+            now() - interval '1 minute' + ${`${seq * 12} seconds`}::interval)`;
+      }
+      await sql`
+        insert into artifacts (run_id, step_index, kind, path, version)
+        values (${run.id}, ${reached - 1}, 'commits', '4 commits', 1)`;
+    }
   }
 }
 
