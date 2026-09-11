@@ -1,5 +1,6 @@
 import { getSandbox, isPlatformTransientError, type Sandbox } from '@cloudflare/sandbox';
 import { FactoryError } from '@factory/shared';
+import { withCapacityRetry } from './capacity';
 import type { ContainerHost, ContainerSpec, ExecResult } from './host';
 import { commandLine, outerTimeoutMs, WORK_USER } from './hosted-command';
 import { quoteOne } from './shell';
@@ -38,9 +39,6 @@ import { annotateUnreachable } from './unreachable';
  * the run. The wall-clock alarm is what ends it (D5), not this.
  */
 const SLEEP_AFTER = '30m';
-
-/** Capacity refusals clear in seconds. FR-024 bounds how long we wait. */
-const CAPACITY_RETRY_MS = 30_000;
 
 type SandboxNamespace = DurableObjectNamespace<Sandbox<unknown>>;
 
@@ -107,14 +105,20 @@ export function hostedHost(namespaces: SandboxNamespaces | SandboxNamespace): Co
       const containerId = sandboxId(size, crypto.randomUUID());
       const sandbox = open(containerId);
 
-      await withCapacityRetry(async () => {
-        // Credentials reach the sandbox as environment and never as files
-        // (FR-016, Principle V).
-        await sandbox.setEnvVars(spec.env);
-        // Proves the container is actually up before anything depends on it,
-        // and is where a capacity refusal surfaces.
-        await sandbox.exec('true', { timeout: 60_000 });
-      });
+      await withCapacityRetry(
+        async () => {
+          // Credentials reach the sandbox as environment and never as files
+          // (FR-016, Principle V).
+          await sandbox.setEnvVars(spec.env);
+          // Proves the container is actually up before anything depends on it,
+          // and is where a capacity refusal surfaces.
+          await sandbox.exec('true', { timeout: 60_000 });
+          // The SDK's own predicate, which knows shapes we would be guessing
+          // at. Passing it in is also what keeps the retry logic testable —
+          // nothing in this file can be reached from a test.
+        },
+        { isTransient: isPlatformTransientError },
+      );
 
       try {
         // The workspace belongs to the user the work runs as. `chown` is
@@ -229,45 +233,6 @@ export function hostedHost(namespaces: SandboxNamespaces | SandboxNamespace): Co
         .catch(() => {});
     },
   };
-}
-
-/**
- * Retries a capacity refusal over a bounded period, then gives up (FR-024,
- * FR-024a, C8).
- *
- * Only the platform's transient refusal is retried. The spike surfaced two
- * failures that read alike and are not: "there is no container instance that
- * can be provided to this Durable Object" is transient and clears in seconds,
- * while "maximum number of running container instances exceeded … configuring a
- * higher value for max_instances" is a configuration mistake that will never
- * clear — and which the SDK already burns ~140 s retrying on its own. Retrying
- * that again would spend a run's patience on something only a deploy can fix.
- */
-async function withCapacityRetry<T>(work: () => Promise<T>): Promise<T> {
-  const deadline = Date.now() + CAPACITY_RETRY_MS;
-  let delay = 1_000;
-  for (;;) {
-    try {
-      return await work();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      if (/max_instances/i.test(message)) {
-        throw new FactoryError(
-          'sandbox_lost',
-          'the execution host refused a sandbox because its per-class instance limit is ' +
-            'reached — this is a deployment setting and will not clear on its own',
-          { detail: message },
-        );
-      }
-      if (!isPlatformTransientError(error) || Date.now() + delay >= deadline) {
-        throw new FactoryError('sandbox_lost', 'the execution host had no capacity for a sandbox', {
-          detail: message,
-        });
-      }
-      await new Promise((resolve) => setTimeout(resolve, delay));
-      delay *= 2;
-    }
-  }
 }
 
 /**
