@@ -32,6 +32,11 @@
     ]
   },
 
+  // Append-only, and a tag is immutable once applied. Adding a class to a tag
+  // that has already shipped is silently ignored and the deploy then fails with
+  // "Cannot create binding for class X because it is not currently configured
+  // to implement Durable Objects" — learned on the spike. New classes, such as
+  // the sized bindings T045 adds, need a new tag.
   "migrations": [
     {
       "tag": "v1",

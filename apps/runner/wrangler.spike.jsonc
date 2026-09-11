@@ -25,10 +25,22 @@
     ]
   },
 
+  // Migrations are APPEND-ONLY and a tag is immutable once applied. Adding the
+  // three egress classes to the existing `v1` did nothing — Cloudflare had
+  // already recorded v1 as applied — and the deploy failed with "Cannot create
+  // binding for class 'SpikeOpen' because it is not currently configured to
+  // implement Durable Objects". New classes need a NEW tag.
+  //
+  // The same rule will apply to the real service's configuration: never edit a
+  // tag that has shipped.
   "migrations": [
     {
       "tag": "v1",
-      "new_sqlite_classes": ["SpikeSmall", "SpikeLarge", "SpikeOpen", "SpikeDeny", "SpikeAllow"]
+      "new_sqlite_classes": ["SpikeSmall", "SpikeLarge"]
+    },
+    {
+      "tag": "v2",
+      "new_sqlite_classes": ["SpikeOpen", "SpikeDeny", "SpikeAllow"]
     }
   ],
 
