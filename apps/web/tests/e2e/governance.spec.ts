@@ -194,7 +194,7 @@ test.describe('setting up and governing the workspace', () => {
     // seed configured none of them, so each must say so rather than "ok" —
     // and none may claim to have had a credential accepted, since none was
     // ever presented.
-    await page.getByRole('button', { name: 'Test every connection' }).click();
+    await page.getByRole('button', { name: 'Test connection' }).click();
     const results = page.locator('.results li');
     await expect(results).toHaveCount(3, { timeout: 20_000 });
     await expect(page.locator('.results')).toContainText('Orchestration service');
@@ -300,7 +300,7 @@ test.describe('setting up and governing the workspace', () => {
 
     // Nothing to change.
     await expect(page.getByLabel('Most a run may spend, in dollars')).toHaveCount(0);
-    await expect(page.getByRole('button', { name: 'Test every connection' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Test connection' })).toHaveCount(0);
 
     // And the rule is not merely hidden: the remote function refuses too.
     const refused = await page.request.post('http://localhost:5173/settings', {
@@ -319,9 +319,11 @@ test.describe('setting up and governing the workspace', () => {
 
     // Store one through the interface.
     await page.goto('/settings');
-    await page.getByLabel('Credential', { exact: true }).fill('sk-ant-supersecret-abcdefghij');
-    await page.getByRole('button', { name: 'Store' }).click();
-    await expect(page.getByRole('main')).toContainText('never shown again', {
+    await page.getByLabel('Model credential').fill('sk-ant-supersecret-abcdefghij');
+    await page.getByRole('button', { name: 'Store', exact: true }).click();
+    // The success message, not the card's standing copy: a card that always
+    // says "never shown again" would make this assertion prove nothing.
+    await expect(page.getByRole('status').last()).toContainText('encrypted at rest', {
       timeout: 15_000,
     });
 
@@ -336,7 +338,7 @@ test.describe('setting up and governing the workspace', () => {
     expect(body).not.toContain('supersecret');
     expect(body).not.toContain('sk-ant');
     // The screen says one exists, which is the most it may say.
-    await expect(page.getByRole('main')).toContainText('one is stored');
+    await expect(page.getByRole('main')).toContainText('One is stored');
   });
 
   test("an administrator changes somebody else's role, and the change lands", async ({

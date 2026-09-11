@@ -1,4 +1,6 @@
 <script lang="ts">
+  import Icon from '$components/Icon.svelte';
+  import { publicBaseUrl } from '$lib/remote/repositories.remote';
   import {
     changeRole,
     connections,
@@ -8,35 +10,82 @@
     removeMember,
     saveCredential,
     saveWorkspace,
-    settings
+    settings,
   } from '$lib/remote/settings.remote';
 
   /**
-   * Screen 12 — Settings. Workspace, orchestration, sandbox, credentials,
-   * design, cost limits, members. Administrator-only, and the rule is
-   * checked inside every remote function rather than by hiding this screen
-   * (FR-004).
+   * Screen 12 — Settings, built to `design.pen`: a 200px column of sections
+   * beside cards that each say what they are, what they are for, and whether
+   * they are working.
+   *
+   * The sections are links rather than tabs. The artboard shows one group at
+   * a time, but hiding the rest would mean a page where the thing you are
+   * looking for is not on it — and searching a settings screen is how people
+   * actually use one.
+   *
+   * Administrator-only, and the rule is checked inside every remote function
+   * rather than by hiding this screen (FR-004).
    */
   let { data }: { data: { user: { id: string; role: string } } } = $props();
 
   const config = $derived(settings());
   const people = $derived(members());
   const waiting = $derived(queue());
+  const baseUrl = $derived(publicBaseUrl());
+
+  // A remote form object attaches to one <form>; two cards need two
+  // instances, which is what `.for(key)` is for.
+  const modelKey = $derived(saveCredential.for('model'));
+  const designKey = $derived(saveCredential.for('design'));
+
   let notice = $state<string | null>(null);
   let tested = $state<{ what: string; state: string; detail: string }[] | null>(null);
+  let testing = $state(false);
+
+  const SECTIONS = [
+    { id: 'workspace', label: 'Workspace' },
+    { id: 'orchestration', label: 'Orchestration (n8n)' },
+    { id: 'sandbox', label: 'Sandbox (Docker)' },
+    { id: 'keys', label: 'Claude CLI & keys' },
+    { id: 'design', label: 'Design (pen.dev)' },
+    { id: 'limits', label: 'Cost limits' },
+    { id: 'members', label: 'Members' },
+    { id: 'notifications', label: 'Notifications' },
+  ];
 
   const STATE_TONE: Record<string, string> = {
     reachable: 'ok',
     unconfigured: '',
     unreachable: 'bad',
     unauthorised: 'bad',
-    wrong_shape: 'warn'
+    wrong_shape: 'warn',
   };
   const WHAT: Record<string, string> = {
     orchestrator: 'Orchestration service',
     runner: 'Container host',
-    design: 'Design service'
+    design: 'Design service',
   };
+
+  /** What a card's badge says: the last test if there was one, else whether
+   *  it is configured at all. */
+  function stateOf(what: string, configured: boolean) {
+    const result = tested?.find((row) => row.what === what);
+    if (result) return { label: result.state.replace('_', ' '), tone: STATE_TONE[result.state] ?? '' };
+    return configured
+      ? { label: 'Configured', tone: '' }
+      : { label: 'Not set up', tone: 'warn' };
+  }
+
+  async function test() {
+    testing = true;
+    try {
+      const result = await connections();
+      tested = 'problem' in result ? null : result.results;
+      if ('problem' in result) notice = result.problem;
+    } finally {
+      testing = false;
+    }
+  }
 </script>
 
 {#if data.user.role !== 'admin'}
@@ -53,353 +102,898 @@
   {@const w = config.current.workspace}
   {@const r = config.current.readiness}
 
-  {#if notice}<p class="card notice" role="status">{notice}</p>{/if}
+  <div class="wrap">
+    <nav class="sections" aria-label="Settings sections">
+      {#each SECTIONS as section (section.id)}
+        <a href="#{section.id}">{section.label}</a>
+      {/each}
+    </nav>
 
-  {#if !r.ready}
-    <p class="card warning" role="status">
-      This workspace cannot start a run yet. Still needed: {r.missing.join(', ')}.
-    </p>
-  {/if}
+    <div class="content">
+      {#if notice}<p class="banner" role="status">{notice}</p>{/if}
 
-  <!-- Each connection test says which of three things is wrong (FR-005a) -->
-  <section class="card">
-    <h2 class="section">Connections</h2>
-    <p class="muted small">
-      A test tells reachable-and-authorised apart from unreachable and from refused, because those
-      three need different fixes.
-    </p>
-    <div class="row">
-      <button
-        type="button"
-        onclick={async () => {
-          const result = await connections();
-          tested = 'problem' in result ? null : result.results;
-          if ('problem' in result) notice = result.problem;
-        }}>Test every connection</button
-      >
-    </div>
-    {#if tested}
-      <ul class="results">
-        {#each tested as result (result.what)}
-          <li>
-            <span class="badge small {STATE_TONE[result.state] ?? ''}">
-              {result.state.replace('_', ' ')}
+      {#if !r.ready}
+        <p class="banner warn" role="status">
+          This workspace cannot start a run yet. Still needed: {r.missing.join(', ')}.
+        </p>
+      {/if}
+
+      <form {...saveWorkspace} class="stack">
+        <section class="card" id="workspace">
+          <header>
+            <span class="ic"><Icon name="settings" size={18} /></span>
+            <div class="tx">
+              <h2>Workspace</h2>
+              <p>One deployment, one workspace. Its name is what members see in the sidebar.</p>
+            </div>
+            <span class="badge {r.ready ? 'ok' : 'warn'}">
+              <span class="dot"></span>
+              {r.ready ? 'Ready to run' : 'Not ready'}
             </span>
-            <span>
-              <strong>{WHAT[result.what] ?? result.what}</strong>
-              <span class="muted small">{result.detail}</span>
-            </span>
-          </li>
-        {/each}
-      </ul>
-    {/if}
-  </section>
+          </header>
+          <div class="grid">
+            <label class="f">
+              <span>Name</span>
+              <input name="name" value={w.name} required />
+            </label>
+          </div>
+        </section>
 
-  <form {...saveWorkspace} class="card">
-    <h2 class="section">Workspace</h2>
-    <div class="grid">
-      <label>
-        <span class="small muted">Name</span>
-        <input name="name" value={w.name} required />
-      </label>
-      <label>
-        <span class="small muted">Orchestration service address</span>
-        <input name="orchestratorBaseUrl" value={w.orchestratorBaseUrl ?? ''} placeholder="http://n8n:5678" />
-      </label>
-      <label>
-        <span class="small muted">Workflow identifier</span>
-        <input name="orchestratorWorkflowId" value={w.orchestratorWorkflowId ?? ''} />
-      </label>
-      <label>
-        <span class="small muted">Container host address</span>
-        <input name="runnerBaseUrl" value={w.runnerBaseUrl ?? ''} placeholder="http://runner:8080" />
-      </label>
-    </div>
+        <section class="card" id="orchestration">
+          <header>
+            <span class="ic"><Icon name="workflow" size={18} /></span>
+            <div class="tx">
+              <h2>Orchestration · n8n</h2>
+              <p>
+                Every ticket run is executed by an n8n workflow. The app only stores data and
+                shows progress.
+              </p>
+            </div>
+            {#await Promise.resolve(stateOf('orchestrator', Boolean(w.orchestratorBaseUrl))) then s}
+              <span class="badge {s.tone}"><span class="dot"></span>{s.label}</span>
+            {/await}
+          </header>
+          <div class="grid">
+            <label class="f">
+              <span>Orchestration service address</span>
+              <input
+                name="orchestratorBaseUrl"
+                value={w.orchestratorBaseUrl ?? ''}
+                placeholder="http://n8n:5678"
+              />
+            </label>
+            <label class="f">
+              <span>Workflow identifier</span>
+              <input name="orchestratorWorkflowId" value={w.orchestratorWorkflowId ?? ''} />
+              <small>
+                One generic workflow: it reads the ticket's pipeline steps and loops over them.
+              </small>
+            </label>
+          </div>
+          <div class="grid">
+            <div class="f">
+              <span class="as-label">Callback webhook (n8n → app)</span>
+              <input readonly value={`${baseUrl.ready ? baseUrl.current : ''}/api/hooks/n8n`} />
+              <small>n8n posts step results and approvals here.</small>
+            </div>
+          </div>
+        </section>
 
-    <h2 class="section">Cost limits</h2>
-    <p class="muted small">
-      These are the ceilings a member's own limits cannot exceed. A limit somebody sets on their
-      agent is capped at these, so it can only ever lower what a run may consume.
-    </p>
-    <div class="grid">
-      <label>
-        <span class="small muted">Most a run may spend, in dollars</span>
-        <input name="defaultCostCeilingUsd" value={w.defaultCostCeilingUsd} required />
-      </label>
-      <label>
-        <span class="small muted">Longest a run may take, in minutes</span>
-        <input name="defaultTimeCeilingMinutes" type="number" min="1" value={w.defaultTimeCeilingMinutes} required />
-      </label>
-      <label>
-        <span class="small muted">Runs that may execute at once</span>
-        <input name="maxConcurrentRuns" type="number" min="1" value={w.maxConcurrentRuns} required />
-      </label>
-    </div>
-
-    <h2 class="section">Sandbox</h2>
-    <p class="muted small">
-      What a sandbox is allowed while code is being written. Network access off is the default:
-      an agent writing code does not need the internet, and a sandbox that cannot reach it cannot
-      send anything out.
-    </p>
-    <div class="grid">
-      <label>
-        <span class="small muted">Image</span>
-        <input name="sandboxImage" value={w.sandboxImage} required />
-      </label>
-      <label>
-        <span class="small muted">Processors</span>
-        <input name="sandboxCpu" type="number" min="1" value={w.sandboxCpu} required />
-      </label>
-      <label>
-        <span class="small muted">Memory, in megabytes</span>
-        <input name="sandboxMemoryMb" type="number" min="512" step="256" value={w.sandboxMemoryMb} required />
-      </label>
-      <label>
-        <span class="small muted">Lifetime, in minutes</span>
-        <input name="sandboxWallClockMinutes" type="number" min="1" value={w.sandboxWallClockMinutes} required />
-      </label>
-      <label>
-        <span class="small muted">Keep a failed run's sandbox for, in hours</span>
-        <input name="retainFailedSandboxesHours" type="number" min="0" value={w.retainFailedSandboxesHours} required />
-      </label>
-      <label class="inline">
-        <input
-          type="checkbox"
-          name="sandboxNetworkDuringImplement"
-          value="true"
-          checked={w.sandboxNetworkDuringImplement}
-        />
-        <span>Let a sandbox reach the network while code is being written</span>
-      </label>
-    </div>
-
-    {#if saveWorkspace.fields.allIssues()?.length}
-      <ul class="errors" role="alert">
-        {#each saveWorkspace.fields.allIssues() ?? [] as issue (issue.message)}
-          <li>{issue.message}</li>
-        {/each}
-      </ul>
-    {/if}
-    {#if saveWorkspace.result && 'problem' in saveWorkspace.result}
-      <p class="errors" role="alert">{saveWorkspace.result.problem}</p>
-    {:else if saveWorkspace.result && 'message' in saveWorkspace.result}
-      <p class="ok small" role="status">{saveWorkspace.result.message}</p>
-    {/if}
-    <div class="row end">
-      <button class="primary" type="submit" disabled={saveWorkspace.pending > 0}>Save</button>
-    </div>
-  </form>
-
-  <!-- A credential is written and never read back (FR-011) -->
-  <form {...saveCredential} class="card">
-    <h2 class="section">Credentials</h2>
-    <p class="muted small">
-      Stored encrypted, supplied to a run as environment, and never shown again — not even to you.
-      Replacing one is the only way to change it.
-    </p>
-    <div class="grid">
-      <label>
-        <span class="small muted">Which</span>
-        <select name="kind">
-          <option value="model">
-            Model credential {w.hasModelCredential ? '— one is stored' : '— none yet'}
-          </option>
-          <option value="design">
-            Design service {w.hasDesignCredential ? '— one is stored' : '— none yet'}
-          </option>
-        </select>
-      </label>
-      <label>
-        <span class="small muted">Credential</span>
-        <input name="token" type="password" placeholder="paste it here" autocomplete="off" />
-      </label>
-    </div>
-    {#if saveCredential.fields.allIssues()?.length}
-      <ul class="errors" role="alert">
-        {#each saveCredential.fields.allIssues() ?? [] as issue (issue.message)}
-          <li>{issue.message}</li>
-        {/each}
-      </ul>
-    {/if}
-    {#if saveCredential.result && 'problem' in saveCredential.result}
-      <p class="errors" role="alert">{saveCredential.result.problem}</p>
-    {:else if saveCredential.result && 'message' in saveCredential.result}
-      <p class="ok small" role="status">{saveCredential.result.message}</p>
-    {/if}
-    <div class="row end">
-      <button type="submit" disabled={saveCredential.pending > 0}>Store</button>
-    </div>
-  </form>
-
-  <section class="card">
-    <h2 class="section">Members</h2>
-    {#if !people.ready}
-      <p class="muted small">Loading…</p>
-    {:else}
-      <ul class="people">
-        {#each people.current as person (person.id)}
-          <li>
-            <span class="who">
-              <strong>{person.name}</strong>
-              <span class="muted small">{person.email}</span>
-              <span class="muted small">
-                {person.ticketsCreated} ticket{person.ticketsCreated === 1 ? '' : 's'}
+        <section class="card" id="sandbox">
+          <header>
+            <span class="ic"><Icon name="container" size={18} /></span>
+            <div class="tx">
+              <h2>Sandbox · Docker</h2>
+              <p>
+                Each run gets one fresh container with the repository, the Claude CLI and your
+                toolchain.
+              </p>
+            </div>
+            {#await Promise.resolve(stateOf('runner', Boolean(w.runnerBaseUrl))) then s}
+              <span class="badge {s.tone}"><span class="dot"></span>{s.label}</span>
+            {/await}
+          </header>
+          <div class="grid">
+            <label class="f">
+              <span>Container host address</span>
+              <input
+                name="runnerBaseUrl"
+                value={w.runnerBaseUrl ?? ''}
+                placeholder="http://runner:8080"
+              />
+            </label>
+            <label class="f">
+              <span>Image</span>
+              <input name="sandboxImage" value={w.sandboxImage} required />
+            </label>
+          </div>
+          <div class="grid four">
+            <label class="f">
+              <span>Processors</span>
+              <input name="sandboxCpu" type="number" min="1" value={w.sandboxCpu} required />
+            </label>
+            <label class="f">
+              <span>Memory, in megabytes</span>
+              <input
+                name="sandboxMemoryMb"
+                type="number"
+                min="512"
+                step="256"
+                value={w.sandboxMemoryMb}
+                required
+              />
+            </label>
+            <label class="f">
+              <span>Lifetime, in minutes</span>
+              <input
+                name="sandboxWallClockMinutes"
+                type="number"
+                min="1"
+                value={w.sandboxWallClockMinutes}
+                required
+              />
+            </label>
+            <label class="f">
+              <span>Keep a failed run's sandbox for, in hours</span>
+              <input
+                name="retainFailedSandboxesHours"
+                type="number"
+                min="0"
+                value={w.retainFailedSandboxesHours}
+                required
+              />
+            </label>
+          </div>
+          <label class="opt">
+            <span class="tx">
+              <span class="t">Let a sandbox reach the network while code is being written</span>
+              <span class="d">
+                Off is the default: an agent writing code does not need the internet, and a
+                sandbox that cannot reach it cannot send anything out.
               </span>
             </span>
-            <select
-              value={person.role}
-              aria-label="Role for {person.name}"
-              onchange={async (e) => {
-                const result = await changeRole({
-                  userId: person.id,
-                  role: e.currentTarget.value as 'admin' | 'member'
-                });
-                notice = ('problem' in result ? result.problem : result.message) ?? null;
-              }}
-            >
+            <input
+              type="checkbox"
+              class="switch"
+              name="sandboxNetworkDuringImplement"
+              value="true"
+              checked={w.sandboxNetworkDuringImplement}
+            />
+          </label>
+        </section>
+
+        <section class="card" id="limits">
+          <header>
+            <span class="ic"><Icon name="coins" size={18} /></span>
+            <div class="tx">
+              <h2>Cost limits</h2>
+              <p>
+                The ceilings a member's own limits cannot exceed. A limit somebody sets on their
+                agent is capped at these, so it can only ever lower what a run may consume.
+              </p>
+            </div>
+          </header>
+          <div class="grid">
+            <label class="f">
+              <span>Most a run may spend, in dollars</span>
+              <input name="defaultCostCeilingUsd" value={w.defaultCostCeilingUsd} required />
+            </label>
+            <label class="f">
+              <span>Longest a run may take, in minutes</span>
+              <input
+                name="defaultTimeCeilingMinutes"
+                type="number"
+                min="1"
+                value={w.defaultTimeCeilingMinutes}
+                required
+              />
+            </label>
+            <label class="f">
+              <span>Runs that may execute at once</span>
+              <input
+                name="maxConcurrentRuns"
+                type="number"
+                min="1"
+                value={w.maxConcurrentRuns}
+                required
+              />
+            </label>
+          </div>
+        </section>
+
+        <!-- Each connection test says which of three things is wrong (FR-005a) -->
+        <div class="tests" class:ok={tested?.every((row) => row.state === 'reachable')}>
+          <Icon name="activity" size={16} />
+          {#if tested}
+            <ul class="results">
+              {#each tested as result (result.what)}
+                <li class={STATE_TONE[result.state] ?? ''}>
+                  <strong>{WHAT[result.what] ?? result.what}</strong>
+                  <span>{result.detail}</span>
+                </li>
+              {/each}
+            </ul>
+          {:else}
+            <span class="t">
+              A test tells reachable-and-authorised apart from unreachable and from refused,
+              because those three need different fixes.
+            </span>
+          {/if}
+          <button type="button" class="secondary" disabled={testing} onclick={test}>
+            <Icon name="plug" size={16} />
+            <span>{testing ? 'Testing…' : 'Test connection'}</span>
+          </button>
+        </div>
+
+        {#if saveWorkspace.fields.allIssues()?.length}
+          <ul class="banner bad" role="alert">
+            {#each saveWorkspace.fields.allIssues() ?? [] as issue (issue.message)}
+              <li>{issue.message}</li>
+            {/each}
+          </ul>
+        {/if}
+        {#if saveWorkspace.result && 'problem' in saveWorkspace.result}
+          <p class="banner bad" role="alert">{saveWorkspace.result.problem}</p>
+        {:else if saveWorkspace.result && 'message' in saveWorkspace.result}
+          <p class="banner good" role="status">{saveWorkspace.result.message}</p>
+        {/if}
+        <div class="end">
+          <button class="primary" type="submit" disabled={saveWorkspace.pending > 0}>
+            <Icon name="save" size={16} />
+            <span>Save</span>
+          </button>
+        </div>
+      </form>
+
+      <!-- A credential is written and never read back (FR-011) -->
+      <section class="card" id="keys">
+        <header>
+          <span class="ic"><Icon name="key-round" size={18} /></span>
+          <div class="tx">
+            <h2>Claude CLI &amp; keys</h2>
+            <p>
+              Stored encrypted, supplied to a run as environment, and never shown again — not even
+              to you. Replacing one is the only way to change it.
+            </p>
+          </div>
+          <span class="badge {w.hasModelCredential ? 'ok' : 'warn'}">
+            <span class="dot"></span>
+            {w.hasModelCredential ? 'One is stored' : 'None yet'}
+          </span>
+        </header>
+        <form {...modelKey} class="grid">
+          <input type="hidden" name="kind" value="model" />
+          <label class="f">
+            <span>Model credential</span>
+            <input name="token" type="password" placeholder="paste it here" autocomplete="off" />
+          </label>
+          <div class="f end-field">
+            <button type="submit" class="secondary" disabled={modelKey.pending > 0}>
+              <Icon name="key-round" size={16} />
+              <span>Store</span>
+            </button>
+          </div>
+        </form>
+        {#if modelKey.fields.allIssues()?.length}
+          <ul class="banner bad" role="alert">
+            {#each modelKey.fields.allIssues() ?? [] as issue (issue.message)}
+              <li>{issue.message}</li>
+            {/each}
+          </ul>
+        {/if}
+        {#if modelKey.result && 'problem' in modelKey.result}
+          <p class="banner bad" role="alert">{modelKey.result.problem}</p>
+        {:else if modelKey.result && 'message' in modelKey.result}
+          <p class="banner good" role="status">{modelKey.result.message}</p>
+        {/if}
+      </section>
+
+      <section class="card" id="design">
+        <header>
+          <span class="ic pink"><Icon name="palette" size={18} /></span>
+          <div class="tx">
+            <h2>Design · pen.dev</h2>
+            <p>
+              Used only by design steps. Screens are exported as images and the .pen file is
+              committed with the code.
+            </p>
+          </div>
+          <span class="badge {w.hasDesignCredential ? 'ok' : ''}">
+            <span class="dot"></span>
+            {w.hasDesignCredential ? 'Signed in' : 'Not set up'}
+          </span>
+        </header>
+        <form {...designKey} class="grid">
+          <input type="hidden" name="kind" value="design" />
+          <label class="f">
+            <span>Design credential</span>
+            <input name="token" type="password" placeholder="paste it here" autocomplete="off" />
+          </label>
+          <div class="f end-field">
+            <button type="submit" class="secondary" disabled={designKey.pending > 0}>
+              <Icon name="key-round" size={16} />
+              <span>Store design credential</span>
+            </button>
+          </div>
+        </form>
+        {#if designKey.fields.allIssues()?.length}
+          <ul class="banner bad" role="alert">
+            {#each designKey.fields.allIssues() ?? [] as issue (issue.message)}
+              <li>{issue.message}</li>
+            {/each}
+          </ul>
+        {/if}
+        {#if designKey.result && 'problem' in designKey.result}
+          <p class="banner bad" role="alert">{designKey.result.problem}</p>
+        {:else if designKey.result && 'message' in designKey.result}
+          <p class="banner good" role="status">{designKey.result.message}</p>
+        {/if}
+        <p class="quiet">
+          A design step's model and export settings belong to the step, not here — set them on the
+          step in the pipeline builder.
+        </p>
+      </section>
+
+      <section class="card" id="members">
+        <header>
+          <span class="ic"><Icon name="user" size={18} /></span>
+          <div class="tx">
+            <h2>Members</h2>
+            <p>
+              An administrator configures the workspace. Everything else — pipelines, agents,
+              skills — goes by who owns it.
+            </p>
+          </div>
+        </header>
+
+        {#if !people.ready}
+          <p class="quiet">Loading…</p>
+        {:else}
+          <ul class="people">
+            {#each people.current as person (person.id)}
+              <li>
+                <span class="who">
+                  <strong>{person.name}</strong>
+                  <span class="quiet">{person.email}</span>
+                </span>
+                <span class="quiet">
+                  {person.ticketsCreated} ticket{person.ticketsCreated === 1 ? '' : 's'}
+                </span>
+                <select
+                  value={person.role}
+                  aria-label="Role for {person.name}"
+                  onchange={async (event) => {
+                    const result = await changeRole({
+                      userId: person.id,
+                      role: event.currentTarget.value as 'admin' | 'member',
+                    });
+                    notice = ('problem' in result ? result.problem : result.message) ?? null;
+                  }}
+                >
+                  <option value="member">Member</option>
+                  <option value="admin">Administrator</option>
+                </select>
+                {#if person.id !== data.user.id}
+                  <button
+                    type="button"
+                    class="danger"
+                    onclick={async () => {
+                      const result = await removeMember(person.id);
+                      notice = ('problem' in result ? result.problem : result.message) ?? null;
+                    }}>Remove</button
+                  >
+                {:else}
+                  <span class="quiet">you</span>
+                {/if}
+              </li>
+            {/each}
+          </ul>
+        {/if}
+
+        <form {...inviteMember} class="invite">
+          <label class="f">
+            <span>Name</span>
+            <input name="name" required />
+          </label>
+          <label class="f">
+            <span>Email</span>
+            <input name="email" type="email" required />
+          </label>
+          <label class="f">
+            <span>Role</span>
+            <select name="role">
               <option value="member">Member</option>
               <option value="admin">Administrator</option>
             </select>
-            {#if person.id !== data.user.id}
-              <button
-                type="button"
-                class="danger"
-                onclick={async () => {
-                  const result = await removeMember(person.id);
-                  notice = ('problem' in result ? result.problem : result.message) ?? null;
-                }}>Remove</button
-              >
-            {:else}
-              <span class="muted small">you</span>
-            {/if}
-          </li>
-        {/each}
-      </ul>
-    {/if}
+          </label>
+          <button type="submit" class="secondary" disabled={inviteMember.pending > 0}>
+            <Icon name="plus" size={16} />
+            <span>Invite</span>
+          </button>
+        </form>
+        {#if inviteMember.fields.allIssues()?.length}
+          <ul class="banner bad" role="alert">
+            {#each inviteMember.fields.allIssues() ?? [] as issue (issue.message)}
+              <li>{issue.message}</li>
+            {/each}
+          </ul>
+        {/if}
+        {#if inviteMember.result && 'problem' in inviteMember.result}
+          <p class="banner bad" role="alert">{inviteMember.result.problem}</p>
+        {/if}
+      </section>
 
-    <form {...inviteMember} class="invite">
-      <label>
-        <span class="small muted">Name</span>
-        <input name="name" required />
-      </label>
-      <label>
-        <span class="small muted">Email</span>
-        <input name="email" type="email" required />
-      </label>
-      <label>
-        <span class="small muted">Role</span>
-        <select name="role">
-          <option value="member">Member</option>
-          <option value="admin">Administrator</option>
-        </select>
-      </label>
-      <button type="submit" disabled={inviteMember.pending > 0}>Invite</button>
-    </form>
-    {#if inviteMember.fields.allIssues()?.length}
-      <ul class="errors" role="alert">
-        {#each inviteMember.fields.allIssues() ?? [] as issue (issue.message)}
-          <li>{issue.message}</li>
-        {/each}
-      </ul>
-    {/if}
-    {#if inviteMember.result && 'problem' in inviteMember.result}
-      <p class="errors" role="alert">{inviteMember.result.problem}</p>
-    {/if}
-  </section>
+      <section class="card" id="notifications">
+        <header>
+          <span class="ic"><Icon name="bell" size={18} /></span>
+          <div class="tx">
+            <h2>Notifications</h2>
+            <p>Who is told when a run needs a person, and how.</p>
+          </div>
+          <span class="badge"><span class="dot"></span>Nothing to configure</span>
+        </header>
+        <!--
+          Stated rather than offered. A checkpoint resolves its own approvers
+          from the step, and this deployment has no channel to send to: there
+          is nothing here a setting could change, and a form that pretended
+          otherwise would be worse than the truth.
+        -->
+        <p class="quiet">
+          A checkpoint decides who may approve it — anyone in the workspace, the ticket's author,
+          or named people — on the step itself, in the pipeline builder. When a run reaches one,
+          those people are resolved and recorded, and the notice is written to the application
+          log.
+        </p>
+        <p class="quiet">
+          To send it somewhere a person will see, add a Notify step to the pipeline: it goes out
+          through n8n, which is where this deployment's Slack, email and webhook connections live.
+        </p>
+      </section>
 
-  <!-- Runs beyond the cap wait, and each author sees where (FR-082) -->
-  {#if waiting.ready && waiting.current.entries.length > 0}
-    <section class="card queue">
-      <h2 class="section">
-        Runs now <span class="muted">
-          {waiting.current.executing} of {waiting.current.cap} executing
-          {#if waiting.current.waiting > 0}&middot; {waiting.current.waiting} waiting{/if}
-        </span>
-      </h2>
-      <ul class="people">
-        {#each waiting.current.entries as entry (entry.runId)}
-          <li>
-            <span class="who">
-              <a href="/tickets/{entry.ticketId}">
-                <strong>{entry.reference}</strong> {entry.title}
-              </a>
-              <span class="muted small">{entry.authorName ?? 'unknown'}</span>
-            </span>
-            <span class="badge small {entry.position === null ? 'live' : 'warn'}">
-              {entry.position === null ? 'executing' : `position ${entry.position}`}
-            </span>
-          </li>
-        {/each}
-      </ul>
-    </section>
-  {/if}
+      <!-- Runs beyond the cap wait, and each author sees where (FR-082) -->
+      {#if waiting.ready && waiting.current.entries.length > 0}
+        <section class="card queue">
+          <header>
+            <span class="ic"><Icon name="timer" size={18} /></span>
+            <div class="tx">
+              <h2>Runs now</h2>
+              <p>
+                {waiting.current.executing} of {waiting.current.cap} executing
+                {#if waiting.current.waiting > 0}&middot; {waiting.current.waiting} waiting{/if}
+              </p>
+            </div>
+          </header>
+          <ul class="people">
+            {#each waiting.current.entries as entry (entry.runId)}
+              <li>
+                <span class="who">
+                  <a href="/tickets/{entry.ticketId}">
+                    <strong>{entry.reference}</strong>
+                    {entry.title}
+                  </a>
+                  <span class="quiet">{entry.authorName ?? 'unknown'}</span>
+                </span>
+                <span class="badge {entry.position === null ? 'live' : 'warn'}">
+                  <span class="dot"></span>
+                  {entry.position === null ? 'executing' : `position ${entry.position}`}
+                </span>
+              </li>
+            {/each}
+          </ul>
+        </section>
+      {/if}
+    </div>
+  </div>
 {/if}
 
 <style>
-  .notice { border-left: 3px solid var(--accent); margin-bottom: 16px; padding: 12px 16px; }
-  .warning { border-left: 3px solid var(--warning); margin-bottom: 16px; padding: 12px 16px; color: #8a6100; }
-  .failure { border-left: 3px solid var(--danger); padding: 12px 16px; }
-  section, form { margin-bottom: 16px; display: flex; flex-direction: column; gap: 10px; }
-  section p, form p { margin: 0; }
+  .wrap {
+    display: flex;
+    align-items: flex-start;
+    gap: 24px;
+  }
+  .sections {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    width: 200px;
+    flex: none;
+    position: sticky;
+    top: 16px;
+  }
+  .sections a {
+    padding: 9px 12px;
+    border-radius: var(--r-sm);
+    font-size: 13px;
+    color: var(--text-2);
+    text-decoration: none;
+  }
+  .sections a:hover,
+  .sections a:target {
+    background: var(--surface);
+    color: var(--text);
+  }
+
+  .content,
+  .stack {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .card {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 20px;
+    background: var(--surface);
+    border: 1px solid var(--card-border);
+    border-radius: var(--r-lg);
+    box-shadow: 0 1px 2px #0f172a0a;
+    scroll-margin-top: 16px;
+  }
+  .card > header {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .ic {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border-radius: var(--r-sm);
+    background: var(--surface-2);
+    color: var(--text-2);
+    flex: none;
+  }
+  .ic.pink {
+    background: var(--design-soft);
+    color: var(--design);
+  }
+  .card > header .tx {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+  }
+  h2 {
+    margin: 0;
+    font-family: var(--font-head);
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .card > header p {
+    margin: 0;
+    font-size: 12px;
+    color: var(--text-2);
+  }
+
   .grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 10px;
+    gap: 14px;
   }
-  label { display: flex; flex-direction: column; gap: 4px; }
-  label.inline { flex-direction: row; align-items: center; gap: 8px; }
-  input, select {
-    padding: 8px 10px;
-    border: 1px solid var(--border);
-    border-radius: var(--r-sm);
-    font: inherit;
-    width: 100%;
-    box-sizing: border-box;
+  .grid.four {
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   }
-  label.inline input { width: auto; }
-  .row { display: flex; gap: 8px; }
-  .row.end { justify-content: flex-end; }
-  button {
-    padding: 8px 14px;
+  .f {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+  }
+  .f > span,
+  .as-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .f small {
+    font-size: 11px;
+    color: var(--text-3);
+  }
+  .end-field {
+    justify-content: flex-end;
+  }
+  input,
+  select {
+    padding: 9px 12px;
     border: 1px solid var(--border);
     border-radius: var(--r-sm);
     background: var(--surface);
     font: inherit;
+    font-size: 13px;
+    color: var(--text);
+    width: 100%;
+  }
+  input:read-only {
+    background: var(--surface-2);
+    color: var(--text-2);
+  }
+
+  /* The sandbox option, as the artboard draws it. */
+  .opt {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
     cursor: pointer;
-    white-space: nowrap;
   }
-  button.primary {
+  .opt .tx {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+  .opt .t {
+    font-size: 13px;
+    color: var(--text);
+  }
+  .opt .d {
+    font-size: 11px;
+    color: var(--text-3);
+  }
+  .switch {
+    appearance: none;
+    position: relative;
+    width: 36px;
+    height: 20px;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: var(--flow-line);
+    cursor: pointer;
+    flex: none;
+    transition: background 120ms ease;
+  }
+  .switch::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    border-radius: 999px;
+    background: var(--surface);
+    transition: transform 120ms ease;
+  }
+  .switch:checked {
     background: var(--accent);
-    border-color: var(--accent);
-    color: #fff;
-    font-weight: 600;
   }
-  button.danger { color: var(--danger); border-color: #f3c7c4; }
-  .results, .people { list-style: none; margin: 0; padding: 0; }
-  .results li, .people li {
+  .switch:checked::after {
+    transform: translateX(16px);
+  }
+
+  .tests {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 8px 2px;
+    padding: 12px 16px;
+    border-radius: var(--r-md);
+    background: var(--surface-2);
+    font-size: 12px;
+    color: var(--text-2);
+  }
+  .tests.ok {
+    background: var(--success-soft);
+    color: var(--success);
+  }
+  .tests > :global(svg) {
+    flex: none;
+  }
+  .tests .t {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+  }
+  .results {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    flex: 1;
+    min-width: 0;
+  }
+  .results li {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .results li.bad {
+    color: var(--danger);
+  }
+  .results li.warn {
+    color: var(--warning);
+  }
+  .results li.ok {
+    color: var(--success);
+  }
+
+  .people {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .people li {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0;
     border-top: 1px solid var(--border);
   }
-  .results li:first-child, .people li:first-child { border-top: 0; }
-  .results li span:last-child { display: flex; flex-direction: column; }
-  .who { flex: 1; display: flex; flex-direction: column; min-width: 0; }
-  .who a { text-decoration: none; color: inherit; }
+  .people li:first-child {
+    border-top: 0;
+  }
+  .who {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    flex: 1;
+    min-width: 0;
+    font-size: 13px;
+  }
+  .who a {
+    color: inherit;
+    text-decoration: none;
+  }
+  .who a:hover {
+    color: var(--accent-text);
+  }
+  .people select {
+    width: auto;
+  }
+
   .invite {
-    display: grid;
-    grid-template-columns: 1fr 1fr auto auto;
-    gap: 8px;
-    align-items: end;
-    margin: 8px 0 0;
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+    flex-wrap: wrap;
     padding-top: 12px;
     border-top: 1px solid var(--border);
   }
-  .errors { margin: 0; padding-left: 18px; color: var(--danger); }
-  .ok { color: var(--success); }
-  @media (max-width: 720px) {
-    .invite { grid-template-columns: 1fr; }
+  .invite .f {
+    flex: 1;
+    min-width: 160px;
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: var(--surface-2);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-2);
+    flex: none;
+  }
+  .badge.ok {
+    background: var(--success-soft);
+    color: var(--success);
+  }
+  .badge.warn {
+    background: var(--warning-soft);
+    color: var(--warning);
+  }
+  .badge.bad {
+    background: var(--danger-soft);
+    color: var(--danger);
+  }
+  .badge.live {
+    background: var(--accent-soft);
+    color: var(--accent-text);
+  }
+  .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: currentcolor;
+    flex: none;
+  }
+
+  button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-radius: var(--r-sm);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .secondary {
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+  }
+  .secondary :global(svg) {
+    color: var(--text-2);
+  }
+  .secondary:hover:not(:disabled) {
+    border-color: var(--accent);
+  }
+  .primary {
+    border: 1px solid var(--accent);
+    background: var(--accent);
+    color: var(--text-inv);
+    font-weight: 600;
+  }
+  .danger {
+    padding: 6px 12px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    font-size: 13px;
+    color: var(--danger);
+  }
+  button:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+  .end {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .quiet {
+    margin: 0;
+    font-size: 12px;
+    color: var(--text-2);
+  }
+  .banner {
+    margin: 0;
+    padding: 12px 16px;
+    border-radius: var(--r-md);
+    background: var(--surface-2);
+    font-size: 13px;
+    color: var(--text-2);
+  }
+  ul.banner {
+    padding-left: 34px;
+  }
+  .banner.warn {
+    background: var(--warning-soft);
+    color: var(--warning);
+  }
+  .banner.bad {
+    background: var(--danger-soft);
+    color: var(--danger);
+  }
+  .banner.good {
+    background: var(--success-soft);
+    color: var(--success);
+  }
+  .notice {
+    border-left: 3px solid var(--accent);
+    padding: 12px 16px;
+  }
+  .failure {
+    border-left: 3px solid var(--danger);
+    padding: 12px 16px;
+    color: var(--danger);
+  }
+
+  @media (max-width: 1000px) {
+    .wrap {
+      flex-direction: column;
+    }
+    .sections {
+      flex-direction: row;
+      flex-wrap: wrap;
+      width: auto;
+      position: static;
+    }
   }
 </style>
