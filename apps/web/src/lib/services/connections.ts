@@ -1,6 +1,6 @@
 import type { Database } from '@factory/db';
 import { repositories } from '@factory/db/schema';
-import { createLogger } from '@factory/shared';
+import { createLogger, type ExecutionHost } from '@factory/shared';
 import { eq } from 'drizzle-orm';
 import type { SessionUser } from './auth';
 import { requireAdmin } from './authz';
@@ -30,6 +30,16 @@ export interface ConnectionResult {
   /** Absent when nothing answered. */
   status?: number;
   ms?: number;
+  /**
+   * Which execution host the Runner reports it is configured for (002 FR-012).
+   *
+   * Read from the probe rather than from this application's own environment,
+   * because the Runner is the only thing that knows: it is a separate
+   * deployment with its own configuration, and two copies of the answer would
+   * eventually disagree — at which point the settings screen would describe
+   * limits that the service does not apply. Absent until something answers.
+   */
+  executionHost?: ExecutionHost;
 }
 
 const STATE_TEXT: Record<ConnectionState, string> = {
@@ -57,7 +67,12 @@ export interface ProbeDeps {
 async function probe(
   what: ConnectionResult['what'],
   url: string | null,
-  options: { headers?: Record<string, string>; expect?: (body: string) => boolean } = {},
+  options: {
+    headers?: Record<string, string>;
+    expect?: (body: string) => boolean;
+    /** Anything else worth keeping from a body we are already reading. */
+    read?: (body: string) => Partial<ConnectionResult>;
+  } = {},
   deps: ProbeDeps = {},
 ): Promise<ConnectionResult> {
   if (!url) return { what, state: 'unconfigured', detail: STATE_TEXT.unconfigured };
@@ -90,13 +105,22 @@ async function probe(
 
     // Reachable and authorised is not enough: something else could be
     // listening on that port and answering 200 to everything.
-    if (options.expect) {
+    let extra: Partial<ConnectionResult> = {};
+    if (options.expect || options.read) {
       const body = await response.text();
-      if (!options.expect(body)) {
+      if (options.expect && !options.expect(body)) {
         return { what, state: 'wrong_shape', detail: STATE_TEXT.wrong_shape, status: 200, ms };
       }
+      extra = options.read?.(body) ?? {};
     }
-    return { what, state: 'reachable', detail: STATE_TEXT.reachable, status: response.status, ms };
+    return {
+      what,
+      state: 'reachable',
+      detail: STATE_TEXT.reachable,
+      status: response.status,
+      ms,
+      ...extra,
+    };
   } catch (error) {
     const ms = Date.now() - started;
     const aborted = error instanceof Error && error.name === 'AbortError';
@@ -151,6 +175,14 @@ export async function testRunner(
       // Reachable and authorised is still not enough: something else could
       // be listening on that port and answering 200 to everything.
       expect: (body) => body.includes('"service":"runner"'),
+      // Which host it is configured for, so the settings screen can say which
+      // of these limits that host actually enforces (FR-012). Parsed
+      // defensively: an older Runner does not report it, and that must read as
+      // "not known" rather than as a fault.
+      read: (body) => {
+        const host = /"execution_host"\s*:\s*"(docker|hosted)"/.exec(body)?.[1];
+        return host ? { executionHost: host as ExecutionHost } : {};
+      },
     },
     deps,
   );
