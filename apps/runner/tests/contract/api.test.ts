@@ -60,7 +60,7 @@ test('credentials reach the container as environment, never as workspace files (
 
 test('the design credential is supplied only to a pipeline that has a design step (FR-083a)', () => {
   expect(pipelineNeedsDesign(snapshot)).toBe(false);
-  expect(buildEnvironment(snapshot, credentials).PEN_API_KEY).toBeUndefined();
+  expect(buildEnvironment(snapshot, credentials).PEN_CLI_KEY).toBeUndefined();
 
   const withDesign = {
     ...snapshot,
@@ -74,7 +74,7 @@ test('the design credential is supplied only to a pipeline that has a design ste
   };
   expect(pipelineNeedsDesign(withDesign)).toBe(true);
   expect(
-    buildEnvironment(withDesign, { ...credentials, designKey: 'pen_key_1234' }).PEN_API_KEY,
+    buildEnvironment(withDesign, { ...credentials, designKey: 'pen_key_1234' }).PEN_CLI_KEY,
   ).toBe('pen_key_1234');
 });
 

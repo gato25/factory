@@ -40,8 +40,15 @@ USER root
 # and `@pen.dev/cli` >= 22.19.0.
 RUN npm install -g @anthropic-ai/claude-code@2.1.268 \
     && claude --version
+#
+# The design CLI is verified by its presence, not by running it: `pen --version`
+# demands authentication ("Run \"pen login\" or set PEN_CLI_KEY") and there is no
+# credential at build time, by design — credentials reach a sandbox as
+# environment when the run starts (Principle V). So the check is that npm
+# installed the pinned version and put the binary on PATH.
 RUN npm install -g @pen.dev/cli@0.3.7 \
-    && pen --version
+    && npm ls -g --depth=0 @pen.dev/cli \
+    && command -v pen
 
 # A step's work runs as this user, and the workspace belongs to it (002 FR-003).
 #

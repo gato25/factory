@@ -43,7 +43,12 @@ export function buildEnvironment(
           'configured. Add one under Settings → Design.',
       );
     }
-    env.PEN_API_KEY = credentials.designKey;
+    // PEN_CLI_KEY, not PEN_API_KEY. The design CLI's own help calls this "CLI
+    // API key for CI/CD" and its auth resolves `PEN_CLI_KEY ?? PENCIL_CLI_KEY`;
+    // `PEN_API_KEY` appears nowhere in the CLI, so a correctly configured
+    // credential was being supplied under a name nothing read, and every design
+    // step failed with "Authentication required" (001 FR-083a).
+    env.PEN_CLI_KEY = credentials.designKey;
   }
   return env;
 }
