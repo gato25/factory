@@ -350,6 +350,26 @@ sandboxes — far above the workspace concurrency ceiling that gates runs first.
 provider readies capacity. That is longer than the retry window by design; it belongs in the deploy
 checklist, and the readiness endpoint (FR-020) is where it should be visible.
 
+**Observed, 2026-09-11 — and there are TWO distinct failures here, not one.** Both appeared while
+running the spike, and the retry in T056 has to cover both:
+
+| Message | Source | Behaviour |
+|---|---|---|
+| `Maximum number of running container instances exceeded. Try again later, or try configuring a higher value for max_instances` | the per-class `max_instances` ceiling | The SDK retried it itself, with backoff, for ~140 s (`attempt: 1, delayMs: 3000, remainingSec: 139`) before surfacing |
+| `There is no container instance that can be provided to this Durable Object, try again later` | the platform having no capacity — the error in `cloudflare/containers#45` | Surfaced **immediately**, with no SDK retry |
+
+Two consequences. First, **T056 cannot key off one message**: the second is the genuinely transient
+one and the SDK does not retry it, so it is precisely the case FR-024's bounded retry exists for.
+The first is a configuration mistake dressed as a capacity problem, and retrying it for 140 s is
+wasted — it will never clear on its own.
+
+Second, the ~140 s the SDK spends on the first is longer than FR-024's 30-second window, so our
+retry and the SDK's overlap. The plan should say which one owns the deadline, or a run can sit for
+two and a half minutes inside what was specified as a thirty-second retry.
+
+The second error was seen immediately after a deploy that added three new container classes, which
+is also the post-deploy provisioning case above rather than steady-state scarcity.
+
 ---
 
 ## D15 — Measured latency: ~700 ms warm, ~4 s cold, per sandbox
