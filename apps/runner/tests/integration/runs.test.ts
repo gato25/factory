@@ -52,7 +52,7 @@ test('start creates one sandbox and remembers it', async () => {
   expect(host.created[0]?.cpu).toBe(2);
   expect(host.created[0]?.wallClockMinutes).toBe(60);
   expect(host.created[0]?.network).toBe(false);
-  expect(store.get(snapshot.run_id)?.containerId).toBe('container-1');
+  expect((await store.get(snapshot.run_id))?.containerId).toBe('container-1');
 });
 
 test('start writes each agent prompt and skill into the workspace (FR-037)', async () => {
@@ -254,7 +254,7 @@ test('destroy releases the sandbox and forgets the run (SC-012)', async () => {
 
   expect(result.released).toBe(true);
   expect(host.destroyed).toEqual(['container-1']);
-  expect(store.get(snapshot.run_id)).toBeUndefined();
+  expect(await store.get(snapshot.run_id)).toBeUndefined();
 });
 
 test("a failed run's sandbox is retained for the configured window (FR-086)", async () => {
@@ -268,7 +268,7 @@ test("a failed run's sandbox is retained for the configured window (FR-086)", as
   expect(result.retainedUntil).toBeTruthy();
   expect(host.destroyed).toEqual([]);
   // Still this run's, so whatever sweeps it up has the container id.
-  expect(store.get(snapshot.run_id)?.containerId).toBe('container-1');
+  expect((await store.get(snapshot.run_id))?.containerId).toBe('container-1');
 });
 
 test('destroying a run with no sandbox is a no-op, not an error', async () => {

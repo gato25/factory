@@ -5,6 +5,7 @@ import {
   type Step,
   type StepOutcome,
 } from '@factory/shared';
+import type { ExecutionHostName } from './config';
 import { commitDesign } from './container/commit';
 import { writeAgentConfig } from './container/config';
 import { destroyRunWorkspace } from './container/destroy';
@@ -65,23 +66,43 @@ export interface RunContext {
   snapshot: PipelineSnapshot;
   credentials: ResolvedCredentials;
   sandbox: SandboxLimits;
+  /**
+   * Which execution host this run started on (002 FR-025a).
+   *
+   * A run must finish where it began. Nothing about selecting a host by
+   * configuration stops a deployment's choice changing while a run is in
+   * flight, and a run that executed half its steps on one host and half on
+   * another would have no coherent workspace at all.
+   */
+  executionHost?: ExecutionHostName;
 }
 
-/** Where a run's container id is remembered between calls. */
+/** A run's state between the separate requests that make up the run. */
+export type RunRecord = RunContext & { containerId?: string };
+
+/**
+ * Where a run's state lives between calls.
+ *
+ * Asynchronous because the hosted implementation is Durable Object storage
+ * (002 D3): a Worker isolate does not survive between requests, so the
+ * in-process `Map` that served the daemon cannot serve FR-006. `memoryStore`
+ * keeps the same interface, so every existing test still drives the logic
+ * without either a database or an account.
+ */
 export interface RunStore {
-  get(runId: string): (RunContext & { containerId?: string }) | undefined;
-  set(runId: string, value: RunContext & { containerId?: string }): void;
-  delete(runId: string): void;
+  get(runId: string): Promise<RunRecord | undefined>;
+  set(runId: string, value: RunRecord): Promise<void>;
+  delete(runId: string): Promise<void>;
 }
 
 export function memoryStore(): RunStore {
-  const runs = new Map<string, RunContext & { containerId?: string }>();
+  const runs = new Map<string, RunRecord>();
   return {
-    get: (runId) => runs.get(runId),
-    set: (runId, value) => {
+    get: async (runId) => runs.get(runId),
+    set: async (runId, value) => {
       runs.set(runId, value);
     },
-    delete: (runId) => {
+    delete: async (runId) => {
       runs.delete(runId);
     },
   };
@@ -144,7 +165,7 @@ export async function startRun(
     }
   }
 
-  store.set(snapshot.run_id, { ...context, containerId });
+  await store.set(snapshot.run_id, { ...context, containerId });
   return { container_id: containerId };
 }
 
@@ -170,7 +191,7 @@ export async function runStep(
   request: StepRequest,
   send: CallbackSender,
 ): Promise<StepOutcome> {
-  const state = store.get(runId);
+  const state = await store.get(runId);
   if (!state?.containerId) {
     throw new FactoryError('not_found', 'that run has no sandbox — start it first');
   }
@@ -203,7 +224,7 @@ export async function runStep(
   );
   if (recovery.recovered) {
     // The replacement is what later steps must use.
-    store.set(runId, { ...state, containerId: recovery.outcome.containerId });
+    await store.set(runId, { ...state, containerId: recovery.outcome.containerId });
     log.warn('a step ran in a replacement sandbox', {
       run_id: runId,
       step_index: stepIndex,
@@ -302,7 +323,7 @@ async function dispatch(
  * (FR-055a, FR-055b).
  */
 export async function verifyAndPush(host: ContainerHost, store: RunStore, runId: string) {
-  const state = store.get(runId);
+  const state = await store.get(runId);
   if (!state?.containerId) {
     throw new FactoryError('not_found', 'that run has no sandbox');
   }
@@ -329,7 +350,7 @@ export async function destroyRun(
   runId: string,
   options: { outcome?: 'done' | 'failed' | 'cancelled'; retainFailedHours?: number } = {},
 ) {
-  const state = store.get(runId);
+  const state = await store.get(runId);
   if (!state?.containerId) return { released: false, retainedUntil: undefined };
 
   const result = await destroyRunWorkspace(host, state.containerId, {
@@ -338,7 +359,7 @@ export async function destroyRun(
   });
   // A retained sandbox is still this run's, so the mapping stays until it
   // is actually released; whatever sweeps it up needs the container id.
-  if (result.destroyed) store.delete(runId);
+  if (result.destroyed) await store.delete(runId);
   return { released: result.destroyed, retainedUntil: result.retainedUntil };
 }
 

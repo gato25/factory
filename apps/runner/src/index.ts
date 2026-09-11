@@ -85,7 +85,7 @@ const routes: Route[] = [
       const body = (await request.json()) as StepRequest;
       if (!body?.step) throw new FactoryError('invalid_input', 'expected a step');
 
-      const state = store.get(runId);
+      const state = await store.get(runId);
       if (!state) throw new FactoryError('not_found', 'that run has no sandbox — start it first');
 
       const outcome = await runStep(
