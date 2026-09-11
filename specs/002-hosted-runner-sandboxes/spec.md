@@ -19,6 +19,10 @@ service instead, with the run execution service itself hosted rather than run on
   address, credential on every request, and the constitution's invariant reworded to say its
   subject is the component serving user sessions rather than network reachability. A network-level
   gate in front was considered and rejected as more setup than the risk warrants at this scale.
+- Q: When the hosting provider has no room to start another sandbox, should the run wait in line or
+  fail? → A: Neither as originally framed — retry the start over a bounded period (about 30
+  seconds), then fail naming capacity. A provider's capacity refusal is transient and is a
+  different thing from the workspace's own concurrency ceiling, which keeps its queue.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -57,6 +61,9 @@ run reaches a merge request. Delivers a usable product on infrastructure nobody 
 7. **Given** runs executing, **When** an operator replaces the credential that authenticates
    requests to the execution service, **Then** those runs continue to completion, and **Then** the
    replaced credential is refused once the replacement is in effect.
+8. **Given** an execution host that refuses a sandbox for capacity and then frees one, **When** a
+   run starts, **Then** the run obtains a sandbox without anybody retrying by hand and without the
+   member being shown a failure.
 
 ---
 
@@ -154,8 +161,15 @@ host and confirm runs execute on the other one with no code change.
 
 ### Edge Cases
 
-- **The execution service has no capacity.** A run that cannot get a sandbox must fail with a
-  message saying so, and must not be reported as a step that failed on its merits.
+- **The execution service has no capacity.** A refusal is usually transient and clears in seconds,
+  so the start must be retried for a bounded period before it counts as a failure. A run that still
+  cannot get a sandbox fails naming capacity, and must not be reported as a step that failed on its
+  merits. This is distinct from the workspace's own concurrency ceiling, which holds runs in a
+  queue showing each author their position (`specs/001-code-factory-mvp` FR-082) — a provider's
+  transient refusal must not consume a place in that queue.
+- **The first minutes after a new deployment.** A newly deployed execution service may refuse
+  sandbox starts while the provider readies capacity, for longer than the bounded retry allows.
+  This must be legible as a deployment that is not ready yet, not as a run that failed.
 - **A sandbox disappears between two steps.** The run must recognise the loss as a loss of the
   sandbox rather than as a failing step, and the workspace's contents must be reconstructable, or
   the run must fail saying the workspace was lost.
@@ -250,8 +264,13 @@ host and confirm runs execute on the other one with no code change.
   sandbox capacity at all while no run is executing.
 - **FR-023**: System MUST keep a failed run's sandbox inspectable for exactly the window the
   workspace configured, and MUST release it once that window passes.
-- **FR-024**: System MUST report a run that could not obtain a sandbox as having failed to obtain
-  one, distinguishably from a step that failed on its merits.
+- **FR-024**: System MUST retry a sandbox start refused for capacity, over a bounded period, before
+  treating the refusal as a failure.
+- **FR-024a**: System MUST report a run that still could not obtain a sandbox once that period
+  passes as having failed to obtain one, naming capacity as the reason, distinguishably from a step
+  that failed on its merits.
+- **FR-024b**: System MUST NOT let a capacity refusal consume a run's place in the workspace's
+  concurrency queue.
 
 #### Operability
 
@@ -308,6 +327,8 @@ host and confirm runs execute on the other one with no code change.
   on the old one, demonstrated by the existing tests for those guarantees passing unchanged.
 - **SC-012**: Replacing the execution service's credential takes effect within 5 minutes and
   interrupts 0 runs already executing.
+- **SC-013**: 0 runs are failed for capacity without the bounded retry having been exhausted first,
+  and a capacity refusal that clears within that period costs the member nothing but latency.
 
 ## Assumptions
 
@@ -334,6 +355,14 @@ host and confirm runs execute on the other one with no code change.
   its own success criteria rather than being folded into operability.
 - **One execution host per deployment.** Nothing here asks for a run to choose its host, or for two
   hosts to be used at once.
+- **The bounded retry in FR-024 is about 30 seconds**, on the evidence that a capacity refusal on
+  the intended provider clears in seconds rather than minutes. The figure is a starting point for
+  the plan to tune against real behaviour, not a measured one.
+- **The provider's concurrency ceiling is far above the workspace's.** The intended provider allows
+  on the order of hundreds of concurrent sandboxes at this feature's default ceilings, so the
+  workspace's own concurrency limit — not the provider — is expected to be the binding constraint,
+  and the queue in `specs/001-code-factory-mvp` FR-082 keeps its existing meaning. The plan should
+  confirm the provider's current figures rather than inherit this assumption.
 
 ## Dependencies
 
