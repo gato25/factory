@@ -184,10 +184,7 @@
             <span class="ic"><Icon name="container" size={18} /></span>
             <div class="tx">
               <h2>Sandbox · Docker</h2>
-              <p>
-                Each run gets one fresh container with the repository, the Claude CLI and your
-                toolchain.
-              </p>
+              <p>Each run gets one fresh container with the repo, Claude CLI and your toolchain.</p>
             </div>
             {#await Promise.resolve(stateOf('runner', Boolean(w.runnerBaseUrl))) then s}
               <span class="badge {s.tone}"><span class="dot"></span>{s.label}</span>
