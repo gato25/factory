@@ -1,0 +1,993 @@
+{
+  "name": "run-ticket-pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "run-ticket-pipeline",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-ticket-queued",
+      "name": "Webhook: ticket queued",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-720, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const s = $input.first().json;\nreturn [{ json: { ...s, index: 0, facts: {}, spent_usd: 0, step_index: 0 } }];"
+      },
+      "id": "initialise-state",
+      "name": "Initialise state",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-520, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.RUNNER_BASE_URL }}/runs/{{ $json.run_id }}/start",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "authorization",
+              "value": "=Bearer {{ $env.RUNNER_AUTH_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ snapshot: $json }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "runner-start",
+      "name": "Runner: start",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [-320, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.callback_url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "authorization",
+              "value": "=Bearer {{ $json.resume_secret }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ run_id: $json.run_id, attempt: $json.attempt, step_index: $json.step_index ?? 0, event: 'started', ...($json.callback_extra ?? {}) }) }}",
+        "options": {}
+      },
+      "id": "callback-started",
+      "name": "Callback: started",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [-120, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "\n// Mirrors packages/shared/src/step-loop.ts \u2014 the orchestrator's ONLY logic:\n// evaluate the condition, then branch on the type. It knows nothing about what\n// a specification, a design or a plan is (Constitution Principle III).\nconst state = $input.first().json;\nconst steps = state.pipeline.steps;\nconst index = state.index ?? 0;\nconst facts = state.facts ?? {};\n\nfunction conditionHolds(condition) {\n  if (condition === 'always') return true;\n  if (condition === 'ticket_has_ui') return facts.hasUi === true;\n  if (condition === 'ticket_has_no_ui') return facts.hasUi !== true;\n  return true;\n}\n\nconst CONDITION_TEXT = {\n  ticket_has_ui: 'ticket has no UI change',\n  ticket_has_no_ui: 'ticket changes the interface'\n};\n\nif (index >= steps.length) {\n  return [{ json: { ...state, action: 'finish' } }];\n}\n// A pause was asked for: the step that was running has already concluded and\n// been reported, and nothing further begins (FR-096). The run keeps its\n// status, so the interface shows exactly where it stopped.\nif (state.paused === true) {\n  return [{ json: { ...state, action: 'hold', step_index: index } }];\n}\nconst step = steps[index];\nif (conditionHolds(step.condition)) {\n  return [{ json: { ...state, action: 'run', step, step_index: index } }];\n}\nreturn [\n  {\n    json: {\n      ...state,\n      action: 'skip',\n      step,\n      step_index: index,\n      condition_not_met: CONDITION_TEXT[step.condition] ?? 'never'\n    }\n  }\n];\n"
+      },
+      "id": "decide-next-step",
+      "name": "Decide next step",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [80, 300]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "run",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "outputKey": "run"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "skip",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "outputKey": "skip"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "finish",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "outputKey": "finish"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "hold",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "outputKey": "hold"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "switch-on-action",
+      "name": "Switch on action",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [280, 300]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.step.type }}",
+                    "rightValue": "agent",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "outputKey": "agent"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.step.type }}",
+                    "rightValue": "design",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "outputKey": "design"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.step.type }}",
+                    "rightValue": "shell",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "outputKey": "shell"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.step.type }}",
+                    "rightValue": "checkpoint",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "outputKey": "checkpoint"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.step.type }}",
+                    "rightValue": "notify",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "outputKey": "notify"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "switch-on-step-type",
+      "name": "Switch on step type",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [500, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.RUNNER_BASE_URL }}/runs/{{ $json.run_id }}/steps/{{ $json.step_index }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "authorization",
+              "value": "=Bearer {{ $env.RUNNER_AUTH_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ step: $json.step, feedback: $json.feedback, has_ui: $json.facts.hasUi }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "runner-run-step",
+      "name": "Runner: run step",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [720, 60]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.callback_url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "authorization",
+              "value": "=Bearer {{ $json.resume_secret }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ run_id: $json.run_id, attempt: $json.attempt, step_index: $json.step_index ?? 0, event: 'step_finished', ...($json.callback_extra ?? {}) }) }}",
+        "options": {}
+      },
+      "id": "callback-step-finished",
+      "name": "Callback: step finished",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [920, 60]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.callback_url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "authorization",
+              "value": "=Bearer {{ $json.resume_secret }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ run_id: $json.run_id, attempt: $json.attempt, step_index: $json.step_index ?? 0, event: 'step_skipped', ...($json.callback_extra ?? {}) }) }}",
+        "options": {}
+      },
+      "id": "callback-step-skipped",
+      "name": "Callback: step skipped",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [720, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.callback_url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "authorization",
+              "value": "=Bearer {{ $json.resume_secret }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ run_id: $json.run_id, attempt: $json.attempt, step_index: $json.step_index, event: 'waiting_approval', resume_url: $execution.resumeUrl, approvers: $json.step.approvers ?? 'anyone' }) }}",
+        "options": {}
+      },
+      "id": "callback-waiting-approval",
+      "name": "Callback: waiting approval",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [720, 440]
+    },
+    {
+      "parameters": {
+        "resume": "webhook",
+        "options": {}
+      },
+      "id": "wait-for-a-human",
+      "name": "Wait for a human",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [920, 440]
+    },
+    {
+      "parameters": {
+        "jsCode": "\n// Carries forward what the step established, then advances. The classification\n// is the only fact today and comes from the specification step (FR-099).\nconst state = $input.first().json;\nconst result = state.result ?? {};\n// The callback reply says whether a pause has been asked for.\nconst paused = state.callback?.paused === true || state.paused === true;\nconst facts = { ...(state.facts ?? {}) };\nif (result.classification) facts.hasUi = result.classification.has_ui;\n\n// A ceiling reached is a failure, checked after every step (FR-081).\nconst spent = Number(state.spent_usd ?? 0) + Number(result.costUsd ?? 0);\nconst ceiling = Number(state.limits.cost_ceiling_usd);\nif (spent > ceiling) {\n  return [{ json: { ...state, facts, spent_usd: spent, action: 'fail',\n    reason: 'budget_exceeded',\n    detail: `the run reached its ceiling of $${ceiling.toFixed(4)}` } }];\n}\n// A change request at a checkpoint re-runs the PRECEDING step with the\n// feedback, then returns to the same checkpoint (FR-061).\nconst decision = state.resume?.decision ?? state.decision;\nif (decision === 'changes_requested') {\n  const steps = state.pipeline.steps;\n  let back = (state.step_index ?? 0) - 1;\n  while (back >= 0 && !['agent', 'design', 'shell'].includes(steps[back].type)) back--;\n  if (back >= 0) {\n    return [{ json: { ...state, facts, spent_usd: spent, index: back,\n      feedback: state.resume?.feedback ?? state.feedback, returning_to: state.step_index } }];\n  }\n}\n// After a re-run triggered by a change request, come back to the checkpoint.\nif (state.returning_to !== undefined && state.returning_to !== null) {\n  const target = state.returning_to;\n  return [{ json: { ...state, facts, spent_usd: spent, index: target,\n    returning_to: null, feedback: null } }];\n}\nreturn [{ json: { ...state, facts, paused, spent_usd: spent, index: (state.step_index ?? 0) + 1 } }];\n"
+      },
+      "id": "advance",
+      "name": "Advance",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1140, 250]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.RUNNER_BASE_URL }}/runs/{{ $json.run_id }}/verify-and-push",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "authorization",
+              "value": "=Bearer {{ $env.RUNNER_AUTH_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({}) }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "runner-verify-and-push",
+      "name": "Runner: verify and push",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [500, 620]
+    },
+    {
+      "id": "compose-merge-request",
+      "name": "Compose merge request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [610, 740],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.callback_url.replace(\"/api/hooks/n8n\", \"/api/runs/\" + $json.run_id + \"/merge-request\") }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "authorization",
+              "value": "=Bearer {{ $json.resume_secret }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "merge-request-ready",
+      "name": "Merge request ready",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [720, 740],
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ JSON.stringify({ ...$('Runner: verify and push').item.json, merge_request: $json.repo?.provider === \"gitlab\" ? { source_branch: $json.source_branch, target_branch: $json.target_branch, title: $json.title, description: $json.description, labels: $json.labels } : { head: $json.source_branch, base: $json.target_branch, title: $json.title, body: $json.description } }) }}",
+        "options": {}
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.repo.provider === 'gitlab' ? 'https://gitlab.com/api/v4/projects/' + encodeURIComponent($json.repo.full_path) + '/merge_requests' : 'https://api.github.com/repos/' + $json.repo.full_path + '/pulls' }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.merge_request) }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "open-merge-request",
+      "name": "Open merge request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [720, 620]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.callback_url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "authorization",
+              "value": "=Bearer {{ $json.resume_secret }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ run_id: $json.run_id, attempt: $json.attempt, step_index: $json.step_index ?? 0, event: 'mr_opened', ...($json.callback_extra ?? {}) }) }}",
+        "options": {}
+      },
+      "id": "callback-mr-opened",
+      "name": "Callback: mr opened",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [920, 620]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.callback_url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "authorization",
+              "value": "=Bearer {{ $json.resume_secret }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ run_id: $json.run_id, attempt: $json.attempt, step_index: $json.step_index ?? 0, event: 'done', ...($json.callback_extra ?? {}) }) }}",
+        "options": {}
+      },
+      "id": "callback-done",
+      "name": "Callback: done",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1140, 620]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.callback_url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "authorization",
+              "value": "=Bearer {{ $json.resume_secret }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ run_id: $json.run_id, attempt: $json.attempt, step_index: $json.step_index ?? 0, event: 'failed', ...($json.callback_extra ?? {}) }) }}",
+        "options": {}
+      },
+      "id": "callback-failed",
+      "name": "Callback: failed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [500, 820]
+    },
+    {
+      "parameters": {
+        "method": "DELETE",
+        "url": "={{ $env.RUNNER_BASE_URL }}/runs/{{ $json.run_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "authorization",
+              "value": "=Bearer {{ $env.RUNNER_AUTH_TOKEN }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "runner-destroy",
+      "name": "Runner: destroy",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1360, 620]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ executionId: $execution.id }) }}",
+        "options": {}
+      },
+      "id": "respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1580, 620]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.callback_url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "authorization",
+              "value": "=Bearer {{ $json.resume_secret }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ run_id: $json.run_id, attempt: $json.attempt, step_index: $json.step_index, event: 'paused', resume_url: $execution.resumeUrl }) }}",
+        "options": {}
+      },
+      "id": "callback-paused",
+      "name": "Callback: paused",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [720, 700]
+    },
+    {
+      "parameters": {
+        "resume": "webhook",
+        "options": {}
+      },
+      "id": "wait-while-paused",
+      "name": "Wait while paused",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [920, 700]
+    },
+    {
+      "parameters": {
+        "jsCode": "\n// Continuing after a pause. The request was cleared before this webhook was\n// called, so the flag is dropped here too and the run picks up at the step\n// it had reached \u2014 not the one that had already concluded (FR-096).\nconst state = $input.first().json;\nreturn [{ json: { ...state, paused: false, index: state.step_index ?? state.index ?? 0 } }];\n"
+      },
+      "id": "cleared-to-continue",
+      "name": "Cleared to continue",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 700]
+    }
+  ],
+  "connections": {
+    "Webhook: ticket queued": {
+      "main": [
+        [
+          {
+            "node": "Initialise state",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initialise state": {
+      "main": [
+        [
+          {
+            "node": "Runner: start",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Runner: start": {
+      "main": [
+        [
+          {
+            "node": "Callback: started",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Callback: started": {
+      "main": [
+        [
+          {
+            "node": "Decide next step",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Decide next step": {
+      "main": [
+        [
+          {
+            "node": "Switch on action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch on action": {
+      "main": [
+        [
+          {
+            "node": "Switch on step type",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Callback: step skipped",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Runner: verify and push",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Callback: paused",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch on step type": {
+      "main": [
+        [
+          {
+            "node": "Runner: run step",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Runner: run step",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Runner: run step",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Callback: waiting approval",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Advance",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Runner: run step": {
+      "main": [
+        [
+          {
+            "node": "Callback: step finished",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Callback: step finished": {
+      "main": [
+        [
+          {
+            "node": "Advance",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Callback: step skipped": {
+      "main": [
+        [
+          {
+            "node": "Advance",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Callback: waiting approval": {
+      "main": [
+        [
+          {
+            "node": "Wait for a human",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait for a human": {
+      "main": [
+        [
+          {
+            "node": "Advance",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Advance": {
+      "main": [
+        [
+          {
+            "node": "Decide next step",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Runner: verify and push": {
+      "main": [
+        [
+          {
+            "node": "Compose merge request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Open merge request": {
+      "main": [
+        [
+          {
+            "node": "Callback: mr opened",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Callback: mr opened": {
+      "main": [
+        [
+          {
+            "node": "Callback: done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Callback: done": {
+      "main": [
+        [
+          {
+            "node": "Runner: destroy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Callback: failed": {
+      "main": [
+        [
+          {
+            "node": "Runner: destroy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Runner: destroy": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Callback: paused": {
+      "main": [
+        [
+          {
+            "node": "Wait while paused",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait while paused": {
+      "main": [
+        [
+          {
+            "node": "Cleared to continue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cleared to continue": {
+      "main": [
+        [
+          {
+            "node": "Decide next step",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compose merge request": {
+      "main": [
+        [
+          {
+            "node": "Merge request ready",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge request ready": {
+      "main": [
+        [
+          {
+            "node": "Open merge request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "errorWorkflow": "",
+    "saveDataErrorExecution": "all",
+    "saveExecutionProgress": true
+  },
+  "staticData": null,
+  "meta": {
+    "instanceId": "code-factory"
+  },
+  "tags": [
+    {
+      "name": "code-factory"
+    }
+  ]
+}

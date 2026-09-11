@@ -1,0 +1,3 @@
+[test]
+# Integration tests run against a real Postgres, not a fake (research.md D9).
+preload = ["./packages/db/src/test-setup.ts"]

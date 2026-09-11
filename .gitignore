@@ -5,3 +5,26 @@
 
 # pen.dev CLI local state
 .pencil/
+
+# Node / Bun
+node_modules/
+*.log
+.env
+.env.*
+!.env.example
+
+# SvelteKit / Vite build output
+.svelte-kit/
+build/
+dist/
+
+# Test output
+coverage/
+test-results/
+playwright-report/
+
+# OS noise
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp

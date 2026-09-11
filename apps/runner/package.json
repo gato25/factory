@@ -1,0 +1,13 @@
+{
+  "name": "@factory/runner",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch src/index.ts",
+    "start": "bun src/index.ts"
+  },
+  "dependencies": {
+    "@factory/db": "workspace:*",
+    "@factory/shared": "workspace:*"
+  }
+}
