@@ -242,9 +242,52 @@ it says.
 Per-step switching is therefore `setAllowedHosts` before and after each step, and costs no extra
 sandbox.
 
-**Confidence**: the API exists and its semantics are read from the installed package's type
-definitions. The switching sequence against a live sandbox has still not been run, and is the first
-thing the spike proves.
+**MEASURED, 2026-09-11 (T006) — D7 IS WRONG. The lists do not govern a container's traffic.**
+
+Three rungs, each its own container class:
+
+| Rung | Configuration | `api.anthropic.com` | `registry.npmjs.org` | DNS | proxy vars |
+|---|---|---|---|---|---|
+| 1 | internet on, no lists | `404` (reached) | `200` | resolves | 0 |
+| 2 | internet on, `deniedHosts: [registry]` | `404` | **`200` — NOT denied** | resolves | 0 |
+| 3 | internet off, `allowedHosts: [model]` | **blocked** | blocked | resolves | 0 |
+
+Rung 1 proves egress works at all. Rung 2 shows a deny list having **no effect** — the denied host
+answered `200`. Rung 3 shows an allow list having **no effect** — the permitted host was blocked
+along with everything else. Reach is **all-or-nothing**.
+
+**Why, and it follows from `proxy_env: 0`.** No proxy variables are set in the container, so `curl`
+opens its own socket and nothing intercepts it. `allowedHosts`, `deniedHosts`, `setOutboundHandler`
+and `setOutboundByHost` govern traffic that passes through `ContainerProxy` — the container's
+`fetch` routed via the Worker — not raw TCP from a process inside the sandbox. `enableInternet:
+false` does block sockets (DNS still resolves, connections do not), but it is a switch, not a
+filter.
+
+**So FR-011 and FR-012 are not buildable as specified on this host**, and the earlier reading of
+the type definitions was wrong about what "allowed hosts get internet access even when
+enableInternet is false" applies to. Reading an interface is not the same as running it — the same
+lesson as the `setAllowedHosts` correction above, one level deeper.
+
+### What is left, and what each option costs
+
+**A — route the container's traffic through a proxy.** Set `HTTPS_PROXY`/`HTTP_PROXY` in the
+sandbox to `ContainerProxy` so `curl`, `git` and the CLIs honour it and the allowlist applies.
+**This provides no security guarantee against the threat FR-011 describes.** An agent step executes
+arbitrary code by design; arbitrary code can ignore a proxy environment variable and open a socket.
+It would catch an accidental reach and stop nothing deliberate. Enforcement by convention.
+
+**B — all-or-nothing, honestly.** Rewrite the setting as "may a model-driven step reach the network
+at all", and accept that the answer must be yes, because an agent step *is* a network call. The
+setting then constrains nothing on this host, and FR-085's intent is not served.
+
+**C — reconsider the host for this requirement.** The providers rejected earlier (E2B, Daytona)
+have finer-grained egress control, including changing it on a running sandbox. If per-host
+restriction is a real requirement rather than a nice-to-have, that is an argument about the platform
+choice, not about the specification.
+
+**This is a product decision and it is recorded unresolved.** It also changes the basis on which
+Cloudflare was chosen: the earlier analysis told the product owner that per-step egress control was
+buildable here, and that was wrong.
 
 **A correction worth keeping**: an earlier draft of this decision cited the SDK's outbound-traffic
 guide and named `setOutboundByHost` as the mechanism. The guide is right about the capability, but
