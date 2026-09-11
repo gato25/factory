@@ -1,42 +1,55 @@
 <!--
 Sync Impact Report
 ==================
-Version change: (none) → 1.0.0 — initial ratification
+Version change: 1.0.0 → 2.0.0
 
-The prior file was the unmodified core template: 20 placeholder tokens, no content.
-Nothing was removed, because nothing had been defined.
+Bump rationale: MAJOR, by this document's own rule — "a principle or architectural invariant is
+removed or redefined". Principle V is redefined. Before this amendment it forbade any
+public-facing component from creating containers; after it, a component at a public address MAY
+create sandboxes provided it serves no user interface or session and meets stated conditions. A
+deployment shape the constitution previously forbade is now permitted, which is a redefinition and
+not a clarification, whatever the original intent was.
 
-Principles defined (all new):
-  I.   Spec-Driven Delivery (NON-NEGOTIABLE)
-  II.  Tested Before Merge
-  III. Pipelines Are Data
-  IV.  Pinned Execution
-  V.   Least Privilege and Secret Hygiene
+Principles modified:
+  V. Least Privilege and Secret Hygiene (title unchanged; first paragraph redefined)
+      - The constraint's subject is now the component serving user sessions, not network
+        reachability.
+      - Adds three obligations that replace the network boundary where it is gone: authenticate
+        every operation, reveal nothing about what exists in a refused request, and keep the
+        authenticating credential replaceable without interrupting running work.
+      - Adds an Accepted risk paragraph. The constitution requires an understood-but-accepted risk
+        to be recorded where the decision lives, and this decision now lives here.
 
-Sections added:
-  Architectural Invariants                  (template slot SECTION_2)
-  Development Workflow and Quality Gates    (template slot SECTION_3)
-  Governance                                (populated)
+Sections modified:
+  Architectural Invariants
+      - "One fresh container per run" → "One fresh sandbox per run", normalising vocabulary with
+        Principle V. Same obligation, different word.
+      - Adds that the lifetime ceiling MUST be enforced by the execution host itself. Previously
+        implied by "released when the run ends"; stated because a hosted execution service makes
+        the abandoned-run case real, and because it is the only remaining in-product guard against
+        runaway sandbox spend.
+
+Added sections: none. Removed sections: none.
 
 Provenance:
-  Principles III, IV and the Architectural Invariants are derived from the nine core
-  principles stated in the repository's product specification (root spec.md §1) — repo
-  evidence, not invention.
-  Principle I (binding spec-driven delivery) and Principle II (tests required before
-  merge, author's choice of order) were decided by the product owner during this
-  amendment; neither had evidence in the repository.
-  Principle V is derived from the feature specification's secret-handling requirements
-  and the plan's privilege split.
+  The amendment was requested by specs/002-hosted-runner-sandboxes, whose "Divergence and Accepted
+  Risk" section records the conflict and whose Clarifications session of 2026-09-11 put the reading
+  to the product owner, who accepted it. The rejected alternative — a network-level gate in front of
+  the execution service — is recorded in Principle V rather than dropped.
 
-Ratification date: 2026-09-10 — the date of adoption, which coincides with the
+Ratification date unchanged: 2026-09-10, the date of adoption, which coincides with the
 repository's first commit.
 
-Follow-up TODOs: none. No placeholder was intentionally deferred.
-
-Out of scope for this amendment, flagged for the author:
-  specs/001-code-factory-mvp/plan.md records "the constitution is not ratified" and
-  treats its Constitution Check as not applicable. That statement is now stale. This
-  command's scope is this file only, so the plan was left untouched.
+Follow-up TODOs — out of scope for this command, which writes only this file:
+  1. specs/001-code-factory-mvp/contracts/runner.md states the Runner "is never reachable from the
+     public internet". That sentence now contradicts Principle V and must be reworded.
+  2. specs/001-code-factory-mvp FR-085 needs amending on two counts, both recorded in
+     specs/002-hosted-runner-sandboxes: its shape (a yes/no becomes a yes/no plus an
+     administrator-editable permitted-host list) and its scope (it names an "implement" step, and
+     no such step type exists).
+  3. specs/002-hosted-runner-sandboxes cites this rule as living in Architectural Invariants. It
+     lives in Principle V. The citation is wrong and should be corrected along with the quoted
+     wording, which this amendment has changed.
 -->
 
 # Code Factory Constitution
@@ -96,16 +109,35 @@ and the pinning are the same decision.
 
 ### V. Least Privilege and Secret Hygiene
 
-Only the component that owns run execution may hold rights on the container host; no
-public-facing component may create containers. Credentials MUST be encrypted at rest, supplied to
-a run as environment, never written into a repository workspace, and never persisted in the
-orchestrator. Credentials MUST be redacted where output is ingested, not where it is displayed. No
-credential may appear in any retained output, document, screen, or merge request description, and
-none may be read back in full through any interface.
+Only the component that owns run execution may hold rights on an execution host. No component that
+serves user sessions or renders an interface may create sandboxes, whatever its network address.
+A component holding execution rights MAY be reachable at a public address, provided it serves no
+user interface, holds no session, authenticates every operation, and reveals nothing about what
+exists in a refused request. The credential authenticating those operations MUST be replaceable
+without interrupting work already running.
+
+Credentials MUST be encrypted at rest, supplied to a run as environment, never written into a
+repository workspace, and never persisted in the orchestrator. Credentials MUST be redacted where
+output is ingested, not where it is displayed. No credential may appear in any retained output,
+document, screen, or merge request description, and none may be read back in full through any
+interface.
 
 **Rationale**: agents execute code against customer repositories holding push rights. Redacting at
 ingest rather than at display means a later change to a viewer cannot un-redact history that has
 already been stored.
+
+The separation this principle protects is one of privilege, not of network topology. The danger is
+a single component that both serves a browser session and can start a sandbox, because there a
+session-scoped flaw becomes code execution against a customer's repository. An execution service
+hosted on somebody else's infrastructure has a public address by construction; forbidding that
+would not reduce the danger, it would only stop the product being deployed anywhere the team does
+not own the machine.
+
+**Accepted risk**: where the network boundary is gone, the credential is the whole boundary, and a
+leaked one grants an outsider arbitrary code execution billed to whoever pays for sandbox capacity.
+That is why authentication, non-disclosure on refusal, and replaceability are stated here as
+obligations rather than left to a feature to remember. A network-level gate in front of an
+execution service remains available and is the expected response to an exposed credential.
 
 ## Architectural Invariants
 
@@ -115,8 +147,9 @@ a MAJOR amendment.
 - A ticket belongs to exactly one repository and has at most one active run.
 - The application stores and renders; the orchestrator sequences and waits. Neither takes on the
   other's job.
-- One fresh container per run: non-root, bounded in processing power, memory and lifetime,
-  released when the run ends, never reused.
+- One fresh sandbox per run: non-root, bounded in processing power, memory and lifetime, released
+  when the run ends, never reused. A sandbox's lifetime ceiling MUST be enforced by the execution
+  host itself, so that a run nothing calls back about is still released.
 - Steps hand off through files in the run's workspace, so each step reads what earlier steps wrote.
 - A step may carry a condition. A condition not met yields `skipped`, which is terminal for that
   step alone and never fails the run.
@@ -179,4 +212,4 @@ until it can.
 Runtime development guidance — stack, structure, interface contracts — lives in each feature's
 `plan.md` and `contracts/`, not here. This file holds only what must not vary between features.
 
-**Version**: 1.0.0 | **Ratified**: 2026-09-10 | **Last Amended**: 2026-09-10
+**Version**: 2.0.0 | **Ratified**: 2026-09-10 | **Last Amended**: 2026-09-11
