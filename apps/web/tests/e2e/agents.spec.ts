@@ -158,7 +158,7 @@ test.describe('configuring the agents and their skills', () => {
 
     // --- change its instructions, model, tools and skills ---
     await page.goto(`/agents/${created!.id}`);
-    await page.getByLabel('Instructions').fill('Read docs/spec.md and write docs/plan.md.');
+    await page.getByLabel('System prompt').fill('Read docs/spec.md and write docs/plan.md.');
     await page.getByLabel('Model').selectOption('claude-opus-5');
 
     // Withhold Bash: everything but it.
@@ -167,10 +167,12 @@ test.describe('configuring the agents and their skills', () => {
     }
     await expect(page.getByRole('checkbox', { name: /^Bash\b/ })).not.toBeChecked();
 
-    await page.getByRole('checkbox', { name: new RegExp(`house-style-${seeded.tag}`) }).check();
-    await page.getByLabel('Most turns it may take').fill('25');
+    // Skills are chips with an Add beside them, as the artboard draws them.
+    await page.getByRole('button', { name: 'Add' }).click();
+    await page.getByRole('button', { name: new RegExp(`house-style-${seeded.tag}`) }).click();
+    await page.getByLabel('Max turns').fill('25');
 
-    await page.getByRole('button', { name: 'Save', exact: true }).click();
+    await page.getByRole('button', { name: 'Save changes' }).click();
     await expect(page.getByRole('status').first()).toContainText(
       'Runs already in flight are unaffected',
       { timeout: 15_000 },
@@ -222,13 +224,15 @@ test.describe('configuring the agents and their skills', () => {
     await expect(page.getByText(`Other ${seeded.tag}`).first()).toBeVisible();
     // An interpolated value is its own text node, which a getByText regex
     // will not span — the containing region is what to assert on.
-    await expect(page.getByRole('main')).toContainText(`Changing it is for Other ${seeded.tag}`);
+    await expect(page.getByRole('main')).toContainText(
+      `Changing this one is for Other ${seeded.tag}`,
+    );
 
     // Readable: the instructions are there.
-    await expect(page.getByLabel('Instructions')).toHaveValue('their instructions');
+    await expect(page.getByLabel('System prompt')).toHaveValue('their instructions');
     // Not changeable.
-    await expect(page.getByLabel('Instructions')).toBeDisabled();
-    await expect(page.getByRole('button', { name: 'Save', exact: true })).toHaveCount(0);
+    await expect(page.getByLabel('System prompt')).not.toBeEditable();
+    await expect(page.getByRole('button', { name: 'Save changes' })).toHaveCount(0);
 
     // Usable: it can still be chosen in a pipeline the member owns.
     await page.goto(`/pipelines/${seeded.pipelineId}`);
@@ -282,8 +286,8 @@ test.describe('configuring the agents and their skills', () => {
     // Nothing to reset yet, and the button says so rather than lying.
     await expect(page.getByRole('button', { name: 'Reset to default' })).toBeDisabled();
 
-    await page.getByLabel('Instructions').fill('my own version');
-    await page.getByRole('button', { name: 'Save', exact: true }).click();
+    await page.getByLabel('System prompt').fill('my own version');
+    await page.getByRole('button', { name: 'Save changes' }).click();
     await expect(page.getByRole('status').first()).toContainText('Saved', { timeout: 15_000 });
 
     await expect(page.getByRole('button', { name: 'Reset to default' })).toBeEnabled();
@@ -308,9 +312,9 @@ test.describe('configuring the agents and their skills', () => {
     await signIn(context, seeded.memberId);
     await page.goto(`/agents/${seeded.shippedAgentId}`);
 
-    await expect(page.getByText('Shipped').first()).toBeVisible();
-    await expect(page.getByRole('main')).toContainText('Changing it is for an administrator');
-    await expect(page.getByLabel('Instructions')).toBeDisabled();
+    await expect(page.getByText('Default').first()).toBeVisible();
+    await expect(page.getByRole('main')).toContainText('Changing this one is for an administrator');
+    await expect(page.getByLabel('System prompt')).not.toBeEditable();
 
     // Duplicating is the way through, and the copy is theirs.
     await page.goto('/agents');
