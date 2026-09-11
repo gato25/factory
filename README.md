@@ -82,6 +82,27 @@ Two differences are worth knowing before you switch:
   processor, and the shipped default of 2 processors / 4096 MB therefore cannot be offered: a
   default workspace lands on 1 processor. Raise the memory default to 6144 MB to get 2 back.
 
+### How the model work is paid for
+
+The model credential in **Settings → Claude CLI & keys** accepts either kind, and which one you
+store decides who pays:
+
+| Credential | Where it comes from | What it draws on |
+|---|---|---|
+| API key | Anthropic Console | Billed per use to that account |
+| Subscription token | `claude setup-token` on your own machine | That Claude subscription's allowance |
+
+The runner tells them apart by prefix and hands the Claude CLI whichever variable that kind is read
+from — `ANTHROPIC_API_KEY` or `CLAUDE_CODE_OAUTH_TOKEN`, one or the other, never both. So switching
+is storing a different credential, with no code change and no rebuild.
+
+Two things to weigh before choosing the subscription token. Its limits are shaped around one person
+working interactively, and a pipeline runs steps unattended and sometimes several at once — you will
+meet those limits in a different pattern than a person does, and meeting them fails runs rather than
+queueing them. And it is long-lived rather than permanent: when it expires, every run fails at once
+with an authentication error. Whether a subscription covers team automation at all is a question for
+Anthropic's terms.
+
 Settings reports which limits the configured host enforces, once you have pressed **Test every
 connection** — it asks the execution service rather than assuming, because the execution service is
 the only thing that knows what it is.

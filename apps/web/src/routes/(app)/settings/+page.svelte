@@ -459,6 +459,19 @@
           <label class="f">
             <span>Model credential</span>
             <input name="token" type="password" placeholder="paste it here" autocomplete="off" />
+            <!--
+              Either kind is accepted, and which one this is decides how the
+              work is paid for. The runner tells them apart by prefix and hands
+              the Claude CLI whichever variable that kind is read from, so
+              switching between them is storing a different credential here —
+              no code change, no rebuild.
+            -->
+            <span class="hint">
+              An API key, billed per use to an Anthropic Console account — or a Claude subscription
+              token from <code>claude setup-token</code>, which draws on that subscription's own
+              allowance instead. A subscription's limits are shaped around one person working, so
+              watch them if several runs execute at once.
+            </span>
           </label>
           <div class="f end-field">
             <button type="submit" class="secondary" disabled={modelKey.pending > 0}>
