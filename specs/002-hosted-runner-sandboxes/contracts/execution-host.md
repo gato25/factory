@@ -35,7 +35,8 @@ interface ContainerSpec {
   cpu: number;
   memoryMb: number;
   wallClockMinutes: number;
-  network: boolean;              // whether model-driven steps are restricted at all
+  network: boolean;              // the workspace's recorded intent; see FR-011a on hosts
+                                 // that cannot honour it
   env: Record<string, string>;
   workdir: string;
 }
@@ -74,7 +75,7 @@ so the hosted implementation is a translation and not an adapter with behaviour 
 | E3a | The deadline starts when the command starts, not when `exec` is called. Time spent readying a sandbox is never charged to the step's limit and never reported as the step timing out. | FR-014a |
 | E4 | `options.cwd` and `options.env` apply to the command and do not leak into later ones. | — |
 | E5 | Output volume does not change the outcome. A command producing more than a single response could carry still streams and still reports its exit code. | FR-027 |
-| E6 | Network reach during the command is whatever the caller established for this step. `exec` does not decide reach. | FR-011 |
+| E6 | `exec` does not decide network reach. Reach is whatever the sandbox was created with and holds for the sandbox's life; no step changes it. | FR-011 |
 
 ### `writeFile`, `readFile`, `stat`
 
@@ -119,9 +120,18 @@ provider gives it somewhere to put them.
 
 | Obligation | Requirement |
 |---|---|
-| Before each step, narrow or widen outbound reach according to the step's declared type. Model-driven steps get the permitted set; every other type is unrestricted. | FR-011, FR-011a, FR-012 |
+| The sandbox has outbound reach for the whole of its life, and reach is not varied between steps. | FR-011 |
+| Where the host provides no per-host filtering, the workspace's network setting is presented as unavailable, naming the host, rather than accepted and ignored. | FR-011a, FR-012 |
 | A step failing because reach was refused reports the address that was refused. | FR-013 |
 | A failed run's sandbox stays inspectable for the workspace's retention window and is released after it. | FR-023 |
+
+**Why the first two rows read as they do.** An earlier version of this contract asked the hosted
+implementation to narrow reach before a model-driven step and widen it afterwards. T006 measured
+that it cannot: the provider's allow and deny lists govern only traffic routed through its own
+proxy, not sockets a process opens for itself, so a list set here would read as enforcement and
+enforce nothing. A model-driven step is also itself a call to a model service, so a sandbox with no
+reach cannot run one. The owner's decision was all-or-nothing, stated honestly — recorded in the
+spec's Clarifications and in research.md D7.
 
 ---
 

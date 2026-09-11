@@ -1,5 +1,5 @@
 import { beforeEach, expect, test } from 'bun:test';
-import type { Callback, Step } from '@factory/shared';
+import type { Callback, FactoryError, Step } from '@factory/shared';
 import {
   callbackSender,
   destroyRun,
@@ -304,6 +304,32 @@ test('a refused exchange fails the start rather than proceeding without them', a
     refused = error as Error;
   }
   expect(refused?.message).toBe('unauthorised');
+});
+
+test('an unreachable application is named, and named without its secrets (FR-021)', async () => {
+  // Distinct from the application refusing the request. This became worth
+  // separating when the execution service moved off the same machine: what
+  // used to be a loopback call is a call across the internet, so an operator
+  // needs to know WHICH address did not answer before they can tell a
+  // misconfigured host from a firewall from an application that is down.
+  let failed: Error | null = null;
+  try {
+    await fetchCredentials(snapshot, async () => {
+      throw new TypeError('fetch failed');
+    });
+  } catch (error) {
+    failed = error as Error;
+  }
+
+  expect(failed?.message).toBe(
+    "could not reach the application at https://factory.example for this run's credentials",
+  );
+  // The address and nothing else. The URL the exchange uses carries the run
+  // id, and the request carries the run's own secret; neither belongs in a
+  // message that will be shown and logged.
+  expect(failed?.message).not.toContain(snapshot.resume_secret);
+  expect(failed?.message).not.toContain(snapshot.run_id);
+  expect((failed as FactoryError).reason).toBe('credential_missing');
 });
 
 test('an exchange returning nothing usable is refused rather than half-used', async () => {

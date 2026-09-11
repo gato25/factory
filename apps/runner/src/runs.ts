@@ -41,13 +41,32 @@ export async function fetchCredentials(
     /\/api\/hooks\/n8n$/,
     `/api/runs/${snapshot.run_id}/credentials`,
   );
-  const response = await doFetch(url, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      authorization: `Bearer ${snapshot.resume_secret}`,
-    },
-  });
+  let response: Response;
+  try {
+    response = await doFetch(url, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: `Bearer ${snapshot.resume_secret}`,
+      },
+    });
+  } catch (error) {
+    // The application being unreachable is a distinct failure from it refusing
+    // the request, and it must say which application (002 FR-021). This became
+    // worth naming when the execution service moved off the same machine: what
+    // used to be a loopback call is now a call across the internet, so "could
+    // not get credentials" could mean a misconfigured address, a firewall, or
+    // an application that is simply down — and an operator cannot tell those
+    // apart without the address.
+    //
+    // `origin` rather than the full URL on purpose: it carries no path, no
+    // query and no userinfo, so naming it cannot leak the run's own secret.
+    throw new FactoryError(
+      'credential_missing',
+      `could not reach the application at ${safeOrigin(url)} for this run's credentials`,
+      { detail: error instanceof Error ? error.message : String(error) },
+    );
+  }
   if (!response.ok) {
     const body = (await response.json().catch(() => ({}))) as { error?: string };
     throw new FactoryError(
@@ -60,6 +79,23 @@ export async function fetchCredentials(
     throw new FactoryError('credential_missing', 'the app returned no usable credentials');
   }
   return body.credentials;
+}
+
+/**
+ * The address to name in a failure, with nothing secret in it.
+ *
+ * `URL.origin` drops the path, the query and any userinfo, which is what makes
+ * it safe to put in an error a caller will see and a log line will keep. Falls
+ * back to a description rather than the raw string, because a URL that will not
+ * parse is exactly the configuration mistake worth reporting and exactly the
+ * one whose raw value is least trustworthy.
+ */
+function safeOrigin(url: string): string {
+  try {
+    return new URL(url).origin;
+  } catch {
+    return 'an address that is not a valid URL';
+  }
 }
 
 export interface RunContext {
