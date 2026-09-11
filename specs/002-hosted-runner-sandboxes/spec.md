@@ -23,6 +23,11 @@ service instead, with the run execution service itself hosted rather than run on
   fail? → A: Neither as originally framed — retry the start over a bounded period (about 30
   seconds), then fail naming capacity. A provider's capacity refusal is transient and is a
   different thing from the workspace's own concurrency ceiling, which keeps its queue.
+- Q: When a step runs under the "no network while writing code" setting, what should it still be
+  allowed to reach? → A: The model service and the run's git provider always, plus a permitted-host
+  list the administrator can edit, shipped pre-filled with the package registries in common use so
+  a dependency install works untouched. Emptying the list is how an administrator gets total
+  isolation.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -94,13 +99,18 @@ completes. Delivers the safety guarantee the product already claims.
    **Then** the step can still reach the model service.
 3. **Given** that same workspace, **When** a step other than the code-writing step runs,
    **Then** that step's network reach is unrestricted.
-4. **Given** an agent whose time limit is N seconds, **When** the step runs longer than N seconds,
+4. **Given** a workspace whose permitted-host list has never been edited, **When** a code-writing
+   step installs a dependency from a package registry in common use, **Then** the install succeeds.
+5. **Given** an administrator who has emptied the permitted-host list, **When** a code-writing step
+   tries to reach a package registry, **Then** it is refused, and **Then** the failure names the
+   address that was refused.
+6. **Given** an agent whose time limit is N seconds, **When** the step runs longer than N seconds,
    **Then** the step is stopped and reported as having reached its limit, distinguishably from a
    step that failed on its own.
-5. **Given** a step whose command arguments contain text a person typed — a ticket title, reviewer
+7. **Given** a step whose command arguments contain text a person typed — a ticket title, reviewer
    feedback, a required document's path — **When** the step executes, **Then** no command runs
    other than the one the step declares, whatever that text contains.
-6. **Given** a workspace asking for more memory than the execution host will grant, **When** a run
+8. **Given** a workspace asking for more memory than the execution host will grant, **When** a run
    starts, **Then** the run fails naming the ceiling that could not be met, rather than starting
    with a lower one.
 
@@ -178,9 +188,9 @@ host and confirm runs execute on the other one with no code change.
 - **A workspace asks for a ceiling the execution service will not grant** — more memory, longer
   wall-clock, more processing power than it offers. The run must fail at start naming the ceiling
   that could not be met, rather than starting with a silently lower one.
-- **A step needs something the restricted set does not permit** — a package registry during a
-  restricted step, for instance. The step fails, and the failure must name the address that could
-  not be reached so an administrator can decide whether to permit it.
+- **A step needs an address the permitted-host list does not carry** — a private package mirror or
+  an internal service, for instance. The step fails, and the failure must name the address that
+  could not be reached, so an administrator can add it to the list rather than guess.
 - **The application is unreachable when the execution service exchanges credential references.**
   The run fails before any step executes, naming the application as unreachable.
 - **A run is in flight when a deployment's execution host changes.** That run must either finish on
@@ -227,9 +237,18 @@ host and confirm runs execute on the other one with no code change.
 - **FR-011**: System MUST apply the workspace's network restriction only to the steps the setting
   names, and MUST NOT apply it to steps the setting does not name.
 - **FR-012**: System MUST permit a restricted step to reach the model service and the run's git
-  provider, and MUST refuse it every other address.
+  provider, and MUST refuse it every address that is neither of those nor on the workspace's
+  permitted-host list.
+- **FR-012a**: Administrators MUST be able to edit the workspace's permitted-host list, and a
+  workspace that has never been edited MUST start with a list that lets a step install a dependency
+  from the package registries in common use.
+- **FR-012b**: System MUST let an administrator reach total isolation by emptying the
+  permitted-host list, leaving a restricted step able to reach only the model service and the run's
+  git provider.
+- **FR-012c**: System MUST resolve the permitted-host list into a run's snapshot when the run
+  starts, and MUST NOT consult it again for the life of that run.
 - **FR-013**: System MUST name the address that could not be reached when a step fails because the
-  restriction refused it.
+  restriction refused it, so that an administrator can decide whether to permit it.
 - **FR-014**: System MUST stop a step that exceeds its agent's time limit, and MUST report the
   outcome so that reaching a limit is distinguishable from failing on its own.
 
@@ -296,7 +315,7 @@ host and confirm runs execute on the other one with no code change.
   request belonging to that run.
 - **Sandbox limits**: the workspace's ceilings, resolved into the run's snapshot when it starts and
   never consulted again for that run — processing power, memory, wall-clock, network restriction,
-  and how long a failed run's sandbox is retained.
+  the permitted-host list that restriction reads, and how long a failed run's sandbox is retained.
 - **Execution host**: the named place sandboxes are created. A deployment uses exactly one at a
   time, chosen by configuration.
 
@@ -334,9 +353,13 @@ host and confirm runs execute on the other one with no code change.
 
 - **The restricted set is an allowlist, not silence.** A code-writing step's work *is* a call to
   the model service, so a sandbox with no network reach cannot run one. FR-012 therefore reads the
-  workspace's restriction as "only what the work requires" rather than "nothing". If an
-  administrator's intent was in fact total isolation, FR-011 and FR-012 are wrong and the setting
-  needs to be re-described rather than re-implemented.
+  workspace's restriction as "only what the work requires" rather than "nothing". Total isolation
+  remains reachable, by emptying the permitted-host list (FR-012b) — it is just not what the
+  setting means on its own.
+- **"The package registries in common use" is a shipped default, not a fixed set.** What FR-012a
+  pre-fills the list with is expected to change as ecosystems do; the list is data an administrator
+  edits, so a stale default is a nuisance rather than a defect. The plan chooses the initial
+  entries.
 - **Only the code-writing step is restricted.** `specs/001-code-factory-mvp` FR-085 restricts reach
   "while code is being written", and the workspace setting is named for that step. Steps that
   specify, review, verify or push are assumed unrestricted — which matters, because a verification
@@ -412,6 +435,12 @@ With the shipped default, which forbids reach while code is written, an agent st
 model service and the run cannot succeed. FR-011 and FR-012 change that behaviour rather than
 porting it. This is a correction of a defect against `specs/001-code-factory-mvp` FR-085, and is
 recorded as drift under Principle I rather than folded silently into the move.
+
+The same clarification also changes the setting's shape. FR-085 describes a yes/no — "whether it
+may reach the network while code is being written". FR-012a makes it a yes/no plus a list of hosts
+an administrator edits, because a code-writing step that may install a dependency needs somewhere
+to install it from and a fixed list would decide that for every workspace. FR-085 needs amending to
+match; until it is, the two specifications describe the same setting differently.
 
 **3. Argument handling changes shape, and the new shape is the riskier one.** The current execution
 host passes a step's arguments as a list, which no shell interprets. A managed sandbox service is
