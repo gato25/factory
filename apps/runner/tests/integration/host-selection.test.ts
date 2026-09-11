@@ -39,12 +39,26 @@ describe('choosing an execution host', () => {
     expect(hostFor('docker')).toBe(dockerHost);
   });
 
-  test('the hosted host says it is not built yet, and points at the work', () => {
-    // Replaced by T022–T025. Asserted rather than left implicit so that
-    // finishing the hosted host is what makes this test change, and nothing
-    // else silently can.
-    expect(() => hostFor('hosted')).toThrow(/not implemented yet/);
-    expect(() => hostFor('hosted')).toThrow(/T005/);
+  test('the hosted host is only reachable through the Worker entry', () => {
+    // The SDK imports `cloudflare:workers`, which does not exist under Bun, so
+    // the managed host cannot be imported here at all — it arrives as a thunk
+    // from `worker.ts`. Asserting the refusal keeps that constraint visible:
+    // if somebody imports the SDK into the selector, this file stops loading
+    // and the whole suite goes with it.
+    expect(() => hostFor('hosted')).toThrow(/only be served by the Worker entry/);
+  });
+
+  test('a supplied managed host is the one used', () => {
+    const managed = { ...dockerHost };
+    expect(hostFor('hosted', () => managed)).toBe(managed);
+    // And the thunk is never called for the daemon path, so a Worker can pass
+    // one unconditionally without building a sandbox client it will not use.
+    let built = 0;
+    hostFor('docker', () => {
+      built += 1;
+      return managed;
+    });
+    expect(built).toBe(0);
   });
 
   test('the runner no longer asks for a database', () => {

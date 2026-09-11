@@ -44,6 +44,24 @@ no account. It is also the rollback: a deployment that goes wrong changes one va
 **Alternatives considered**: replacing `dockerHost` outright — rejected; it deletes the local
 development path and makes the migration a one-way door, which FR-025 forbids.
 
+**Found while implementing, 2026-09-11 — the SDK cannot be imported under Bun at all.**
+`@cloudflare/sandbox` imports `cloudflare:workers`, a module that exists only in the Workers
+runtime. A single `import` of it from the host selector made that file unloadable under Bun and
+took the entire test suite and the whole Docker path down with it:
+
+> `error: Cannot find package 'cloudflare:workers' from …/@cloudflare/sandbox/dist/sandbox-*.js`
+
+So the seam is narrower than D2 described. It is not enough for the two hosts to share an
+interface: **the SDK must be imported in exactly one file**, the Worker entry, and the managed host
+must reach the selector as a thunk that is called only when configuration asks for it. Importing it
+anywhere reachable from a test is fatal, and fatal to everything, not just to the hosted path.
+
+That is the concrete shape of the plan's fourth Complexity Tracking row ("two runtime targets for
+one service"). The cost is bounded and now known: one file may touch the SDK, and a test asserts
+that the selector refuses to build a managed host without one being handed to it — so if somebody
+does add the import, that test stops the suite loading rather than the mistake reaching a
+deployment.
+
 ---
 
 ## D3 — A run's state lives in its sandbox's Durable Object
