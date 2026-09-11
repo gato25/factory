@@ -64,7 +64,7 @@ file.* Constitution version 2.0.0, amended 2026-09-11 for this feature.
 | **I. Spec-Driven Delivery** (NON-NEGOTIABLE) | Every task traces to a numbered requirement in `spec.md` or to a decision in `research.md`; the requirement-to-phase map below exists so that an orphan is visible rather than discovered later. Four divergences are recorded in the spec's *Divergence and Accepted Risk*. One piece of implementation — `container/shell.ts` — was committed before this plan existed; it is picked up here as D8 and now traces to FR-015, and the commit message says it preceded its gate rather than implying it did not. |
 | **II. Tested Before Merge** | D14. Every requirement ships with a test; `contracts/execution-host.md` gets a contract test; the end-to-end test runs against a real sandbox, which is what "real dependencies, not fakes" requires for behaviour spanning services. Test-first is not mandated. |
 | **III. Pipelines Are Data** | FR-011a decides which steps the network restriction covers from a step's declared type alone — the constitution permits branching on declared type and condition, and forbids hard-coding step meaning. Adding a step type does not require rewriting the rule. No step order or agent behaviour is introduced anywhere in this feature. |
-| **IV. Pinned Execution** | The snapshot already pins image, CPU, memory, wall-clock and network reach; FR-012c adds the permitted-host list to it. D4's size routing reads the snapshot's ceilings, never live workspace settings, so editing a workspace changes zero runs in flight. FR-025a extends the same reasoning to the execution host itself: a run records the host it started on and is refused rather than moved if the deployment's choice changes under it. |
+| **IV. Pinned Execution** | The snapshot pins image, CPU, memory, wall-clock and whether the network restriction was requested. Whether it can be *enforced* is a property of the configured host rather than of the run, so it is not pinned (FR-011a). D4's size routing reads the snapshot's ceilings, never live workspace settings, so editing a workspace changes zero runs in flight. FR-025a extends the same reasoning to the execution host itself: a run records the host it started on and is refused rather than moved if the deployment's choice changes under it. |
 | **V. Least Privilege and Secret Hygiene** | **Partially violated — see Complexity Tracking rows 1 and 2.** Honoured: the execution service serves no user interface and holds no session, so it may hold execution rights at a public address under the amended principle; every operation is authenticated (FR-018); a refusal reveals nothing (FR-019); the credential is replaceable without interrupting work (FR-018a); credentials reach a sandbox as environment and never as files (FR-016); redaction happens at ingest (FR-017). Violated: the sandbox's control server runs as root (D6), and credentials now rest in Durable Object storage for a run's life rather than only in process memory (D3). |
 
 **Architectural Invariants**
@@ -122,7 +122,6 @@ apps/runner/
 │       ├── host.ts              # ContainerHost unchanged; dockerHost stays beside the new one
 │       ├── hosted.ts            # NEW — the sandbox SDK implementation (D2)
 │       ├── sizes.ts             # NEW — workspace ceilings → the smallest sufficient size (D4)
-│       ├── egress.ts            # NEW — permitted-host set, widened and narrowed per step (D7)
 │       ├── shell.ts             # EXISTS — argument quoting (D8)
 │       ├── start.ts             # git script arguments quoted (D8)
 │       └── recover.ts           # git script arguments quoted (D8)
@@ -138,8 +137,7 @@ infra/sandbox/
 
 apps/runner/wrangler.jsonc       # NEW — container bindings, one per offered size; limits.cpu_ms
 
-apps/web/                        # the permitted-host list: settings form + snapshot resolution
-packages/db/src/schema/workspace.ts   # the permitted-host list column
+apps/web/                        # the network setting, shown as unavailable where unenforceable
 ```
 
 **Structure Decision**: the existing monorepo layout is kept and no new package is created. The
@@ -155,14 +153,20 @@ Constitution gate: every requirement is assigned before tasks are generated.
 | Phase | What it delivers | Requirements |
 |---|---|---|
 | **A — Seam and safety** | Quoting applied at every shell boundary including the existing host's, dead configuration removed, constant-time comparison, host selection by configuration. Ships without any hosted infrastructure. | FR-015, FR-017, FR-025, FR-025a, FR-026 |
-| **B — The hosted execution host** | The six methods against the SDK, size routing, capacity retry, egress switching, the release alarm, streaming. | FR-002, FR-003, FR-004, FR-005, FR-009, FR-009a, FR-010, FR-011, FR-011a, FR-012, FR-012b, FR-013, FR-014, FR-014a, FR-016, FR-022, FR-023, FR-024, FR-024a, FR-027 |
+| **B — The hosted execution host** | The six methods against the SDK, size routing, capacity retry, the release alarm, streaming. | FR-002, FR-003, FR-004, FR-005, FR-009, FR-009a, FR-010, FR-011, FR-013, FR-014, FR-014a, FR-016, FR-022, FR-023, FR-024, FR-024a, FR-027 |
 | **C — The Worker shape** | Fetch handler, Durable Object run state, readiness, authentication and credential replacement. | FR-001, FR-006, FR-007, FR-008, FR-018, FR-018a, FR-019, FR-020, FR-021, FR-024b |
 | **D — Image and deployment** | Sandbox image over the SDK base, unprivileged user, Wrangler configuration and the offered sizes. | FR-001, FR-003, FR-004, FR-009 |
-| **E — The permitted-host list** | Column, settings form, default entries, resolution into the snapshot. | FR-012a, FR-012b, FR-012c |
+| **E — Honest limits** | Show which sandbox limits the configured execution host can enforce, and present the network restriction as unavailable where it cannot. | FR-011a, FR-012 |
 | **F — Validation** | Spike for D4/D6/D7, end-to-end run, quickstart, measurement of the success criteria. | SC-001 … SC-013 |
 
-FR-001, FR-003, FR-004, FR-009 and FR-012b each appear in two phases because each needs both halves
-— an image and a host, or a column and the host that reads it. Nothing is unassigned.
+FR-001, FR-003, FR-004 and FR-009 each appear in two phases because each needs both halves — an
+image and a host, or a setting and the host that reads it. Nothing is unassigned.
+
+**Phase E changed shape after T006.** It was the permitted-host list: a column, a settings form,
+default entries and snapshot resolution. The spike measured that the intended execution host cannot
+filter a sandbox's traffic by host in either direction, so there is no list to configure. What
+replaces it is smaller and more useful — telling an administrator which limits the configured host
+actually enforces, rather than accepting a value it will ignore.
 
 ## Complexity Tracking
 

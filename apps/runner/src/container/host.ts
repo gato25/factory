@@ -20,14 +20,17 @@ export interface ContainerSpec {
   memoryMb: number;
   /** Not quantised: enforced exactly, by the host itself (002 FR-009a, FR-010). */
   wallClockMinutes: number;
-  /** Network reach while code is being written (FR-085). */
-  network: boolean;
   /**
-   * What a restricted step may reach beyond the model service, the design
-   * service and the run's git provider — resolved from the snapshot, so
-   * editing a workspace changes no run in flight (002 FR-012c).
+   * Whether the workspace asked for the network restriction (FR-085).
+   *
+   * Whether a host can ENFORCE it is a different question, and not one a spec
+   * can answer: 002 T006 measured that the intended hosted execution host
+   * cannot filter a sandbox's traffic by host in either direction, so on that
+   * host reach is all-or-nothing and this flag records an intent it cannot
+   * honour. 002 FR-011a requires such a host to say so rather than accept a
+   * value it will ignore.
    */
-  permittedHosts: string[];
+  network: boolean;
   /** Credentials arrive as environment, never as files (FR-083). */
   env: Record<string, string>;
   workdir: string;

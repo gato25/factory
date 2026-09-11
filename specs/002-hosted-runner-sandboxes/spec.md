@@ -37,6 +37,14 @@ service instead, with the run execution service itself hosted rather than run on
   own dashboard? → A: Read it on the host's dashboard. The product surfaces no sandbox cost or
   duration figure, so SC-004 and SC-005 are verified there rather than in the product, and the
   wall-clock ceiling becomes the only in-product guard against a runaway.
+- Q: T006 measured that the intended execution host cannot filter a sandbox's traffic by host in
+  either direction, so per-step network restriction is not buildable. Rewrite the setting, simulate
+  it with a proxy, or change host? → A: **Rewrite it, honestly.** Network reach becomes
+  all-or-nothing, and a host that cannot enforce the restriction must present the setting as
+  unavailable rather than accept a value it will ignore (FR-011a, FR-012). Routing the sandbox
+  through a proxy was rejected: an agent step runs arbitrary code by design, arbitrary code can
+  ignore a proxy variable, and a control that stops accidents while appearing to stop attacks is
+  worse than none. FR-012a, FR-012b and FR-012c are withdrawn.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -83,53 +91,49 @@ run reaches a merge request. Delivers a usable product on infrastructure nobody 
 
 ### User Story 2 - Sandbox limits hold, and an agent can still do its job (Priority: P2)
 
-An administrator sets their workspace's sandbox ceilings — processing power, memory, wall-clock,
-and whether a code-writing step may reach the network. A run honours every one of them. The
-network restriction covers the steps a model drives and leaves the pipeline author's own commands
-alone, and a restricted step can always reach the services it must reach to work at all.
+An administrator sets their workspace's sandbox ceilings — processing power, memory, wall-clock —
+and a run honours every one of them. Where the configured execution host cannot enforce a limit,
+the administrator is told so rather than left with a setting that does nothing.
 
-**Why this priority**: the ceilings are a workspace's only control over what a run may consume and
-touch, and moving execution to somebody else's infrastructure is exactly when that control must be
-shown to still work. This story also corrects a defect: the network restriction is currently
-applied for a sandbox's entire life, which prevents every agent step from reaching the model
-service, so no run can succeed with the shipped default.
+**Why this priority**: the ceilings are a workspace's only control over what a run may consume, and
+moving execution to somebody else's infrastructure is exactly when that control must be shown to
+still work. This story also carries a correction: the network restriction was specified as
+per-step, and the execution host measured in T006 cannot filter a sandbox's traffic by host at all
+(research D7). A setting that appears to constrain and does not is worse than one that says it
+cannot, which is why FR-011a and FR-012 exist.
 
 **Independent Test**: set each ceiling to a distinctive value, run a ticket, and confirm from
 observable behaviour that each ceiling took effect — a step that exceeds the time ceiling is
-stopped and reported as such; a restricted step cannot reach an arbitrary address; an agent step
-completes. Delivers the safety guarantee the product already claims.
+stopped and reported as such; a sandbox is never larger than the ceilings allow; an agent step
+completes. Then confirm the network setting is shown as unavailable on a host that cannot enforce
+it. Delivers the safety guarantee the product can actually keep.
 
 **Acceptance Scenarios**:
 
 1. **Given** a workspace with a wall-clock ceiling of N minutes, **When** a run's sandbox has
    existed for N minutes, **Then** the sandbox is released whether or not anything asked for it.
-2. **Given** a workspace that forbids network reach while code is being written, **When** a step
-   whose work a model carries out runs, **Then** the step cannot reach an address outside the
-   permitted set, and **Then** the step can still reach the model service.
-3. **Given** that same workspace, **When** a step that runs commands a pipeline author wrote runs,
-   **Then** that step's network reach is unrestricted.
-4. **Given** that same workspace, **When** a design step runs, **Then** it can reach the design
-   service.
-5. **Given** a workspace whose permitted-host list has never been edited, **When** a code-writing
-   step installs a dependency from a package registry in common use, **Then** the install succeeds.
-6. **Given** an administrator who has emptied the permitted-host list, **When** a code-writing step
-   tries to reach a package registry, **Then** it is refused, and **Then** the failure names the
-   address that was refused.
-7. **Given** an agent whose time limit is N seconds, **When** the step runs longer than N seconds,
+2. **Given** a run on an execution host with no per-host filtering, **When** an administrator opens
+   the sandbox settings, **Then** the network restriction is shown as unavailable and names the host
+   as the reason.
+3. **Given** that same host, **When** a run executes, **Then** every step has the same network
+   reach, and an agent step reaches the model service.
+4. **Given** an agent whose time limit is N seconds, **When** the step runs longer than N seconds,
    **Then** the step is stopped and reported as having reached its limit, distinguishably from a
    step that failed on its own.
-8. **Given** a step whose command arguments contain text a person typed — a ticket title, reviewer
+5. **Given** a step whose command arguments contain text a person typed — a ticket title, reviewer
    feedback, a required document's path — **When** the step executes, **Then** no command runs
    other than the one the step declares, whatever that text contains.
-9. **Given** a workspace whose memory ceiling is lower than the smallest allocation the execution
+6. **Given** a workspace whose memory ceiling is lower than the smallest allocation the execution
    host offers, **When** a run starts, **Then** the run fails naming that ceiling, rather than
    starting with an allocation above it.
-10. **Given** a workspace whose ceilings sit between two allocations the host offers, **When** a run
+7. **Given** a workspace whose ceilings sit between two allocations the host offers, **When** a run
    starts, **Then** its sandbox gets the larger allocation that still fits within the ceilings, and
    never the smaller allocation above them.
-11. **Given** a sandbox that takes several seconds to become ready, **When** a step with a short
+8. **Given** a sandbox that takes several seconds to become ready, **When** a step with a short
    time limit runs, **Then** the readying time is not charged to that limit and the step is not
    reported as having timed out.
+9. **Given** a step that fails because an address was unreachable, **When** the failure is shown,
+   **Then** it names the address.
 
 ---
 
@@ -209,9 +213,10 @@ host and confirm runs execute on the other one with no code change.
   under the smallest allocation, for instance. The run must fail at start naming that ceiling,
   rather than starting with an allocation above it. A ceiling *above* everything offered is not an
   error: the run gets the largest allocation and stays under its ceiling.
-- **A step needs an address the permitted-host list does not carry** — a private package mirror or
-  an internal service, for instance. The step fails, and the failure must name the address that
-  could not be reached, so an administrator can add it to the list rather than guess.
+- **A step cannot reach an address it needs** — a private package mirror, an internal service, a
+  registry that is down. The step fails, and the failure must name the address (FR-013), so an
+  unreachable dependency is not mistaken for the work itself failing. On a host with no per-host
+  filtering there is no list to add it to; the answer is network-level, outside this product.
 - **The application is unreachable when the execution service exchanges credential references.**
   The run fails before any step executes, naming the application as unreachable.
 - **A run is in flight when a deployment's execution host changes.** That run must either finish on
@@ -262,24 +267,17 @@ host and confirm runs execute on the other one with no code change.
   allocation the host offers.
 - **FR-010**: System MUST release a run's sandbox no later than its wall-clock ceiling, with no
   request required to trigger the release.
-- **FR-011**: System MUST apply the workspace's network restriction to every step whose work a model
-  carries out, and MUST NOT apply it to a step that runs commands a pipeline author wrote, waits on
-  a person, or sends a notification.
-- **FR-011a**: System MUST decide which steps the restriction covers from each step's declared type
-  alone, so that adding a kind of step does not require the rule to be rewritten.
-- **FR-012**: System MUST permit a restricted step to reach the model service, the design service,
-  and the run's git provider, and MUST refuse it every address that is none of those and not on the
-  workspace's permitted-host list.
-- **FR-012a**: Administrators MUST be able to edit the workspace's permitted-host list, and a
-  workspace that has never been edited MUST start with a list that lets a step install a dependency
-  from the package registries in common use.
-- **FR-012b**: System MUST let an administrator reach total isolation by emptying the
-  permitted-host list, leaving a restricted step able to reach only the model service and the run's
-  git provider.
-- **FR-012c**: System MUST resolve the permitted-host list into a run's snapshot when the run
-  starts, and MUST NOT consult it again for the life of that run.
-- **FR-013**: System MUST name the address that could not be reached when a step fails because the
-  restriction refused it, so that an administrator can decide whether to permit it.
+- **FR-011**: System MUST give a run's sandbox network reach for the whole of its life. A
+  model-driven step is itself a call to the model service, so a sandbox with no reach cannot run
+  one, and reach cannot be varied between steps of a run.
+- **FR-011a**: System MUST NOT offer a network restriction it cannot enforce. Where the configured
+  execution host provides no per-host filtering, the workspace's network setting MUST be presented
+  as unavailable, naming the host as the reason, rather than accepted and silently ignored.
+- **FR-012**: System MUST tell an administrator, where sandbox limits are configured, which of
+  those limits the configured execution host enforces and which it cannot — so that a setting which
+  does nothing is visible as such before a run depends on it.
+- **FR-013**: System MUST name the address a step could not reach when the step fails on a network
+  error, so that an unreachable dependency is distinguishable from a failure of the work itself.
 - **FR-014**: System MUST stop a step that exceeds its agent's time limit, and MUST report the
   outcome so that reaching a limit is distinguishable from failing on its own.
 - **FR-014a**: System MUST begin a step's time limit when the step's command begins, not when the
@@ -338,6 +336,20 @@ host and confirm runs execute on the other one with no code change.
 - **FR-027**: System MUST stream a step's output as it is produced, whatever the step's total
   output volume.
 
+### Withdrawn requirements
+
+Recorded rather than deleted, because a plan, a task list and a contract all cited them, and a
+reader finding the citation deserves to know what happened.
+
+| Identifier | Was | Withdrawn because |
+|---|---|---|
+| FR-012a | An administrator-editable permitted-host list, pre-filled with the package registries in common use | T006 measured that the intended execution host cannot filter a sandbox's traffic by host, so there is no list for an administrator to edit |
+| FR-012b | Emptying that list as the route to total isolation | Same — turning the network off blocks the model service too, so total isolation cannot run an agent step |
+| FR-012c | Pinning the list into the run's snapshot | Nothing to pin |
+
+FR-011, FR-011a, FR-012 and FR-013 are their replacements, and they describe behaviour this host can
+actually keep.
+
 ### Key Entities
 
 - **Execution service**: the component that creates sandboxes and executes steps inside them —
@@ -352,8 +364,10 @@ host and confirm runs execute on the other one with no code change.
   from the moment a run starts until its sandbox is released, and must be reachable by every
   request belonging to that run.
 - **Sandbox limits**: the workspace's ceilings, resolved into the run's snapshot when it starts and
-  never consulted again for that run — processing power, memory, wall-clock, network restriction,
-  the permitted-host list that restriction reads, and how long a failed run's sandbox is retained.
+  never consulted again for that run — processing power, memory, wall-clock, whether the network
+  restriction was requested at all, and how long a failed run's sandbox is retained. Whether the
+  restriction can be *enforced* is a property of the configured execution host, not of the run, so
+  it is not pinned (FR-011a).
 - **Execution host**: the named place sandboxes are created. A deployment uses exactly one at a
   time, chosen by configuration.
 
@@ -391,23 +405,19 @@ host and confirm runs execute on the other one with no code change.
 
 ## Assumptions
 
-- **The restricted set is an allowlist, not silence.** A code-writing step's work *is* a call to
-  the model service, so a sandbox with no network reach cannot run one. FR-012 therefore reads the
-  workspace's restriction as "only what the work requires" rather than "nothing". Total isolation
-  remains reachable, by emptying the permitted-host list (FR-012b) — it is just not what the
-  setting means on its own.
-- **"The package registries in common use" is a shipped default, not a fixed set.** What FR-012a
-  pre-fills the list with is expected to change as ecosystems do; the list is data an administrator
-  edits, so a stale default is a nuisance rather than a defect. The plan chooses the initial
-  entries.
-- **"A step a model drives" means the agent and design step types.** Those are the two of the five
-  declared types whose work is decided in the moment rather than written down in advance, which is
-  what the restriction is for. A specification or review step is therefore restricted too — harmless,
-  since the model service is always permitted. A verification step is not, which matters because
-  such a step commonly installs dependencies.
-- **The shipped permitted-host list has to carry the design service.** Restricting design steps
-  means a design step reaches its service through the permitted set, so FR-012 names it alongside
-  the model service and the git provider rather than leaving it to the editable list.
+- **Network reach is all-or-nothing on the intended host, and the setting says so.** A
+  code-writing step's work *is* a call to the model service, so a sandbox with no reach cannot run
+  one — and T006 measured that the intended host cannot filter a sandbox's traffic by host in
+  either direction. So there is no permitted set to configure. FR-011a and FR-012 make the setting
+  report itself unavailable rather than accept a value it will ignore.
+- **What actually protects a run, now that reach does not.** The sandbox is fresh per run, released
+  when the run ends and never reused (FR-002); work runs unprivileged (FR-003); it holds only that
+  run's credentials and they never touch the workspace (FR-016); and output is redacted where it is
+  taken in (FR-017). None of those depend on egress filtering. It is worth stating plainly that the
+  network restriction was never the load-bearing control, because losing it reads worse than it is.
+- **A host with per-host filtering would change this.** FR-011a is written about "the configured
+  execution host" rather than about this one, so a host that can filter would simply report the
+  setting as available. Nothing in this feature forecloses that.
 - **The hosted path becomes the default for deployed environments**, and the locally administered
   path is retained for development and for the automated suite. Both are expected to remain
   supported; neither is expected to be deleted by this feature.
@@ -495,15 +505,25 @@ model service and the run cannot succeed. FR-011 and FR-012 change that behaviou
 porting it. This is a correction of a defect against `specs/001-code-factory-mvp` FR-085, and is
 recorded as drift under Principle I rather than folded silently into the move.
 
-Clarification also changed the setting's shape and its scope, and FR-085 needs amending on both
-counts. Its shape: FR-085 describes a yes/no — "whether it may reach the network while code is
-being written" — and FR-012a makes it a yes/no plus a list of hosts an administrator edits, because
-a step that may install a dependency needs somewhere to install it from and a fixed list would
-decide that for every workspace. Its scope: "while code is being written" names no step that
-exists, since the declared types are agent, design, checkpoint, shell and notify, and nothing
-distinguishes the agent step that writes code from the agent step that writes the specification.
-FR-011 therefore covers every model-driven step rather than one unnameable one. Until FR-085 is
-amended, the two specifications describe the same setting differently.
+Clarification changed the setting's scope, and measurement then removed its substance. FR-085 needs
+amending on both counts.
+
+Its scope: "while code is being written" names no step that exists, since the declared types are
+agent, design, checkpoint, shell and notify, and nothing distinguishes the agent step that writes
+code from the agent step that writes the specification.
+
+Its substance: T006 measured that the intended execution host cannot filter a sandbox's traffic by
+host at all. A deny list did not deny; an allow list did not allow; `enableInternet: false` blocked
+everything including the permitted host. The lists govern traffic routed through the SDK's proxy,
+not sockets a process inside the sandbox opens for itself — and an agent step runs arbitrary code,
+which opens its own sockets. So FR-085's restriction cannot be honoured here in any form.
+
+The product owner chose to say so rather than to simulate it (Clarifications, Session 2026-09-11).
+FR-011a and FR-012 therefore require the setting to present itself as unavailable, naming the host.
+The rejected alternative was routing the sandbox's traffic through a proxy so an allowlist could
+apply: it was rejected because an agent step executes arbitrary code by design, arbitrary code can
+ignore a proxy environment variable, and a control that stops only accidents while appearing to
+stop attacks is worse than none.
 
 **3. Argument handling changes shape, and the new shape is the riskier one.** The current execution
 host passes a step's arguments as a list, which no shell interprets. A managed sandbox service is

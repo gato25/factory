@@ -30,8 +30,8 @@ export const WORKDIR = '/work';
  * A run's resolved sandbox limits, as they arrive from the snapshot.
  *
  * Declared once and imported everywhere rather than repeated inline: the same
- * shape was written out in four places, so adding the permitted-host list
- * meant editing four places and forgetting a fifth.
+ * shape was written out in four places, so a change meant editing four and
+ * forgetting a fifth.
  */
 export interface SandboxLimits {
   image: string;
@@ -41,17 +41,6 @@ export interface SandboxLimits {
   /** Enforced exactly, by the host itself (002 FR-009a, FR-010). */
   wallClockMinutes: number;
   networkDuringImplement: boolean;
-  /**
-   * What a restricted step may reach beyond the always-permitted services.
-   *
-   * Optional here and required on `ContainerSpec` on purpose. A snapshot
-   * written before the list existed carries none, and an absent list means an
-   * EMPTY one rather than a default somebody invented (002 FR-012c) — so the
-   * rule lives in the type, at the edge where snapshots vary, instead of being
-   * restated at every construction site. By the time a spec reaches a host the
-   * decision is made, which is why it is not optional there.
-   */
-  permittedHosts?: string[];
 }
 
 export interface StartInput {
@@ -73,7 +62,6 @@ export async function startRunWorkspace(
     memoryMb: input.sandbox.memoryMb,
     wallClockMinutes: input.sandbox.wallClockMinutes,
     network: input.sandbox.networkDuringImplement,
-    permittedHosts: input.sandbox.permittedHosts ?? [],
     env,
     workdir: WORKDIR,
   };

@@ -89,17 +89,6 @@ export interface PipelineSnapshot {
     memory_mb: number;
     wall_clock_minutes: number;
     network_during_implement: boolean;
-    /**
-     * What a restricted step may reach beyond the model service, the design
-     * service and the run's git provider (002 FR-012a). Resolved when the run
-     * starts and never consulted again, like every other ceiling here.
-     *
-     * Optional because a snapshot written before this field existed has none.
-     * An absent list means an EMPTY one — total isolation — rather than an
-     * invented default, because inventing entries for a run whose workspace
-     * never chose them is the reverse of pinning (002 FR-012c).
-     */
-    permitted_hosts?: string[];
   };
   agents: SnapshotAgent[];
   callback_url: string;

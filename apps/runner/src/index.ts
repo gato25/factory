@@ -65,8 +65,6 @@ const routes: Route[] = [
           memoryMb: limits?.memory_mb ?? 4096,
           wallClockMinutes: limits?.wall_clock_minutes ?? 90,
           networkDuringImplement: limits?.network_during_implement ?? false,
-          // Absent means empty, not "the shipped default" (002 FR-012c).
-          permittedHosts: limits?.permitted_hosts ?? [],
         },
       });
       if (!limits) {

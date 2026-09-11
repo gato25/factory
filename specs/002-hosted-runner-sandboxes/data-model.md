@@ -20,34 +20,21 @@ exists and is listed here only where its meaning changes.
 | `sandbox_network_during_implement` | boolean | `false` | FR-011 |
 | `retain_failed_sandboxes_hours` | integer | `0` | FR-023 |
 
-**New**:
+**Nothing is added.** An earlier version of this feature added a
+`sandbox_permitted_hosts` column, because FR-012 described an administrator-editable permitted set.
+T006 measured that the intended execution host cannot filter a sandbox's traffic by host in either
+direction (research D7), so there is no list to store and the column was never created.
 
-| Column | Type | Default | Requirement |
-|---|---|---|---|
-| `sandbox_permitted_hosts` | text[] | the package registries in common use | FR-012a, FR-012b |
-
-**Validation rules**
-
-- Each entry is a hostname, optionally with a leading `*.` wildcard. No scheme, no path, no port —
-  an entry that carries one is rejected at the form rather than silently ignored, because a rule
-  that does not match what it looks like is worse than no rule.
-- An empty list is valid and meaningful: it is how an administrator reaches total isolation
-  (FR-012b). It must be distinguishable from "never configured", which is why the default is a
-  populated list written at creation rather than a fallback applied at read time.
-- The model service, the design service and the run's git provider are **not** stored here. FR-012
-  names them as always permitted, so putting them in an editable list would let an administrator
-  remove them and produce a workspace where no run can succeed.
-
-**Default entries**: chosen in Phase E, not here. The spec records that "the package registries in
-common use" is a shipped default expected to go stale, and that the list is data an administrator
-edits precisely so that staleness is a nuisance rather than a defect.
+What changes instead is how `sandbox_network_during_implement` is **presented**: on a host that
+cannot enforce it, the setting reports itself unavailable and names the host, rather than accepting
+a value it will ignore (FR-011a, FR-012). That is a property of the configured execution host, not
+a column — so it is read at display time and never pinned into a run.
 
 ---
 
-## Pipeline snapshot — one new field
+## Pipeline snapshot — unchanged
 
-`packages/shared/src/snapshot.ts`, `PipelineSnapshot.sandbox`. Field names stay snake_case because
-this crosses service boundaries and is read as sent.
+`packages/shared/src/snapshot.ts`, `PipelineSnapshot.sandbox`, keeps exactly the shape it has:
 
 ```
 sandbox?: {
@@ -56,19 +43,17 @@ sandbox?: {
   memory_mb: number;
   wall_clock_minutes: number;
   network_during_implement: boolean;
-  permitted_hosts: string[];        // NEW — FR-012c
 }
 ```
 
-**Why it belongs in the snapshot**: Principle IV. The list is resolved when the run starts and never
-consulted again, so an administrator editing it changes the behaviour of zero runs in flight. This
-is the same reason every other ceiling is here rather than read live.
+An earlier version added `permitted_hosts: string[]`. It is withdrawn along with FR-012c: there is
+no permitted set to pin, because the host cannot act on one. `network_during_implement` stays,
+because whether an administrator *asked* for the restriction is still worth pinning — it is what
+the run was started under, and a host that can enforce it would need it.
 
-**Compatibility**: `sandbox` is already optional, and a snapshot written before this field exists
-has no `permitted_hosts`. The execution service treats an absent list as empty — total isolation
-rather than a silent default — because inventing entries for a run whose workspace never chose them
-would be the reverse of pinning. `index.ts` already warns when a snapshot carries no `sandbox` block
-at all; that warning covers this case.
+**What is NOT pinned**: whether the configured host can enforce the restriction. That is a property
+of the deployment, not of the run, and pinning it would claim a run is reproducible in a respect it
+is not.
 
 ---
 
@@ -161,19 +146,22 @@ Not a table. A pure function from the snapshot's ceilings to one of the sizes th
 
 ---
 
-## Permitted-host set — derived, not stored
+## Network reach — a property of the host, not of a run
 
-Also a pure function, in `apps/runner/src/container/egress.ts`, from the snapshot plus the step
-about to run.
+Not a table, not a derived function, and not per step.
 
-| Step type | Reach |
+T006 measured that the intended execution host offers no per-host filtering: a deny list did not
+deny, an allow list did not allow, and turning the internet off blocked everything including the
+permitted host. Reach is all-or-nothing for a sandbox's whole life (FR-011).
+
+So the only thing to model is **what an administrator is told**:
+
+| Configured execution host | `network_during_implement` |
 |---|---|
-| `agent`, `design` | Model service + design service + the run's git provider + `permitted_hosts` |
-| `shell`, `checkpoint`, `notify` | Unrestricted |
+| One with no per-host filtering | Shown as unavailable, naming the host (FR-011a) |
+| One that can filter | Shown as available and honoured |
 
-- The always-permitted three are constants of the run, not entries an administrator can remove
-  (FR-012).
-- The decision reads the step's declared `type` and nothing else (FR-011a), so a new step type needs
-  one line in this table and no change to the rule.
-- When the workspace does not restrict the network at all, every step is unrestricted and this
-  function is not consulted.
+FR-012 generalises that to every ceiling: an administrator should be able to see which limits the
+configured host enforces. Processing power, memory and wall-clock are all enforced (T005, T007,
+D5); network reach is not. A setting that appears to constrain and does not is worse than one that
+says it cannot.

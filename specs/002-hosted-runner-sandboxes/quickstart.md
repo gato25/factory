@@ -124,9 +124,9 @@ Set each ceiling to a distinctive value in workspace settings, then run a ticket
 | Wall-clock to 2 minutes, then start a run and stop the orchestrator | The sandbox is released at 2 minutes with nothing asking (FR-010, SC-008). Watch `wrangler tail`. |
 | An agent time limit shorter than its step | The step stops and reports reaching its limit, distinguishable from failing (FR-014) |
 | An agent time limit of a few seconds, run after an idle period | The sandbox's readying time is not charged to the limit, and the step is not reported as timing out (FR-014a) |
-| Network restricted, permitted-host list untouched | A code-writing step installs a dependency and succeeds (FR-012a) |
-| Network restricted, permitted-host list emptied | The same step is refused, and the failure names the address (FR-012b, FR-013) |
-| Network restricted, any pipeline with a `shell` step | The shell step's reach is unrestricted (FR-011) |
+| Network restriction requested, on a host that cannot filter by host | The setting is shown as unavailable, naming the host (FR-011a) |
+| Any pipeline, any step | Every step has the same network reach, and an agent step reaches the model service (FR-011) |
+| A step that cannot reach an address it needs | The failure names the address (FR-013) |
 | A memory ceiling below the smallest offered size | The run fails at start naming that ceiling, rather than starting above it (FR-005) |
 | Ceilings between two offered sizes | The sandbox gets the larger size that still fits *within* them — never more than the ceiling allows (FR-009) |
 

@@ -36,7 +36,6 @@ interface ContainerSpec {
   memoryMb: number;
   wallClockMinutes: number;
   network: boolean;              // whether model-driven steps are restricted at all
-  permittedHosts: string[];      // NEW — FR-012c, resolved from the snapshot
   env: Record<string, string>;
   workdir: string;
 }

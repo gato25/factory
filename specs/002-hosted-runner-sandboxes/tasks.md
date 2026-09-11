@@ -72,7 +72,8 @@ Everything in Phase 3 onwards remains gated.
 
 ### The seam and its safety
 
-- [X] T008 Add `permittedHosts: string[]` to `ContainerSpec` in `apps/runner/src/container/host.ts`, leaving all six method signatures unchanged per `contracts/execution-host.md` (FR-012c)
+- [X] T008 Add `permittedHosts: string[]` to `ContainerSpec` in `apps/runner/src/container/host.ts`, leaving all six method signatures unchanged per `contracts/execution-host.md`
+  - **Reverted 2026-09-11 after T006.** FR-012c is withdrawn, so the field has nothing to carry. `ContainerSpec`, `SandboxLimits` and `PipelineSnapshot['sandbox']` go back to their previous shapes. The interface is still unchanged at six methods, which was the part that mattered.
 - [X] T009 [P] Apply `quote()` from `apps/runner/src/container/shell.ts` to the interpolated paths in `dockerHost.writeFile` and `dockerHost.stat` in `apps/runner/src/container/host.ts` — both currently interpolate into `sh -c` unquoted (FR-015, D8)
   - **Done, and wider than written.** Four more files carried the same defect and were not enumerated here: `container/push.ts`, `container/reset.ts`, `container/commit.ts` and `outputs/design.ts`. FR-015 does not distinguish between them, so all six were fixed. `container/commit.ts` also had a hand-rolled single-quote escape, now `quoteOne`.
 - [X] T010 [P] Apply `quote()` to the branch and URL interpolations in the git scripts in `apps/runner/src/container/start.ts` (`cloneRepository`) and `apps/runner/src/container/recover.ts` (`resumeFromBranch`) (FR-015, D8)
@@ -139,22 +140,22 @@ observable behaviour that each took effect — including that a code-writing ste
 ### Tests for User Story 2
 
 - [ ] T035 [P] [US2] Integration test in `apps/runner/tests/integration/sizes.test.ts` proving the largest size *within* the ceilings is chosen, that a sandbox is never given more processing power or memory than the ceilings allow, that a ceiling below the smallest offered size fails at start naming it, that a ceiling above every offered size is not an error, and that wall-clock is enforced exactly rather than rounded (FR-005, FR-009, FR-009a)
-- [ ] T036 [P] [US2] Integration test in `apps/runner/tests/integration/egress.test.ts` proving `agent` and `design` steps are restricted, `shell`, `checkpoint` and `notify` steps are not, that the decision reads only the step's declared `type`, and that a refused address is named in the failure (FR-011, FR-011a, FR-013)
-- [ ] T037 [P] [US2] Integration test in `apps/runner/tests/integration/permitted-hosts.test.ts` proving the model service, design service and git provider are reachable from a restricted step whatever the list holds, that an untouched list permits a package registry, and that an emptied list refuses one (FR-012, FR-012a, FR-012b)
+- [ ] T036 [P] [US2] Integration test in `apps/runner/tests/integration/egress.test.ts` proving every step of a run has the same network reach, that an agent step reaches the model service, and that a step failing on an unreachable address names it (FR-011, FR-013). Rewritten after T006: the per-step restriction it used to assert cannot be enforced on this host
+- [ ] T037 [P] [US2] Integration test in `apps/runner/tests/integration/enforceable-limits.test.ts` proving the sandbox settings report which limits the configured execution host enforces, and that the network restriction reports itself unavailable on a host with no per-host filtering rather than accepting a value it will ignore (FR-011a, FR-012)
 - [ ] T038 [P] [US2] Integration test in `apps/runner/tests/integration/wall-clock.test.ts` proving a sandbox is released at its ceiling with no request made (FR-010, SC-008)
 - [ ] T039 [P] [US2] Integration test in `apps/runner/tests/integration/limits.test.ts` extended to prove a step exceeding its agent's time limit stops and reports `TIMEOUT_EXIT_CODE` distinguishably from an ordinary non-zero exit, and that a sandbox taking seconds to become ready neither consumes the step's limit nor is reported as a timeout (FR-014, FR-014a, E3, E3a)
 
 ### Implementation for User Story 2
 
-- [ ] T040 [P] [US2] Add `sandbox_permitted_hosts` (text[], default: the package registries in common use) to `packages/db/src/schema/workspace.ts` and generate the migration. An entry is a hostname, optionally with a leading `*.` wildcard — no scheme, path or port (FR-012a)
-- [ ] T041 [US2] Add the permitted-host list to the workspace settings form in `apps/web`, rejecting an entry carrying a scheme, path or port at the form rather than ignoring it silently, and treating an empty list as valid and meaningful (FR-012a, FR-012b)
-- [ ] T042 [US2] Add `permitted_hosts: string[]` to `PipelineSnapshot['sandbox']` in `packages/shared/src/snapshot.ts` and resolve it into the snapshot when a run starts, never reading it live (FR-012c, Principle IV)
-- [ ] T043 [US2] Treat an absent `permitted_hosts` on an older snapshot as an empty list — total isolation, not an invented default — in `apps/runner/src/index.ts` (FR-012c)
+- [ ] T040 **WITHDRAWN 2026-09-11 after T006.** No permitted-host column. There is no permitted set to store: T006 measured that the intended host cannot filter a sandbox's traffic by host in either direction. No schema change, no migration (FR-011a)
+- [ ] T041 [US2] In the sandbox section of the workspace settings form in `apps/web`, present the network restriction as **unavailable** when the configured execution host cannot enforce it, naming the host as the reason, and show for each other ceiling whether the host enforces it (FR-011a, FR-012). Replaces the permitted-host list this task used to add
+- [ ] T042 **WITHDRAWN 2026-09-11 after T006.** Nothing new on the snapshot. `network_during_implement` stays — whether an administrator *asked* for the restriction is worth pinning — but whether the host can enforce it is a property of the deployment, not of the run, and pinning it would claim a reproducibility the run does not have (FR-011a)
+- [ ] T043 **WITHDRAWN 2026-09-11 after T006.** Nothing to default, because nothing is stored. The field added to `snapshot.ts` and `ContainerSpec` under T008 is reverted with it (FR-011a)
 - [ ] T044 [P] [US2] Implement `apps/runner/src/container/sizes.ts`: choose the **largest** offered size whose vCPU **and** memory both stay **within** the snapshot's ceilings — a ceiling is an upper bound, so the choice resolves downwards; when no offered size fits within them, throw naming the ceiling; record which size the run got (FR-005, FR-009, D4)
 - [ ] T045 [US2] Declare the offered sizes as container bindings in `apps/runner/wrangler.jsonc`, each with an explicit `instance_type` — minimum 1 vCPU for a custom size, capped at 4 vCPU / 12 GiB / 20 GB disk. One size MUST match the shipped workspace defaults (2 vCPU, 4096 MiB) exactly, or every workspace on the defaults drops a size for no reason anybody chose (FR-009, D4)
-- [ ] T046 [P] [US2] Implement `apps/runner/src/container/egress.ts`: the permitted set is the model service, design service and git provider plus `permitted_hosts`; the restriction applies to `agent` and `design` steps and to no other declared type (FR-011, FR-011a, FR-012)
-- [ ] T047 [US2] Narrow and widen outbound reach around each step in `apps/runner/src/runs.ts`, using the running-container policy change proved in T006 rather than a sandbox per step (FR-011, D7)
-- [ ] T048 [US2] Report a step that failed because reach was refused with the address that was refused, in `apps/runner/src/container/hosted.ts` (FR-013)
+- [ ] T046 **WITHDRAWN 2026-09-11 after T006.** No `container/egress.ts`. There is no permitted set to compute and no per-step decision to make (FR-011)
+- [ ] T047 **WITHDRAWN 2026-09-11 after T006.** Nothing to narrow or widen. T006 proved the opposite of what this task assumed: the host's allow and deny lists govern only traffic routed through `ContainerProxy`, not sockets a process inside the sandbox opens for itself — and an agent step runs arbitrary code, which opens its own (FR-011)
+- [ ] T048 [US2] Report a step that failed on a network error with the address it could not reach, in `apps/runner/src/container/hosted.ts` (FR-013). Still worth doing, and now about an unreachable dependency rather than a refused one — a registry that is down and a mistyped host look identical without it
 - [ ] T049 [US2] Set a Durable Object alarm at `now + wallClockMinutes` on sandbox creation and release the sandbox when it fires, in `apps/runner/src/worker.ts` — `sleepAfter` is a second line, not the mechanism (FR-010, D5)
 - [ ] T050 [US2] Enforce `options.timeoutMs` in `apps/runner/src/container/hosted.ts` by mapping it to the SDK's `timeout` and returning `TIMEOUT_EXIT_CODE` (124), so a deadline stays distinguishable from a failure. The deadline MUST start when the command starts, not when `exec` is called — a sandbox that takes seconds to become ready must not spend the step's budget or be reported as the step timing out (FR-014, FR-014a, E3, E3a)
 
@@ -214,7 +215,7 @@ switch a deployment's configured host and confirm runs execute on the other with
 
 - [ ] T061 [P] Record the spike answers from T005–T007 in `specs/002-hosted-runner-sandboxes/research.md`, replacing each "has not been run" with what happened (Principle I: drift is a defect)
 - [ ] T062 [P] Reword `specs/001-code-factory-mvp/contracts/runner.md` so the Runner is no longer described as "never reachable from the public internet", per the constitution's Sync Impact Report follow-up 1
-- [ ] T063 [P] Amend `specs/001-code-factory-mvp` FR-085 for both shape — a yes/no plus an editable permitted-host list — and scope, since it names an "implement" step that no declared type matches (Sync Impact Report follow-up 2)
+- [ ] T063 [P] Amend `specs/001-code-factory-mvp` FR-085 on three counts: its scope names an "implement" step that no declared type matches; its substance cannot be honoured on a host with no per-host filtering, which T006 measured; and what replaces it is the setting reporting itself unavailable rather than silently ignored (Sync Impact Report follow-up 2, research D7)
 - [ ] T064 Confirm the orchestrator's HTTP request timeout exceeds the longest step's ceiling in `orchestration/n8n/run-ticket-pipeline.json`, and say why in `orchestration/n8n/README.md` — a disconnect now cancels the step (D9)
 - [ ] T065 [P] Add a first-deploy note to `quickstart.md` and the deploy path: container requests can error for several minutes while the provider readies capacity, which is longer than T056's retry window by design (D13)
 - [ ] T066 [P] Consider batching log-chunk callbacks in `apps/runner/src/stream/logs.ts` for cost rather than for limits — the subrequest ceiling is 10,000 per invocation and is not a constraint (D9)
@@ -255,7 +256,7 @@ switch a deployment's configured host and confirm runs execute on the other with
 
 ```text
 # After Phase 3, launch the tests together:
-T035 sizes.test.ts   T036 egress.test.ts   T037 permitted-hosts.test.ts
+T035 sizes.test.ts   T036 egress.test.ts   T037 enforceable-limits.test.ts
 T038 wall-clock.test.ts   T039 limits.test.ts
 
 # Then the three independent pieces:
