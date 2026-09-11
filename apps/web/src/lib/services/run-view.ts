@@ -300,7 +300,8 @@ export async function activeRuns(database: Database) {
       reference: tickets.reference,
       title: tickets.title,
       ticketStatus: tickets.status,
-      repository: repositories.fullPath,
+      // The artboards name a repository, not its whole path.
+      repository: repositories.name,
     })
     .from(runs)
     .innerJoin(tickets, eq(tickets.id, runs.ticketId))
@@ -408,7 +409,7 @@ export async function board(database: Database): Promise<BoardTicket[]> {
       title: tickets.title,
       status: tickets.status,
       repositoryId: tickets.repositoryId,
-      repository: repositories.fullPath,
+      repository: repositories.name,
       pipelineId: tickets.pipelineId,
       pipeline: pipelines.name,
       createdBy: tickets.createdBy,
@@ -433,9 +434,24 @@ export async function board(database: Database): Promise<BoardTicket[]> {
     const snapshot = row.snapshot as PipelineSnapshot | null;
     const steps = snapshot?.pipeline.steps ?? [];
     const index = row.currentStepIndex ?? 0;
-    const label =
-      snapshot?.agents.find((a) => a.id === steps[index]?.agent_id)?.name ??
-      (steps[index] ? labelFor(steps[index].type) : null);
+    const nameOfStep = (at: number) =>
+      snapshot?.agents.find((a) => a.id === steps[at]?.agent_id)?.name ??
+      (steps[at] ? labelFor(steps[at].type) : null);
+    const label = nameOfStep(index);
+
+    /**
+     * A gate is named by what it is gating, not by itself: "Plan needs your
+     * approval" says what to go and read, where "Human checkpoint needs your
+     * approval" says only that one is waiting.
+     */
+    const gatedLabel = (() => {
+      for (let at = index - 1; at >= 0; at -= 1) {
+        if (steps[at]?.type !== 'checkpoint' && steps[at]?.type !== 'notify') {
+          return nameOfStep(at);
+        }
+      }
+      return null;
+    })();
 
     let strip: BoardTicket['strip'] = { kind: 'none', text: 'Not started' };
     if (row.mergeRequestUrl) {
@@ -443,7 +459,7 @@ export async function board(database: Database): Promise<BoardTicket[]> {
     } else if (row.runStatus === 'failed') {
       strip = { kind: 'failure', text: row.failureReason ?? 'The run failed' };
     } else if (row.runStatus === 'waiting_approval') {
-      strip = { kind: 'gate', text: `${label ?? 'A step'} needs your approval` };
+      strip = { kind: 'gate', text: `${gatedLabel ?? label ?? 'A step'} needs your approval` };
     } else if (row.runStatus === 'running' && label) {
       strip = { kind: 'step', text: `${label} · step ${index + 1} of ${steps.length}` };
     } else if (row.runStatus === 'queued') {
