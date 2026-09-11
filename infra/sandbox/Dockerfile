@@ -38,17 +38,22 @@ USER root
 #
 # The base image carries Node 24; `@anthropic-ai/claude-code` needs >= 22.0.0
 # and `@pen.dev/cli` >= 22.19.0.
-RUN npm install -g @anthropic-ai/claude-code@2.1.268 \
-    && claude --version
+# One layer, and the npm cache dropped inside it. Two `RUN npm install` lines
+# each kept their own cache, and every byte of that is weight on a push to the
+# registry that has to succeed before any run can start.
 #
-# The design CLI is verified by its presence, not by running it: `pen --version`
-# demands authentication ("Run \"pen login\" or set PEN_CLI_KEY") and there is no
+# The Claude CLI is verified by running it — `claude --version` needs nothing.
+# The design CLI is verified by its presence instead: `pen --version` demands
+# authentication ("Run \"pen login\" or set PEN_CLI_KEY") and there is no
 # credential at build time, by design — credentials reach a sandbox as
 # environment when the run starts (Principle V). So the check is that npm
 # installed the pinned version and put the binary on PATH.
-RUN npm install -g @pen.dev/cli@0.3.7 \
-    && npm ls -g --depth=0 @pen.dev/cli \
-    && command -v pen
+RUN npm install -g @anthropic-ai/claude-code@2.1.268 @pen.dev/cli@0.3.7 \
+    && claude --version \
+    && npm ls -g --depth=0 @anthropic-ai/claude-code @pen.dev/cli \
+    && command -v pen \
+    && npm cache clean --force \
+    && rm -rf /root/.npm /tmp/*
 
 # A step's work runs as this user, and the workspace belongs to it (002 FR-003).
 #
