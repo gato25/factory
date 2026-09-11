@@ -50,20 +50,19 @@
     <div class="grid">
       {#each shown as agent (agent.id)}
         <div class="cell">
-          <AgentCard {agent} mine={agent.ownerId === data.user.id} />
           <!--
             Duplicating is how a shipped default becomes yours to change
-            (FR-031), and it is not on the design's card — so it sits under
-            it rather than being crowded into the foot.
+            (FR-031). The artboard's foot carries Edit; this goes beside it
+            rather than floating under the card.
           -->
-          <button
-            type="button"
-            class="duplicate"
-            onclick={async () => {
+          <AgentCard
+            {agent}
+            mine={agent.ownerId === data.user.id}
+            onDuplicate={async () => {
               const result = await duplicate(agent.id);
               notice = ('problem' in result ? result.problem : result.message) ?? null;
-            }}>Duplicate</button
-          >
+            }}
+          />
         </div>
       {/each}
     </div>
@@ -127,9 +126,6 @@
     max-width: 78ch;
     font-size: 14px;
     color: var(--text-2);
-  }
-  .duplicate {
-    align-self: flex-start;
   }
   .notice { border-left: 3px solid var(--accent); margin-bottom: 16px; padding: 12px 16px; }
   .failure { border-left: 3px solid var(--danger); }

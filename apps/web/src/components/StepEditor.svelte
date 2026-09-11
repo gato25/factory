@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Step, StepCondition } from '@factory/shared';
   import { CONDITION_DESCRIPTION } from '@factory/shared';
+  import Icon from '$components/Icon.svelte';
   import { STEP_KIND_LABEL } from '$lib/services/pipeline';
 
   /**
@@ -13,13 +14,15 @@
     index,
     agents = [],
     members = [],
-    onChange
+    onChange,
+    onClose
   }: {
     step: Step;
     index: number;
     agents: { id: string; name: string; engine: string; model: string }[];
     members: { id: string; name: string }[];
     onChange: (step: Step) => void;
+    onClose?: () => void;
   } = $props();
 
   const CONDITIONS: StepCondition[] = ['always', 'ticket_has_ui', 'ticket_has_no_ui'];
@@ -50,7 +53,14 @@
 </script>
 
 <section class="card editor">
-  <h2 class="section">Step {index + 1} — {STEP_KIND_LABEL[step.type]}</h2>
+  <header>
+    <h2 class="section">Step {index + 1} — {STEP_KIND_LABEL[step.type]}</h2>
+    {#if onClose}
+      <button type="button" class="close" onclick={onClose} aria-label="Close step {index + 1}">
+        <Icon name="x" size={16} />
+      </button>
+    {/if}
+  </header>
 
   <!-- Every step carries a condition, defaulting to always (FR-032a, FR-032b) -->
   <label>
@@ -237,6 +247,33 @@
     display: flex;
     flex-direction: column;
     gap: 12px;
+    padding: 16px;
+    background: var(--surface);
+    border: 1px solid var(--card-border);
+    border-radius: var(--r-md);
+    box-shadow: 0 1px 3px #0f172a14;
+  }
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .close {
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border: 0;
+    border-radius: var(--r-sm);
+    background: none;
+    color: var(--text-3);
+    cursor: pointer;
+  }
+  .close:hover {
+    background: var(--surface-2);
+    color: var(--text-2);
   }
   label {
     display: flex;

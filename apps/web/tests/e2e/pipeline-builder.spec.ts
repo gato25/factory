@@ -160,7 +160,7 @@ test.describe('composing the pipeline', () => {
       page.getByText('Every pipeline ends here. It is not a step you can move or remove.'),
     ).toBeVisible();
     // How many repositories use it, before anyone changes it (FR-030).
-    await expect(page.getByText('used by 1 repository')).toBeVisible();
+    await expect(page.getByText('Used by 1 repo')).toBeVisible();
     // And the run in flight is named, with what saving will not do to it.
     await expect(page.getByText('1 run in flight')).toBeVisible();
 
@@ -169,10 +169,10 @@ test.describe('composing the pipeline', () => {
     // Scoped to the popover just opened: the side panel offers the same
     // palette, so an unscoped match is ambiguous.
     await page
-      .locator('details[open] .palette')
-      .getByRole('button', { name: 'Review gate', exact: true })
+      .locator('.picker')
+      .getByRole('button', { name: 'Human checkpoint', exact: true })
       .click();
-    await expect(page.getByText('Step 2 — Review gate')).toBeVisible();
+    await expect(page.getByText('Step 2 — Human checkpoint')).toBeVisible();
 
     // Its approvers, waiting time and expiry behaviour (FR-032).
     await page.getByLabel('Who may decide this checkpoint?').selectOption('ticket_creator');
@@ -182,10 +182,10 @@ test.describe('composing the pipeline', () => {
     // --- and a shell step at the end ---
     await page.getByLabel('Add a step at the end').click();
     await page
-      .locator('details[open] .palette')
+      .locator('.picker')
       .getByRole('button', { name: 'Shell command', exact: true })
       .click();
-    await page.getByLabel('Command').fill('bun test');
+    await page.getByRole('textbox', { name: 'Command' }).fill('bun test');
 
     // SC-010 is stated before the save, not discovered after it.
     await expect(page.getByRole('status')).toContainText(
@@ -237,16 +237,14 @@ test.describe('composing the pipeline', () => {
     await page.goto(`/pipelines/${seeded.pipelineId}`);
 
     // --- FR-028: remove the code-producing step ---
+    await page.getByRole('button', { name: 'Actions for step 2' }).click();
     await page.getByRole('button', { name: 'Remove step 2' }).click();
     await expect(page.getByText(/This pipeline has no step that writes code/)).toBeVisible();
     await expect(page.getByRole('button', { name: /^Save as version/ })).toBeDisabled();
 
     // Put it back, and the refusal goes away.
     await page.getByLabel('Add a step at the end').click();
-    await page
-      .locator('details[open] .palette')
-      .getByRole('button', { name: 'Agent', exact: true })
-      .click();
+    await page.locator('.picker').getByRole('button', { name: 'Agent step', exact: true }).click();
     await page
       .getByRole('combobox', { name: 'Agent', exact: true })
       .selectOption({ label: `Implement ${seeded.tag} — claude-opus-5` });
@@ -254,19 +252,17 @@ test.describe('composing the pipeline', () => {
 
     // --- FR-032e: a design step before the step that classifies ---
     await page.getByLabel('Insert a step at position 1').click();
-    await page
-      .locator('details[open] .palette')
-      .getByRole('button', { name: 'Design', exact: true })
-      .click();
+    await page.locator('.picker').getByRole('button', { name: 'Design step', exact: true }).click();
     await expect(page.getByText(/Step 1 is a design step/)).toBeVisible();
     await expect(page.getByText(/before the specification step that decides/)).toBeVisible();
+    await page.getByRole('button', { name: 'Actions for step 1' }).click();
     await page.getByRole('button', { name: 'Remove step 1' }).click();
 
     // --- FR-032d: a condition before its fact is established ---
     await page.getByLabel('Insert a step at position 1').click();
     await page
-      .locator('details[open] .palette')
-      .getByRole('button', { name: 'Review gate', exact: true })
+      .locator('.picker')
+      .getByRole('button', { name: 'Human checkpoint', exact: true })
       .click();
     await page
       .getByLabel('When does this step run?')

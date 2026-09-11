@@ -193,7 +193,7 @@ test.describe('configuring the agents and their skills', () => {
 
     // --- swap it into their own pipeline, still alone ---
     await page.goto(`/pipelines/${seeded.pipelineId}`);
-    await page.getByRole('button', { name: /^1\s/ }).click();
+    await page.getByRole('button', { name: /^Step 1 —/ }).click();
     await page
       .getByRole('combobox', { name: 'Agent', exact: true })
       .selectOption({ label: `Planner ${seeded.tag} — claude-opus-5` });
@@ -232,7 +232,7 @@ test.describe('configuring the agents and their skills', () => {
 
     // Usable: it can still be chosen in a pipeline the member owns.
     await page.goto(`/pipelines/${seeded.pipelineId}`);
-    await page.getByRole('button', { name: /^1\s/ }).click();
+    await page.getByRole('button', { name: /^Step 1 —/ }).click();
     await expect(
       page.getByRole('combobox', { name: 'Agent', exact: true }).getByRole('option', {
         name: new RegExp(`Theirs ${seeded.tag}`),

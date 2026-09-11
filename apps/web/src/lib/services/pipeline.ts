@@ -18,13 +18,29 @@ import { assertSavable, conditionWords, problemsWith } from './pipeline-validate
 
 export const STEP_KINDS = ['agent', 'design', 'checkpoint', 'shell', 'notify'] as const;
 
+/** The words `design.pen`'s palette uses, so the screen and the code agree. */
 export const STEP_KIND_LABEL: Record<(typeof STEP_KINDS)[number], string> = {
-  agent: 'Agent',
-  design: 'Design',
-  checkpoint: 'Review gate',
+  agent: 'Agent step',
+  design: 'Design step',
+  checkpoint: 'Human checkpoint',
   shell: 'Shell command',
-  notify: 'Notification',
+  notify: 'Notify',
 };
+
+/** What each kind is for, and the icon the design gives it. */
+export const STEP_KIND_DETAIL: Record<
+  (typeof STEP_KINDS)[number],
+  { description: string; icon: string }
+> = {
+  checkpoint: { description: 'Pause until someone approves', icon: 'hand' },
+  design: { description: 'Draw screens with the pen.dev CLI', icon: 'palette' },
+  agent: { description: 'Run one of your agents via Claude CLI', icon: 'bot' },
+  shell: { description: 'Run a script in the sandbox (lint, build)', icon: 'terminal' },
+  notify: { description: 'Slack / email / webhook via n8n', icon: 'bell' },
+};
+
+/** The order the design's palette lists them in. */
+export const PALETTE_ORDER = ['checkpoint', 'design', 'agent', 'shell', 'notify'] as const;
 
 /** The implicit final step, shown but never editable (FR-029). */
 export const IMPLICIT_LAST_STEP = {
@@ -189,6 +205,38 @@ export async function savePipeline(
     .where(eq(pipelines.id, input.pipelineId));
 
   return { version, runsUnaffected: inFlight?.count ?? 0 };
+}
+
+/**
+ * The name on its own.
+ *
+ * Renaming is deliberately NOT a new version: a version is what a run pins,
+ * and no run's behaviour depends on what the pipeline is called. Bumping the
+ * version here would make the history say something changed for runs when
+ * nothing did (FR-027).
+ */
+export async function renamePipeline(
+  database: Database,
+  pipelineId: string,
+  name: string,
+  user: SessionUser,
+): Promise<{ name: string }> {
+  const trimmed = name.trim();
+  if (!trimmed) throw invalidInput('Give the pipeline a name.');
+
+  const [pipeline] = await database
+    .select()
+    .from(pipelines)
+    .where(eq(pipelines.id, pipelineId))
+    .limit(1);
+  if (!pipeline) throw notFound('no such pipeline');
+  requireOwnerOrAdmin(user, pipeline.ownerId, 'this pipeline');
+
+  await database
+    .update(pipelines)
+    .set({ name: trimmed, updatedAt: new Date() })
+    .where(eq(pipelines.id, pipelineId));
+  return { name: trimmed };
 }
 
 /** Every step carries a condition, defaulting to always (FR-032a). */

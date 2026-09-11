@@ -289,6 +289,14 @@
      decision the design did not take. */
   --card-border: #e6e8ee;
 
+  /* The builder's canvas. design.pen draws these and never names them:
+     #CBD2DC is the flow line and every grip (47 uses), #FDE68A and #F59E0B
+     the chip and edge of a checkpoint, #FBBF24 the trigger's mark. */
+  --flow-line: #cbd2dc;
+  --warning-chip: #fde68a;
+  --warning-edge: #f59e0b;
+  --trigger-mark: #fbbf24;
+
   /* The code surface. design.pen draws the skill editor and the run log on a
      dark ground it never named: #0B1220 behind, #E2E8F0 text, #475569 line
      numbers, #93C5FD for a Markdown heading. Literals in the file, tokenised
@@ -307,6 +315,15 @@
   --font: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
   --font-head: "Geist", "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+/* Every width taken from design.pen includes its padding — that is what a
+   frame's width means in a design tool — so the stylesheet has to measure
+   the same way, or a 248px sidebar arrives 280px wide. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
 
 body {

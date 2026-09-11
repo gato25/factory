@@ -2,6 +2,7 @@ import { FactoryError, notAuthorised, type Step } from '@factory/shared';
 import * as v from 'valibot';
 import { command, form, getRequestEvent, query } from '$app/server';
 import { db } from '$lib/db';
+import { previewRun } from '$lib/services/estimate';
 import {
   blankStep,
   createPipeline,
@@ -11,6 +12,7 @@ import {
   listPipelines,
   moveStep,
   removeStep,
+  renamePipeline,
   STEP_KINDS,
   savePipeline,
 } from '$lib/services/pipeline';
@@ -132,6 +134,38 @@ export const remove = command(
   async ({ steps, at }) => {
     requireUser();
     return { steps: removeStep(steps, at) };
+  },
+);
+
+/**
+ * What this pipeline would do if a ticket started on it now: every step with
+ * the agent behind it, which steps are conditional and on what, whether
+ * anything verifies the result, and an estimate from comparable past runs
+ * (FR-019, FR-019a, FR-034a). A dry run — it starts nothing.
+ */
+export const preflight = query(PipelineId, async (id) => {
+  requireUser();
+  const detail = await getPipeline(db(), id, getRequestEvent().locals.user);
+  return previewRun(db(), id, detail.currentVersion);
+});
+
+/** The name on its own — not a new version (FR-027). */
+export const rename = command(
+  v.object({
+    pipelineId: PipelineId,
+    name: v.pipe(v.string(), v.trim(), v.minLength(1, 'Give the pipeline a name.')),
+  }),
+  async ({ pipelineId, name }) => {
+    const user = requireUser();
+    try {
+      const renamed = await renamePipeline(db(), pipelineId, name, user);
+      await pipeline(pipelineId).refresh();
+      await pipelines().refresh();
+      return renamed;
+    } catch (error) {
+      if (error instanceof FactoryError) return { problem: error.message };
+      throw error;
+    }
   },
 );
 

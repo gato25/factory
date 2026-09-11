@@ -17,6 +17,7 @@
   let {
     agent,
     mine = false,
+    onDuplicate,
   }: {
     agent: {
       id: string;
@@ -33,6 +34,8 @@
       usage: { pipelines: number; runs: number; runsInFlight: number };
     };
     mine?: boolean;
+    /** Duplicating is how a shipped default becomes yours (FR-031). */
+    onDuplicate?: () => void;
   } = $props();
 
   const tone = $derived(
@@ -94,6 +97,12 @@
         {mine}
         mayChange={agent.mayChange}
       />
+      {#if onDuplicate}
+        <button type="button" class="edit" onclick={onDuplicate}>
+          <Icon name="copy" size={16} />
+          <span>Duplicate</span>
+        </button>
+      {/if}
       <a class="edit" href="/agents/{agent.id}">
         <Icon name="pencil" size={16} />
         <span>{agent.mayChange ? 'Edit' : 'Read'}</span>
@@ -218,6 +227,8 @@
   }
   .edit {
     display: inline-flex;
+    font-family: inherit;
+    cursor: pointer;
     align-items: center;
     gap: 8px;
     padding: 6px 12px;
