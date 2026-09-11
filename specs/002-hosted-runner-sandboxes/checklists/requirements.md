@@ -31,6 +31,22 @@
 
 ## Notes
 
+**Re-validated 2026-09-11 after `/speckit-analyze` remediation (F1, F2, F4, F5, F6).**
+Pass count unchanged: 16/16. Three requirements were added — FR-009a, FR-014a, FR-025a — and
+FR-005, FR-009 and FR-024b were reworded. All 37 functional requirements carry a task and a
+delivery phase; all 50 identifiers resolve across every artifact.
+
+The analysis found the spec using "ceiling" in two opposite senses: US2 called the ceilings "a
+workspace's only control over what a run may consume" (a maximum) while FR-005 and an edge case
+treated them as a minimum the host must provide. The plan had silently resolved that upwards, so
+an administrator capping memory at 4096 MiB would have been handed 8 GiB. FR-009 now states the
+maximum reading explicitly and the routing resolves downwards.
+
+**Known and not fixed in this pass**: FR-024 says a capacity refusal is retried "over a bounded
+period" without naming one — the 30-second figure lives in Assumptions and research D13. The
+requirement is testable only as "at least one retry happened". Recorded as analysis finding F9,
+deliberately left for the author rather than changed unasked.
+
 **Re-validated 2026-09-11 after the clarification session (5 questions answered).**
 Pass count unchanged: 16/16 → 16/16. No item changed state. The clarifications closed the one
 item that had been closest to failing — FR-011 previously read "apply the restriction only to the

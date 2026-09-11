@@ -64,11 +64,12 @@ must be deleted when the run ends, and that deletion is a task, not an assumptio
 
 ---
 
-## D4 — Sandbox size is fixed per deployment, so the workspace's ceilings are served by a small set of named sizes
+## D4 — Sandbox size is fixed per deployment, so a ceiling is honoured by staying under it
 
 **Decision**: declare a small fixed set of container bindings — one per offered size — and route a
-run to the smallest whose ceilings meet the workspace's. A workspace asking for more than the
-largest fails at start, naming the ceiling (FR-005).
+run to the **largest offered size that still fits within** the workspace's processing-power and
+memory ceilings. A workspace whose ceiling sits below the smallest offered size fails at start,
+naming that ceiling (FR-005).
 
 **Why this is forced**: processing power and memory are not settable per sandbox at runtime. They
 come from the Wrangler container configuration, for example
@@ -77,13 +78,22 @@ configuration attached to a container binding. Custom instance types are availab
 must allocate at least 1 vCPU, and are capped at the largest predefined size: 4 vCPU, 12 GiB memory
 and 20 GB disk.
 
-**What it costs**: FR-009 says the workspace's ceilings are applied to each run's sandbox. With a
-fixed set of sizes they are *honoured* rather than *applied* — a workspace asking for 2 vCPU and
-4 GiB gets a sandbox of at least that, not exactly that. The feature's own defaults (2 vCPU,
-4096 MiB) fit inside one size, so nothing in the shipped configuration is affected; a workspace
-that sets an unusual figure gets the next size up and is not told. This is recorded in the plan's
-Complexity Tracking, and the alternative — one binding per distinct workspace configuration — was
-rejected as unbounded.
+**Which direction to resolve, and why it matters**: an earlier draft of this decision rounded
+*upwards* — the smallest size meeting or exceeding the workspace's figures. That inverts the
+setting. `specs/001-code-factory-mvp` FR-085 says an administrator *constrains* a sandbox's
+processing power and memory, so the figures are an upper bound on what a run may consume, and an
+administrator who caps memory at 4096 MiB should never be handed 8 GiB. FR-009 now says so
+explicitly. Rounding down can give a workspace less than it asked for, which is visible in what the
+run records and is the safe direction to be wrong in.
+
+**A consequence worth stating**: the deployment should offer a size matching the shipped defaults
+(2 vCPU, 4096 MiB) exactly, because a custom instance type can express it. Without one, every
+workspace on the defaults drops to the next size down and runs slower than intended for no reason
+anybody chose.
+
+**What it still costs**: a workspace setting an unusual figure gets less than it asked for and is
+not told. The alternative — one binding per distinct workspace configuration — was rejected as
+unbounded, and is recorded in the plan's Complexity Tracking.
 
 **Confidence**: the instance-type mechanism is documented; the routing design has not been run.
 

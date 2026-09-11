@@ -58,7 +58,8 @@ so the hosted implementation is a translation and not an adapter with behaviour 
 | C2 | The sandbox is fresh. No state from any earlier run is visible in it. | FR-002 |
 | C3 | Commands run as an unprivileged user. The workspace at `workdir` is writable by that user. | FR-003 |
 | C4 | The image is the one in `spec.image`, not a default substituted for it. | FR-004 |
-| C5 | Processing power and memory meet or exceed `spec.cpu` and `spec.memoryMb`. A host that cannot meet them throws `sandbox_lost` naming the ceiling, and creates nothing. | FR-005, FR-009 |
+| C5 | Processing power and memory **do not exceed** `spec.cpu` and `spec.memoryMb` — these are upper bounds, not minimums — and are the largest allocation the host offers within them. A host with no allocation that fits throws `sandbox_lost` naming the ceiling, and creates nothing. | FR-005, FR-009 |
+| C5a | The wall-clock ceiling is enforced exactly, not rounded to an allocation the host offers. | FR-009a |
 | C6 | The sandbox is released no later than `wallClockMinutes` from creation, with no further call required. | FR-010 |
 | C7 | Credentials in `spec.env` reach the sandbox as environment. They are never written to a file in the workspace, and never appear in a process listing. | FR-016 |
 | C8 | A refusal for capacity is retried over a bounded period before it is reported as a failure. A refusal that outlasts the period throws with a reason naming capacity, distinguishable from a step failure. | FR-024, FR-024a |
@@ -71,6 +72,7 @@ so the hosted implementation is a translation and not an adapter with behaviour 
 | E1 | Every element of `argv` reaches the process as one argument, exactly as given, whatever characters it contains. A host that joins into a command line MUST quote first. | FR-015 |
 | E2 | `options.onOutput` is called as output is produced, not once at the end. | FR-027 |
 | E3 | `options.timeoutMs` is enforced. A command that exceeds it is stopped and the result carries `TIMEOUT_EXIT_CODE` (124), which is how a caller tells a deadline from an ordinary non-zero exit. | FR-014 |
+| E3a | The deadline starts when the command starts, not when `exec` is called. Time spent readying a sandbox is never charged to the step's limit and never reported as the step timing out. | FR-014a |
 | E4 | `options.cwd` and `options.env` apply to the command and do not leak into later ones. | — |
 | E5 | Output volume does not change the outcome. A command producing more than a single response could carry still streams and still reports its exit code. | FR-027 |
 | E6 | Network reach during the command is whatever the caller established for this step. `exec` does not decide reach. | FR-011 |

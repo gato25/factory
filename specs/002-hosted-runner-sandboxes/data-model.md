@@ -83,7 +83,8 @@ replaces the `Map` in `memoryStore()` (D3).
 | `snapshot` | The pinned `PipelineSnapshot` the run started with | Principle IV. Read on every step; never refreshed. |
 | `credentials` | The resolved model key, git token and, if the pipeline has a design step, the design credential | See *Lifecycle* below. |
 | `sandbox_id` | The sandbox this run owns | Replaced, not added to, when a sandbox is lost and rebuilt (`container/recover.ts`). |
-| `size` | Which offered size the run was routed to (D4) | Recorded so that a support question about a slow run can be answered. |
+| `size` | Which offered size the run was routed to (D4) | Recorded so that a support question about a slow run can be answered — and because the routing resolves downwards, this is where "why was it slow" is visible. |
+| `execution_host` | Which host the run started on | FR-025a. A request for a run whose recorded host is not the one now configured is refused rather than executed elsewhere. |
 | `deadline` | When the wall-clock ceiling falls due | The alarm's time. Absolute, set once at creation. |
 | `outcome` | `running`, or the terminal outcome the destroy call reported | Only meaningful between a failed run ending and its retention window closing. |
 | `retain_until` | When a retained failed sandbox may be released | Absent unless the workspace retains failed sandboxes. |
@@ -111,6 +112,11 @@ Four rules hold across every path:
    not by a lock we write.
 4. **A step or push request with no record is refused**, saying the run must be started first
    (FR-007) — and the refusal says nothing about whether that run exists elsewhere (FR-019).
+5. **A request for a run recorded against a different execution host is refused** rather than
+   executed on the currently configured one, so a run never spans two hosts (FR-025a). Switching
+   the deployment's host mid-run is the case this exists for.
+6. **A run that fails for capacity releases its concurrency place immediately**, so a queued run
+   advances rather than waiting for anything to time out (FR-024b).
 
 **Lifecycle of the credentials field — the part that needs care**
 
@@ -142,11 +148,16 @@ Not a table. A pure function from the snapshot's ceilings to one of the sizes th
 
 **Rules**
 
-- Choose the smallest offered size whose vCPU **and** memory both meet or exceed the snapshot's.
-- If no offered size meets them, the run fails at start naming the ceiling that could not be met
-  (FR-005) — it does not start at a smaller size.
-- The chosen size may exceed what was asked for. That is D4's accepted cost and it is recorded in
-  the plan's Complexity Tracking; the run records which size it got.
+- Choose the **largest** offered size whose vCPU **and** memory both stay within the snapshot's
+  ceilings. A ceiling is an upper bound, so the choice resolves downwards (FR-009).
+- If no offered size fits within them — a ceiling below the smallest size — the run fails at start
+  naming that ceiling (FR-005). It does not start above the ceiling.
+- A ceiling *above* every offered size is not an error: the run gets the largest size and stays
+  under its ceiling.
+- The chosen size may be below what was asked for. That is D4's accepted cost, recorded in the
+  plan's Complexity Tracking; the run records which size it got, so the gap is answerable.
+- Wall-clock is not quantised and is enforced exactly by the alarm, never rounded to an offered
+  value (FR-009a).
 
 ---
 

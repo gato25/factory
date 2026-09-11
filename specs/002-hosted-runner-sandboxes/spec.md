@@ -121,9 +121,15 @@ completes. Delivers the safety guarantee the product already claims.
 8. **Given** a step whose command arguments contain text a person typed — a ticket title, reviewer
    feedback, a required document's path — **When** the step executes, **Then** no command runs
    other than the one the step declares, whatever that text contains.
-9. **Given** a workspace asking for more memory than the execution host will grant, **When** a run
-   starts, **Then** the run fails naming the ceiling that could not be met, rather than starting
-   with a lower one.
+9. **Given** a workspace whose memory ceiling is lower than the smallest allocation the execution
+   host offers, **When** a run starts, **Then** the run fails naming that ceiling, rather than
+   starting with an allocation above it.
+10. **Given** a workspace whose ceilings sit between two allocations the host offers, **When** a run
+   starts, **Then** its sandbox gets the larger allocation that still fits within the ceilings, and
+   never the smaller allocation above them.
+11. **Given** a sandbox that takes several seconds to become ready, **When** a step with a short
+   time limit runs, **Then** the readying time is not charged to that limit and the step is not
+   reported as having timed out.
 
 ---
 
@@ -174,7 +180,10 @@ host and confirm runs execute on the other one with no code change.
 2. **Given** a deployment configured to use one execution host, **When** an operator changes that
    configuration to the other and restarts, **Then** subsequent runs execute on the other host and
    no code changed.
-3. **Given** a deployment whose configured execution host is unreachable, **When** an operator
+3. **Given** a run that started on one execution host, **When** the configured host changes while
+   that run is in flight, **Then** a further request for that run is refused rather than executed
+   on the new host.
+4. **Given** a deployment whose configured execution host is unreachable, **When** an operator
    checks readiness, **Then** the readiness answer says the execution host is unreachable, and is
    distinguishable both from the service being down and from the credential being wrong.
 
@@ -196,9 +205,10 @@ host and confirm runs execute on the other one with no code change.
   the run must fail saying the workspace was lost.
 - **Two requests arrive for the same run at once.** They must address the same sandbox and the same
   workspace; neither may create a second one.
-- **A workspace asks for a ceiling the execution service will not grant** — more memory, longer
-  wall-clock, more processing power than it offers. The run must fail at start naming the ceiling
-  that could not be met, rather than starting with a silently lower one.
+- **A workspace's ceiling is below everything the execution service offers** — a memory ceiling
+  under the smallest allocation, for instance. The run must fail at start naming that ceiling,
+  rather than starting with an allocation above it. A ceiling *above* everything offered is not an
+  error: the run gets the largest allocation and stays under its ceiling.
 - **A step needs an address the permitted-host list does not carry** — a private package mirror or
   an internal service, for instance. The step fails, and the failure must name the address that
   could not be reached, so an administrator can add it to the list rather than guess.
@@ -206,11 +216,13 @@ host and confirm runs execute on the other one with no code change.
   The run fails before any step executes, naming the application as unreachable.
 - **A run is in flight when a deployment's execution host changes.** That run must either finish on
   the host it started on or fail saying its sandbox is gone; it must never execute half its steps
-  on one host and half on another.
+  on one host and half on another (FR-025a). Nothing about switching hosts by configuration
+  prevents this on its own, which is why the run records the host it started on.
 - **Ticket text contains shell syntax.** A ticket titled with quotes, semicolons, backticks or
   substitutions must be carried to the step as text and must not alter what runs.
 - **The first run after an idle period.** A cold start must not be reported as a timeout, and must
-  not count against the step's own time limit.
+  not count against the step's own time limit — the limit begins when the step's command begins
+  (FR-014a). A step with a short limit is the case that exposes this.
 - **A step produces more output than one response can carry.** The output must still stream and the
   step must still report its outcome.
 
@@ -227,8 +239,9 @@ host and confirm runs execute on the other one with no code change.
 - **FR-003**: System MUST execute every step as a non-privileged user inside the sandbox.
 - **FR-004**: System MUST pin the sandbox image a run uses when the run starts, and MUST NOT change
   it for the life of that run.
-- **FR-005**: System MUST fail a run at start, naming the ceiling that could not be met, when the
-  execution host cannot provide the processing power, memory or lifetime the workspace requires.
+- **FR-005**: System MUST fail a run at start, naming the ceiling it could not respect, when no
+  allocation the execution host offers fits within the workspace's processing-power or memory
+  ceiling, or when the host cannot enforce the workspace's wall-clock ceiling.
 
 #### Continuity of a run across separate requests
 
@@ -241,8 +254,12 @@ host and confirm runs execute on the other one with no code change.
 
 #### Limits and reach
 
-- **FR-009**: System MUST apply the workspace's processing-power, memory and wall-clock ceilings to
-  each run's sandbox.
+- **FR-009**: System MUST NOT give a run's sandbox more processing power or memory than the
+  workspace's ceilings allow, and MUST give it the largest allocation the execution host offers
+  within them. A ceiling is an upper bound on what a run may consume, never a minimum to be rounded
+  up to.
+- **FR-009a**: System MUST enforce the workspace's wall-clock ceiling exactly, not to the nearest
+  allocation the host offers.
 - **FR-010**: System MUST release a run's sandbox no later than its wall-clock ceiling, with no
   request required to trigger the release.
 - **FR-011**: System MUST apply the workspace's network restriction to every step whose work a model
@@ -265,6 +282,9 @@ host and confirm runs execute on the other one with no code change.
   restriction refused it, so that an administrator can decide whether to permit it.
 - **FR-014**: System MUST stop a step that exceeds its agent's time limit, and MUST report the
   outcome so that reaching a limit is distinguishable from failing on its own.
+- **FR-014a**: System MUST begin a step's time limit when the step's command begins, not when the
+  sandbox is asked for, so that time spent readying a sandbox is never charged to the step's limit
+  and is never reported as the step having timed out.
 
 #### Safety of what a run is told to do
 
@@ -302,13 +322,17 @@ host and confirm runs execute on the other one with no code change.
 - **FR-024a**: System MUST report a run that still could not obtain a sandbox once that period
   passes as having failed to obtain one, naming capacity as the reason, distinguishably from a step
   that failed on its merits.
-- **FR-024b**: System MUST NOT let a capacity refusal consume a run's place in the workspace's
-  concurrency queue.
+- **FR-024b**: System MUST release a run's place against the workspace's concurrency limit as soon
+  as the run fails for capacity, so that a queued run advances immediately rather than waiting for
+  anything to time out.
 
 #### Operability
 
 - **FR-025**: Operators MUST be able to choose which execution host a deployment uses through
   configuration alone, with no code change and no rebuild.
+- **FR-025a**: System MUST execute every step of a run on the execution host that run started on,
+  and MUST refuse a request for a run whose recorded host is not the one now configured rather than
+  executing part of that run somewhere else.
 - **FR-026**: System MUST allow its full automated test suite to run with no credentials for, and
   no network access to, any hosted execution service.
 - **FR-027**: System MUST stream a step's output as it is produced, whatever the step's total
@@ -401,7 +425,16 @@ host and confirm runs execute on the other one with no code change.
   company cost; sandbox capacity is an individual one. This is why cost has its own user story and
   its own success criteria rather than being folded into operability.
 - **One execution host per deployment.** Nothing here asks for a run to choose its host, or for two
-  hosts to be used at once.
+  hosts to be used at once. FR-025a is about a run that outlives a change of that setting, not about
+  choosing.
+- **Processing power and memory come in fixed allocations, so a ceiling is honoured by staying
+  under it.** An execution host may offer a handful of sizes rather than an arbitrary figure, so a
+  workspace's ceiling usually lands between two of them. FR-009 resolves that downwards — the
+  largest allocation that still fits — because a ceiling an administrator set is an upper bound on
+  what a run may consume, and quietly exceeding it would invert the setting's meaning. The cost is
+  that a workspace can get less than it asked for; that is visible in what the run records, and it
+  is the safe direction to be wrong in. Wall-clock is not quantised and is enforced exactly
+  (FR-009a).
 - **The bounded retry in FR-024 is about 30 seconds**, on the evidence that a capacity refusal on
   the intended provider clears in seconds rather than minutes. The figure is a starting point for
   the plan to tune against real behaviour, not a measured one.

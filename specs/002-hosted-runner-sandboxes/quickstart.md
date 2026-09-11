@@ -37,6 +37,9 @@ a reason to add the account.
 docker info >/dev/null && bun run dev:runner    # the local path, unchanged
 ```
 
+Then, with a run in flight, change `EXECUTION_HOST` and restart: a further request for that run
+must be **refused**, not executed on the other host (FR-025a). A run never spans two hosts.
+
 **Expect**: the runner starts and `GET /ready` answers `container_host: "reachable"`. Switching a
 deployment between hosts is one configuration change and no code change (FR-025, SC-010).
 
@@ -120,10 +123,12 @@ Set each ceiling to a distinctive value in workspace settings, then run a ticket
 | --- | --- |
 | Wall-clock to 2 minutes, then start a run and stop the orchestrator | The sandbox is released at 2 minutes with nothing asking (FR-010, SC-008). Watch `wrangler tail`. |
 | An agent time limit shorter than its step | The step stops and reports reaching its limit, distinguishable from failing (FR-014) |
+| An agent time limit of a few seconds, run after an idle period | The sandbox's readying time is not charged to the limit, and the step is not reported as timing out (FR-014a) |
 | Network restricted, permitted-host list untouched | A code-writing step installs a dependency and succeeds (FR-012a) |
 | Network restricted, permitted-host list emptied | The same step is refused, and the failure names the address (FR-012b, FR-013) |
 | Network restricted, any pipeline with a `shell` step | The shell step's reach is unrestricted (FR-011) |
-| More memory than the largest offered size | The run fails at start naming the ceiling, rather than starting smaller (FR-005) |
+| A memory ceiling below the smallest offered size | The run fails at start naming that ceiling, rather than starting above it (FR-005) |
+| Ceilings between two offered sizes | The sandbox gets the larger size that still fits *within* them — never more than the ceiling allows (FR-009) |
 
 Then the one that is not a setting — name a ticket
 ``x'; touch /tmp/pwned; echo '`` and give a step an `output_files` entry containing the same shape.

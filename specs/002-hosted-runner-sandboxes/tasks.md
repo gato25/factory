@@ -74,7 +74,7 @@ code, and the plan says so. Do not start Phase 3 until all three answer.
 
 - [ ] T014 [P] Extend `apps/runner/tests/unit/shell.test.ts` with cases proving a path containing shell syntax reaches `writeFile` and `stat` as a path and runs nothing (FR-015, SC-007)
 - [ ] T015 [P] Add `apps/runner/tests/unit/auth.test.ts` asserting the constant-time comparison rejects wrong credentials and that comparison time does not vary with how early the mismatch falls (D12, FR-018)
-- [ ] T016 [P] Add `apps/runner/tests/integration/host-selection.test.ts` proving the configured host is the one used, with no code change between the two (FR-025, SC-010)
+- [ ] T016 [P] Add `apps/runner/tests/integration/host-selection.test.ts` proving the configured host is the one used with no code change between the two, and that a run started on one host is refused rather than executed on the other when the configuration changes mid-run (FR-025, FR-025a, SC-010)
 
 **Checkpoint**: the existing Docker path is safer than it was, the suite is still offline, and the
 three unknowns have answers
@@ -104,9 +104,9 @@ container daemon, start a ticket against a real repository, and confirm it reach
 - [ ] T024 [P] [US1] Implement `writeFile`, `readFile` and `stat` in `apps/runner/src/container/hosted.ts` against the SDK's file methods, keeping `null` for a missing path distinct from a thrown `sandbox_lost` for an unreachable sandbox (F1–F4)
 - [ ] T025 [US1] Wrap every command in `apps/runner/src/container/hosted.ts` so it runs as the unprivileged user established in T033, per the answer recorded in T005 (FR-003, C3)
 - [ ] T026 [US1] Create `apps/runner/src/worker.ts` exporting the Worker `fetch` handler and the sandbox Durable Object class, delegating routing to the existing `Route[]` array in `apps/runner/src/index.ts` (FR-001)
-- [ ] T027 [US1] Replace `memoryStore()` in `apps/runner/src/runs.ts` with state held in the run's Durable Object — snapshot, credentials, `sandbox_id`, `size`, `deadline`, `outcome`, `retain_until` per `data-model.md` (FR-006, FR-008, D3)
+- [ ] T027 [US1] Replace `memoryStore()` in `apps/runner/src/runs.ts` with state held in the run's Durable Object — snapshot, credentials, `sandbox_id`, `size`, `execution_host`, `deadline`, `outcome`, `retain_until` per `data-model.md` (FR-006, FR-008, FR-025a, D3)
 - [ ] T028 [US1] Delete the run's credentials whenever its record is deleted, on every path in `data-model.md`'s state diagram including the alarm, and drop credentials from a retained failed sandbox's record (FR-016, D3)
-- [ ] T029 [US1] Refuse a step or push request naming a run with no record, saying the run must be started first, without revealing whether that run exists (FR-007, FR-019) in `apps/runner/src/index.ts`
+- [ ] T029 [US1] Refuse a step or push request naming a run with no record, saying the run must be started first, without revealing whether that run exists — and refuse a request for a run whose recorded `execution_host` is not the one now configured, rather than executing part of that run somewhere else (FR-007, FR-019, FR-025a) in `apps/runner/src/index.ts`
 - [ ] T030 [US1] Replace the `docker version` probe in the `/ready` route in `apps/runner/src/index.ts` with a hosted-host reachability probe, keeping service-down, wrong-credential and host-unreachable as three distinguishable answers (FR-020)
 - [ ] T031 [US1] Report a failure to reach the application for credential exchange as a run failure naming the application, before any step executes, in `apps/runner/src/runs.ts` (FR-021)
 - [ ] T032 [P] [US1] Support replacing the authenticating credential without interrupting runs in flight — accept both during a window, refuse the replaced one after — in `apps/runner/src/auth.ts` and `apps/runner/src/config.ts` (FR-018a)
@@ -127,11 +127,11 @@ observable behaviour that each took effect — including that a code-writing ste
 
 ### Tests for User Story 2
 
-- [ ] T035 [P] [US2] Integration test in `apps/runner/tests/integration/sizes.test.ts` proving the smallest sufficient size is chosen, that a workspace exceeding every offered size fails at start naming the ceiling, and that it never starts at a smaller size (FR-005, FR-009)
+- [ ] T035 [P] [US2] Integration test in `apps/runner/tests/integration/sizes.test.ts` proving the largest size *within* the ceilings is chosen, that a sandbox is never given more processing power or memory than the ceilings allow, that a ceiling below the smallest offered size fails at start naming it, that a ceiling above every offered size is not an error, and that wall-clock is enforced exactly rather than rounded (FR-005, FR-009, FR-009a)
 - [ ] T036 [P] [US2] Integration test in `apps/runner/tests/integration/egress.test.ts` proving `agent` and `design` steps are restricted, `shell`, `checkpoint` and `notify` steps are not, that the decision reads only the step's declared `type`, and that a refused address is named in the failure (FR-011, FR-011a, FR-013)
 - [ ] T037 [P] [US2] Integration test in `apps/runner/tests/integration/permitted-hosts.test.ts` proving the model service, design service and git provider are reachable from a restricted step whatever the list holds, that an untouched list permits a package registry, and that an emptied list refuses one (FR-012, FR-012a, FR-012b)
 - [ ] T038 [P] [US2] Integration test in `apps/runner/tests/integration/wall-clock.test.ts` proving a sandbox is released at its ceiling with no request made (FR-010, SC-008)
-- [ ] T039 [P] [US2] Integration test in `apps/runner/tests/integration/limits.test.ts` extended to prove a step exceeding its agent's time limit stops and reports `TIMEOUT_EXIT_CODE`, distinguishable from an ordinary non-zero exit (FR-014, E3)
+- [ ] T039 [P] [US2] Integration test in `apps/runner/tests/integration/limits.test.ts` extended to prove a step exceeding its agent's time limit stops and reports `TIMEOUT_EXIT_CODE` distinguishably from an ordinary non-zero exit, and that a sandbox taking seconds to become ready neither consumes the step's limit nor is reported as a timeout (FR-014, FR-014a, E3, E3a)
 
 ### Implementation for User Story 2
 
@@ -139,13 +139,13 @@ observable behaviour that each took effect — including that a code-writing ste
 - [ ] T041 [US2] Add the permitted-host list to the workspace settings form in `apps/web`, rejecting an entry carrying a scheme, path or port at the form rather than ignoring it silently, and treating an empty list as valid and meaningful (FR-012a, FR-012b)
 - [ ] T042 [US2] Add `permitted_hosts: string[]` to `PipelineSnapshot['sandbox']` in `packages/shared/src/snapshot.ts` and resolve it into the snapshot when a run starts, never reading it live (FR-012c, Principle IV)
 - [ ] T043 [US2] Treat an absent `permitted_hosts` on an older snapshot as an empty list — total isolation, not an invented default — in `apps/runner/src/index.ts` (FR-012c)
-- [ ] T044 [P] [US2] Implement `apps/runner/src/container/sizes.ts`: choose the smallest offered size whose vCPU **and** memory both meet or exceed the snapshot's; when none does, throw naming the ceiling that could not be met; record which size the run got (FR-005, FR-009, D4)
-- [ ] T045 [US2] Declare the offered sizes as container bindings in `apps/runner/wrangler.jsonc`, each with an explicit `instance_type` — minimum 1 vCPU for a custom size, capped at 4 vCPU / 12 GiB / 20 GB disk (FR-009, D4)
+- [ ] T044 [P] [US2] Implement `apps/runner/src/container/sizes.ts`: choose the **largest** offered size whose vCPU **and** memory both stay **within** the snapshot's ceilings — a ceiling is an upper bound, so the choice resolves downwards; when no offered size fits within them, throw naming the ceiling; record which size the run got (FR-005, FR-009, D4)
+- [ ] T045 [US2] Declare the offered sizes as container bindings in `apps/runner/wrangler.jsonc`, each with an explicit `instance_type` — minimum 1 vCPU for a custom size, capped at 4 vCPU / 12 GiB / 20 GB disk. One size MUST match the shipped workspace defaults (2 vCPU, 4096 MiB) exactly, or every workspace on the defaults drops a size for no reason anybody chose (FR-009, D4)
 - [ ] T046 [P] [US2] Implement `apps/runner/src/container/egress.ts`: the permitted set is the model service, design service and git provider plus `permitted_hosts`; the restriction applies to `agent` and `design` steps and to no other declared type (FR-011, FR-011a, FR-012)
 - [ ] T047 [US2] Narrow and widen outbound reach around each step in `apps/runner/src/runs.ts`, using the running-container policy change proved in T006 rather than a sandbox per step (FR-011, D7)
 - [ ] T048 [US2] Report a step that failed because reach was refused with the address that was refused, in `apps/runner/src/container/hosted.ts` (FR-013)
 - [ ] T049 [US2] Set a Durable Object alarm at `now + wallClockMinutes` on sandbox creation and release the sandbox when it fires, in `apps/runner/src/worker.ts` — `sleepAfter` is a second line, not the mechanism (FR-010, D5)
-- [ ] T050 [US2] Enforce `options.timeoutMs` in `apps/runner/src/container/hosted.ts` by mapping it to the SDK's `timeout` and returning `TIMEOUT_EXIT_CODE` (124), so a deadline stays distinguishable from a failure (FR-014, E3)
+- [ ] T050 [US2] Enforce `options.timeoutMs` in `apps/runner/src/container/hosted.ts` by mapping it to the SDK's `timeout` and returning `TIMEOUT_EXIT_CODE` (124), so a deadline stays distinguishable from a failure. The deadline MUST start when the command starts, not when `exec` is called — a sandbox that takes seconds to become ready must not spend the step's budget or be reported as the step timing out (FR-014, FR-014a, E3, E3a)
 
 **Checkpoint**: User Stories 1 and 2 both work — a run executes, and every ceiling an administrator
 set is observably in force
@@ -164,14 +164,14 @@ that the sandbox holds no capacity within the expected window.
 
 - [ ] T051 [P] [US3] Integration test in `apps/runner/tests/integration/release.test.ts` walking every path in `data-model.md`'s state diagram and asserting each ends at released with the record deleted (FR-002, FR-022, SC-003)
 - [ ] T052 [P] [US3] Integration test in `apps/runner/tests/integration/retention.test.ts` proving a failed run's sandbox stays inspectable for exactly the configured window, loses its credentials immediately, and is released after (FR-023, D3)
-- [ ] T053 [P] [US3] Integration test in `apps/runner/tests/integration/capacity.test.ts` proving a refusal that clears within the window costs only latency, that one outlasting it fails naming capacity rather than as a step failure, and that neither consumes a place in the workspace queue (FR-024, FR-024a, FR-024b, SC-013)
+- [ ] T053 [P] [US3] Integration test in `apps/runner/tests/integration/capacity.test.ts` proving a refusal that clears within the window costs only latency, that one outlasting it fails naming capacity rather than as a step failure, and that the failure releases the run's place against the concurrency limit immediately so a queued run advances (FR-024, FR-024a, FR-024b, SC-013)
 
 ### Implementation for User Story 3
 
 - [ ] T054 [US3] Release the sandbox and delete the record on every terminal outcome in `apps/runner/src/container/destroy.ts` and `apps/runner/src/runs.ts`, making `destroy` succeed on an already-gone sandbox and never throw (FR-002, FR-022, D1–D3)
 - [ ] T055 [US3] Honour `retain_failed_hours` by setting `retain_until` and a second alarm, releasing the sandbox when it fires, in `apps/runner/src/worker.ts` (FR-023)
 - [ ] T056 [US3] Retry a capacity refusal in `apps/runner/src/container/hosted.ts` over a bounded window — 30 seconds with exponential backoff as the starting figure — then throw `sandbox_lost` with a detail naming capacity (FR-024, FR-024a, C8, D13)
-- [ ] T057 [US3] Ensure a capacity refusal does not consume a run's place in the workspace concurrency queue, in `apps/runner/src/runs.ts` and wherever the application admits a queued run (FR-024b)
+- [ ] T057 [US3] Release a run's place against the workspace concurrency limit as soon as it fails for capacity, so a queued run advances immediately rather than waiting for anything to time out, in `apps/runner/src/runs.ts` and `apps/web/src/lib/services/queue.ts` — where `HOLDING` decides what counts against the cap (FR-024b)
 
 **Checkpoint**: all three of the first stories work, and the bill is bounded by the ceilings rather
 than by whether anything called back
