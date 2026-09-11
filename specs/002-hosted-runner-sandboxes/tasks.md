@@ -207,12 +207,12 @@ switch a deployment's configured host and confirm runs execute on the other with
 
 ### Tests for User Story 4
 
-- [ ] T058 [P] [US4] Add a check to `scripts/audit/` asserting no test under `apps/runner/tests` outside `e2e/` reaches a hosted execution service, so FR-026 stays true rather than being true today (FR-026, SC-009)
+- [X] T058 [P] [US4] Add a check to `scripts/audit/` asserting no test under `apps/runner/tests` outside `e2e/` reaches a hosted execution service, so FR-026 stays true rather than being true today (FR-026, SC-009) — `scripts/audit/offline-suite.ts`, wired into `bun run verify` because unlike the other audits it needs no database. It also enforces the second half: the sandbox SDK is imported in exactly three files, each on a list that says why, so logic cannot drift into a file no test can reach
 
 ### Implementation for User Story 4
 
-- [ ] T059 [US4] Keep `dockerHost` and `apps/runner/tests/fake-host.ts` as first-class implementations of `contracts/execution-host.md`, both exercised by the T017 contract test (FR-025, FR-026)
-- [ ] T060 [P] [US4] Document the host switch and the rollback in `README.md` and `.env.example` — `EXECUTION_HOST`, and what each host needs (FR-025, SC-010)
+- [X] T059 [US4] Keep `dockerHost` and `apps/runner/tests/fake-host.ts` as first-class implementations of `contracts/execution-host.md`, both exercised by the T017 contract test (FR-025, FR-026) — both run under the T017 contract test, which names what it cannot exercise and where each such obligation IS proven rather than passing vacuously
+- [X] T060 [P] [US4] Document the host switch and the rollback in `README.md` and `.env.example` — `EXECUTION_HOST`, and what each host needs (FR-025, SC-010)
 
 **Checkpoint**: the migration is reversible and the suite never needed an account
 
