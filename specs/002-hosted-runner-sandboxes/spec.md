@@ -33,6 +33,10 @@ service instead, with the run execution service itself hosted rather than run on
   that run commands a pipeline author wrote, wait on a person, or send a notification stay
   unrestricted, because what they run was written and reviewed rather than decided in the moment.
   The rule reads a step's declared type, so a new kind of step does not require rewriting it.
+- Q: Should the product show what sandboxes are costing, or is that read on the execution host's
+  own dashboard? → A: Read it on the host's dashboard. The product surfaces no sandbox cost or
+  duration figure, so SC-004 and SC-005 are verified there rather than in the product, and the
+  wall-clock ceiling becomes the only in-product guard against a runaway.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -339,8 +343,10 @@ host and confirm runs execute on the other one with no code change.
 - **SC-003**: 100% of ended runs — completed, failed past their retention window, or abandoned —
   hold no sandbox capacity 2 minutes later.
 - **SC-004**: Sandbox capacity billed for a completed run at the default ceilings stays under
-  $0.05, and under $0.10 at the 95th percentile.
-- **SC-005**: No sandbox capacity is billed during any hour in which no run executed.
+  $0.05, and under $0.10 at the 95th percentile — read from the execution host's own usage
+  reporting, since the product does not surface this figure.
+- **SC-005**: No sandbox capacity is billed during any hour in which no run executed, read from the
+  same reporting.
 - **SC-006**: A run's first step produces its first line of output within 60 seconds of the run
   starting, at the 95th percentile, including runs that follow an idle period.
 - **SC-007**: 0 of a corpus of adversarial ticket titles, reviewer feedback and document paths
@@ -387,6 +393,10 @@ host and confirm runs execute on the other one with no code change.
   outside, which is a deployment prerequisite this feature assumes rather than delivers.
 - **Cost figures in SC-004 assume the default ceilings** in the workspace settings and a run of
   roughly a dozen minutes. They are a budget to design against, not a measurement.
+- **Sandbox cost and duration are not surfaced anywhere in the product.** The run record keeps
+  showing model cost, as it does today; sandbox spend is read on the execution host's own
+  dashboard. Adding it later needs no rework, because the underlying fact is how long a sandbox
+  lived at what size.
 - **Whoever pays for sandbox capacity is not whoever pays for model usage.** Model usage is a
   company cost; sandbox capacity is an individual one. This is why cost has its own user story and
   its own success criteria rather than being folded into operability.
@@ -417,7 +427,7 @@ host and confirm runs execute on the other one with no code change.
 
 Constitution Principle I requires divergence from source material to be recorded here rather than
 left silent, and the Development Workflow section requires an understood-but-accepted risk to be
-recorded where the decision lives. Three are recorded.
+recorded where the decision lives. Four are recorded.
 
 **1. The execution service becomes reachable from the public internet.**
 `specs/001-code-factory-mvp/contracts/runner.md` states the Runner "is never reachable from the
@@ -466,3 +476,12 @@ expected to take a command line instead, which a shell does interpret — and th
 ticket titles, reviewer feedback and document paths that people type. FR-015 and SC-007 exist
 because this change introduces a class of defect that could not previously occur, and they should
 be treated as blocking rather than as hardening.
+
+**4. A sandbox that overruns its cost is invisible until the bill.** Clarification settled that the
+product surfaces no sandbox cost or duration, so nothing inside it can show a run consuming more
+than it should while it is happening. That leaves the wall-clock ceiling (FR-010) and the retention
+window (FR-023) as the only in-product guards against runaway spend, which makes both more
+load-bearing than they read. FR-010 in particular must be enforced by the execution host itself
+rather than by something calling in to release the sandbox, because the case it guards against is
+exactly the one where nothing calls in. The risk accepted is bounded: the ceiling caps a single
+run's exposure, and what the decision gives up is noticing a pattern of expensive runs early.

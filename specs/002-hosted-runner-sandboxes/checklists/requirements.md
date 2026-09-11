@@ -31,24 +31,33 @@
 
 ## Notes
 
-Reviewed in one pass. Two gaps were found and closed in the spec before marking the
+**Re-validated 2026-09-11 after the clarification session (5 questions answered).**
+Pass count unchanged: 16/16 → 16/16. No item changed state. The clarifications closed the one
+item that had been closest to failing — FR-011 previously read "apply the restriction only to the
+steps the setting names" without anything saying which steps those were, which was not testable as
+written. It now reads from a step's declared type.
+
+Reviewed originally in one pass. Two gaps were found and closed in the spec before marking the
 corresponding items:
 
 - **FR-018 and FR-019 had no acceptance scenario.** They are the compensating requirements for
   the first item in *Divergence and Accepted Risk* — the execution service becoming reachable
   from the public internet — so leaving them uncovered would have left the accepted risk
   untested. Scenarios 5 and 6 were added to User Story 1.
-- **FR-005 had no acceptance scenario**, only an edge-case entry. Scenario 6 was added to User
-  Story 2.
+- **FR-005 had no acceptance scenario**, only an edge-case entry. A scenario was added to User
+  Story 2 (now scenario 9, after the clarification session renumbered that list).
 
-Two observations recorded rather than treated as failures:
+Observations recorded rather than treated as failures:
 
 - **`Cloudflare` appears in the spec, in Dependencies only.** The constitution permits technology
   names in Assumptions, Dependencies and the plan, and forbids them in requirements. The
   Requirements, User Scenarios and Success Criteria sections were checked and carry none.
-- **FR-007, FR-004, FR-013, FR-016, FR-017, FR-024 have no dedicated acceptance scenario.** Each
-  is covered either by an Edge Cases entry or by SC-011, which requires every requirement
+- **Every requirement identifier the spec cites resolves.** 47 are defined; the only external
+  references are `specs/001-code-factory-mvp` FR-082 and FR-085, both of which exist.
+- **FR-004, FR-007, FR-011a, FR-012c, FR-016, FR-017 and FR-024b have no dedicated acceptance
+  scenario.** Each is covered by an Edge Cases entry, by SC-011 — which requires every requirement
   restating a `specs/001-code-factory-mvp` guarantee to be demonstrated by that guarantee's
-  existing tests passing unchanged. No requirement is uncovered.
+  existing tests passing unchanged — or, for FR-011a and FR-012c, by scenarios that exercise the
+  rule across several step types. No requirement is uncovered.
 
 Items marked incomplete require spec updates before `/speckit-clarify` or `/speckit-plan`.
