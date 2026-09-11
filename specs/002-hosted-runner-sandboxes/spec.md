@@ -431,19 +431,21 @@ recorded where the decision lives. Four are recorded.
 
 **1. The execution service becomes reachable from the public internet.**
 `specs/001-code-factory-mvp/contracts/runner.md` states the Runner "is never reachable from the
-public internet", and the constitution's Architectural Invariants state that no public-facing
-component may create containers. Hosting the execution service contradicts the first statement
-literally: it will have a public address. It is held to honour the second, on the reading that the
-invariant's subject is the *user-facing* application — the component that serves sessions and
-renders pages — and that the execution service remains a separate component serving no user
-interface and holding no session. That reading is a judgement, not a restatement, which is why it
-is recorded — and it was put to the product owner and accepted (Clarifications, Session
-2026-09-11). Two things follow.
+public internet", and the constitution's Principle V stated, at the time this specification was
+written, that no public-facing component may create containers. Hosting the execution service
+contradicts the first statement literally: it will have a public address. It was held to honour the
+second, on the reading that the principle's subject is the *user-facing* application — the
+component that serves sessions and renders pages — and that the execution service remains a
+separate component serving no user interface and holding no session. That reading was a judgement,
+not a restatement, which is why it is recorded — and it was put to the product owner and accepted
+(Clarifications, Session 2026-09-11). Two things followed.
 
-First, the constitution's invariant and `contracts/runner.md` MUST be reworded to say that their
-subject is the component serving user sessions, not network reachability. Until that amendment
-lands, this feature stands in stated violation of both. The amendment is a prerequisite of
-planning, not of specifying.
+First, the constitution and `contracts/runner.md` had to be reworded to say that their subject is
+the component serving user sessions, not network reachability. **The constitution was amended on
+2026-09-11 (version 2.0.0)**, and Principle V now permits a component holding execution rights to
+be reachable at a public address provided it serves no user interface, holds no session,
+authenticates every operation, and reveals nothing on refusal. `contracts/runner.md` is still
+unamended, so this feature remains in stated conflict with that document alone.
 
 Second, the accepted risk is now explicit rather than implied: the credential on each request is
 the only thing between an outsider and a sandbox, so a leaked credential grants arbitrary code
