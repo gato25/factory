@@ -14,5 +14,35 @@ services:
       interval: 5s
       retries: 10
 
+  # The orchestration service. A run is driven step by step from here, so
+  # nothing executes without it — which is exactly why it belongs in the same
+  # `up` as the database rather than in a paragraph of the README somebody
+  # reads once.
+  n8n:
+    image: n8nio/n8n:1.75.2
+    environment:
+      # Local development only. A deployment reachable from anywhere needs
+      # authentication turned on and a real encryption key.
+      N8N_SECURE_COOKIE: 'false'
+      N8N_RUNNERS_ENABLED: 'true'
+      GENERIC_TIMEZONE: UTC
+      # The workflow calls the runner and the app by these names. Inside a
+      # container `localhost` is the container itself, so it has to be the
+      # host — `host.docker.internal` is what resolves to it.
+      RUNNER_BASE_URL: http://host.docker.internal:8080
+    ports:
+      - '5678:5678'
+    volumes:
+      - factory-n8n:/home/node/.n8n
+      # The workflow, readable from inside for `n8n import:workflow`.
+      - ./orchestration/n8n:/workflows:ro
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://localhost:5678/healthz || exit 1']
+      interval: 5s
+      retries: 20
+
 volumes:
   factory-pg:
+  factory-n8n:

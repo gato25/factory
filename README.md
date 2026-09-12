@@ -24,24 +24,30 @@ already in flight.
 
 ## Running it locally
 
-You need [Bun](https://bun.sh) (the version in `.bun-version`), Postgres 16+, and Docker.
+You need [Bun](https://bun.sh) (the version in `.bun-version`) and Docker. Postgres and the
+orchestration service are started for you, so there is nothing else to install.
 
 ```bash
 bun install
-docker compose up -d postgres
 cp .env.example .env            # then fill it in; the comments say what each value is
-bun run db:migrate
-bun run dev:web                 # → http://localhost:5173
+bun run dev                     # → http://localhost:5173
 ```
 
-That gets you the whole interface, with the shipped agents and the three shipped pipelines already
-installed. To execute a pipeline you also need three things the application talks to:
+`bun run dev` is the whole of it: Postgres and n8n, the database schema, the sandbox image (built
+once, when it is missing), the orchestration workflow (imported once, when it is not there), and
+then the execution service and the web application together. It names each step as it goes and
+stops at the first thing that genuinely blocks, so a failure tells you where you are. Ctrl-C stops
+the two services; Postgres and n8n keep running.
 
-```bash
-docker build -t code-factory/sandbox:latest infra/sandbox
-bun run dev:runner              # → :8080, needs Docker access
-# and an n8n instance, with orchestration/n8n/run-ticket-pipeline.json imported
-```
+It also fixes something the separate commands could not. `bun run dev:runner` starts the execution
+service with its working directory in `apps/runner`, and Bun reads `.env` only from the directory it
+starts in — so the execution service never saw the root `.env`. It fell back to its built-in
+development credential while the web application used the `RUNNER_AUTH_TOKEN` you had just set, and
+every call between the two came back `unauthorised`. `bun run dev` reads the root `.env` itself and
+hands it to both, so they cannot disagree about it.
+
+The separate commands are still there — `dev:web`, `dev:runner`, `db:migrate` — for when you want
+one of them on its own.
 
 Open it and **create the first account** — the sign-in screen asks for one when nobody has one yet,
 and that first account is the administrator. (It used to require hand-written SQL: `role` defaults to
