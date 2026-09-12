@@ -57,9 +57,16 @@ service — `EXECUTION_HOST`:
 | What runs the sandbox | A container daemon you administer | A managed sandbox service |
 | Deployed as | A long-lived process (`apps/runner/src/index.ts`) | A Worker (`apps/runner/src/worker.ts`) |
 | Run state between requests | In the process | One Durable Object per run |
-| Image | `SANDBOX_IMAGE`, built by you | Built at deploy from `infra/sandbox/Dockerfile` |
+| Image | `SANDBOX_IMAGE`, built from `infra/sandbox/Dockerfile` | Built at deploy from `infra/sandbox/Dockerfile.hosted` |
 | Sandbox size | Exactly the workspace's ceilings | The largest offered size *within* them |
 | The network restriction | Enforced | **Not available** — see below |
+
+**There are two sandbox images, and they cannot be one.** The managed host reaches a sandbox only
+through a control server that is its base image's entrypoint, so that image must not declare one.
+The local host keeps a container alive by running `sleep <seconds>` as the command, so an entrypoint
+there would swallow it and the container would exit before the first step. `Dockerfile` is the
+local one, `Dockerfile.hosted` the managed one, and a contract test holds each to how its host
+actually drives it.
 
 Both serve the same four operations from the same routing, so nothing above the execution host
 knows which it is talking to. That is what makes the switch a rollback as well as a migration: if

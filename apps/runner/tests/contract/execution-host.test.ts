@@ -356,7 +356,11 @@ test('the managed host refuses to be built outside the Worker entry', () => {
 /** WORK_USER and the command it produces are one fact, asserted in one place. */
 test('the hosted host’s unprivileged user is the one the image creates', async () => {
   expect(WORK_USER).toBe('factory');
-  const dockerfile = await Bun.file('infra/sandbox/Dockerfile').text();
+  // The HOSTED image: the managed host cannot use `docker run --user`, so it
+  // wraps each command in `setpriv --reuid=<user>` and that user has to exist
+  // in the image it actually runs. The local image is a separate file and
+  // drops to UID 1000 directly.
+  const dockerfile = await Bun.file('infra/sandbox/Dockerfile.hosted').text();
   expect(dockerfile).toContain(`useradd`);
   expect(dockerfile).toContain(WORK_USER);
   // And the command actually drops to it.

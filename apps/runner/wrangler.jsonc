@@ -97,25 +97,25 @@
   "containers": [
     {
       "class_name": "Sandbox1x3",
-      "image": "./../../infra/sandbox/Dockerfile",
+      "image": "./../../infra/sandbox/Dockerfile.hosted",
       "instance_type": { "vcpu": 1, "memory_mib": 3072, "disk_mb": 5000 },
       "max_instances": 10
     },
     {
       "class_name": "Sandbox1x4",
-      "image": "./../../infra/sandbox/Dockerfile",
+      "image": "./../../infra/sandbox/Dockerfile.hosted",
       "instance_type": { "vcpu": 1, "memory_mib": 4096, "disk_mb": 7000 },
       "max_instances": 10
     },
     {
       "class_name": "Sandbox2x6",
-      "image": "./../../infra/sandbox/Dockerfile",
+      "image": "./../../infra/sandbox/Dockerfile.hosted",
       "instance_type": { "vcpu": 2, "memory_mib": 6144, "disk_mb": 11000 },
       "max_instances": 6
     },
     {
       "class_name": "Sandbox4x12",
-      "image": "./../../infra/sandbox/Dockerfile",
+      "image": "./../../infra/sandbox/Dockerfile.hosted",
       "instance_type": { "vcpu": 4, "memory_mib": 12288, "disk_mb": 20000 },
       "max_instances": 3
     }
