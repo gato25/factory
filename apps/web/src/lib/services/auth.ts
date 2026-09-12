@@ -30,7 +30,14 @@ export async function signInWithPassword(
   email: string,
   password: string,
 ): Promise<SessionUser> {
-  const [found] = await database.select().from(users).where(eq(users.email, email)).limit(1);
+  // Normalised the same way registration stores it. Without this, an address
+  // typed with capitals registers as lowercase and can then never sign in —
+  // the account exists, the password is right, and the lookup misses.
+  const [found] = await database
+    .select()
+    .from(users)
+    .where(eq(users.email, normaliseEmail(email)))
+    .limit(1);
   // Same failure whether the address is unknown or the password is wrong.
   const stored = found?.passwordHash;
   const ok = stored ? await Bun.password.verify(password, stored) : false;
@@ -38,6 +45,83 @@ export async function signInWithPassword(
     throw new FactoryError('not_authorised', 'that email address and password do not match');
   }
   return toSessionUser(found);
+}
+
+/**
+ * One spelling of an address, so the same person is the same account.
+ *
+ * Registration stores this form and sign-in looks it up, and they have to
+ * agree: an address typed with capitals once registered as lowercase and then
+ * matched nothing on the way back in.
+ */
+export function normaliseEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+/**
+ * What role a new account gets: `admin` if it is the first, `member` after.
+ *
+ * Without this a fresh install cannot configure itself. `role` defaults to
+ * `member`, storing a credential and opening Settings both require `admin`,
+ * and inviting an admin requires being one — so the only way in was hand-written
+ * SQL against the database. That is not an installation, it is a puzzle.
+ *
+ * **The residual race, stated rather than hidden.** Two people registering in
+ * the same instant can both see an empty table and both become admin. It is not
+ * worth a lock: this runs once in a deployment's life, at a moment when the only
+ * person present is the operator setting it up, and the failure is "two admins
+ * on a fresh install" — which is what an operator would have made anyway.
+ */
+async function roleForNewUser(database: Database): Promise<Role> {
+  const [anyone] = await database.select({ id: users.id }).from(users).limit(1);
+  return anyone ? 'member' : 'admin';
+}
+
+/** Whether anybody has an account yet — what the sign-in screen branches on. */
+export async function hasAnyUser(database: Database): Promise<boolean> {
+  const [anyone] = await database.select({ id: users.id }).from(users).limit(1);
+  return Boolean(anyone);
+}
+
+/**
+ * Creates the first account on a fresh deployment.
+ *
+ * Deliberately refuses once anybody exists. Open registration on a tool that
+ * holds push credentials and a model key is not a default anyone should get by
+ * accident — after the first account, people arrive by invitation (FR-004) or
+ * through a provider.
+ */
+export async function registerFirstUser(
+  database: Database,
+  input: { name: string; email: string; password: string },
+): Promise<SessionUser> {
+  const email = normaliseEmail(input.email);
+  if (input.password.length < 12) {
+    throw new FactoryError(
+      'invalid_input',
+      'Use at least 12 characters. This account can read every credential the workspace stores.',
+    );
+  }
+  if (await hasAnyUser(database)) {
+    throw new FactoryError(
+      'not_authorised',
+      'This workspace already has an account. Ask an administrator to invite you.',
+    );
+  }
+
+  const inserted = await database
+    .insert(users)
+    .values({
+      name: input.name.trim() || email,
+      email,
+      role: await roleForNewUser(database),
+      passwordHash: await Bun.password.hash(input.password),
+    })
+    .returning();
+
+  const created = inserted[0];
+  if (!created) throw new FactoryError('conflict', 'could not create the account');
+  return toSessionUser(created);
 }
 
 /**
@@ -73,7 +157,10 @@ export async function signInWithProvider(
       avatarUrl: profile.avatarUrl,
       provider,
       providerUserId: profile.providerUserId,
-      role: 'member',
+      // The first person through ANY door is the administrator, not just the
+      // first to use a password — otherwise a deployment whose only sign-in is
+      // a provider is still unconfigurable.
+      role: await roleForNewUser(database),
     })
     .returning();
 

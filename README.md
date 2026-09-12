@@ -43,7 +43,12 @@ bun run dev:runner              # → :8080, needs Docker access
 # and an n8n instance, with orchestration/n8n/run-ticket-pipeline.json imported
 ```
 
-Sign in, open **Settings**, set the two addresses and a model credential, then press **Test every
+Open it and **create the first account** — the sign-in screen asks for one when nobody has one yet,
+and that first account is the administrator. (It used to require hand-written SQL: `role` defaults to
+`member`, every Settings operation needs `admin`, and inviting an admin needs to be one.) After that,
+people arrive by invitation or through a connected provider.
+
+Then open **Settings**, set the two addresses and a model credential, and press **Test every
 connection**. The dashboard names anything still missing and links to where it is fixed, so you
 should not need to come back here.
 
