@@ -1,5 +1,5 @@
 import { beforeEach, expect, test } from 'bun:test';
-import type { Callback, Step } from '@factory/shared';
+import type { Callback, FactoryError, Step } from '@factory/shared';
 import {
   callbackSender,
   destroyRun,
@@ -52,7 +52,7 @@ test('start creates one sandbox and remembers it', async () => {
   expect(host.created[0]?.cpu).toBe(2);
   expect(host.created[0]?.wallClockMinutes).toBe(60);
   expect(host.created[0]?.network).toBe(false);
-  expect(store.get(snapshot.run_id)?.containerId).toBe('container-1');
+  expect((await store.get(snapshot.run_id))?.containerId).toBe('container-1');
 });
 
 test('start writes each agent prompt and skill into the workspace (FR-037)', async () => {
@@ -71,12 +71,13 @@ test('a second attempt brings the branch back to a known state (FR-091)', async 
 
   // The reset points the branch at the default branch, not at whatever the
   // previous attempt left. The clone also runs a `checkout -B`, so the
-  // assertion names the reset's own form.
+  // assertion names the reset's target — `origin/main` — which only the reset
+  // passes.
   expect(
     host.calls.some((call) =>
       call.argv
         .join(' ')
-        .includes("git checkout -B 'factory/142-add-google-oauth-sign-in' 'origin/main'"),
+        .includes('git checkout -B factory/142-add-google-oauth-sign-in origin/main'),
     ),
   ).toBe(true);
 });
@@ -253,7 +254,7 @@ test('destroy releases the sandbox and forgets the run (SC-012)', async () => {
 
   expect(result.released).toBe(true);
   expect(host.destroyed).toEqual(['container-1']);
-  expect(store.get(snapshot.run_id)).toBeUndefined();
+  expect(await store.get(snapshot.run_id)).toBeUndefined();
 });
 
 test("a failed run's sandbox is retained for the configured window (FR-086)", async () => {
@@ -267,7 +268,7 @@ test("a failed run's sandbox is retained for the configured window (FR-086)", as
   expect(result.retainedUntil).toBeTruthy();
   expect(host.destroyed).toEqual([]);
   // Still this run's, so whatever sweeps it up has the container id.
-  expect(store.get(snapshot.run_id)?.containerId).toBe('container-1');
+  expect((await store.get(snapshot.run_id))?.containerId).toBe('container-1');
 });
 
 test('destroying a run with no sandbox is a no-op, not an error', async () => {
@@ -303,6 +304,32 @@ test('a refused exchange fails the start rather than proceeding without them', a
     refused = error as Error;
   }
   expect(refused?.message).toBe('unauthorised');
+});
+
+test('an unreachable application is named, and named without its secrets (FR-021)', async () => {
+  // Distinct from the application refusing the request. This became worth
+  // separating when the execution service moved off the same machine: what
+  // used to be a loopback call is a call across the internet, so an operator
+  // needs to know WHICH address did not answer before they can tell a
+  // misconfigured host from a firewall from an application that is down.
+  let failed: Error | null = null;
+  try {
+    await fetchCredentials(snapshot, async () => {
+      throw new TypeError('fetch failed');
+    });
+  } catch (error) {
+    failed = error as Error;
+  }
+
+  expect(failed?.message).toBe(
+    "could not reach the application at https://factory.example for this run's credentials",
+  );
+  // The address and nothing else. The URL the exchange uses carries the run
+  // id, and the request carries the run's own secret; neither belongs in a
+  // message that will be shown and logged.
+  expect(failed?.message).not.toContain(snapshot.resume_secret);
+  expect(failed?.message).not.toContain(snapshot.run_id);
+  expect((failed as FactoryError).reason).toBe('credential_missing');
 });
 
 test('an exchange returning nothing usable is refused rather than half-used', async () => {

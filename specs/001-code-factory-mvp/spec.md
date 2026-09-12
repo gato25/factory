@@ -673,8 +673,32 @@ confirm a run stops at the ceiling and that a run beyond the cap waits and repor
   configured.
 - **FR-084**: System MUST exclude credentials from step output, retained documents, retained
   screens, and merge request descriptions.
-- **FR-085**: System MUST allow administrators to constrain a sandbox's processing power, memory,
-  wall-clock lifetime, and whether it may reach the network while code is being written.
+- **FR-085**: System MUST allow administrators to constrain a sandbox's processing power, memory and
+  wall-clock lifetime, and MUST state which of those the configured execution host enforces and
+  which it cannot — so a setting that does nothing is visible as such before a run depends on it.
+
+  **Amended 2026-09-11 on three counts** (002 FR-011a, FR-012, research D7; constitution 2.0.0 Sync
+  Impact Report follow-up 2). This requirement previously also covered "whether it may reach the
+  network while code is being written", and that half is withdrawn:
+
+  1. **Its scope named a step that does not exist.** "While code is being written" pointed at an
+     *implement* step, and no declared step type matches one — a pipeline is `agent`, `design`,
+     `shell`, `checkpoint` and `notification`. The restriction had no well-defined moment to apply
+     at.
+  2. **Its substance is not enforceable on a host with no per-host filtering.** 002 T006 measured
+     that the managed execution host's allow and deny lists govern only traffic routed through its
+     own proxy, not sockets a process opens for itself — and an agent step runs arbitrary code,
+     which opens its own. A model-driven step is also itself a call to a model service, so a sandbox
+     with no reach cannot run one at all.
+  3. **What replaces it is disclosure, not silence.** The setting is presented as unavailable on a
+     host that cannot honour it, naming the host as the reason, rather than accepted and ignored
+     (002 FR-011a). A switch that saves, reads as "off", and does nothing is worse than no switch:
+     an administrator turns it off, believes the sandbox is sealed, and is wrong in exactly the
+     direction that matters.
+
+  The stored setting itself is kept, because whether an administrator *asked* for the restriction is
+  worth recording and it is honoured on a host that can enforce it — which the locally administered
+  host does, via `--network none`.
 - **FR-086**: System MUST release a run's sandbox when the run ends, and MUST allow administrators
   to have failed runs' sandboxes retained for a bounded period for diagnosis.
 

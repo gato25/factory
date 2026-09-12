@@ -1,0 +1,104 @@
+{
+  // Deployment for the spike in `spikes/worker.ts` — T005, T006 and T007.
+  //
+  // Separate from wrangler.jsonc on purpose: this is throwaway, it declares two
+  // differently sized bindings that the real service does not need in this
+  // shape, and nothing about it should end up in a deployment anybody depends
+  // on. Delete it together with spikes/ once the three answers are recorded in
+  // research.md (that is T061).
+  //
+  //   bunx wrangler deploy --config apps/runner/wrangler.spike.jsonc
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "factory-runner-spike",
+  "main": "spikes/worker.ts",
+  "compatibility_date": "2026-09-11",
+
+  "durable_objects": {
+    "bindings": [
+      { "name": "SPIKE_SMALL", "class_name": "SpikeSmall" },
+      { "name": "SPIKE_LARGE", "class_name": "SpikeLarge" },
+      // Three egress shapes. `enableInternet` and `allowedHosts` are read when
+      // a container starts, so they cannot be varied at runtime on one class.
+      { "name": "SPIKE_OPEN", "class_name": "SpikeOpen" },
+      { "name": "SPIKE_DENY", "class_name": "SpikeDeny" },
+      { "name": "SPIKE_ALLOW", "class_name": "SpikeAllow" }
+    ]
+  },
+
+  // Migrations are APPEND-ONLY and a tag is immutable once applied. Adding the
+  // three egress classes to the existing `v1` did nothing — Cloudflare had
+  // already recorded v1 as applied — and the deploy failed with "Cannot create
+  // binding for class 'SpikeOpen' because it is not currently configured to
+  // implement Durable Objects". New classes need a NEW tag.
+  //
+  // The same rule will apply to the real service's configuration: never edit a
+  // tag that has shipped.
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["SpikeSmall", "SpikeLarge"]
+    },
+    {
+      "tag": "v2",
+      "new_sqlite_classes": ["SpikeOpen", "SpikeDeny", "SpikeAllow"]
+    }
+  ],
+
+  // Two sizes, deliberately far apart so `/sizes` cannot pass by accident.
+  // `instance_type` is deploy-time configuration — that it cannot be set per
+  // sandbox at runtime is the whole reason D4 exists.
+  //
+  // The provider enforces AT LEAST 3 GiB of memory per vCPU for the first four
+  // vCPUs, so 1 vCPU needs 3 GiB, 2 vCPU needs 6 GiB and 4 vCPU needs 12 GiB.
+  // A first attempt at this file asked for 2 vCPU with 4096 MiB and was
+  // refused at validation — which is how we learned the shipped workspace
+  // default of 2 vCPU / 4096 MiB cannot exist here at all.
+  //
+  // So the small size is 1 vCPU / 4096 MiB: the largest allocation that fits
+  // WITHIN those defaults, which under FR-009 is exactly what the real
+  // deployment would route a default workspace to. Deliberately chosen over a
+  // legal-but-arbitrary size, because it makes `/sizes` report what a real run
+  // would actually get.
+  "containers": [
+    {
+      "class_name": "SpikeSmall",
+      "image": "./../../infra/sandbox/Dockerfile",
+      "instance_type": { "vcpu": 1, "memory_mib": 4096, "disk_mb": 8000 },
+      // Four distinct sandboxes live here — ping, non-root, egress, size-small
+      // — and a cancelled request leaks one. At 2 the third request could never
+      // start and the SDK retried for ~140s, which is what "it hangs for two
+      // minutes" was. Headroom costs nothing while they sleep after 2m.
+      "max_instances": 6
+    },
+    {
+      "class_name": "SpikeLarge",
+      "image": "./../../infra/sandbox/Dockerfile",
+      "instance_type": { "vcpu": 4, "memory_mib": 12288, "disk_mb": 20000 },
+      "max_instances": 2
+    },
+    // The egress rungs only ever run a couple of curls, so the smallest legal
+    // size is plenty: 1 vCPU needs at least 3 GiB.
+    {
+      "class_name": "SpikeOpen",
+      "image": "./../../infra/sandbox/Dockerfile",
+      "instance_type": { "vcpu": 1, "memory_mib": 3072, "disk_mb": 4000 },
+      "max_instances": 2
+    },
+    {
+      "class_name": "SpikeDeny",
+      "image": "./../../infra/sandbox/Dockerfile",
+      "instance_type": { "vcpu": 1, "memory_mib": 3072, "disk_mb": 4000 },
+      "max_instances": 2
+    },
+    {
+      "class_name": "SpikeAllow",
+      "image": "./../../infra/sandbox/Dockerfile",
+      "instance_type": { "vcpu": 1, "memory_mib": 3072, "disk_mb": 4000 },
+      "max_instances": 2
+    }
+  ],
+
+  "observability": {
+    "enabled": true
+  }
+}

@@ -2,6 +2,7 @@
   import Icon from '$components/Icon.svelte';
   import { pipelines } from '$lib/remote/pipelines.remote';
   import { connect, requiredScopes } from '$lib/remote/repositories.remote';
+  import { TOKEN_PAGE_NOTE, tokenPageUrl } from '$lib/services/providers';
 
   /**
    * `design.pen`'s 03 Connect Repository: a 560px modal over a half-weight
@@ -97,6 +98,18 @@
             {:else}
               Loading the required permissions…
             {/if}
+          </p>
+          <!--
+            Naming the scopes is necessary and not sufficient: somebody still
+            has to find the right settings page and tick boxes worded
+            differently from how we word them. Both providers take the choices
+            as query parameters, so this link does that part.
+          -->
+          <p class="hint">
+            <a href={tokenPageUrl(provider)} target="_blank" rel="noreferrer noopener">
+              Create one on {provider === 'gitlab' ? 'GitLab' : 'GitHub'} →
+            </a>
+            {TOKEN_PAGE_NOTE[provider]}
           </p>
         </div>
 

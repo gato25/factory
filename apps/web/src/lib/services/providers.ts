@@ -100,6 +100,45 @@ export const REQUIRED_SCOPES: Record<Provider, string[]> = {
   github: ['Contents: Read and write', 'Pull requests: Read and write', 'Metadata: Read'],
 };
 
+/**
+ * Where to go and make the token, with the scopes already chosen.
+ *
+ * Naming the scopes is necessary and not sufficient: somebody still has to
+ * find the right settings page on a provider that has several, and tick boxes
+ * that are worded differently from how we word them. Both providers accept the
+ * choices as query parameters, so the link does that part.
+ *
+ * GitLab's page takes the scope names verbatim, so it is generated from
+ * `REQUIRED_SCOPES` above rather than repeated — the two cannot drift.
+ *
+ * GitHub is the awkward one. `REQUIRED_SCOPES.github` describes a FINE-GRAINED
+ * token, whose permissions cannot be pre-selected by URL at all; the
+ * pre-fillable page is the classic-token one, where the single `repo` scope
+ * covers the same ground. So the link goes there, and the text says which is
+ * which rather than leaving somebody to discover the mismatch on the page.
+ */
+export function tokenPageUrl(provider: Provider, host?: string): string {
+  const origin = (host ?? DEFAULT_HOSTS[provider]).replace(/\/+$/, '');
+  if (provider === 'gitlab') {
+    const scopes = REQUIRED_SCOPES.gitlab.join(',');
+    return `${origin}/-/user_settings/personal_access_tokens?name=Code+Factory&scopes=${scopes}`;
+  }
+  return `${origin}/settings/tokens/new?description=Code+Factory&scopes=repo`;
+}
+
+/** What each provider's token page says about itself, in its own words. */
+export const TOKEN_PAGE_NOTE: Record<Provider, string> = {
+  gitlab: 'Opens with the name and scopes already filled in — set an expiry and create it.',
+  github:
+    'Opens a classic token with `repo` ticked, which covers all three permissions above. ' +
+    'A fine-grained token works too, but GitHub cannot pre-select its permissions from a link.',
+};
+
+const DEFAULT_HOSTS: Record<Provider, string> = {
+  gitlab: 'https://gitlab.com',
+  github: 'https://github.com',
+};
+
 // --- real clients ---
 
 export const gitlabClient: ProviderClient = {

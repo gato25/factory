@@ -2,6 +2,22 @@ import { FactoryError, type PipelineSnapshot } from '@factory/shared';
 import { writeAgentConfig } from './config';
 import type { ContainerHost, ContainerSpec } from './host';
 import { buildEnvironment, type ResolvedCredentials } from './secrets';
+import { quoteOne } from './shell';
+
+/**
+ * The clone URL with the credential spliced in, as a shell fragment.
+ *
+ * This is the one place a shell expansion is wanted rather than escaped: the
+ * token must be expanded BY the shell, because that is how it reaches git
+ * without appearing in an argument list a process listing would show (FR-083).
+ * So the fragment is three words a shell concatenates into one — a quoted
+ * literal, the unquoted expansion, and the rest of the URL quoted. Everything
+ * that came from the repository record stays inside quotes (002 FR-015).
+ */
+export function authenticatedRemote(cloneUrl: string): string {
+  const withoutScheme = cloneUrl.replace(/^https:\/\//, '');
+  return `'https://oauth2:'"$GIT_TOKEN"'@'${quoteOne(withoutScheme)}`;
+}
 
 /**
  * One fresh container per run, non-root, with the configured ceilings, the
@@ -10,16 +26,27 @@ import { buildEnvironment, type ResolvedCredentials } from './secrets';
 
 export const WORKDIR = '/work';
 
+/**
+ * A run's resolved sandbox limits, as they arrive from the snapshot.
+ *
+ * Declared once and imported everywhere rather than repeated inline: the same
+ * shape was written out in four places, so a change meant editing four and
+ * forgetting a fifth.
+ */
+export interface SandboxLimits {
+  image: string;
+  /** Upper bounds on what a run may consume, never minimums (002 FR-009). */
+  cpu: number;
+  memoryMb: number;
+  /** Enforced exactly, by the host itself (002 FR-009a, FR-010). */
+  wallClockMinutes: number;
+  networkDuringImplement: boolean;
+}
+
 export interface StartInput {
   snapshot: PipelineSnapshot;
   credentials: ResolvedCredentials;
-  sandbox: {
-    image: string;
-    cpu: number;
-    memoryMb: number;
-    wallClockMinutes: number;
-    networkDuringImplement: boolean;
-  };
+  sandbox: SandboxLimits;
 }
 
 export async function startRunWorkspace(
@@ -62,17 +89,14 @@ export async function cloneRepository(
   snapshot: PipelineSnapshot,
   gitToken: string,
 ): Promise<void> {
-  const authenticated = snapshot.repo.clone_url.replace(
-    /^https:\/\//,
-    `https://oauth2:$\{GIT_TOKEN}@`,
-  );
   const script = [
-    `git clone --branch '${snapshot.repo.default_branch}' --single-branch "${authenticated}" .`,
+    `git clone --branch ${quoteOne(snapshot.repo.default_branch)} --single-branch ` +
+      `${authenticatedRemote(snapshot.repo.clone_url)} .`,
     // Detach the credential from the stored remote immediately.
-    `git remote set-url origin '${snapshot.repo.clone_url}'`,
+    `git remote set-url origin ${quoteOne(snapshot.repo.clone_url)}`,
     'git config user.name "Code Factory"',
     'git config user.email "factory@localhost"',
-    `git checkout -B '${snapshot.repo.branch}'`,
+    `git checkout -B ${quoteOne(snapshot.repo.branch)}`,
   ].join(' && ');
 
   const result = await host.exec(containerId, ['sh', '-c', script], {

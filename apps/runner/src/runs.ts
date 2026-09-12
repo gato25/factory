@@ -5,6 +5,7 @@ import {
   type Step,
   type StepOutcome,
 } from '@factory/shared';
+import type { ExecutionHostName } from './config';
 import { commitDesign } from './container/commit';
 import { writeAgentConfig } from './container/config';
 import { destroyRunWorkspace } from './container/destroy';
@@ -13,7 +14,7 @@ import { pushBranch } from './container/push';
 import { isSandboxLoss, withSandboxRecovery } from './container/recover';
 import { resetRunBranch } from './container/reset';
 import { type ResolvedCredentials, secretValues } from './container/secrets';
-import { startRunWorkspace, WORKDIR } from './container/start';
+import { type SandboxLimits, startRunWorkspace, WORKDIR } from './container/start';
 import { runClaudeStep } from './engines/claude-cli';
 import { runDesignStep } from './engines/design-cli';
 import { runShellStep } from './engines/shell';
@@ -40,13 +41,32 @@ export async function fetchCredentials(
     /\/api\/hooks\/n8n$/,
     `/api/runs/${snapshot.run_id}/credentials`,
   );
-  const response = await doFetch(url, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      authorization: `Bearer ${snapshot.resume_secret}`,
-    },
-  });
+  let response: Response;
+  try {
+    response = await doFetch(url, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: `Bearer ${snapshot.resume_secret}`,
+      },
+    });
+  } catch (error) {
+    // The application being unreachable is a distinct failure from it refusing
+    // the request, and it must say which application (002 FR-021). This became
+    // worth naming when the execution service moved off the same machine: what
+    // used to be a loopback call is now a call across the internet, so "could
+    // not get credentials" could mean a misconfigured address, a firewall, or
+    // an application that is simply down — and an operator cannot tell those
+    // apart without the address.
+    //
+    // `origin` rather than the full URL on purpose: it carries no path, no
+    // query and no userinfo, so naming it cannot leak the run's own secret.
+    throw new FactoryError(
+      'credential_missing',
+      `could not reach the application at ${safeOrigin(url)} for this run's credentials`,
+      { detail: error instanceof Error ? error.message : String(error) },
+    );
+  }
   if (!response.ok) {
     const body = (await response.json().catch(() => ({}))) as { error?: string };
     throw new FactoryError(
@@ -61,33 +81,100 @@ export async function fetchCredentials(
   return body.credentials;
 }
 
+/**
+ * The address to name in a failure, with nothing secret in it.
+ *
+ * `URL.origin` drops the path, the query and any userinfo, which is what makes
+ * it safe to put in an error a caller will see and a log line will keep. Falls
+ * back to a description rather than the raw string, because a URL that will not
+ * parse is exactly the configuration mistake worth reporting and exactly the
+ * one whose raw value is least trustworthy.
+ */
+function safeOrigin(url: string): string {
+  try {
+    return new URL(url).origin;
+  } catch {
+    return 'an address that is not a valid URL';
+  }
+}
+
 export interface RunContext {
   snapshot: PipelineSnapshot;
   credentials: ResolvedCredentials;
-  sandbox: {
-    image: string;
-    cpu: number;
-    memoryMb: number;
-    wallClockMinutes: number;
-    networkDuringImplement: boolean;
-  };
+  sandbox: SandboxLimits;
+  /**
+   * Which execution host this run started on (002 FR-025a).
+   *
+   * A run must finish where it began. Nothing about selecting a host by
+   * configuration stops a deployment's choice changing while a run is in
+   * flight, and a run that executed half its steps on one host and half on
+   * another would have no coherent workspace at all.
+   */
+  executionHost?: ExecutionHostName;
 }
 
-/** Where a run's container id is remembered between calls. */
+/**
+ * A run's state between the separate requests that make up the run.
+ *
+ * `credentials` is optional here where it is required on `RunContext`, and the
+ * difference is the whole of FR-016's retention rule: a failed run's sandbox
+ * may be kept for diagnosis, and when it is, the record loses its credentials
+ * while keeping its sandbox. Nothing about reading a workspace needs a live
+ * token, and a token left behind for a day is a token nobody is watching.
+ *
+ * So a record with no credentials is a FINISHED run. `liveRun` refuses to serve
+ * a step from one, which is what stops the optionality from becoming a
+ * `state.credentials?.gitToken` that pushes to nowhere.
+ */
+export type RunRecord = Omit<RunContext, 'credentials'> & {
+  containerId?: string;
+  credentials?: ResolvedCredentials;
+  /** When a retained failed sandbox may be released (FR-086). */
+  retainedUntil?: string;
+  /** `running`, or the terminal outcome the destroy call reported. */
+  outcome?: 'running' | 'done' | 'failed' | 'cancelled';
+};
+
+/**
+ * The record a step or a push needs, or a refusal.
+ *
+ * Both refusals are worded alike on purpose (FR-007, FR-019): a caller learns
+ * that the run is not one this service can act on, and nothing about whether a
+ * run by that name ever existed. A message separating "never started" from
+ * "already finished" would let anyone holding the service's credential
+ * enumerate run identifiers.
+ */
+export async function liveRun(store: RunStore, runId: string): Promise<Required<RunRecord>> {
+  const state = await store.get(runId);
+  if (!state?.containerId || !state.credentials) {
+    throw new FactoryError('not_found', 'that run has no sandbox — start it first');
+  }
+  return state as Required<RunRecord>;
+}
+
+/**
+ * Where a run's state lives between calls.
+ *
+ * Asynchronous because the hosted implementation is Durable Object storage
+ * (002 D3): a Worker isolate does not survive between requests, so the
+ * in-process `Map` that served the daemon cannot serve FR-006. `memoryStore`
+ * keeps the same interface, so every existing test still drives the logic
+ * without either a database or an account.
+ */
 export interface RunStore {
-  get(runId: string): (RunContext & { containerId?: string }) | undefined;
-  set(runId: string, value: RunContext & { containerId?: string }): void;
-  delete(runId: string): void;
+  get(runId: string): Promise<RunRecord | undefined>;
+  set(runId: string, value: RunRecord): Promise<void>;
+  delete(runId: string): Promise<void>;
 }
 
 export function memoryStore(): RunStore {
-  const runs = new Map<string, RunContext & { containerId?: string }>();
+  const runs = new Map<string, RunRecord>();
   return {
-    get: (runId) => runs.get(runId),
-    set: (runId, value) => {
+    get: async (runId) => runs.get(runId),
+    set: async (runId, value) => {
       runs.set(runId, value);
     },
-    delete: (runId) => {
+    delete: async (runId) => {
       runs.delete(runId);
     },
   };
@@ -150,7 +237,7 @@ export async function startRun(
     }
   }
 
-  store.set(snapshot.run_id, { ...context, containerId });
+  await store.set(snapshot.run_id, { ...context, containerId, outcome: 'running' });
   return { container_id: containerId };
 }
 
@@ -176,10 +263,7 @@ export async function runStep(
   request: StepRequest,
   send: CallbackSender,
 ): Promise<StepOutcome> {
-  const state = store.get(runId);
-  if (!state?.containerId) {
-    throw new FactoryError('not_found', 'that run has no sandbox — start it first');
-  }
+  const state = await liveRun(store, runId);
   const { snapshot, credentials } = state;
 
   const logs = new LogSink({
@@ -209,7 +293,7 @@ export async function runStep(
   );
   if (recovery.recovered) {
     // The replacement is what later steps must use.
-    store.set(runId, { ...state, containerId: recovery.outcome.containerId });
+    await store.set(runId, { ...state, containerId: recovery.outcome.containerId });
     log.warn('a step ran in a replacement sandbox', {
       run_id: runId,
       step_index: stepIndex,
@@ -308,10 +392,7 @@ async function dispatch(
  * (FR-055a, FR-055b).
  */
 export async function verifyAndPush(host: ContainerHost, store: RunStore, runId: string) {
-  const state = store.get(runId);
-  if (!state?.containerId) {
-    throw new FactoryError('not_found', 'that run has no sandbox');
-  }
+  const state = await liveRun(store, runId);
   // A second attempt replaces the branch it reset, so the push carries a
   // lease rather than blindly overwriting (FR-091).
   const outcome = await pushBranch(
@@ -335,16 +416,27 @@ export async function destroyRun(
   runId: string,
   options: { outcome?: 'done' | 'failed' | 'cancelled'; retainFailedHours?: number } = {},
 ) {
-  const state = store.get(runId);
+  const state = await store.get(runId);
   if (!state?.containerId) return { released: false, retainedUntil: undefined };
 
   const result = await destroyRunWorkspace(host, state.containerId, {
     outcome: options.outcome ?? 'done',
     retainFailedHours: options.retainFailedHours ?? 0,
   });
-  // A retained sandbox is still this run's, so the mapping stays until it
-  // is actually released; whatever sweeps it up needs the container id.
-  if (result.destroyed) store.delete(runId);
+  if (result.destroyed) {
+    await store.delete(runId);
+  } else {
+    // A retained sandbox is still this run's, so the mapping stays until it is
+    // actually released; whatever sweeps it up needs the container id. What
+    // does NOT stay is the credentials: retention exists for diagnosis, and
+    // nothing about reading a workspace needs a live token (FR-016).
+    const { credentials: _dropped, ...withoutCredentials } = state;
+    await store.set(runId, {
+      ...withoutCredentials,
+      outcome: options.outcome ?? 'done',
+      ...(result.retainedUntil ? { retainedUntil: result.retainedUntil } : {}),
+    });
+  }
   return { released: result.destroyed, retainedUntil: result.retainedUntil };
 }
 

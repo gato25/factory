@@ -45,7 +45,8 @@
             "response": {
               "neverError": true
             }
-          }
+          },
+          "timeout": "={{ (($json.sandbox && $json.sandbox.wall_clock_minutes) || 90) * 60000 + 120000 }}"
         }
       },
       "id": "runner-start",
@@ -317,7 +318,8 @@
             "response": {
               "neverError": true
             }
-          }
+          },
+          "timeout": "={{ (($json.sandbox && $json.sandbox.wall_clock_minutes) || 90) * 60000 + 120000 }}"
         }
       },
       "id": "runner-run-step",
@@ -440,7 +442,8 @@
             "response": {
               "neverError": true
             }
-          }
+          },
+          "timeout": "={{ (($json.sandbox && $json.sandbox.wall_clock_minutes) || 90) * 60000 + 120000 }}"
         }
       },
       "id": "runner-verify-and-push",

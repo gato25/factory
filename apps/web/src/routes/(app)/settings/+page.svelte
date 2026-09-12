@@ -1,4 +1,11 @@
 <script lang="ts">
+  import {
+    enforcementOf,
+    type ExecutionHost,
+    HOST_LABEL,
+    type SandboxLimitName,
+    takesEffect,
+  } from '@factory/shared';
   import Icon from '$components/Icon.svelte';
   import { publicBaseUrl } from '$lib/remote/repositories.remote';
   import {
@@ -39,7 +46,9 @@
   const designKey = $derived(saveCredential.for('design'));
 
   let notice = $state<string | null>(null);
-  let tested = $state<{ what: string; state: string; detail: string }[] | null>(null);
+  let tested = $state<
+    { what: string; state: string; detail: string; executionHost?: ExecutionHost }[] | null
+  >(null);
   let testing = $state(false);
 
   const SECTIONS = [
@@ -65,6 +74,36 @@
     runner: 'Container host',
     design: 'Design service',
   };
+
+  /**
+   * Which execution host the Runner reports, once something has asked it.
+   *
+   * `undefined` until a connection test has run, and that distinction is
+   * deliberate: this screen must not GUESS which host is configured. Claiming
+   * a limit is unenforceable when it is, or enforceable when it is not, are
+   * both worse than saying nothing until the Runner has answered (FR-012).
+   */
+  const executionHost = $derived<ExecutionHost | undefined>(
+    tested?.find((row) => row.what === 'runner')?.executionHost,
+  );
+
+  /**
+   * What to say about one sandbox limit on the configured host.
+   *
+   * Returns nothing at all when the host is not yet known, so an untested
+   * deployment shows the form exactly as it always did rather than a column of
+   * speculative warnings.
+   */
+  function limit(name: SandboxLimitName) {
+    if (!executionHost) return { known: false, enforced: true, enforcement: 'exact', note: '' };
+    const { enforcement, note } = enforcementOf(executionHost, name);
+    return {
+      known: true,
+      enforced: takesEffect(executionHost, name),
+      enforcement,
+      note,
+    };
+  }
 
   /** What a card's badge says: the last test if there was one, else whether
    *  it is configured at all. */
@@ -183,7 +222,18 @@
           <header>
             <span class="ic"><Icon name="container" size={18} /></span>
             <div class="tx">
-              <h2>Sandbox · Docker</h2>
+              <!--
+                The heading names the host, because on a managed deployment a
+                heading reading "Docker" is wrong in the same way a dead switch
+                is. The artboard's phrase is the default and stays literal: an
+                untested deployment is the state the artboard draws, and the
+                design fidelity check reads this file.
+              -->
+              {#if executionHost === 'hosted'}
+                <h2>Sandbox · Managed</h2>
+              {:else}
+                <h2>Sandbox · Docker</h2>
+              {/if}
               <p>Each run gets one fresh container with the repo, Claude CLI and your toolchain.</p>
             </div>
             {#await Promise.resolve(stateOf('runner', Boolean(w.runnerBaseUrl))) then s}
@@ -199,15 +249,21 @@
                 placeholder="http://runner:8080"
               />
             </label>
-            <label class="f">
+            <label class="f" class:ignored={!limit('image').enforced}>
               <span>Image</span>
               <input name="sandboxImage" value={w.sandboxImage} required />
+              {#if !limit('image').enforced}
+                <span class="hint">{limit('image').note}</span>
+              {/if}
             </label>
           </div>
           <div class="grid four">
             <label class="f">
               <span>Processors</span>
               <input name="sandboxCpu" type="number" min="1" value={w.sandboxCpu} required />
+              {#if limit('cpu').enforcement === 'rounded_down'}
+                <span class="hint">{limit('cpu').note}</span>
+              {/if}
             </label>
             <label class="f">
               <span>Memory, in megabytes</span>
@@ -219,6 +275,9 @@
                 value={w.sandboxMemoryMb}
                 required
               />
+              {#if limit('memoryMb').enforcement === 'rounded_down'}
+                <span class="hint">{limit('memoryMb').note}</span>
+              {/if}
             </label>
             <label class="f">
               <span>Lifetime, in minutes</span>
@@ -241,12 +300,30 @@
               />
             </label>
           </div>
-          <label class="opt">
+          <!--
+            The network restriction, and the one case where a setting is shown
+            as UNAVAILABLE rather than accepted (FR-011a). A switch that saves,
+            displays as "off", and does nothing is worse than no switch at all:
+            an administrator turns it off, believes the sandbox is sealed, and
+            is wrong in exactly the direction that matters. So on a host that
+            cannot filter outbound traffic the control is disabled and says why,
+            naming the host.
+          -->
+          <label class="opt" class:ignored={!limit('networkDuringImplement').enforced}>
             <span class="tx">
-              <span class="t">Let a sandbox reach the network while code is being written</span>
+              <span class="t">
+                Let a sandbox reach the network while code is being written
+                {#if !limit('networkDuringImplement').enforced}
+                  <span class="tag">Unavailable on {HOST_LABEL[executionHost as ExecutionHost]}</span>
+                {/if}
+              </span>
               <span class="d">
-                Off is the default: an agent writing code does not need the internet, and a
-                sandbox that cannot reach it cannot send anything out.
+                {#if limit('networkDuringImplement').enforced}
+                  Off is the default: an agent writing code does not need the internet, and a
+                  sandbox that cannot reach it cannot send anything out.
+                {:else}
+                  {limit('networkDuringImplement').note}
+                {/if}
               </span>
             </span>
             <input
@@ -255,8 +332,27 @@
               name="sandboxNetworkDuringImplement"
               value="true"
               checked={w.sandboxNetworkDuringImplement}
+              disabled={!limit('networkDuringImplement').enforced}
             />
           </label>
+          {#if !limit('networkDuringImplement').enforced && w.sandboxNetworkDuringImplement}
+            <!--
+              A disabled control is not submitted, so without this every save
+              on a host that cannot enforce the restriction would quietly set
+              it to off — destroying the stored intent, and leaving the setting
+              wrong if the deployment ever moved back to a host that honours
+              it. The value is preserved rather than presented as editable:
+              FR-011a asks for the setting to be unavailable, not erased.
+            -->
+            <input type="hidden" name="sandboxNetworkDuringImplement" value="true" />
+          {/if}
+          {#if !executionHost}
+            <p class="hint">
+              Test the connections above to see which of these limits the container host
+              actually enforces — they differ between a host you administer and a managed
+              service, and a limit that does nothing should not look like one that does.
+            </p>
+          {/if}
         </section>
 
         <section class="card" id="limits">
@@ -363,6 +459,19 @@
           <label class="f">
             <span>Model credential</span>
             <input name="token" type="password" placeholder="paste it here" autocomplete="off" />
+            <!--
+              Either kind is accepted, and which one this is decides how the
+              work is paid for. The runner tells them apart by prefix and hands
+              the Claude CLI whichever variable that kind is read from, so
+              switching between them is storing a different credential here —
+              no code change, no rebuild.
+            -->
+            <span class="hint">
+              An API key, billed per use to an Anthropic Console account — or a Claude subscription
+              token from <code>claude setup-token</code>, which draws on that subscription's own
+              allowance instead. A subscription's limits are shaped around one person working, so
+              watch them if several runs execute at once.
+            </span>
           </label>
           <div class="f end-field">
             <button type="submit" class="secondary" disabled={modelKey.pending > 0}>
@@ -711,6 +820,47 @@
   input:read-only {
     background: var(--surface-2);
     color: var(--text-2);
+  }
+
+  /*
+    A limit the configured execution host cannot enforce (FR-011a).
+
+    Dimmed rather than hidden, and this is the deliberate choice: hiding it
+    would leave an administrator wondering where a setting they remember went,
+    and would hide the STORED value — which still applies if the deployment
+    moves back to a host that honours it. So the value stays visible and
+    reads as inert.
+  */
+  .ignored {
+    opacity: 0.55;
+  }
+  .ignored .switch {
+    cursor: not-allowed;
+  }
+
+  /* A sentence under a field about what the host will really do with it. */
+  .hint {
+    font-size: 11px;
+    line-height: 1.45;
+    color: var(--text-3);
+  }
+  p.hint {
+    margin: 10px 0 0;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+  }
+
+  /* "Unavailable on the managed sandbox service", beside the label it governs. */
+  .tag {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 6px;
+    border-radius: 999px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    font-size: 10px;
+    color: var(--text-3);
+    vertical-align: middle;
   }
 
   /* The sandbox option, as the artboard draws it. */

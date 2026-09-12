@@ -524,8 +524,10 @@ test('the design source and the screens are committed to the branch (FR-105)', a
 
   const commit = host.calls.find((c) => c.argv.join(' ').includes('git add'));
   const script = commit?.argv.join(' ') ?? '';
-  expect(script).toContain("'docs/design/ui.pen'");
-  expect(script).toContain("'docs/design/screens/00-login.png'");
+  // The paths as arguments, not as quoted text — see design-outputs.test.ts.
+  expect(script).toContain('git add -- ');
+  expect(script).toContain('docs/design/ui.pen');
+  expect(script).toContain('docs/design/screens/00-login.png');
   expect(script).toContain('git commit -m');
   // A re-run with nothing changed must not make an empty commit.
   expect(script).toContain('git diff --cached --quiet');

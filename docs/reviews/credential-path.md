@@ -20,7 +20,7 @@ A credential's whole life, traced through the code rather than the design docume
    secret. `resolveRunCredentials` calls `revealForRun` — the only path back to plaintext in the
    codebase — and returns the values to the Runner and nowhere else.
 5. **Injected.** `buildEnvironment` puts them in the container's environment:
-   `ANTHROPIC_API_KEY`, `GIT_TOKEN`, and `PEN_API_KEY` only where the pipeline has a design step.
+   `ANTHROPIC_API_KEY`, `GIT_TOKEN`, and `PEN_CLI_KEY` only where the pipeline has a design step.
 6. **Redacted.** `LogSink` is constructed with `secretValues(credentials)` and redacts at the
    point output is **ingested**, before anything is stored or streamed.
 
@@ -39,7 +39,7 @@ Docker's own logging. This is a deliberate, easily-lost detail and it is correct
 `create` and `exec` paths.
 
 **The design credential is withheld unless it is needed.** `pipelineNeedsDesign` gates
-`PEN_API_KEY`, so a pipeline with no design step never receives it (FR-083a). A pipeline that does
+`PEN_CLI_KEY`, so a pipeline with no design step never receives it (FR-083a). A pipeline that does
 need it and has none fails at container start with a message naming where to configure it, rather
 than at the design step with a provider error (FR-083b).
 

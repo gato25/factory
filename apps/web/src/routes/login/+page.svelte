@@ -26,33 +26,75 @@
     <p class="note">Design runs only when a ticket changes the interface.</p>
   </section>
 
+  <!--
+    One screen, two states. On a deployment nobody has an account on there is
+    nothing to sign in to, so it asks for the first account instead — and that
+    account is the administrator. Before this, the only way in was hand-written
+    SQL against the database.
+  -->
   <section class="signin">
-    <h2>Sign in</h2>
+    <h2>{data.needsFirstAccount ? 'Create the first account' : 'Sign in'}</h2>
     {#if data.problem}
       <p class="error" role="alert">{data.problem}</p>
     {/if}
-    {#if data.providers.length > 0}
-      <div class="providers">
-        {#each data.providers as provider (provider)}
-          <a class="provider" href="/login/{provider}">Continue with {NAMES[provider]}</a>
-        {/each}
-      </div>
-      <div class="or"><span>or</span></div>
-    {/if}
-    <form method="POST" action="?/password" use:enhance>
-      <label>
-        Email
-        <input name="email" type="email" autocomplete="email" required value={form?.email ?? ''} />
-      </label>
-      <label>
-        Password
-        <input name="password" type="password" autocomplete="current-password" required />
-      </label>
-      {#if form?.message}
-        <p class="error" role="alert">{form.message}</p>
+
+    {#if data.needsFirstAccount}
+      <p class="lede">
+        Nobody has an account here yet. This first one is the administrator — it can set the
+        connections, store credentials and invite everybody else.
+      </p>
+      <form method="POST" action="?/register" use:enhance>
+        <label>
+          Your name
+          <input name="name" type="text" autocomplete="name" placeholder="Optional" />
+        </label>
+        <label>
+          Email
+          <input name="email" type="email" autocomplete="email" required value={form?.email ?? ''} />
+        </label>
+        <label>
+          Password
+          <input
+            name="password"
+            type="password"
+            autocomplete="new-password"
+            minlength="12"
+            required
+          />
+          <span class="hint">At least 12 characters — this account can read every stored credential.</span>
+        </label>
+        {#if form?.message}
+          <p class="error" role="alert">{form.message}</p>
+        {/if}
+        <button type="submit">Create account and sign in</button>
+      </form>
+    {:else}
+      {#if data.providers.length > 0}
+        <div class="providers">
+          {#each data.providers as provider (provider)}
+            <a class="provider" href="/login/{provider}">Continue with {NAMES[provider]}</a>
+          {/each}
+        </div>
+        <div class="or"><span>or</span></div>
       {/if}
-      <button type="submit">Sign in</button>
-    </form>
+      <form method="POST" action="?/password" use:enhance>
+        <label>
+          Email
+          <input name="email" type="email" autocomplete="email" required value={form?.email ?? ''} />
+        </label>
+        <label>
+          Password
+          <input name="password" type="password" autocomplete="current-password" required />
+        </label>
+        {#if form?.message}
+          <p class="error" role="alert">{form.message}</p>
+        {/if}
+        <button type="submit">Sign in</button>
+      </form>
+      <p class="note">
+        No account? An administrator invites you, or sign in with a connected provider.
+      </p>
+    {/if}
   </section>
 </div>
 
@@ -119,6 +161,19 @@
   h2 {
     margin: 0;
     font-size: 20px;
+  }
+  .lede {
+    margin: 0 0 4px;
+    font-size: 13px;
+    line-height: 1.5;
+    opacity: 0.75;
+  }
+  .hint {
+    display: block;
+    margin-top: 4px;
+    font-size: 11px;
+    line-height: 1.45;
+    opacity: 0.6;
   }
   .providers {
     display: flex;

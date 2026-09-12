@@ -70,7 +70,7 @@ test('the replacement resumes from the last commit on the branch', async () => {
   // It fetched that branch specifically, then checked it out.
   const fetch = host.calls.find((c) => c.argv.join(' ').includes('refs/heads/factory/142'));
   expect(fetch?.argv.join(' ')).toContain(
-    "git checkout -B 'factory/142-add-google-oauth-sign-in' 'refs/remotes/origin/factory/142-add-google-oauth-sign-in'",
+    'git checkout -B factory/142-add-google-oauth-sign-in refs/remotes/origin/factory/142-add-google-oauth-sign-in',
   );
   // The credential reached git through the environment, never the workspace.
   expect(fetch?.options?.env?.GIT_TOKEN).toBe(credentials.gitToken);
@@ -199,7 +199,7 @@ test('a branch a previous attempt pushed is put back to the default branch', asy
   expect(outcome.head).toBe('newhead5');
   // It reset to the default branch, not to the previous attempt's tip.
   expect(host.argvFor('git checkout -B')?.join(' ')).toContain(
-    "git checkout -B 'factory/142-add-google-oauth-sign-in' 'origin/main'",
+    'git checkout -B factory/142-add-google-oauth-sign-in origin/main',
   );
 });
 

@@ -7,7 +7,11 @@
     "start": "bun src/index.ts"
   },
   "dependencies": {
-    "@factory/db": "workspace:*",
+    "@cloudflare/sandbox": "0.12.9",
     "@factory/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20260911.1",
+    "wrangler": "4.131.0"
   }
 }
