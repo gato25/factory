@@ -61,11 +61,10 @@ export interface PipelineSnapshot {
     /**
      * Requirement documents attached to the ticket: NAMES AND SIZES ONLY.
      *
-     * The content is deliberately not here. A snapshot is stored as one value
-     * for the life of a run and rewritten on every step, and on the managed
-     * execution host that value lives in Durable Object storage, which caps a
-     * value at 128 KiB. Several megabytes of requirements inside it would
-     * break that host outright and waste the local one.
+     * The content is deliberately not here. A snapshot is held for the life
+     * of a run, passed through the orchestration service, and stored again on
+     * every step — several megabytes of requirements inside it would be
+     * copied at every one of those points for content needed exactly once.
      *
      * So this is a manifest, and the execution service fetches the content
      * once at start from the application — exactly as it already fetches

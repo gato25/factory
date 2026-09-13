@@ -1,21 +1,20 @@
 import { describe, expect, test } from 'bun:test';
 import { FactoryError } from '@factory/shared';
 import { type ContainerHost, dockerHost, run } from '../../src/container/host';
-import { commandLine, WORK_USER } from '../../src/container/hosted-command';
-import { hostFor } from '../../src/container/hosts';
 import { secretValues } from '../../src/container/secrets';
 import { TIMEOUT_EXIT_CODE } from '../../src/engines/limits';
 import { LogSink } from '../../src/stream/logs';
 import { credentials, FakeHost } from '../fake-host';
 
 /**
- * `contracts/execution-host.md`, run against every host implementation this
+ * The container-host contract, run against every implementation this
  * environment can reach (T017).
  *
- * The point of the document is that the hosted implementation is held to
- * exactly what the local one is. The point of this file is that the holding is
- * automatic — a third implementation cannot quietly be a little different,
- * because the obligations are asserted here and not in its own tests.
+ * `ContainerHost` is the seam every test drives the Runner through, so the
+ * fake that stands in for Docker has to behave like Docker in every way the
+ * Runner can observe. That is what this file holds: the obligations are
+ * asserted here, against both, rather than in each one's own tests — so a
+ * second implementation cannot quietly be a little different.
  *
  * **What each host can be held to, and why they differ.** Some obligations are
  * observable through the interface (an identifier that works, a `null` that
@@ -56,16 +55,6 @@ const candidates: Candidate[] = [
           unavailable: 'no container daemon is answering in this environment',
           executes: false,
         }),
-  },
-  {
-    name: 'hostedHost',
-    // Not a matter of credentials. `@cloudflare/sandbox` imports
-    // `cloudflare:workers`, which exists only in the Workers runtime, so the
-    // module cannot be LOADED here — see the note in `container/hosts.ts`. Its
-    // obligations are proven in the three places named in the coverage table.
-    unavailable:
-      'the sandbox SDK cannot be imported under Bun, so it is unreachable from any test here',
-    executes: false,
   },
 ];
 
@@ -280,29 +269,9 @@ describe.each(
 describe('obligations proven elsewhere', () => {
   const elsewhere: { obligation: string; provenBy: string; contains: string }[] = [
     {
-      obligation: 'C3 for the hosted host — commands run as an unprivileged user',
-      provenBy: 'apps/runner/tests/unit/hosted-command.test.ts',
-      contains: 'drops to the unprivileged user',
-    },
-    {
-      obligation: 'E1 for the hosted host — argv survives becoming a command string',
-      provenBy: 'apps/runner/tests/unit/hosted-command.test.ts',
-      contains: 'a whole agent invocation round-trips unchanged',
-    },
-    {
-      obligation: 'E3/E3a for the hosted host — the deadline starts with the command',
-      provenBy: 'apps/runner/tests/unit/hosted-command.test.ts',
-      contains: 'timeout(1) and TIMEOUT_EXIT_CODE agree',
-    },
-    {
-      obligation: 'F1 for both hosts — quoting at the boundary',
+      obligation: 'F1 — quoting at the boundary',
       provenBy: 'apps/runner/tests/unit/shell.test.ts',
       contains: 'quoteOne',
-    },
-    {
-      obligation: 'C5/C5a — the ceilings are caps and the wall clock is exact',
-      provenBy: 'apps/runner/tests/integration/run-state.test.ts',
-      contains: "falls due exactly at the administrator's ceiling",
     },
   ];
 
@@ -339,30 +308,4 @@ test('FR-017: a credential in a command’s output never leaves the sink unredac
   expect(everything).not.toContain(credentials.gitToken);
   expect(everything).not.toContain(credentials.modelKey);
   expect(everything).toContain('authentication failed');
-});
-
-/**
- * The host-selection obligation, which is about the seam rather than about any
- * one implementation: a deployment moves between hosts by configuration, and
- * the managed one can only be built where its namespace exists.
- */
-test('the managed host refuses to be built outside the Worker entry', () => {
-  expect(() => hostFor('hosted')).toThrow(/can only be served by the Worker entry/);
-  // And the Docker path needs nothing injected, which is what keeps it the
-  // rollback (FR-025).
-  expect(hostFor('docker')).toBe(dockerHost);
-});
-
-/** WORK_USER and the command it produces are one fact, asserted in one place. */
-test('the hosted host’s unprivileged user is the one the image creates', async () => {
-  expect(WORK_USER).toBe('factory');
-  // The HOSTED image: the managed host cannot use `docker run --user`, so it
-  // wraps each command in `setpriv --reuid=<user>` and that user has to exist
-  // in the image it actually runs. The local image is a separate file and
-  // drops to UID 1000 directly.
-  const dockerfile = await Bun.file('infra/sandbox/Dockerfile.hosted').text();
-  expect(dockerfile).toContain(`useradd`);
-  expect(dockerfile).toContain(WORK_USER);
-  // And the command actually drops to it.
-  expect(commandLine(['true'])).toContain(`--reuid=${WORK_USER}`);
 });

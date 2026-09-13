@@ -11,10 +11,10 @@ import type { RequestHandler } from './$types';
  * It is a route rather than a remote function for the same reason the
  * credentials one is: the caller is not our browser (contracts/ui-data.md).
  * It exists as a fetch rather than as part of the snapshot because content is
- * large and a snapshot is not: a snapshot is held for the life of a run and
- * rewritten on every step, and on the managed host it lives in Durable Object
- * storage, which caps a value at 128 KiB. The manifest travels in the
- * snapshot; the content is collected once, here, at start.
+ * large and a snapshot is not: a snapshot is held for the life of a run,
+ * passed through the orchestration service, and stored again on every step.
+ * The manifest travels in the snapshot; the content is collected once, here,
+ * at start.
  *
  * Authenticated with the run's own secret, exactly as a callback is. A
  * rejected call cannot tell whether the run exists.

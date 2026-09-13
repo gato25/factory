@@ -147,12 +147,12 @@ export async function removeFile(
 /**
  * The manifest that travels in a run's snapshot: names and sizes, no content.
  *
- * Content is deliberately absent. The snapshot is stored as one value for the
- * life of a run — in Durable Object storage on the managed execution host,
- * which caps a value at 128 KiB — and it is written again on every step. A
- * few megabytes of requirements inside it would break the managed host
- * outright and waste the local one. The execution service fetches the content
- * once, at start, exactly as it already fetches credentials.
+ * Content is deliberately absent. The snapshot is held for the life of a run,
+ * passed through the orchestration service, and stored again on every step —
+ * so a few megabytes of requirements inside it would be copied at every one
+ * of those points for content that is needed exactly once. The execution
+ * service fetches the content at start, exactly as it already fetches
+ * credentials.
  */
 export async function fileManifest(
   database: Database,

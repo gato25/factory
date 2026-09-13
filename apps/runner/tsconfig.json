@@ -1,11 +1,4 @@
 {
   "extends": "../../tsconfig.base.json",
-  "compilerOptions": {
-    // The execution service builds for two runtimes: Bun for the locally
-    // administered execution path and the whole test suite, the Workers
-    // runtime for the hosted one (specs/002-hosted-runner-sandboxes, D1/D2).
-    // Both sets of globals are declared so one typecheck covers both.
-    "types": ["bun", "@cloudflare/workers-types"]
-  },
-  "include": ["src/**/*.ts", "tests/**/*.ts", "spikes/**/*.ts"]
+  "include": ["src/**/*.ts", "tests/**/*.ts"]
 }

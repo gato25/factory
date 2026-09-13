@@ -1,28 +1,20 @@
 import { describe, expect, test } from 'bun:test';
 import { dockerHost } from '../../src/container/host';
-import { WORK_USER } from '../../src/container/hosted-command';
 
 /**
- * That each execution host's sandbox image matches how that host drives it.
+ * That the sandbox image matches how the host drives it.
  *
- * There are two images because the two hosts have contradictory requirements,
- * and getting either wrong produces a container that builds and deploys
- * perfectly and then fails every run:
- *
- * - The managed host reaches a sandbox only through a control server that IS
- *   the base image's entrypoint. Replace it and nothing can drive the sandbox —
- *   which presented as a two-minute hang, not an error.
- * - The local host keeps a container alive by running `sleep <seconds>` as the
- *   COMMAND. Give that image an entrypoint and the command becomes arguments
- *   to it instead: `ENTRYPOINT ["/bin/bash","-lc"]` turns `sleep 5400` into
- *   bash running `sleep` with no operand, so the container exits immediately.
- *
- * Both mistakes were actually made in this repository. These read the
- * Dockerfiles rather than trusting the comments in them.
+ * Getting this wrong produces a container that builds perfectly and then
+ * fails every run: the host keeps a container alive by running
+ * `sleep <seconds>` as the COMMAND, so an image with an entrypoint turns that
+ * into arguments to the entrypoint instead. `ENTRYPOINT ["/bin/bash","-lc"]`
+ * made `sleep 5400` into bash running `sleep` with no operand, and the
+ * container exited before the first step. That mistake was actually made in
+ * this repository. This reads the Dockerfile rather than trusting the
+ * comments in it.
  */
 
 const local = await Bun.file('infra/sandbox/Dockerfile').text();
-const hosted = await Bun.file('infra/sandbox/Dockerfile.hosted').text();
 
 /** Lines that actually instruct Docker, with comments and blanks removed. */
 const directives = (dockerfile: string) =>
@@ -31,13 +23,13 @@ const directives = (dockerfile: string) =>
     .map((line) => line.trim())
     .filter((line) => line.length > 0 && !line.startsWith('#'));
 
-describe('the local image, driven by `docker run … sleep <seconds>`', () => {
+describe('the sandbox image, driven by `docker run … sleep <seconds>`', () => {
   test('declares no ENTRYPOINT and no CMD', () => {
     // The whole bug, in one assertion.
     for (const directive of ['ENTRYPOINT', 'CMD']) {
       expect(
         directives(local).some((line) => line.toUpperCase().startsWith(directive)),
-        `the local image must not set ${directive} — it would swallow the sleep that keeps the container alive`,
+        `the image must not set ${directive} — it would swallow the sleep that keeps the container alive`,
       ).toBe(false);
     }
   });
@@ -59,43 +51,13 @@ describe('the local image, driven by `docker run … sleep <seconds>`', () => {
 
   test('installs both agent engines and verifies them', () => {
     // `|| true` is what hid the Claude CLI never being installed. It must not
-    // come back, in either image.
-    for (const [name, dockerfile] of [
-      ['local', local],
-      ['hosted', hosted],
-    ] as const) {
-      // Directives only — both files DESCRIBE the old `|| true` in a comment,
-      // and that explanation is worth keeping. What must not come back is the
-      // instruction.
-      expect(
-        directives(dockerfile).join('\n'),
-        `${name}: a swallowed failure is how this broke before`,
-      ).not.toContain('|| true');
-      expect(dockerfile).toContain('@anthropic-ai/claude-code@');
-      expect(dockerfile).toContain('claude --version');
-    }
-  });
-});
-
-describe('the hosted image, driven through a control server', () => {
-  test('keeps the base image’s entrypoint by declaring none of its own', () => {
-    for (const directive of ['ENTRYPOINT', 'CMD']) {
-      expect(
-        directives(hosted).some((line) => line.toUpperCase().startsWith(directive)),
-        `the hosted image must not set ${directive} — the control server is the base image's`,
-      ).toBe(false);
-    }
-  });
-
-  test('creates the unprivileged user the managed host drops to', () => {
-    // The managed host cannot use `docker run --user`, so it wraps each
-    // command in `setpriv --reuid=<user>`. That user has to exist.
-    expect(hosted).toContain('useradd');
-    expect(hosted).toContain(WORK_USER);
-  });
-
-  test('wrangler builds the hosted image, not the local one', async () => {
-    const config = await Bun.file('apps/runner/wrangler.jsonc').text();
-    expect(config).toContain('infra/sandbox/Dockerfile.hosted');
+    // come back. Directives only — the file DESCRIBES the old `|| true` in a
+    // comment, and that explanation is worth keeping.
+    expect(
+      directives(local).join('\n'),
+      'a swallowed failure is how this broke before',
+    ).not.toContain('|| true');
+    expect(local).toContain('@anthropic-ai/claude-code@');
+    expect(local).toContain('claude --version');
   });
 });

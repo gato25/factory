@@ -38,7 +38,6 @@ const config: RunnerConfig = {
   port: 8080,
   sandboxImage: 'factory/runner:1',
   authToken: TOKEN,
-  executionHost: 'docker',
 };
 
 const call = (method: string, path: string, body?: unknown) =>

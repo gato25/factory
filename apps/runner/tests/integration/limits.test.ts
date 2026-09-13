@@ -2,12 +2,6 @@ import { expect, test } from 'bun:test';
 import type { SnapshotAgent, StepOutcome } from '@factory/shared';
 import { run as execute } from '../../src/container/host';
 import {
-  commandLine,
-  DEADLINE_CODES_AGREE,
-  outerTimeoutMs,
-  TIMEOUT_COMMAND_EXIT_CODE,
-} from '../../src/container/hosted-command';
-import {
   applyLimits,
   costBreach,
   effectiveLimits,
@@ -176,55 +170,4 @@ test('no deadline means no kill', async () => {
   const result = await execute('sh', ['-c', 'sleep 0.2; echo late']);
   expect(result.exitCode).toBe(0);
   expect(result.stdout).toBe('late\n');
-});
-
-/**
- * The same deadline, enforced by the managed host (T039, FR-014, FR-014a,
- * E3, E3a).
- *
- * The tests above prove it against a real process, which is the honest way to
- * prove a deadline. The managed host cannot be reached from here, so what is
- * proven for it is the one thing that can be: that the deadline is enforced
- * INSIDE the sandbox and starts when the command starts.
- *
- * That distinction is the whole of FR-014a, and it is not a detail. A sandbox
- * can take seconds to become ready — 4,013 ms cold, measured (D15). Charging
- * those seconds to a step's limit would make a short step fail for a reason
- * that had nothing to do with it, and report that failure as the step timing
- * out, which is the most misleading answer available.
- */
-
-test('the managed host’s deadline starts when the command does (FR-014a)', () => {
-  // `timeout` wraps the work inside the sandbox, so the clock starts with the
-  // command. The SDK's own timeout is the outer bound only.
-  // Asserted as the argument vector rather than as quote characters: `quote`
-  // only quotes what needs it, so a test matching literal quotes would be
-  // testing the quoter's taste instead of the deadline.
-  const line = commandLine(['sleep', '30'], { timeoutMs: 90_000 });
-  expect(line.split(' ').slice(0, 3)).toEqual(['timeout', '--signal=KILL', '90']);
-  // And `setpriv` is INSIDE it, so the deadline covers the real work rather
-  // than a process that drops privileges and exits.
-  expect(line.split(' ')[3]).toBe('setpriv');
-  // And the outer bound is strictly later, so it can never be the thing that
-  // fires — if it were, the result would carry no exit code and a deadline
-  // would present as a hang.
-  expect(outerTimeoutMs(90_000)).toBeGreaterThan(90_000);
-});
-
-test('a deadline is reported the same way whichever host enforced it', () => {
-  // `timeout(1)` exits 124, and 124 is `TIMEOUT_EXIT_CODE` — which is what
-  // `runs.ts` branches on. The two agreeing is why a caller can tell a
-  // deadline from an ordinary failure without knowing which host ran the step.
-  expect(TIMEOUT_COMMAND_EXIT_CODE).toBe(TIMEOUT_EXIT_CODE);
-  expect(DEADLINE_CODES_AGREE).toBe(true);
-});
-
-test('time spent readying a sandbox is not charged to the step', () => {
-  // Stated as the arithmetic rather than as an intention. Whatever the step's
-  // limit, the seconds before its command starts are outside it — because the
-  // number handed to `timeout` is the step's own limit and nothing else.
-  for (const stepLimitMs of [1_000, 60_000, 600_000]) {
-    const seconds = Number(commandLine(['true'], { timeoutMs: stepLimitMs }).split(' ')[2]);
-    expect(seconds * 1000).toBe(stepLimitMs);
-  }
 });

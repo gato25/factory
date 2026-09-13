@@ -7,9 +7,8 @@ import { LogSink } from '../../src/stream/logs';
  *
  * Each chunk is one HTTP request from the execution service to the application
  * plus one row written. Flushing on every newline turned a step printing 2,000
- * lines into 2,000 requests — free over loopback, billed per request once
- * hosted, and at high volume close enough to the platform's 10,000-subrequest
- * ceiling that a verbose step would stop working rather than merely cost more.
+ * lines into 2,000 requests and 2,000 rows, for output nobody reads a line at
+ * a time.
  *
  * Three properties, in the order they outrank each other:
  *

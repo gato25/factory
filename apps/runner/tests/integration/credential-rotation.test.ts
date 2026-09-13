@@ -41,7 +41,6 @@ function handlerWith(authToken: string, previousAuthToken?: string) {
     port: 8080,
     sandboxImage: 'factory/runner:1',
     authToken,
-    executionHost: 'docker',
     ...(previousAuthToken ? { previousAuthToken } : {}),
   };
   return handlerFor({

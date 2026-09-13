@@ -1,18 +1,12 @@
-# The run sandbox for the LOCALLY ADMINISTERED execution host: one fresh
-# container per run, non-root, destroyed at the end (constitution Architectural
-# Invariants; 001 FR-046, FR-047).
+# The run sandbox: one fresh container per run, non-root, destroyed at the end
+# (constitution Architectural Invariants; 001 FR-046, FR-047).
 #
-# `Dockerfile.hosted` is the other one, for the managed sandbox service. They
-# cannot be one file, and the reason is the entrypoint:
-#
-#   - The managed host reaches a sandbox only through a control server, which
-#     is the base image's ENTRYPOINT. An image that replaces it cannot be
-#     driven at all (002 D10).
-#   - This host reaches a container through `docker exec`, and keeps it alive
-#     by running `sleep <seconds>` AS THE COMMAND. An image with an entrypoint
-#     of its own turns that command into arguments for the entrypoint instead.
-#
-# Those requirements contradict each other, so there are two images.
+# No ENTRYPOINT and no CMD, and that is load-bearing. The host keeps a
+# container alive by running `sleep <seconds>` AS THE COMMAND, so an image
+# with an entrypoint of its own would turn that command into arguments for the
+# entrypoint — `ENTRYPOINT ["/bin/bash","-lc"]` made `sleep 5400` into bash
+# running `sleep` with no operand, and the container exited before the first
+# step. A contract test reads this file to make sure neither comes back.
 #
 #   docker build -t code-factory/sandbox:latest infra/sandbox
 FROM node:22-bookworm-slim

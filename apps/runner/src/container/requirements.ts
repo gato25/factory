@@ -20,12 +20,12 @@ const log = createLogger('runner');
  * with no new mechanism and no prompt variable it has to remember to mention.
  *
  * FETCHED rather than carried in the snapshot. The snapshot holds a manifest
- * of names and sizes only: it is stored as one value for the life of a run and
- * rewritten on every step, and on the managed execution host that value lives
- * in Durable Object storage, which caps a value at 128 KiB. Several megabytes
- * of requirements inside it would break that host outright. This mirrors how
- * credentials already reach the Runner — from the application, authenticated
- * with the run's own secret, never through the orchestration service.
+ * of names and sizes only: it is held for the life of a run, passed through
+ * the orchestration service, and stored again on every step — so several
+ * megabytes of requirements inside it would be copied at every one of those
+ * points for content that is needed exactly once. This mirrors how credentials
+ * already reach the Runner — from the application, authenticated with the
+ * run's own secret, never through the orchestration service.
  */
 
 export interface RequirementFile {

@@ -17,16 +17,12 @@ import {
 } from './runs';
 
 /**
- * The four operations in contracts/runner.md as routes, for both runtimes.
+ * The four operations in contracts/runner.md as routes.
  *
- * Extracted from `index.ts` when the service gained a second entry point (002
- * FR-001). The alternative — a Worker handler with its own copy of the routing
- * — would have meant two places to change a route and one of them silently
- * left behind, which is exactly how an operation ends up behaving differently
- * depending on which host a deployment runs on. There is one table, and the two
- * entries differ only in what they inject: a daemon supplies the Docker host
- * and an in-process store, a Worker supplies the managed host and Durable
- * Object storage.
+ * Kept apart from `index.ts` so the routing can be driven without a server:
+ * `handlerFor` is given the container host and the run store rather than
+ * reaching for them, which is how every test exercises the same table against
+ * `tests/fake-host.ts` and an in-memory store.
  */
 
 export interface RouterDeps {
@@ -62,11 +58,9 @@ export function routesFor(deps: RouterDeps): Route[] {
         } & Partial<RunContext>;
         if (!body.snapshot) throw new FactoryError('invalid_input', 'expected a snapshot');
 
-        // A run already started keeps the sandbox it has (FR-008). On the
-        // managed host the Durable Object is single-instance per run id, so
-        // this is the whole of it: two concurrent starts cannot both find no
-        // record. Answering with the existing sandbox rather than refusing
-        // makes the call idempotent, which is what a retrying caller needs.
+        // A run already started keeps the sandbox it has (FR-008). Answering
+        // with the existing sandbox rather than refusing makes the call
+        // idempotent, which is what a retrying caller needs.
         const existing = await store.get(runId);
         if (existing?.containerId) {
           log.info('start called again for a run that already has a sandbox', {
@@ -95,10 +89,6 @@ export function routesFor(deps: RouterDeps): Route[] {
             wallClockMinutes: limits?.wall_clock_minutes ?? 90,
             networkDuringImplement: limits?.network_during_implement ?? false,
           },
-          // Recorded so a later step can refuse to run somewhere else
-          // (FR-025a). It is the CONFIGURED host, not a guess from the
-          // request, because that is what actually served this call.
-          executionHost: config.executionHost,
         });
         if (!limits) {
           log.warn('the snapshot carries no sandbox limits, so defaults were used', {
@@ -118,7 +108,7 @@ export function routesFor(deps: RouterDeps): Route[] {
         const body = (await request.json()) as StepRequest;
         if (!body?.step) throw new FactoryError('invalid_input', 'expected a step');
 
-        const state = await requireRun(store, runId, config);
+        const state = await requireRun(store, runId);
         const outcome = await runStep(
           host,
           store,
@@ -135,7 +125,7 @@ export function routesFor(deps: RouterDeps): Route[] {
       pattern: /^\/runs\/([^/]+)\/verify-and-push$/,
       async handle(match) {
         const runId = match[1] as string;
-        await requireRun(store, runId, config);
+        await requireRun(store, runId);
         const outcome = await verifyAndPush(host, store, runId);
         return Response.json(outcome);
       },
@@ -156,7 +146,6 @@ export function routesFor(deps: RouterDeps): Route[] {
           {
             status: probe.reachable ? 'ok' : 'degraded',
             service: 'runner',
-            execution_host: config.executionHost,
             container_host: probe.reachable ? 'reachable' : 'unreachable',
             detail: probe.detail,
           },
@@ -188,34 +177,11 @@ export function routesFor(deps: RouterDeps): Route[] {
 /**
  * The record a step or a push needs, or a refusal.
  *
- * `liveRun` handles the first refusal — no record, or a record whose run has
- * finished — and says nothing about whether the run exists (FR-007, FR-019).
- * This adds the second:
- *
- * **A different execution host.** A deployment's host can change while a run is
- * in flight — that is the whole point of it being one variable — and the
- * currently configured host has neither this run's workspace nor its branch.
- * Executing the step there would produce a run whose steps happened in two
- * places, which is worse than a clear failure (FR-025a).
+ * `liveRun` refuses when there is no record, or the record's run has finished,
+ * and says nothing about whether the run exists (FR-007, FR-019).
  */
-async function requireRun(store: RunStore, runId: string, config: RunnerConfig) {
-  const state = await liveRun(store, runId);
-  // Absent on a record written before this field existed, which can only be a
-  // run already in flight through a deployment being upgraded. Refusing those
-  // would fail runs that are doing nothing wrong.
-  if (state.executionHost && state.executionHost !== config.executionHost) {
-    log.warn('refused a run recorded against a different execution host', {
-      run_id: runId,
-      started_on: state.executionHost,
-      configured: config.executionHost,
-    });
-    throw new FactoryError(
-      'invalid_input',
-      `this run started on a different execution host (${state.executionHost}) and cannot ` +
-        'continue on this one — its workspace is not here',
-    );
-  }
-  return state;
+async function requireRun(store: RunStore, runId: string) {
+  return liveRun(store, runId);
 }
 
 /**

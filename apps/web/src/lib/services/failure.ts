@@ -118,29 +118,6 @@ export function explain(reason: string | null): {
       needsAChange: false,
     };
   }
-  // Two very different `sandbox_lost` causes reach a person as the same code,
-  // because the execution-host contract makes them the same reason
-  // deliberately: from the run's point of view no sandbox exists either way,
-  // and recovery's single rebuild is the right response to both. But the ADVICE
-  // differs, and that is what a person is reading this for (002 FR-024a).
-  // Checked before the code table, because these arrive as the SENTENCE the
-  // execution service wrote rather than as a code — and one of them must not
-  // be answered with "retry".
-  if (/max_instances|instance limit is reached|will not clear on its own/i.test(reason)) {
-    return {
-      what: 'The execution host refused a sandbox because the deployment has reached the number of sandboxes it is configured to run at once.',
-      next: 'Retrying will not help until that limit is raised, which is a change where the execution service is deployed rather than anything in this workspace.',
-      needsAChange: true,
-    };
-  }
-  if (/no capacity|no container instance|try again later/i.test(reason)) {
-    return {
-      what: 'The execution host had no room for a sandbox, and still had none after waiting.',
-      next: 'Nothing is wrong with the ticket, and nothing needs changing. Retry — this usually clears within a minute.',
-      needsAChange: false,
-    };
-  }
-
   const known = EXPLANATIONS[reason as FailureReason];
   if (known) return known;
 

@@ -7,11 +7,10 @@ import { credentials, FakeHost, snapshot } from '../fake-host';
 /**
  * The authentication surface, end to end through the router (T019).
  *
- * This used to be defence in depth behind a private network. Once the service
- * is hosted it has a public address by construction, so the credential check is
- * the whole boundary — and the two things that go wrong with a boundary like
- * this are that some operation is quietly outside it, and that its refusals
- * tell an unauthenticated caller things.
+ * The credential check is the boundary between the orchestrator and a service
+ * that holds rights on a container host — and the two things that go wrong
+ * with a boundary like this are that some operation is quietly outside it,
+ * and that its refusals tell an unauthenticated caller things.
  */
 
 const TOKEN = 'correct-horse-battery-staple';
@@ -32,7 +31,6 @@ function configWith(extra: Partial<RunnerConfig> = {}): RunnerConfig {
     port: 8080,
     sandboxImage: 'factory/runner:1',
     authToken: TOKEN,
-    executionHost: 'docker',
     ...extra,
   };
 }
@@ -110,7 +108,7 @@ describe('a refusal reveals nothing about which runs exist (FR-019)', () => {
   test('a step on a real run and on an invented one are indistinguishable', async () => {
     // One run genuinely exists and has a sandbox; it is simply not started
     // under the id the second request names.
-    await startRun(host, store, { snapshot, credentials, sandbox, executionHost: 'docker' });
+    await startRun(host, store, { snapshot, credentials, sandbox });
     expect(await store.get(snapshot.run_id)).toBeDefined();
 
     const forReal = await handle(
@@ -143,7 +141,7 @@ describe('a refusal reveals nothing about which runs exist (FR-019)', () => {
     // Retention keeps the sandbox and drops the credentials (FR-016), so the
     // record still exists. A step must not run in it — and must not be told
     // that this run once did.
-    await startRun(host, store, { snapshot, credentials, sandbox, executionHost: 'docker' });
+    await startRun(host, store, { snapshot, credentials, sandbox });
     const record = await store.get(snapshot.run_id);
     if (!record) throw new Error('the run should have a record');
     const { credentials: _dropped, ...retained } = record;
@@ -163,41 +161,5 @@ describe('a refusal reveals nothing about which runs exist (FR-019)', () => {
     });
     // And nothing was pushed with a token it no longer has.
     expect(host.calls.length).toBe(before);
-  });
-});
-
-describe('a run never spans two execution hosts (FR-025a)', () => {
-  test('a step is refused when the deployment has moved hosts mid-run', async () => {
-    await startRun(host, store, { snapshot, credentials, sandbox, executionHost: 'docker' });
-    // The deployment is reconfigured while this run is in flight. The managed
-    // host has neither this run's workspace nor its branch.
-    build(configWith({ executionHost: 'hosted' }));
-
-    const before = host.calls.length;
-    const response = await handle(
-      new Request(`http://runner.internal/runs/${snapshot.run_id}/verify-and-push`, {
-        method: 'POST',
-        headers: { authorization: `Bearer ${TOKEN}` },
-      }),
-    );
-    expect(response.status).toBe(400);
-    const body = (await response.json()) as { error: string };
-    expect(body.error).toContain('started on a different execution host (docker)');
-    // Nothing ran on the host this run did not start on.
-    expect(host.calls.length).toBe(before);
-  });
-
-  test('a run started before the field existed is not refused', async () => {
-    // A record written by an earlier version carries no execution host. Those
-    // runs are doing nothing wrong, and failing them would be an upgrade that
-    // breaks every run in flight.
-    await startRun(host, store, { snapshot, credentials, sandbox });
-    const response = await handle(
-      new Request(`http://runner.internal/runs/${snapshot.run_id}/verify-and-push`, {
-        method: 'POST',
-        headers: { authorization: `Bearer ${TOKEN}` },
-      }),
-    );
-    expect(response.status).toBe(200);
   });
 });

@@ -1,20 +1,16 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
 import type { RunnerConfig } from '../../src/config';
 import { handlerFor } from '../../src/router';
-import { deadlineFor } from '../../src/run-object-state';
-import { memoryStore, type RunRecord } from '../../src/runs';
+import { memoryStore } from '../../src/runs';
 import { credentials, FakeHost, snapshot } from '../fake-host';
 
 /**
  * That a run's four requests address ONE sandbox and one workspace (T018,
  * FR-006, FR-008).
  *
- * This is the requirement the move to a hosted service put at risk. A daemon
- * kept the mapping in a process that outlived the requests; a Worker isolate
- * does not survive between them, so every one of the four operations has to
- * find the run's state somewhere it can be lost. The tests here drive the
- * routes, not the store, so they hold for whichever store is injected —
- * `memoryStore` here, one Durable Object per run in the Worker.
+ * The four operations arrive as separate requests, and every one of them has
+ * to find the same run. The tests here drive the routes, not the store, so
+ * they hold for whichever store is injected.
  */
 
 const TOKEN = 'a-token';
@@ -34,7 +30,6 @@ const config: RunnerConfig = {
   port: 8080,
   sandboxImage: 'factory/runner:1',
   authToken: TOKEN,
-  executionHost: 'docker',
 };
 
 const call = (method: string, path: string, body?: unknown) =>
@@ -121,40 +116,5 @@ describe('one run, one sandbox', () => {
     // not be able to leave a second container running that nobody will release,
     // which is a leak that costs money rather than an error somebody sees.
     expect(host.created).toHaveLength(1);
-  });
-
-  test('the record remembers which host the run started on (FR-025a)', async () => {
-    await start();
-    expect((await store.get(snapshot.run_id))?.executionHost).toBe('docker');
-  });
-});
-
-describe('the wall-clock backstop', () => {
-  const record = (wallClockMinutes: number | undefined): RunRecord => ({
-    snapshot,
-    credentials,
-    sandbox: { ...sandbox, wallClockMinutes: wallClockMinutes as number },
-    containerId: 'container-1',
-  });
-
-  test("falls due exactly at the administrator's ceiling (FR-009a)", () => {
-    const now = Date.parse('2026-09-11T10:00:00.000Z');
-    // 60 minutes means 60 minutes. Not the nearest allocation the execution
-    // host happens to offer, in either direction: rounding up hands runs time
-    // nobody granted them, rounding down stops them before their own limit.
-    expect(deadlineFor(record(60), now)).toBe(Date.parse('2026-09-11T11:00:00.000Z'));
-    expect(deadlineFor(record(45), now)).toBe(Date.parse('2026-09-11T10:45:00.000Z'));
-    expect(deadlineFor(record(7), now)).toBe(Date.parse('2026-09-11T10:07:00.000Z'));
-  });
-
-  test('a missing or zero ceiling does not kill the run instantly', () => {
-    // The failure this exists to prevent: a snapshot with no ceiling yielding a
-    // deadline already in the past, so the alarm releases the sandbox before
-    // the first step runs. A run given a few extra minutes is a far better
-    // outcome than a run killed by an absent field.
-    const now = Date.now();
-    for (const ceiling of [undefined, 0, -5, Number.NaN]) {
-      expect(deadlineFor(record(ceiling as number), now)).toBeGreaterThan(now);
-    }
   });
 });

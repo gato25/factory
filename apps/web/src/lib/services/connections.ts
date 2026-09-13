@@ -1,6 +1,6 @@
 import type { Database } from '@factory/db';
 import { repositories } from '@factory/db/schema';
-import { createLogger, type ExecutionHost } from '@factory/shared';
+import { createLogger } from '@factory/shared';
 import { eq } from 'drizzle-orm';
 import type { SessionUser } from './auth';
 import { requireAdmin } from './authz';
@@ -39,7 +39,6 @@ export interface ConnectionResult {
    * eventually disagree — at which point the settings screen would describe
    * limits that the service does not apply. Absent until something answers.
    */
-  executionHost?: ExecutionHost;
 }
 
 const STATE_TEXT: Record<ConnectionState, string> = {
@@ -175,14 +174,6 @@ export async function testRunner(
       // Reachable and authorised is still not enough: something else could
       // be listening on that port and answering 200 to everything.
       expect: (body) => body.includes('"service":"runner"'),
-      // Which host it is configured for, so the settings screen can say which
-      // of these limits that host actually enforces (FR-012). Parsed
-      // defensively: an older Runner does not report it, and that must read as
-      // "not known" rather than as a fault.
-      read: (body) => {
-        const host = /"execution_host"\s*:\s*"(docker|hosted)"/.exec(body)?.[1];
-        return host ? { executionHost: host as ExecutionHost } : {};
-      },
     },
     deps,
   );

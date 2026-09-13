@@ -8,8 +8,8 @@ import { snapshot as baseSnapshot, FakeHost } from '../fake-host';
  *
  * Two properties matter here and neither is obvious from the code. The first
  * is that the content is FETCHED rather than carried in the snapshot, because
- * the snapshot is stored whole on every step and capped at 128 KiB on the
- * managed host. The second is that a ticket with no documents must not depend
+ * the snapshot is passed through the orchestrator and stored whole on every
+ * step. The second is that a ticket with no documents must not depend
  * on the application being reachable at all — most tickets have none, and
  * making every run wait on an extra call would be a cost paid by everybody for
  * a feature few use.

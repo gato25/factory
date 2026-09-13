@@ -1,7 +1,6 @@
 export * from './account';
 export * from './callbacks';
 export * from './errors';
-export * from './execution-host';
 export * from './log';
 export * from './redact';
 export * from './requirement-files';

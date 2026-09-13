@@ -1,3 +1,11 @@
+> **Retired.** The hosted execution path this specification describes was built, deployed once,
+> and then removed from the codebase at the owner's request: the project runs on a Docker daemon
+> the team administers, and a second execution host it does not use was cost without benefit. The
+> code is in git history under the commit that removed it. This directory is kept because several
+> things here were *measured* rather than assumed — the provider's 3 GiB-per-vCPU floor, its 2×
+> memory cap on disk, that per-host egress filtering was not available — and anyone revisiting a
+> managed sandbox service should start from those findings rather than rediscover them.
+
 # Feature Specification: Hosted Runner Sandboxes
 
 **Feature Branch**: `claude/spectkit-specify-cu28jm`

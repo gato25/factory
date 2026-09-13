@@ -1,32 +1,23 @@
 import { loadRunnerConfig } from './config';
-import { run } from './container/host';
-import { hostFor } from './container/hosts';
+import { dockerHost, run } from './container/host';
 import { log } from './errors';
 import { handlerFor } from './router';
 import { memoryStore } from './runs';
 
 /**
- * The Runner as a long-lived daemon on a machine the team administers.
+ * The Runner: a long-lived daemon on a machine the team administers, driving
+ * one fresh Docker container per run.
  *
- * One of two entries; `worker.ts` is the other (002 FR-001). Both serve the
- * same routes from `router.ts` and differ only in what they inject — here, a
- * container daemon and an in-process store, which is all a single process
- * that outlives its requests needs.
- *
- * This path is also the rollback. It keeps working unchanged whatever happens
- * to the managed one, which is the point of the execution host being one
- * variable (FR-025).
+ * Everything it does goes through `router.ts`, which is given the container
+ * host and the run store rather than reaching for them — that is what lets
+ * every test drive the same routes against `tests/fake-host.ts` with no daemon
+ * running.
  */
 const config = loadRunnerConfig();
-// Which execution host this deployment uses, resolved once (002 FR-025). A
-// deployment configured for `hosted` fails here, at startup, with a message
-// naming the Worker entry — rather than by accepting a ticket and then failing
-// it with something about an undefined namespace.
-const host = hostFor(config.executionHost);
 
 const fetch = handlerFor({
   config,
-  host,
+  host: dockerHost,
   store: memoryStore(),
   async probeHost() {
     const probe = await run('docker', ['version', '--format', '{{.Server.Version}}'], {
@@ -44,4 +35,4 @@ const fetch = handlerFor({
 
 const server = Bun.serve({ port: config.port, fetch });
 
-log.info('runner listening', { port: server.port, execution_host: config.executionHost });
+log.info('runner listening', { port: server.port });

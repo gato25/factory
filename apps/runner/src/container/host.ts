@@ -1,6 +1,7 @@
 import { FactoryError } from '@factory/shared';
 import { TIMEOUT_EXIT_CODE } from '../engines/limits';
 import { quoteOne } from './shell';
+import { annotateUnreachable } from './unreachable';
 
 /**
  * The container host, behind one interface. The Runner is the only component
@@ -23,12 +24,8 @@ export interface ContainerSpec {
   /**
    * Whether the workspace asked for the network restriction (FR-085).
    *
-   * Whether a host can ENFORCE it is a different question, and not one a spec
-   * can answer: 002 T006 measured that the intended hosted execution host
-   * cannot filter a sandbox's traffic by host in either direction, so on that
-   * host reach is all-or-nothing and this flag records an intent it cannot
-   * honour. 002 FR-011a requires such a host to say so rather than accept a
-   * value it will ignore.
+   * Docker enforces it exactly: `false` becomes `--network none`, and a
+   * sandbox with no network cannot send anything out.
    */
   network: boolean;
   /** Credentials arrive as environment, never as files (FR-083). */
@@ -99,7 +96,13 @@ export const dockerHost: ContainerHost = {
       containerId,
       ...argv,
     ];
-    return run('docker', docker, { env, ...options });
+    const result = await run('docker', docker, { env, ...options });
+    // A failed command that could not reach something says so in its own
+    // output, as one line a person can act on (FR-013). It adds a sentence and
+    // never changes an outcome — see `unreachable.ts`.
+    return result.exitCode === 0
+      ? result
+      : { ...result, stderr: annotateUnreachable(result.stderr, result.stdout) };
   },
 
   async writeFile(containerId, path, content) {

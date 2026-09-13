@@ -8,7 +8,7 @@ import { createRedactor, type Redactor } from '@factory/shared';
  * is one HTTP request from the execution service to the application, plus one
  * row written. Flushing on every newline — which is what this did — turned a
  * step printing 2,000 lines into 2,000 requests. On the locally administered
- * host that was a loopback call and effectively free; hosted, it is a billed
+ * host that was a loopback call and effectively free; elsewhere, it is a billed
  * request each, and at high volume it starts to approach the platform's
  * 10,000-subrequest ceiling, at which point a verbose step stops working
  * rather than merely costing more.

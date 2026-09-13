@@ -153,9 +153,9 @@ test('removing one that is already gone is not an error', async () => {
 });
 
 test('the manifest carries names and sizes, and never content', async () => {
-  // The reason this is a manifest at all: a snapshot is stored as one value
-  // for the life of a run, and on the managed execution host that value is
-  // capped at 128 KiB.
+  // The reason this is a manifest at all: a snapshot is held for the life of
+  // a run and stored again on every step, so content inside it is copied at
+  // every one of those points.
   await attachFiles(db, scenario.ticketId, [brief()], scenario.userId);
   const manifest = await fileManifest(db, scenario.ticketId);
   expect(manifest).toEqual([{ name: 'brief.md', bytes: bytesOf(brief().content) }]);

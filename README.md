@@ -61,48 +61,6 @@ way, sealed. Only a repository is left to connect — the one thing that genuine
 press **Test every connection**. The dashboard names anything still missing and links to where it
 is fixed, so you should not need to come back here.
 
-### Where a run actually executes
-
-A run's sandbox comes from one of two places, and which one is a single variable on the execution
-service — `EXECUTION_HOST`:
-
-| | `docker` (the default) | `hosted` |
-|---|---|---|
-| What runs the sandbox | A container daemon you administer | A managed sandbox service |
-| Deployed as | A long-lived process (`apps/runner/src/index.ts`) | A Worker (`apps/runner/src/worker.ts`) |
-| Run state between requests | In the process | One Durable Object per run |
-| Image | `SANDBOX_IMAGE`, built from `infra/sandbox/Dockerfile` | Built at deploy from `infra/sandbox/Dockerfile.hosted` |
-| Sandbox size | Exactly the workspace's ceilings | The largest offered size *within* them |
-| The network restriction | Enforced | **Not available** — see below |
-
-**There are two sandbox images, and they cannot be one.** The managed host reaches a sandbox only
-through a control server that is its base image's entrypoint, so that image must not declare one.
-The local host keeps a container alive by running `sleep <seconds>` as the command, so an entrypoint
-there would swallow it and the container would exit before the first step. `Dockerfile` is the
-local one, `Dockerfile.hosted` the managed one, and a contract test holds each to how its host
-actually drives it.
-
-Both serve the same four operations from the same routing, so nothing above the execution host
-knows which it is talking to. That is what makes the switch a rollback as well as a migration: if
-the hosted path misbehaves, set `EXECUTION_HOST=docker`, point `RUNNER_BASE_URL` back at your own
-runner, and you are on the path this project shipped with. No migration to undo, no data to move —
-a run's state lives only as long as the run.
-
-Two differences are worth knowing before you switch:
-
-- **The network restriction cannot be enforced on the managed host.** Its allow and deny lists
-  govern only traffic routed through the provider's own proxy, not sockets a process opens for
-  itself — and an agent step runs arbitrary code, which opens its own. So a sandbox there has
-  network reach for the whole of its life. The setting is shown as unavailable in Settings rather
-  than accepted and ignored, because a switch that saves, reads as "off", and does nothing is worse
-  than no switch at all.
-- **Sandbox size is chosen, not set.** Processing power and memory are deploy-time configuration
-  there, so a run is routed to the largest offered size that fits *within* the workspace's
-  ceilings. Those ceilings are upper bounds, so the choice resolves downwards — which means a
-  workspace can get less than it asked for. The provider also requires at least 3 GiB of memory per
-  processor, and the shipped default of 2 processors / 4096 MB therefore cannot be offered: a
-  default workspace lands on 1 processor. Raise the memory default to 6144 MB to get 2 back.
-
 ### How the model work is paid for
 
 The model credential in **Settings → Claude CLI & keys** accepts either kind, and which one you
@@ -155,7 +113,7 @@ examine, so nothing was proved. Exit 2 is not a pass.
 
 ```
 apps/web           SvelteKit — every screen, every remote function, the callback routes
-apps/runner        The only component with rights on the execution host — a daemon or a Worker
+apps/runner        The only component with rights on the container host, as a daemon
 packages/db        Drizzle schema and migrations — the single datastore
 packages/shared    Types and contracts both deployables agree on
 orchestration/n8n  One generic workflow, for every pipeline

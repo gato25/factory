@@ -38,7 +38,6 @@ const config: RunnerConfig = {
   port: 8080,
   sandboxImage: 'factory/runner:1',
   authToken: TOKEN,
-  executionHost: 'docker',
 };
 
 const call = (method: string, path: string, body?: unknown) =>
@@ -105,15 +104,6 @@ describe('reach is established once, for the sandbox’s life (FR-011)', () => {
     const agentCall = host.calls.find((executed) => executed.argv.includes('claude'));
     expect(agentCall).toBeDefined();
   });
-
-  test('the managed host declares reach on the container class, not per step', async () => {
-    const worker = await Bun.file('apps/runner/src/worker.ts').text();
-    expect(worker).toContain('override enableInternet: boolean = true');
-    // And it is stated, not inherited: a library version that flipped the
-    // default would break every model-driven step with a failure that looks
-    // like the model being down.
-    expect(worker).toContain('flipped');
-  });
 });
 
 describe('a step that could not reach something names it (FR-013)', () => {
@@ -133,9 +123,8 @@ describe('a step that could not reach something names it (FR-013)', () => {
     });
     expect(response.status).toBe(200);
 
-    // The fake host does not annotate — only the managed host does, where the
-    // failure mode is new — so what is proven here is that the detection
-    // itself recognises the shape a real tool produced.
+    // The fake host does not annotate, so what is proven here is that the
+    // detection itself recognises the shape a real tool produced.
     const annotated = annotateUnreachable(
       'npm ERR! code ENOTFOUND\nnpm ERR! getaddrinfo ENOTFOUND registry.npmjs.org',
     );

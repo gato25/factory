@@ -15,11 +15,9 @@
  * recognise simply goes unannotated. That is the right trade for a heuristic:
  * being wrong costs a misleading sentence, not a wrong result.
  *
- * It is host-independent on purpose — nothing here knows about any provider —
- * but only the managed host calls it today, because that is where the failure
- * mode is new: a sandbox's outbound reach belongs to the provider rather than
- * to a network the team administers, so "it could not reach X" stopped being
- * something an operator could simply check for themselves.
+ * It is host-independent on purpose — nothing here knows about any provider.
+ * The Docker host applies it to a failed command's stderr, so a step that
+ * could not reach something says so in its own output.
  */
 
 /**

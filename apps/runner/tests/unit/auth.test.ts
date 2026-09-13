@@ -5,7 +5,7 @@ import { loadRunnerConfig } from '../../src/config';
 
 /**
  * Authentication used to be defence in depth behind a private network. Once
- * the execution service is hosted it has a public address, so this is the
+ * the execution service is reachable from outside, this is the
  * whole boundary (002 FR-018, constitution Principle V) — and the comparison
  * is written here rather than taken from `node:crypto`, so the property it
  * used to get for free now needs proving.
@@ -93,50 +93,23 @@ describe('constantTimeEqual', () => {
   });
 });
 
-describe('what a hosted deployment refuses to start without', () => {
-  /**
-   * The change of threat model that came with hosting, as a test rather than a
-   * comment. On the locally administered host the credential was defence in
-   * depth behind a private network, and a development default was harmless. A
-   * Worker has a public address by construction, so the same default would be
-   * a service anyone who read the repository could drive.
-   */
-  test("EXECUTION_HOST='hosted' will not start on the development credential", () => {
-    expect(() => loadRunnerConfig({ EXECUTION_HOST: 'hosted' })).toThrow(
-      /requires RUNNER_AUTH_TOKEN to be set explicitly/,
-    );
-  });
-
-  test('the locally administered host still starts with nothing configured', () => {
-    // Deliberately unchanged. An existing deployment that has not been told
-    // about any of this keeps working exactly as it did (FR-025).
+describe('the credential the service starts with', () => {
+  test('starts with the development credential when nothing is configured', () => {
+    // This service sits on a machine the team administers, so the credential
+    // is defence in depth there rather than the whole boundary, and a default
+    // lets development start with nothing set. `bun run dev` refuses the
+    // example placeholder, and a deployment reachable from the internet must
+    // set the variable explicitly.
     const config = loadRunnerConfig({});
-    expect(config.executionHost).toBe('docker');
     expect(config.authToken).toBe('dev-only-token');
-  });
-
-  test('a hosted deployment starts once the credential is set', () => {
-    const config = loadRunnerConfig({
-      EXECUTION_HOST: 'hosted',
-      RUNNER_AUTH_TOKEN: 'a-real-secret',
-    });
-    expect(config.executionHost).toBe('hosted');
     expect(config.previousAuthToken).toBeUndefined();
   });
 
   test('the rotation window is read, and an empty value closes it', () => {
-    const open = loadRunnerConfig({
-      EXECUTION_HOST: 'hosted',
-      RUNNER_AUTH_TOKEN: 'new',
-      RUNNER_AUTH_TOKEN_PREVIOUS: 'old',
-    });
+    const open = loadRunnerConfig({ RUNNER_AUTH_TOKEN: 'new', RUNNER_AUTH_TOKEN_PREVIOUS: 'old' });
     expect(open.previousAuthToken).toBe('old');
 
-    const closed = loadRunnerConfig({
-      EXECUTION_HOST: 'hosted',
-      RUNNER_AUTH_TOKEN: 'new',
-      RUNNER_AUTH_TOKEN_PREVIOUS: '',
-    });
+    const closed = loadRunnerConfig({ RUNNER_AUTH_TOKEN: 'new', RUNNER_AUTH_TOKEN_PREVIOUS: '' });
     expect(closed.previousAuthToken).toBeUndefined();
   });
 });

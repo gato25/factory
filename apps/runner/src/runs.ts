@@ -5,7 +5,6 @@ import {
   type Step,
   type StepOutcome,
 } from '@factory/shared';
-import type { ExecutionHostName } from './config';
 import { commitDesign } from './container/commit';
 import { writeAgentConfig } from './container/config';
 import { destroyRunWorkspace } from './container/destroy';
@@ -102,15 +101,6 @@ export interface RunContext {
   snapshot: PipelineSnapshot;
   credentials: ResolvedCredentials;
   sandbox: SandboxLimits;
-  /**
-   * Which execution host this run started on (002 FR-025a).
-   *
-   * A run must finish where it began. Nothing about selecting a host by
-   * configuration stops a deployment's choice changing while a run is in
-   * flight, and a run that executed half its steps on one host and half on
-   * another would have no coherent workspace at all.
-   */
-  executionHost?: ExecutionHostName;
 }
 
 /**
@@ -155,11 +145,9 @@ export async function liveRun(store: RunStore, runId: string): Promise<Required<
 /**
  * Where a run's state lives between calls.
  *
- * Asynchronous because the hosted implementation is Durable Object storage
- * (002 D3): a Worker isolate does not survive between requests, so the
- * in-process `Map` that served the daemon cannot serve FR-006. `memoryStore`
- * keeps the same interface, so every existing test still drives the logic
- * without either a database or an account.
+ * Asynchronous so that a store backed by something other than this process's
+ * memory can satisfy the same interface without every caller changing. Only
+ * `memoryStore` exists today, and every test drives the logic through it.
  */
 export interface RunStore {
   get(runId: string): Promise<RunRecord | undefined>;

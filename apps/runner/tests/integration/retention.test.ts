@@ -13,9 +13,7 @@ import { credentials, FakeHost, snapshot } from '../fake-host';
  * 2. It loses its credentials **immediately** — not when the window closes.
  *    Retention exists so somebody can look at a workspace; nothing about
  *    looking at a workspace needs a live token, and a token left sitting in a
- *    record for a day is a token nobody is watching. This got sharper with
- *    hosting: the record is now durable storage on somebody's account rather
- *    than a `Map` that died with the process.
+ *    record for a day is a token nobody is watching.
  * 3. A retained run is FINISHED. No step may run in it, and the refusal says
  *    nothing about the run having once existed (FR-007, FR-019).
  */
@@ -37,7 +35,6 @@ const config: RunnerConfig = {
   port: 8080,
   sandboxImage: 'factory/runner:1',
   authToken: TOKEN,
-  executionHost: 'docker',
 };
 
 const call = (method: string, path: string, body?: unknown) =>
@@ -106,7 +103,7 @@ describe('a failed run with a retention window', () => {
 
     // Serialised and searched, rather than checking the one field: a token
     // copied into some other field would pass a field check and still be a
-    // token sitting in durable storage on somebody's account for a day.
+    // token sitting in the record for a day.
     const serialised = JSON.stringify(await store.get(snapshot.run_id));
     expect(serialised).not.toContain(credentials.gitToken);
     expect(serialised).not.toContain(credentials.modelKey);
@@ -132,17 +129,6 @@ describe('a failed run with a retention window', () => {
     // needed the credentials it no longer has.
     const push = await call('POST', `/runs/${snapshot.run_id}/verify-and-push`);
     expect(push.status).toBe(404);
-  });
-
-  test('the second alarm is what releases it, with no request made (FR-023)', async () => {
-    // Retention extends a sandbox's life past the run's end, so the backstop
-    // moves with it rather than being cancelled. Asserted against the Worker,
-    // since Durable Object storage cannot be reached from a test here.
-    const worker = await Bun.file('apps/runner/src/worker.ts').text();
-    expect(worker).toContain('Math.min(retainUntil, deadline)');
-    // Whichever comes first: a run must not outlive its wall-clock ceiling
-    // just because somebody configured a long retention window.
-    expect(worker).toContain('record.retainedUntil');
   });
 });
 
