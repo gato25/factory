@@ -3,6 +3,7 @@ import type { Database } from '@factory/db';
 import { users } from '@factory/db/schema';
 import { FactoryError, MIN_PASSWORD_LENGTH, type Role } from '@factory/shared';
 import { eq } from 'drizzle-orm';
+import { hashPassword, needsRehash, verifyPassword } from './password';
 
 /**
  * Three ways in: a GitLab account, a GitHub account, or an email address and
@@ -40,9 +41,19 @@ export async function signInWithPassword(
     .limit(1);
   // Same failure whether the address is unknown or the password is wrong.
   const stored = found?.passwordHash;
-  const ok = stored ? await Bun.password.verify(password, stored) : false;
-  if (!found || !ok) {
+  const ok = stored ? await verifyPassword(password, stored) : false;
+  if (!found || !ok || !stored) {
     throw new FactoryError('not_authorised', 'that email address and password do not match');
+  }
+  // A hash written by `Bun.password` before hashing became portable is
+  // re-made the first time it verifies, so it stops depending on the runtime
+  // that made it. Only ever after a successful check — the plaintext is in
+  // hand for exactly this moment and no other.
+  if (needsRehash(stored)) {
+    await database
+      .update(users)
+      .set({ passwordHash: await hashPassword(password), updatedAt: new Date() })
+      .where(eq(users.id, found.id));
   }
   return toSessionUser(found);
 }
@@ -115,7 +126,7 @@ export async function registerFirstUser(
       name: input.name.trim() || email,
       email,
       role: await roleForNewUser(database),
-      passwordHash: await Bun.password.hash(input.password),
+      passwordHash: await hashPassword(input.password),
     })
     .returning();
 

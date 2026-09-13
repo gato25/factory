@@ -14,7 +14,7 @@
     "db:migrate": "bun run --filter @factory/db migrate",
     "lint": "biome check .",
     "format": "biome format --write .",
-    "test": "bun test packages/shared/tests packages/db/tests apps/web/tests/contract apps/web/tests/integration apps/runner/tests/contract apps/runner/tests/integration apps/runner/tests/unit scripts/audit/tests scripts/design/tests scripts/tests",
+    "test": "bun test packages/shared/tests packages/db/tests apps/web/tests/unit apps/web/tests/contract apps/web/tests/integration apps/runner/tests/contract apps/runner/tests/integration apps/runner/tests/unit scripts/audit/tests scripts/design/tests scripts/tests",
     "e2e": "bun run --filter @factory/web e2e",
     "check": "bunx tsc -p packages/shared && bunx tsc -p packages/db && bunx tsc -p apps/runner && bun run --filter @factory/web check",
     "verify": "bun run lint && bun run check && bun run audit:offline && bun run audit:browser && bun run test",
