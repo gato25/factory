@@ -129,6 +129,13 @@
     flex: 1;
     min-width: 0;
     min-height: 320px;
+    /* Its own height, not the column's: a short log beside a tall column
+       was a screen of empty dark. It stays in view while the column
+       scrolls, and its body scrolls within the window's height. */
+    align-self: flex-start;
+    position: sticky;
+    top: 16px;
+    max-height: calc(100vh - 32px);
     background: var(--code-bg);
     border: 1px solid var(--code-edge);
     border-radius: var(--r-lg);
@@ -193,7 +200,6 @@
   .body {
     flex: 1;
     min-height: 0;
-    max-height: 460px;
     overflow: auto;
     padding: 16px;
     font-family: var(--font-mono);

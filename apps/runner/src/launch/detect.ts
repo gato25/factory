@@ -173,7 +173,7 @@ export function detectStart(files: WorkspaceFiles): StartProposal | null {
         port: framework.port,
         install,
         notes: [...notes],
-        from: `package.json — ${framework.label}, via \`npm run ${script}\``,
+        from: `package.json — ${framework.label}, npm run ${script}`,
       };
     }
 
@@ -189,7 +189,7 @@ export function detectStart(files: WorkspaceFiles): StartProposal | null {
         'The server must listen on HOST (0.0.0.0) and PORT, both set in the environment. ' +
           'A server that binds localhost is unreachable from outside its container.',
       ],
-      from: `package.json — \`npm run ${script}\``,
+      from: `package.json — npm run ${script}`,
     };
   }
 

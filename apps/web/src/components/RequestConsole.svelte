@@ -60,8 +60,13 @@
       <select bind:value={method} aria-label="Method">
         {#each METHODS as m (m)}<option value={m}>{m}</option>{/each}
       </select>
-      <span class="base">{baseUrl}</span>
-      <input bind:value={path} placeholder="/api/health" aria-label="Path" spellcheck="false" />
+      <input
+        bind:value={path}
+        placeholder="/api/health"
+        aria-label="Path, sent to {baseUrl}"
+        title="Sent to {baseUrl}"
+        spellcheck="false"
+      />
       <button type="submit" class="primary" disabled={sending}>{sending ? 'Sending…' : 'Send'}</button>
     </div>
     <details class="more">
@@ -149,12 +154,6 @@
     font-family: var(--font-mono);
     font-weight: 600;
     flex: none;
-  }
-  .base {
-    flex: none;
-    font-family: var(--font-mono);
-    font-size: 12px;
-    color: var(--text-3);
   }
   input {
     flex: 1;
