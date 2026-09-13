@@ -1,10 +1,17 @@
 <script lang="ts">
-  import Icon from '$components/Icon.svelte';
-
   /**
-   * One dashboard tile, built to `design.pen`'s Stat component: a label and a
-   * 34px icon chip on one row, the value at 34px beneath, and a caption under
-   * that.
+   * One cell of the dashboard's stat strip, built to `design.pen`: a label, a
+   * 32px value beneath it, and a caption under that. The strip around it owns
+   * the card — the white surface, the hairline, the dividers — so a cell
+   * draws none of its own, and four of them read as one instrument rather
+   * than four boxes.
+   *
+   * There is deliberately no icon. The earlier design gave every tile a
+   * coloured chip, and four coloured squares in a row were the loudest thing
+   * on the page while carrying nothing the label did not already say. Colour
+   * is spent on one thing here: the value turns amber when something is
+   * waiting for a person, because that is the one number on this strip that
+   * asks for an action.
    *
    * The caption is the part worth defending. A tile that says "6" answers how
    * many and nothing else; "2 GitLab · 4 GitHub" is the beginning of an
@@ -14,24 +21,21 @@
     label,
     value,
     caption,
-    icon,
-    tone = 'accent',
+    tone = 'neutral',
   }: {
     label: string;
     value: number | string;
     caption: string;
-    icon: string;
-    /** Which soft chip the design gives this tile. */
-    tone?: 'accent' | 'warning' | 'success';
+    /** `warning` colours the value amber — only while it is non-zero. */
+    tone?: 'neutral' | 'warning';
   } = $props();
+
+  const attention = $derived(tone === 'warning' && Number(value) > 0);
 </script>
 
 <article class="stat">
-  <div class="top">
-    <span class="label">{label}</span>
-    <span class="chip {tone}"><Icon name={icon} size={17} /></span>
-  </div>
-  <strong class="value">{value}</strong>
+  <span class="label">{label}</span>
+  <strong class="value" class:attention>{value}</strong>
   <span class="caption">{caption}</span>
 </article>
 
@@ -39,51 +43,26 @@
   .stat {
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    flex: 1;
+    gap: 6px;
     min-width: 0;
-    padding: 22px;
-    background: var(--surface);
-    border: 1px solid var(--card-border);
-    border-radius: var(--r-lg);
-  }
-  .top {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
+    padding: 18px 24px;
   }
   .label {
     font-size: 13px;
     font-weight: 500;
     color: var(--text-2);
   }
-  .chip {
-    display: grid;
-    place-items: center;
-    width: 34px;
-    height: 34px;
-    border-radius: 10px;
-    flex: none;
-  }
-  .chip.accent {
-    background: var(--accent-soft);
-    color: var(--accent-text);
-  }
-  .chip.warning {
-    background: var(--warning-soft);
-    color: var(--warning);
-  }
-  .chip.success {
-    background: var(--success-soft);
-    color: var(--success);
-  }
   .value {
     font-family: var(--font-head);
-    font-size: 34px;
+    font-size: 32px;
     font-weight: 700;
     line-height: 1.1;
+    letter-spacing: -1px;
+    font-variant-numeric: tabular-nums;
     color: var(--text);
+  }
+  .value.attention {
+    color: var(--warning);
   }
   .caption {
     font-size: 12px;

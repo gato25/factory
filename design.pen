@@ -579,9 +579,9 @@
               "width": "fill_container",
               "height": "fill_container",
               "layout": "vertical",
-              "gap": 28,
+              "gap": 24,
               "padding": [
-                16,
+                24,
                 40,
                 40,
                 40
@@ -592,88 +592,59 @@
                   "id": "HNXh8",
                   "name": "Stats",
                   "width": "fill_container",
-                  "gap": 16,
+                  "fill": "$surface",
+                  "cornerRadius": "$r-lg",
+                  "stroke": "#E6E8EE",
+                  "strokeWidth": 1,
+                  "effect": {
+                    "type": "shadow",
+                    "shadowType": "outer",
+                    "color": "#0F172A0A",
+                    "offset": {
+                      "x": 0,
+                      "y": 1
+                    },
+                    "blur": 2
+                  },
+                  "gap": 0,
+                  "alignItems": "center",
                   "children": [
                     {
                       "type": "frame",
-                      "id": "f3ysQO",
+                      "id": "IlRU7",
                       "name": "Stat Connected repos",
                       "width": "fill_container",
-                      "fill": "$surface",
-                      "cornerRadius": "$r-lg",
-                      "stroke": "#E6E8EE",
-                      "strokeWidth": 1,
-                      "effect": {
-                        "type": "shadow",
-                        "shadowType": "outer",
-                        "color": "#0F172A0A",
-                        "offset": {
-                          "x": 0,
-                          "y": 1
-                        },
-                        "blur": 2
-                      },
                       "layout": "vertical",
-                      "gap": 12,
-                      "padding": 22,
+                      "gap": 6,
+                      "padding": [
+                        18,
+                        24
+                      ],
                       "children": [
                         {
-                          "type": "frame",
-                          "id": "Lr5cL",
-                          "name": "Top",
-                          "width": "fill_container",
-                          "justifyContent": "space_between",
-                          "alignItems": "center",
-                          "children": [
-                            {
-                              "type": "text",
-                              "id": "X8yTF",
-                              "name": "Label",
-                              "fill": "$text-2",
-                              "content": "Connected repos",
-                              "fontFamily": "$font",
-                              "fontSize": 13,
-                              "fontWeight": "500"
-                            },
-                            {
-                              "type": "frame",
-                              "id": "Ehzl0",
-                              "name": "Icon Chip",
-                              "width": 34,
-                              "height": 34,
-                              "fill": "$accent-soft",
-                              "cornerRadius": 10,
-                              "justifyContent": "center",
-                              "alignItems": "center",
-                              "children": [
-                                {
-                                  "type": "icon",
-                                  "id": "lxiXL",
-                                  "name": "Icon",
-                                  "width": 17,
-                                  "height": 17,
-                                  "icon": "git-branch",
-                                  "library": "lucide",
-                                  "fill": "$accent-text"
-                                }
-                              ]
-                            }
-                          ]
+                          "type": "text",
+                          "id": "4Gorx",
+                          "name": "Label",
+                          "fill": "$text-2",
+                          "content": "Connected repos",
+                          "fontFamily": "$font",
+                          "fontSize": 13,
+                          "fontWeight": "500"
                         },
                         {
                           "type": "text",
-                          "id": "VagdF",
+                          "id": "EDApN",
                           "name": "Value",
                           "fill": "$text",
                           "content": "6",
                           "fontFamily": "$font-head",
-                          "fontSize": 34,
+                          "fontSize": 32,
                           "fontWeight": "700",
                           "letterSpacing": -1
                         },
                         {
                           "type": "text",
-                          "id": "p7ttx",
+                          "id": "TK88C",
                           "name": "Sub",
                           "fill": "$text-3",
                           "content": "2 GitLab · 4 GitHub",
@@ -685,84 +656,48 @@
                     },
                     {
                       "type": "frame",
-                      "id": "Z4J8B",
+                      "id": "52I2D",
+                      "name": "Divider",
+                      "width": 1,
+                      "height": 48,
+                      "fill": "$border"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "dDnLU",
                       "name": "Stat Tickets running",
                       "width": "fill_container",
-                      "fill": "$surface",
-                      "cornerRadius": "$r-lg",
-                      "stroke": "#E6E8EE",
-                      "strokeWidth": 1,
-                      "effect": {
-                        "type": "shadow",
-                        "shadowType": "outer",
-                        "color": "#0F172A0A",
-                        "offset": {
-                          "x": 0,
-                          "y": 1
-                        },
-                        "blur": 2
-                      },
                       "layout": "vertical",
-                      "gap": 12,
-                      "padding": 22,
+                      "gap": 6,
+                      "padding": [
+                        18,
+                        24
+                      ],
                       "children": [
                         {
-                          "type": "frame",
-                          "id": "rC4Mx",
-                          "name": "Top",
-                          "width": "fill_container",
-                          "justifyContent": "space_between",
-                          "alignItems": "center",
-                          "children": [
-                            {
-                              "type": "text",
-                              "id": "Ub8NM",
-                              "name": "Label",
-                              "fill": "$text-2",
-                              "content": "Tickets running",
-                              "fontFamily": "$font",
-                              "fontSize": 13,
-                              "fontWeight": "500"
-                            },
-                            {
-                              "type": "frame",
-                              "id": "L7Pwr",
-                              "name": "Icon Chip",
-                              "width": 34,
-                              "height": 34,
-                              "fill": "$accent-soft",
-                              "cornerRadius": 10,
-                              "justifyContent": "center",
-                              "alignItems": "center",
-                              "children": [
-                                {
-                                  "type": "icon",
-                                  "id": "FyPYW",
-                                  "name": "Icon",
-                                  "width": 17,
-                                  "height": 17,
-                                  "icon": "loader",
-                                  "library": "lucide",
-                                  "fill": "$accent-text"
-                                }
-                              ]
-                            }
-                          ]
+                          "type": "text",
+                          "id": "PBBYY",
+                          "name": "Label",
+                          "fill": "$text-2",
+                          "content": "Tickets running",
+                          "fontFamily": "$font",
+                          "fontSize": 13,
+                          "fontWeight": "500"
                         },
                         {
                           "type": "text",
-                          "id": "H7ePsM",
+                          "id": "P1MtN",
                           "name": "Value",
                           "fill": "$text",
                           "content": "4",
                           "fontFamily": "$font-head",
-                          "fontSize": 34,
+                          "fontSize": 32,
                           "fontWeight": "700",
                           "letterSpacing": -1
                         },
                         {
                           "type": "text",
-                          "id": "SWRtV",
+                          "id": "KHYwD",
                           "name": "Sub",
                           "fill": "$text-3",
                           "content": "across 3 repos",
@@ -774,84 +709,48 @@
                     },
                     {
                       "type": "frame",
-                      "id": "l9mVcl",
+                      "id": "OlTbW",
+                      "name": "Divider",
+                      "width": 1,
+                      "height": 48,
+                      "fill": "$border"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "t4Kya",
                       "name": "Stat Waiting for approval",
                       "width": "fill_container",
-                      "fill": "$surface",
-                      "cornerRadius": "$r-lg",
-                      "stroke": "#E6E8EE",
-                      "strokeWidth": 1,
-                      "effect": {
-                        "type": "shadow",
-                        "shadowType": "outer",
-                        "color": "#0F172A0A",
-                        "offset": {
-                          "x": 0,
-                          "y": 1
-                        },
-                        "blur": 2
-                      },
                       "layout": "vertical",
-                      "gap": 12,
-                      "padding": 22,
+                      "gap": 6,
+                      "padding": [
+                        18,
+                        24
+                      ],
                       "children": [
                         {
-                          "type": "frame",
-                          "id": "AY9Ix",
-                          "name": "Top",
-                          "width": "fill_container",
-                          "justifyContent": "space_between",
-                          "alignItems": "center",
-                          "children": [
-                            {
-                              "type": "text",
-                              "id": "i2hjJ",
-                              "name": "Label",
-                              "fill": "$text-2",
-                              "content": "Waiting for approval",
-                              "fontFamily": "$font",
-                              "fontSize": 13,
-                              "fontWeight": "500"
-                            },
-                            {
-                              "type": "frame",
-                              "id": "Aid7n",
-                              "name": "Icon Chip",
-                              "width": 34,
-                              "height": 34,
-                              "fill": "$warning-soft",
-                              "cornerRadius": 10,
-                              "justifyContent": "center",
-                              "alignItems": "center",
-                              "children": [
-                                {
-                                  "type": "icon",
-                                  "id": "LVXMS",
-                                  "name": "Icon",
-                                  "width": 17,
-                                  "height": 17,
-                                  "icon": "hand",
-                                  "library": "lucide",
-                                  "fill": "$warning"
-                                }
-                              ]
-                            }
-                          ]
+                          "type": "text",
+                          "id": "qD7oq",
+                          "name": "Label",
+                          "fill": "$text-2",
+                          "content": "Waiting for approval",
+                          "fontFamily": "$font",
+                          "fontSize": 13,
+                          "fontWeight": "500"
                         },
                         {
                           "type": "text",
-                          "id": "fGVP7",
+                          "id": "NoeQs",
                           "name": "Value",
-                          "fill": "$text",
+                          "fill": "$warning",
                           "content": "2",
                           "fontFamily": "$font-head",
-                          "fontSize": 34,
+                          "fontSize": 32,
                           "fontWeight": "700",
                           "letterSpacing": -1
                         },
                         {
                           "type": "text",
-                          "id": "RFqGr",
+                          "id": "P2Cw3",
                           "name": "Sub",
                           "fill": "$text-3",
                           "content": "needs your review",
@@ -863,84 +762,48 @@
                     },
                     {
                       "type": "frame",
-                      "id": "a4sFF",
+                      "id": "MtCbg",
+                      "name": "Divider",
+                      "width": 1,
+                      "height": 48,
+                      "fill": "$border"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Mx6pc",
                       "name": "Stat Merge requests this week",
                       "width": "fill_container",
-                      "fill": "$surface",
-                      "cornerRadius": "$r-lg",
-                      "stroke": "#E6E8EE",
-                      "strokeWidth": 1,
-                      "effect": {
-                        "type": "shadow",
-                        "shadowType": "outer",
-                        "color": "#0F172A0A",
-                        "offset": {
-                          "x": 0,
-                          "y": 1
-                        },
-                        "blur": 2
-                      },
                       "layout": "vertical",
-                      "gap": 12,
-                      "padding": 22,
+                      "gap": 6,
+                      "padding": [
+                        18,
+                        24
+                      ],
                       "children": [
                         {
-                          "type": "frame",
-                          "id": "hiIEg",
-                          "name": "Top",
-                          "width": "fill_container",
-                          "justifyContent": "space_between",
-                          "alignItems": "center",
-                          "children": [
-                            {
-                              "type": "text",
-                              "id": "C6Spf2",
-                              "name": "Label",
-                              "fill": "$text-2",
-                              "content": "Merge requests this week",
-                              "fontFamily": "$font",
-                              "fontSize": 13,
-                              "fontWeight": "500"
-                            },
-                            {
-                              "type": "frame",
-                              "id": "Z47Nu",
-                              "name": "Icon Chip",
-                              "width": 34,
-                              "height": 34,
-                              "fill": "$success-soft",
-                              "cornerRadius": 10,
-                              "justifyContent": "center",
-                              "alignItems": "center",
-                              "children": [
-                                {
-                                  "type": "icon",
-                                  "id": "mPNbV",
-                                  "name": "Icon",
-                                  "width": 17,
-                                  "height": 17,
-                                  "icon": "git-pull-request",
-                                  "library": "lucide",
-                                  "fill": "$success"
-                                }
-                              ]
-                            }
-                          ]
+                          "type": "text",
+                          "id": "n3Ylz",
+                          "name": "Label",
+                          "fill": "$text-2",
+                          "content": "Merge requests this week",
+                          "fontFamily": "$font",
+                          "fontSize": 13,
+                          "fontWeight": "500"
                         },
                         {
                           "type": "text",
-                          "id": "mUvQM",
+                          "id": "jAPR7",
                           "name": "Value",
                           "fill": "$text",
                           "content": "11",
                           "fontFamily": "$font-head",
-                          "fontSize": 34,
+                          "fontSize": 32,
                           "fontWeight": "700",
                           "letterSpacing": -1
                         },
                         {
                           "type": "text",
-                          "id": "hs0Od",
+                          "id": "bC2Ex",
                           "name": "Sub",
                           "fill": "$text-3",
                           "content": "9 merged · 2 open",
@@ -982,7 +845,7 @@
                       "children": [
                         {
                           "type": "frame",
-                          "id": "e9T5P",
+                          "id": "CcTx3",
                           "name": "Header",
                           "width": "fill_container",
                           "stroke": "$border",
@@ -990,25 +853,58 @@
                             "bottom": 1
                           },
                           "padding": [
-                            18,
+                            16,
                             20
                           ],
                           "justifyContent": "space_between",
                           "alignItems": "center",
                           "children": [
                             {
-                              "type": "text",
-                              "id": "Gcs8P",
-                              "name": "Title",
-                              "fill": "$text",
-                              "content": "Active runs",
-                              "fontFamily": "$font-head",
-                              "fontSize": 16,
-                              "fontWeight": "600"
+                              "type": "frame",
+                              "id": "9f8St",
+                              "name": "Title Row",
+                              "gap": 10,
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "dbHpU",
+                                  "name": "Title",
+                                  "fill": "$text",
+                                  "content": "Active runs",
+                                  "fontFamily": "$font-head",
+                                  "fontSize": 15,
+                                  "fontWeight": "600"
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "x8Wt4",
+                                  "name": "Count",
+                                  "fill": "$surface-2",
+                                  "cornerRadius": 999,
+                                  "padding": [
+                                    2,
+                                    8
+                                  ],
+                                  "alignItems": "center",
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "aSkuU",
+                                      "name": "N",
+                                      "fill": "$text-2",
+                                      "content": "4",
+                                      "fontFamily": "$font-mono",
+                                      "fontSize": 12,
+                                      "fontWeight": "600"
+                                    }
+                                  ]
+                                }
+                              ]
                             },
                             {
                               "type": "text",
-                              "id": "p6VAl",
+                              "id": "tNZd6",
                               "name": "Link",
                               "fill": "$accent-text",
                               "content": "View all tickets →",
@@ -1020,38 +916,34 @@
                         },
                         {
                           "type": "frame",
-                          "id": "X52D7",
+                          "id": "OEJjW",
                           "name": "Run #142",
                           "width": "fill_container",
-                          "stroke": "$border",
-                          "strokeWidth": {
-                            "bottom": 1
-                          },
                           "gap": 16,
                           "padding": [
-                            16,
-                            22
+                            14,
+                            20
                           ],
                           "alignItems": "center",
                           "children": [
                             {
                               "type": "frame",
-                              "id": "KCxL4",
+                              "id": "KUY9y",
                               "name": "Info",
                               "width": "fill_container",
                               "layout": "vertical",
-                              "gap": 4,
+                              "gap": 3,
                               "children": [
                                 {
                                   "type": "frame",
-                                  "id": "s6bqEq",
+                                  "id": "vmlYy",
                                   "name": "Title Row",
                                   "gap": 8,
                                   "alignItems": "center",
                                   "children": [
                                     {
                                       "type": "text",
-                                      "id": "wU5VY",
+                                      "id": "k9FCD",
                                       "name": "Id",
                                       "fill": "$text-3",
                                       "content": "#142",
@@ -1061,7 +953,7 @@
                                     },
                                     {
                                       "type": "text",
-                                      "id": "cNXk7",
+                                      "id": "Q6ous",
                                       "name": "Title",
                                       "fill": "$text",
                                       "content": "Add OAuth login with Google",
@@ -1073,7 +965,7 @@
                                 },
                                 {
                                   "type": "text",
-                                  "id": "V5u4N",
+                                  "id": "ilZTn",
                                   "name": "Repo",
                                   "fill": "$text-2",
                                   "content": "shop-frontend",
@@ -1085,52 +977,52 @@
                             },
                             {
                               "type": "frame",
-                              "id": "Dq3YL",
+                              "id": "eXUmY",
                               "name": "Progress",
                               "width": 180,
-                              "gap": 4,
+                              "gap": 3,
                               "alignItems": "center",
                               "children": [
                                 {
                                   "type": "frame",
-                                  "id": "RCGGa",
-                                  "name": "Seg Spec",
+                                  "id": "HY2sH",
+                                  "name": "Seg",
                                   "width": "fill_container",
-                                  "height": 6,
+                                  "height": 4,
                                   "fill": "$success",
-                                  "cornerRadius": 3
+                                  "cornerRadius": 2
                                 },
                                 {
                                   "type": "frame",
-                                  "id": "e5qdJX",
-                                  "name": "Seg Plan",
+                                  "id": "ReHFf",
+                                  "name": "Seg",
                                   "width": "fill_container",
-                                  "height": 6,
+                                  "height": 4,
                                   "fill": "$success",
-                                  "cornerRadius": 3
+                                  "cornerRadius": 2
                                 },
                                 {
                                   "type": "frame",
-                                  "id": "mHhPc",
-                                  "name": "Seg Tasks",
+                                  "id": "oqmEk",
+                                  "name": "Seg",
                                   "width": "fill_container",
-                                  "height": 6,
+                                  "height": 4,
                                   "fill": "$success",
-                                  "cornerRadius": 3
+                                  "cornerRadius": 2
                                 },
                                 {
                                   "type": "frame",
-                                  "id": "t3dUF",
-                                  "name": "Seg Implement",
+                                  "id": "pNjp7",
+                                  "name": "Seg",
                                   "width": "fill_container",
-                                  "height": 6,
+                                  "height": 4,
                                   "fill": "$accent",
-                                  "cornerRadius": 3
+                                  "cornerRadius": 2
                                 }
                               ]
                             },
                             {
-                              "id": "oH0s8",
+                              "id": "cu49R",
                               "type": "ref",
                               "ref": "Tc1n9",
                               "name": "Badge Implement",
@@ -1145,42 +1037,42 @@
                                 }
                               }
                             }
-                          ]
+                          ],
+                          "stroke": "$surface-2",
+                          "strokeWidth": {
+                            "bottom": 1
+                          }
                         },
                         {
                           "type": "frame",
-                          "id": "YpHbs",
+                          "id": "gZwux",
                           "name": "Run #139",
                           "width": "fill_container",
-                          "stroke": "$border",
-                          "strokeWidth": {
-                            "bottom": 1
-                          },
                           "gap": 16,
                           "padding": [
-                            16,
-                            22
+                            14,
+                            20
                           ],
                           "alignItems": "center",
                           "children": [
                             {
                               "type": "frame",
-                              "id": "Wz7WZ",
+                              "id": "RGv3n",
                               "name": "Info",
                               "width": "fill_container",
                               "layout": "vertical",
-                              "gap": 4,
+                              "gap": 3,
                               "children": [
                                 {
                                   "type": "frame",
-                                  "id": "eJpB7",
+                                  "id": "JFulP",
                                   "name": "Title Row",
                                   "gap": 8,
                                   "alignItems": "center",
                                   "children": [
                                     {
                                       "type": "text",
-                                      "id": "CcwFe",
+                                      "id": "kdqDr",
                                       "name": "Id",
                                       "fill": "$text-3",
                                       "content": "#139",
@@ -1190,7 +1082,7 @@
                                     },
                                     {
                                       "type": "text",
-                                      "id": "u27O26",
+                                      "id": "1q1dg",
                                       "name": "Title",
                                       "fill": "$text",
                                       "content": "Fix invoice PDF rendering",
@@ -1202,7 +1094,7 @@
                                 },
                                 {
                                   "type": "text",
-                                  "id": "kp6fQ",
+                                  "id": "u6aKG",
                                   "name": "Repo",
                                   "fill": "$text-2",
                                   "content": "billing-api",
@@ -1214,52 +1106,52 @@
                             },
                             {
                               "type": "frame",
-                              "id": "SkwBW",
+                              "id": "ZHtMv",
                               "name": "Progress",
                               "width": 180,
-                              "gap": 4,
+                              "gap": 3,
                               "alignItems": "center",
                               "children": [
                                 {
                                   "type": "frame",
-                                  "id": "sPXu6",
-                                  "name": "Seg Spec",
+                                  "id": "xEhfx",
+                                  "name": "Seg",
                                   "width": "fill_container",
-                                  "height": 6,
+                                  "height": 4,
                                   "fill": "$success",
-                                  "cornerRadius": 3
+                                  "cornerRadius": 2
                                 },
                                 {
                                   "type": "frame",
-                                  "id": "FJG3t",
-                                  "name": "Seg Plan",
+                                  "id": "ETUcd",
+                                  "name": "Seg",
                                   "width": "fill_container",
-                                  "height": 6,
+                                  "height": 4,
                                   "fill": "$warning",
-                                  "cornerRadius": 3
+                                  "cornerRadius": 2
                                 },
                                 {
                                   "type": "frame",
-                                  "id": "WOYHl",
-                                  "name": "Seg Tasks",
+                                  "id": "Umste",
+                                  "name": "Seg",
                                   "width": "fill_container",
-                                  "height": 6,
-                                  "fill": "$border",
-                                  "cornerRadius": 3
+                                  "height": 4,
+                                  "fill": "$surface-2",
+                                  "cornerRadius": 2
                                 },
                                 {
                                   "type": "frame",
-                                  "id": "I3FB1l",
-                                  "name": "Seg Implement",
+                                  "id": "wiLj5",
+                                  "name": "Seg",
                                   "width": "fill_container",
-                                  "height": 6,
-                                  "fill": "$border",
-                                  "cornerRadius": 3
+                                  "height": 4,
+                                  "fill": "$surface-2",
+                                  "cornerRadius": 2
                                 }
                               ]
                             },
                             {
-                              "id": "nJMgq",
+                              "id": "PkfRg",
                               "type": "ref",
                               "ref": "Tc1n9",
                               "name": "Badge Approval · Plan",
@@ -1274,42 +1166,42 @@
                                 }
                               }
                             }
-                          ]
+                          ],
+                          "stroke": "$surface-2",
+                          "strokeWidth": {
+                            "bottom": 1
+                          }
                         },
                         {
                           "type": "frame",
-                          "id": "u5BZE",
+                          "id": "Z7LHx",
                           "name": "Run #144",
                           "width": "fill_container",
-                          "stroke": "$border",
-                          "strokeWidth": {
-                            "bottom": 1
-                          },
                           "gap": 16,
                           "padding": [
-                            16,
-                            22
+                            14,
+                            20
                           ],
                           "alignItems": "center",
                           "children": [
                             {
                               "type": "frame",
-                              "id": "Ob86e",
+                              "id": "cTn4G",
                               "name": "Info",
                               "width": "fill_container",
                               "layout": "vertical",
-                              "gap": 4,
+                              "gap": 3,
                               "children": [
                                 {
                                   "type": "frame",
-                                  "id": "xKQMA",
+                                  "id": "4BTa3",
                                   "name": "Title Row",
                                   "gap": 8,
                                   "alignItems": "center",
                                   "children": [
                                     {
                                       "type": "text",
-                                      "id": "TfFbU",
+                                      "id": "GVhUm",
                                       "name": "Id",
                                       "fill": "$text-3",
                                       "content": "#144",
@@ -1319,7 +1211,7 @@
                                     },
                                     {
                                       "type": "text",
-                                      "id": "AYkNC",
+                                      "id": "xNtLn",
                                       "name": "Title",
                                       "fill": "$text",
                                       "content": "Migrate cron jobs to queue",
@@ -1331,7 +1223,7 @@
                                 },
                                 {
                                   "type": "text",
-                                  "id": "Qrt4D",
+                                  "id": "DVldP",
                                   "name": "Repo",
                                   "fill": "$text-2",
                                   "content": "worker-service",
@@ -1343,52 +1235,52 @@
                             },
                             {
                               "type": "frame",
-                              "id": "EhuMD",
+                              "id": "dZCi1",
                               "name": "Progress",
                               "width": 180,
-                              "gap": 4,
+                              "gap": 3,
                               "alignItems": "center",
                               "children": [
                                 {
                                   "type": "frame",
-                                  "id": "qH2LT",
-                                  "name": "Seg Spec",
+                                  "id": "oVpkp",
+                                  "name": "Seg",
                                   "width": "fill_container",
-                                  "height": 6,
+                                  "height": 4,
                                   "fill": "$accent",
-                                  "cornerRadius": 3
+                                  "cornerRadius": 2
                                 },
                                 {
                                   "type": "frame",
-                                  "id": "OGScg",
-                                  "name": "Seg Plan",
+                                  "id": "6NbTy",
+                                  "name": "Seg",
                                   "width": "fill_container",
-                                  "height": 6,
-                                  "fill": "$border",
-                                  "cornerRadius": 3
+                                  "height": 4,
+                                  "fill": "$surface-2",
+                                  "cornerRadius": 2
                                 },
                                 {
                                   "type": "frame",
-                                  "id": "dF47E",
-                                  "name": "Seg Tasks",
+                                  "id": "YlaZ3",
+                                  "name": "Seg",
                                   "width": "fill_container",
-                                  "height": 6,
-                                  "fill": "$border",
-                                  "cornerRadius": 3
+                                  "height": 4,
+                                  "fill": "$surface-2",
+                                  "cornerRadius": 2
                                 },
                                 {
                                   "type": "frame",
-                                  "id": "JyBJu",
-                                  "name": "Seg Implement",
+                                  "id": "JF7po",
+                                  "name": "Seg",
                                   "width": "fill_container",
-                                  "height": 6,
-                                  "fill": "$border",
-                                  "cornerRadius": 3
+                                  "height": 4,
+                                  "fill": "$surface-2",
+                                  "cornerRadius": 2
                                 }
                               ]
                             },
                             {
-                              "id": "T30u9C",
+                              "id": "B2wjU",
                               "type": "ref",
                               "ref": "Tc1n9",
                               "name": "Badge Spec",
@@ -1403,42 +1295,42 @@
                                 }
                               }
                             }
-                          ]
+                          ],
+                          "stroke": "$surface-2",
+                          "strokeWidth": {
+                            "bottom": 1
+                          }
                         },
                         {
                           "type": "frame",
-                          "id": "rRUpL",
+                          "id": "S7BAP",
                           "name": "Run #140",
                           "width": "fill_container",
-                          "stroke": "$border",
-                          "strokeWidth": {
-                            "bottom": 1
-                          },
                           "gap": 16,
                           "padding": [
-                            16,
-                            22
+                            14,
+                            20
                           ],
                           "alignItems": "center",
                           "children": [
                             {
                               "type": "frame",
-                              "id": "h4eJ7",
+                              "id": "Etv4P",
                               "name": "Info",
                               "width": "fill_container",
                               "layout": "vertical",
-                              "gap": 4,
+                              "gap": 3,
                               "children": [
                                 {
                                   "type": "frame",
-                                  "id": "DblXQ",
+                                  "id": "wQupD",
                                   "name": "Title Row",
                                   "gap": 8,
                                   "alignItems": "center",
                                   "children": [
                                     {
                                       "type": "text",
-                                      "id": "qrcAU",
+                                      "id": "xs1zq",
                                       "name": "Id",
                                       "fill": "$text-3",
                                       "content": "#140",
@@ -1448,10 +1340,10 @@
                                     },
                                     {
                                       "type": "text",
-                                      "id": "OS56Z",
+                                      "id": "wNlNa",
                                       "name": "Title",
                                       "fill": "$text",
-                                      "content": "Rate limit public API",
+                                      "content": "Rate limit the public API",
                                       "fontFamily": "$font",
                                       "fontSize": 14,
                                       "fontWeight": "600"
@@ -1460,7 +1352,7 @@
                                 },
                                 {
                                   "type": "text",
-                                  "id": "bf3Ek",
+                                  "id": "KI340",
                                   "name": "Repo",
                                   "fill": "$text-2",
                                   "content": "gateway",
@@ -1472,52 +1364,52 @@
                             },
                             {
                               "type": "frame",
-                              "id": "tfeYk",
+                              "id": "6vwu6",
                               "name": "Progress",
                               "width": 180,
-                              "gap": 4,
+                              "gap": 3,
                               "alignItems": "center",
                               "children": [
                                 {
                                   "type": "frame",
-                                  "id": "Ytqkd",
-                                  "name": "Seg Spec",
+                                  "id": "2IH1H",
+                                  "name": "Seg",
                                   "width": "fill_container",
-                                  "height": 6,
+                                  "height": 4,
                                   "fill": "$success",
-                                  "cornerRadius": 3
+                                  "cornerRadius": 2
                                 },
                                 {
                                   "type": "frame",
-                                  "id": "v9k3Yh",
-                                  "name": "Seg Plan",
+                                  "id": "12jdu",
+                                  "name": "Seg",
                                   "width": "fill_container",
-                                  "height": 6,
+                                  "height": 4,
                                   "fill": "$success",
-                                  "cornerRadius": 3
+                                  "cornerRadius": 2
                                 },
                                 {
                                   "type": "frame",
-                                  "id": "CMDBb",
-                                  "name": "Seg Tasks",
+                                  "id": "Z7C1W",
+                                  "name": "Seg",
                                   "width": "fill_container",
-                                  "height": 6,
+                                  "height": 4,
                                   "fill": "$accent",
-                                  "cornerRadius": 3
+                                  "cornerRadius": 2
                                 },
                                 {
                                   "type": "frame",
-                                  "id": "X9gqQV",
-                                  "name": "Seg Implement",
+                                  "id": "6Pfox",
+                                  "name": "Seg",
                                   "width": "fill_container",
-                                  "height": 6,
-                                  "fill": "$border",
-                                  "cornerRadius": 3
+                                  "height": 4,
+                                  "fill": "$surface-2",
+                                  "cornerRadius": 2
                                 }
                               ]
                             },
                             {
-                              "id": "kt4Qu",
+                              "id": "5RZSg",
                               "type": "ref",
                               "ref": "Tc1n9",
                               "name": "Badge Tasks",
@@ -1540,7 +1432,7 @@
                       "type": "frame",
                       "id": "XwjYT",
                       "name": "Right Col",
-                      "width": 380,
+                      "width": 360,
                       "layout": "vertical",
                       "gap": 24,
                       "children": [
@@ -1564,52 +1456,94 @@
                             "blur": 2
                           },
                           "layout": "vertical",
-                          "gap": 14,
-                          "padding": 20,
+                          "gap": 6,
+                          "padding": [
+                            16,
+                            20
+                          ],
                           "children": [
                             {
                               "type": "frame",
-                              "id": "aUJE4",
+                              "id": "dnS1u",
                               "name": "Header",
                               "gap": 8,
                               "alignItems": "center",
+                              "padding": [
+                                0,
+                                0,
+                                6,
+                                0
+                              ],
                               "children": [
                                 {
                                   "type": "icon",
-                                  "id": "MtWgX",
+                                  "id": "fCRbt",
                                   "name": "Icon",
-                                  "width": 18,
-                                  "height": 18,
+                                  "width": 16,
+                                  "height": 16,
                                   "icon": "hand",
                                   "library": "lucide",
                                   "fill": "$warning"
                                 },
                                 {
                                   "type": "text",
-                                  "id": "Y3AFox",
+                                  "id": "nQQRO",
                                   "name": "Title",
                                   "fill": "$text",
                                   "content": "Waiting for your approval",
                                   "fontFamily": "$font-head",
-                                  "fontSize": 16,
+                                  "fontSize": 15,
                                   "fontWeight": "600"
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "CvRya",
+                                  "name": "Count",
+                                  "fill": "$surface-2",
+                                  "cornerRadius": 999,
+                                  "padding": [
+                                    2,
+                                    8
+                                  ],
+                                  "alignItems": "center",
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "Qvt4L",
+                                      "name": "N",
+                                      "fill": "$text-2",
+                                      "content": "2",
+                                      "fontFamily": "$font-mono",
+                                      "fontSize": 12,
+                                      "fontWeight": "600"
+                                    }
+                                  ]
                                 }
                               ]
                             },
                             {
                               "type": "frame",
-                              "id": "Qs2Is",
+                              "id": "SI8fS",
                               "name": "Item #139",
                               "width": "fill_container",
-                              "fill": "$warning-soft",
-                              "cornerRadius": "$r-md",
                               "gap": 12,
-                              "padding": 12,
+                              "padding": [
+                                10,
+                                0
+                              ],
                               "alignItems": "center",
                               "children": [
                                 {
+                                  "type": "ellipse",
+                                  "id": "WoRER",
+                                  "name": "Dot",
+                                  "fill": "$warning",
+                                  "width": 6,
+                                  "height": 6
+                                },
+                                {
                                   "type": "frame",
-                                  "id": "qvYdF",
+                                  "id": "LREZy",
                                   "name": "Text",
                                   "width": "fill_container",
                                   "layout": "vertical",
@@ -1617,21 +1551,21 @@
                                   "children": [
                                     {
                                       "type": "text",
-                                      "id": "dS8pj",
+                                      "id": "OpAMI",
                                       "name": "Title",
                                       "fill": "$text",
-                                      "textGrowth": "fixed-width",
-                                      "width": "fill_container",
                                       "content": "#139 Fix invoice PDF rendering",
                                       "fontFamily": "$font",
                                       "fontSize": 13,
-                                      "fontWeight": "600"
+                                      "fontWeight": "600",
+                                      "textGrowth": "fixed-width",
+                                      "width": "fill_container"
                                     },
                                     {
                                       "type": "text",
-                                      "id": "vwDxQ",
+                                      "id": "jnfci",
                                       "name": "Sub",
-                                      "fill": "$warning",
+                                      "fill": "$text-2",
                                       "content": "Plan ready to review",
                                       "fontFamily": "$font",
                                       "fontSize": 12,
@@ -1640,39 +1574,52 @@
                                   ]
                                 },
                                 {
-                                  "id": "q3Fnb",
+                                  "id": "eRxxe",
                                   "type": "ref",
-                                  "ref": "ilkU0",
+                                  "ref": "ikNVK",
                                   "name": "Review",
                                   "padding": [
-                                    8,
+                                    7,
                                     12
                                   ],
                                   "descendants": {
-                                    "gLdHj": {
+                                    "g1xrXJ": {
                                       "enabled": false
                                     },
-                                    "hsDx0": {
+                                    "byTY8": {
                                       "content": "Review"
                                     }
                                   }
                                 }
-                              ]
+                              ],
+                              "stroke": "$surface-2",
+                              "strokeWidth": {
+                                "bottom": 1
+                              }
                             },
                             {
                               "type": "frame",
-                              "id": "OnUUd",
+                              "id": "KIPiK",
                               "name": "Item #137",
                               "width": "fill_container",
-                              "fill": "$warning-soft",
-                              "cornerRadius": "$r-md",
                               "gap": 12,
-                              "padding": 12,
+                              "padding": [
+                                10,
+                                0
+                              ],
                               "alignItems": "center",
                               "children": [
                                 {
+                                  "type": "ellipse",
+                                  "id": "5N3vW",
+                                  "name": "Dot",
+                                  "fill": "$warning",
+                                  "width": 6,
+                                  "height": 6
+                                },
+                                {
                                   "type": "frame",
-                                  "id": "eqZJ5",
+                                  "id": "wybHy",
                                   "name": "Text",
                                   "width": "fill_container",
                                   "layout": "vertical",
@@ -1680,21 +1627,21 @@
                                   "children": [
                                     {
                                       "type": "text",
-                                      "id": "opbsv",
+                                      "id": "GMdKV",
                                       "name": "Title",
                                       "fill": "$text",
-                                      "textGrowth": "fixed-width",
-                                      "width": "fill_container",
-                                      "content": "#137 Dark mode for settings page",
+                                      "content": "#137 Tighten the rate limiter",
                                       "fontFamily": "$font",
                                       "fontSize": 13,
-                                      "fontWeight": "600"
+                                      "fontWeight": "600",
+                                      "textGrowth": "fixed-width",
+                                      "width": "fill_container"
                                     },
                                     {
                                       "type": "text",
-                                      "id": "tATgB",
+                                      "id": "XMpto",
                                       "name": "Sub",
-                                      "fill": "$warning",
+                                      "fill": "$text-2",
                                       "content": "Spec ready to review",
                                       "fontFamily": "$font",
                                       "fontSize": 12,
@@ -1703,19 +1650,19 @@
                                   ]
                                 },
                                 {
-                                  "id": "hJOSZ",
+                                  "id": "oKc1S",
                                   "type": "ref",
-                                  "ref": "ilkU0",
+                                  "ref": "ikNVK",
                                   "name": "Review",
                                   "padding": [
-                                    8,
+                                    7,
                                     12
                                   ],
                                   "descendants": {
-                                    "gLdHj": {
+                                    "g1xrXJ": {
                                       "enabled": false
                                     },
-                                    "hsDx0": {
+                                    "byTY8": {
                                       "content": "Review"
                                     }
                                   }
@@ -1744,39 +1691,60 @@
                             "blur": 2
                           },
                           "layout": "vertical",
-                          "gap": 16,
-                          "padding": 20,
+                          "gap": 6,
+                          "padding": [
+                            16,
+                            20
+                          ],
                           "children": [
                             {
-                              "type": "text",
-                              "id": "C0aio9",
-                              "name": "Title",
-                              "fill": "$text",
-                              "content": "Recent activity",
-                              "fontFamily": "$font-head",
-                              "fontSize": 16,
-                              "fontWeight": "600"
+                              "type": "frame",
+                              "id": "Z3BAE",
+                              "name": "Header",
+                              "gap": 8,
+                              "alignItems": "center",
+                              "padding": [
+                                0,
+                                0,
+                                6,
+                                0
+                              ],
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "GgXDH",
+                                  "name": "Title",
+                                  "fill": "$text",
+                                  "content": "Recent activity",
+                                  "fontFamily": "$font-head",
+                                  "fontSize": 15,
+                                  "fontWeight": "600"
+                                }
+                              ]
                             },
                             {
                               "type": "frame",
-                              "id": "j4ofn",
+                              "id": "dIBnh",
                               "name": "Activity",
                               "width": "fill_container",
-                              "gap": 12,
+                              "gap": 10,
+                              "padding": [
+                                9,
+                                0
+                              ],
+                              "alignItems": "center",
                               "children": [
                                 {
-                                  "type": "icon",
-                                  "id": "q8eGy",
-                                  "name": "Icon",
-                                  "width": 16,
-                                  "height": 16,
-                                  "icon": "git-merge",
-                                  "library": "lucide",
-                                  "fill": "$success"
+                                  "type": "ellipse",
+                                  "id": "3N4Y4",
+                                  "name": "Dot",
+                                  "fill": "$success",
+                                  "width": 6,
+                                  "height": 6
                                 },
                                 {
                                   "type": "frame",
-                                  "id": "AlPBZ",
+                                  "id": "ckAwt",
                                   "name": "Text",
                                   "width": "fill_container",
                                   "layout": "vertical",
@@ -1784,19 +1752,19 @@
                                   "children": [
                                     {
                                       "type": "text",
-                                      "id": "c0Og8",
+                                      "id": "ybtJU",
                                       "name": "Msg",
                                       "fill": "$text",
-                                      "textGrowth": "fixed-width",
-                                      "width": "fill_container",
                                       "content": "MR !88 merged for #136 Export CSV reports",
                                       "fontFamily": "$font",
                                       "fontSize": 13,
-                                      "fontWeight": "normal"
+                                      "fontWeight": "normal",
+                                      "textGrowth": "fixed-width",
+                                      "width": "fill_container"
                                     },
                                     {
                                       "type": "text",
-                                      "id": "eStRV",
+                                      "id": "saME2",
                                       "name": "When",
                                       "fill": "$text-3",
                                       "content": "12 min ago",
@@ -1806,28 +1774,35 @@
                                     }
                                   ]
                                 }
-                              ]
+                              ],
+                              "stroke": "$surface-2",
+                              "strokeWidth": {
+                                "bottom": 1
+                              }
                             },
                             {
                               "type": "frame",
-                              "id": "qgZjt",
+                              "id": "pR9BR",
                               "name": "Activity",
                               "width": "fill_container",
-                              "gap": 12,
+                              "gap": 10,
+                              "padding": [
+                                9,
+                                0
+                              ],
+                              "alignItems": "center",
                               "children": [
                                 {
-                                  "type": "icon",
-                                  "id": "wUSgd",
-                                  "name": "Icon",
-                                  "width": 16,
-                                  "height": 16,
-                                  "icon": "circle-check",
-                                  "library": "lucide",
-                                  "fill": "$success"
+                                  "type": "ellipse",
+                                  "id": "Tuaxs",
+                                  "name": "Dot",
+                                  "fill": "$success",
+                                  "width": 6,
+                                  "height": 6
                                 },
                                 {
                                   "type": "frame",
-                                  "id": "LhgsJ",
+                                  "id": "MpFNA",
                                   "name": "Text",
                                   "width": "fill_container",
                                   "layout": "vertical",
@@ -1835,19 +1810,77 @@
                                   "children": [
                                     {
                                       "type": "text",
-                                      "id": "GabtR",
+                                      "id": "j3Qqi",
                                       "name": "Msg",
                                       "fill": "$text",
-                                      "textGrowth": "fixed-width",
-                                      "width": "fill_container",
-                                      "content": "#141 Add health endpoint completed → MR !91 opened",
+                                      "content": "MR !91 opened for #142 Add OAuth login with Google",
                                       "fontFamily": "$font",
                                       "fontSize": 13,
-                                      "fontWeight": "normal"
+                                      "fontWeight": "normal",
+                                      "textGrowth": "fixed-width",
+                                      "width": "fill_container"
                                     },
                                     {
                                       "type": "text",
-                                      "id": "cd1vx",
+                                      "id": "jVOUW",
+                                      "name": "When",
+                                      "fill": "$text-3",
+                                      "content": "38 min ago",
+                                      "fontFamily": "$font",
+                                      "fontSize": 11,
+                                      "fontWeight": "normal"
+                                    }
+                                  ]
+                                }
+                              ],
+                              "stroke": "$surface-2",
+                              "strokeWidth": {
+                                "bottom": 1
+                              }
+                            },
+                            {
+                              "type": "frame",
+                              "id": "0SyYy",
+                              "name": "Activity",
+                              "width": "fill_container",
+                              "gap": 10,
+                              "padding": [
+                                9,
+                                0
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "ellipse",
+                                  "id": "h6Z4B",
+                                  "name": "Dot",
+                                  "fill": "$danger",
+                                  "width": 6,
+                                  "height": 6
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "oc9KL",
+                                  "name": "Text",
+                                  "width": "fill_container",
+                                  "layout": "vertical",
+                                  "gap": 2,
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "YQX5x",
+                                      "name": "Msg",
+                                      "fill": "$text",
+                                      "content": "Run failed for #138 Upgrade to Node 22 — tests did not pass",
+                                      "fontFamily": "$font",
+                                      "fontSize": 13,
+                                      "fontWeight": "normal",
+                                      "textGrowth": "fixed-width",
+                                      "width": "fill_container"
+                                    },
+                                    {
+                                      "type": "text",
+                                      "id": "OYbcx",
                                       "name": "When",
                                       "fill": "$text-3",
                                       "content": "1 h ago",
@@ -1857,28 +1890,35 @@
                                     }
                                   ]
                                 }
-                              ]
+                              ],
+                              "stroke": "$surface-2",
+                              "strokeWidth": {
+                                "bottom": 1
+                              }
                             },
                             {
                               "type": "frame",
-                              "id": "T9AVB",
+                              "id": "V399S",
                               "name": "Activity",
                               "width": "fill_container",
-                              "gap": 12,
+                              "gap": 10,
+                              "padding": [
+                                9,
+                                0
+                              ],
+                              "alignItems": "center",
                               "children": [
                                 {
-                                  "type": "icon",
-                                  "id": "rAqkO",
-                                  "name": "Icon",
-                                  "width": 16,
-                                  "height": 16,
-                                  "icon": "circle-x",
-                                  "library": "lucide",
-                                  "fill": "$danger"
+                                  "type": "ellipse",
+                                  "id": "dGJaQ",
+                                  "name": "Dot",
+                                  "fill": "$warning",
+                                  "width": 6,
+                                  "height": 6
                                 },
                                 {
                                   "type": "frame",
-                                  "id": "crH0W",
+                                  "id": "OekIc",
                                   "name": "Text",
                                   "width": "fill_container",
                                   "layout": "vertical",
@@ -1886,19 +1926,19 @@
                                   "children": [
                                     {
                                       "type": "text",
-                                      "id": "PhraM",
+                                      "id": "L3b8i",
                                       "name": "Msg",
                                       "fill": "$text",
-                                      "textGrowth": "fixed-width",
-                                      "width": "fill_container",
-                                      "content": "#138 Upgrade Node 22 failed at Implement (tests)",
+                                      "content": "Checkpoint reached for #139 Fix invoice PDF rendering",
                                       "fontFamily": "$font",
                                       "fontSize": 13,
-                                      "fontWeight": "normal"
+                                      "fontWeight": "normal",
+                                      "textGrowth": "fixed-width",
+                                      "width": "fill_container"
                                     },
                                     {
                                       "type": "text",
-                                      "id": "y4PMmt",
+                                      "id": "IjhL9",
                                       "name": "When",
                                       "fill": "$text-3",
                                       "content": "2 h ago",
@@ -1908,28 +1948,35 @@
                                     }
                                   ]
                                 }
-                              ]
+                              ],
+                              "stroke": "$surface-2",
+                              "strokeWidth": {
+                                "bottom": 1
+                              }
                             },
                             {
                               "type": "frame",
-                              "id": "M1dvLu",
+                              "id": "0nlrh",
                               "name": "Activity",
                               "width": "fill_container",
-                              "gap": 12,
+                              "gap": 10,
+                              "padding": [
+                                9,
+                                0
+                              ],
+                              "alignItems": "center",
                               "children": [
                                 {
-                                  "type": "icon",
-                                  "id": "Z9JxiF",
-                                  "name": "Icon",
-                                  "width": 16,
-                                  "height": 16,
-                                  "icon": "hand",
-                                  "library": "lucide",
-                                  "fill": "$warning"
+                                  "type": "ellipse",
+                                  "id": "SumNC",
+                                  "name": "Dot",
+                                  "fill": "$text-3",
+                                  "width": 6,
+                                  "height": 6
                                 },
                                 {
                                   "type": "frame",
-                                  "id": "Wi3oZ",
+                                  "id": "NPmE4",
                                   "name": "Text",
                                   "width": "fill_container",
                                   "layout": "vertical",
@@ -1937,73 +1984,22 @@
                                   "children": [
                                     {
                                       "type": "text",
-                                      "id": "SKIYJ",
+                                      "id": "ZW11W",
                                       "name": "Msg",
                                       "fill": "$text",
-                                      "textGrowth": "fixed-width",
-                                      "width": "fill_container",
-                                      "content": "#139 paused at approval checkpoint",
+                                      "content": "Ticket #144 Migrate cron jobs to queue created",
                                       "fontFamily": "$font",
                                       "fontSize": 13,
-                                      "fontWeight": "normal"
+                                      "fontWeight": "normal",
+                                      "textGrowth": "fixed-width",
+                                      "width": "fill_container"
                                     },
                                     {
                                       "type": "text",
-                                      "id": "K71ss",
+                                      "id": "3Pzan",
                                       "name": "When",
                                       "fill": "$text-3",
                                       "content": "3 h ago",
-                                      "fontFamily": "$font",
-                                      "fontSize": 11,
-                                      "fontWeight": "normal"
-                                    }
-                                  ]
-                                }
-                              ]
-                            },
-                            {
-                              "type": "frame",
-                              "id": "mY90Q",
-                              "name": "Activity",
-                              "width": "fill_container",
-                              "gap": 12,
-                              "children": [
-                                {
-                                  "type": "icon",
-                                  "id": "poqIb",
-                                  "name": "Icon",
-                                  "width": 16,
-                                  "height": 16,
-                                  "icon": "plus",
-                                  "library": "lucide",
-                                  "fill": "$accent"
-                                },
-                                {
-                                  "type": "frame",
-                                  "id": "Mmetn",
-                                  "name": "Text",
-                                  "width": "fill_container",
-                                  "layout": "vertical",
-                                  "gap": 2,
-                                  "children": [
-                                    {
-                                      "type": "text",
-                                      "id": "DdMrx",
-                                      "name": "Msg",
-                                      "fill": "$text",
-                                      "textGrowth": "fixed-width",
-                                      "width": "fill_container",
-                                      "content": "Bat created #144 Migrate cron jobs to queue",
-                                      "fontFamily": "$font",
-                                      "fontSize": 13,
-                                      "fontWeight": "normal"
-                                    },
-                                    {
-                                      "type": "text",
-                                      "id": "D6Jjzx",
-                                      "name": "When",
-                                      "fill": "$text-3",
-                                      "content": "4 h ago",
                                       "fontFamily": "$font",
                                       "fontSize": 11,
                                       "fontWeight": "normal"

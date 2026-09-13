@@ -2,25 +2,32 @@
   import { active } from '$lib/remote/runs.remote';
 
   /**
-   * The design's Active Runs card: a header carrying the name and a way out
-   * to the whole board, then one row per run — what it is, how far it has
-   * got, and what it is doing — at 16px by 22px with a hairline between.
+   * The design's Active Runs card: a header carrying the name, how many, and
+   * a way out to the whole board, then one row per run — what it is, how far
+   * it has got, and what it is doing — at 14px by 20px with the softest
+   * divider between.
    *
    * The progress column is a fixed 180px in the design, and that matters:
    * ragged progress bars cannot be compared down the column, which is the
-   * only reason to show four of them at once.
+   * only reason to show four of them at once. The bars are 4px, not 6: at
+   * that weight they read as a measure rather than as four coloured pills.
    */
   const runs = $derived(active());
 </script>
 
-<section class="card runs">
+<section class="runs">
   <header>
-    <h2>Active runs</h2>
+    <span class="title-row">
+      <h2>Active runs</h2>
+      {#if runs.ready && runs.current.length > 0}
+        <span class="count">{runs.current.length}</span>
+      {/if}
+    </span>
     <a href="/tickets">View all tickets →</a>
   </header>
 
   {#if !runs.ready}
-    <p class="empty muted small">Loading…</p>
+    <p class="empty">Loading…</p>
   {:else if runs.current.length === 0}
     <!--
       No advice here about creating a ticket: whether that would work depends
@@ -28,12 +35,12 @@
       list answers. Telling somebody to do a thing that cannot work is worse
       than saying nothing.
     -->
-    <p class="empty muted small">Nothing running.</p>
+    <p class="empty">Nothing running.</p>
   {:else}
     {#each runs.current as row (row.runId)}
       <a class="run" href="/tickets/{row.ticketId}">
         <span class="info">
-          <span class="title-row">
+          <span class="name">
             <span class="id">{row.reference}</span>
             <span class="title">{row.title}</span>
           </span>
@@ -46,7 +53,8 @@
             <span
               class="seg"
               class:done={row.currentStepIndex !== null && i < row.currentStepIndex}
-              class:now={i === row.currentStepIndex}
+              class:now={i === row.currentStepIndex && row.status !== 'waiting_approval'}
+              class:waiting={i === row.currentStepIndex && row.status === 'waiting_approval'}
               title={label}
             ></span>
           {/each}
@@ -79,9 +87,11 @@
   .runs {
     flex: 1;
     min-width: 0;
-    padding: 0;
+    background: var(--surface);
+    border: 1px solid var(--card-border);
     border-radius: var(--r-lg);
-    border-color: var(--card-border);
+    box-shadow: 0 1px 2px #0f172a0a;
+    overflow: hidden;
   }
 
   header {
@@ -89,14 +99,31 @@
     align-items: center;
     justify-content: space-between;
     gap: 16px;
-    padding: 18px 20px;
+    padding: 16px 20px;
     border-bottom: 1px solid var(--border);
+  }
+  .title-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
   }
   h2 {
     margin: 0;
-    font-size: 16px;
+    font-family: var(--font-head);
+    font-size: 15px;
     font-weight: 600;
+    letter-spacing: -0.01em;
     color: var(--text);
+  }
+  .count {
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--surface-2);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-2);
   }
   header a {
     font-size: 13px;
@@ -107,15 +134,18 @@
   }
 
   .empty {
-    padding: 16px 22px;
+    margin: 0;
+    padding: 16px 20px;
+    font-size: 13px;
+    color: var(--text-3);
   }
 
   .run {
     display: flex;
     align-items: center;
     gap: 16px;
-    padding: 16px 22px;
-    border-bottom: 1px solid var(--border);
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--surface-2);
     text-decoration: none;
     color: inherit;
   }
@@ -129,17 +159,18 @@
   .info {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 3px;
     flex: 1;
     min-width: 0;
   }
-  .title-row {
+  .name {
     display: flex;
     align-items: center;
     gap: 8px;
     min-width: 0;
   }
   .id {
+    font-family: var(--font-mono);
     font-size: 12px;
     color: var(--text-3);
     flex: none;
@@ -160,14 +191,14 @@
   /* Fixed, so four runs' progress can be read down the column. */
   .progress {
     display: flex;
-    gap: 4px;
+    gap: 3px;
     width: 180px;
     flex: none;
   }
   .seg {
     flex: 1;
-    height: 6px;
-    border-radius: 3px;
+    height: 4px;
+    border-radius: 2px;
     background: var(--surface-2);
   }
   .seg.done {
@@ -175,6 +206,9 @@
   }
   .seg.now {
     background: var(--accent);
+  }
+  .seg.waiting {
+    background: var(--warning);
   }
 
   .badge {
