@@ -1,9 +1,9 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import type { Database } from '@factory/db';
 import { users } from '@factory/db/schema';
-import { FactoryError, MIN_PASSWORD_LENGTH, type Role } from '@factory/shared';
+import { createLogger, FactoryError, MIN_PASSWORD_LENGTH, type Role } from '@factory/shared';
 import { eq } from 'drizzle-orm';
-import { hashPassword, needsRehash, verifyPassword } from './password';
+import { hashPassword, isUnverifiableLegacy, needsRehash, verifyPassword } from './password';
 
 /**
  * Three ways in: a GitLab account, a GitHub account, or an email address and
@@ -25,6 +25,7 @@ export interface SessionUser {
 }
 
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 14;
+const log = createLogger('web');
 
 export async function signInWithPassword(
   database: Database,
@@ -43,17 +44,40 @@ export async function signInWithPassword(
   const stored = found?.passwordHash;
   const ok = stored ? await verifyPassword(password, stored) : false;
   if (!found || !ok || !stored) {
+    // The one miss an operator needs a hint for: an account created while
+    // the application ran on Bun, now running on Node, whose hash this
+    // runtime cannot check. The screen still says "do not match" — that is
+    // deliberate — so the reason goes here.
+    if (stored && isUnverifiableLegacy(stored)) {
+      log.warn('a stored password hash was made by the Bun runtime and cannot be verified here', {
+        user_id: found?.id,
+        remedy: 'reset the password; the new hash is portable',
+      });
+    }
     throw new FactoryError('not_authorised', 'that email address and password do not match');
   }
-  // A hash written by `Bun.password` before hashing became portable is
-  // re-made the first time it verifies, so it stops depending on the runtime
-  // that made it. Only ever after a successful check — the plaintext is in
-  // hand for exactly this moment and no other.
+  // A hash written by `Bun.password`, or at an older cost, is re-made the
+  // first time it verifies, so it stops depending on the runtime or the
+  // figures that made it. Only ever after a successful check — the plaintext
+  // is in hand for exactly this moment and no other.
+  //
+  // The person is already authenticated by the time this runs, and the
+  // session that follows does not depend on the write. So a failure here is
+  // logged and otherwise ignored: refusing a correct password because a
+  // housekeeping UPDATE hit a transient error would be a spurious lockout,
+  // and the old hash is still there to verify against next time.
   if (needsRehash(stored)) {
-    await database
-      .update(users)
-      .set({ passwordHash: await hashPassword(password), updatedAt: new Date() })
-      .where(eq(users.id, found.id));
+    try {
+      await database
+        .update(users)
+        .set({ passwordHash: await hashPassword(password), updatedAt: new Date() })
+        .where(eq(users.id, found.id));
+    } catch (error) {
+      log.warn('signed in, but could not upgrade the stored password hash', {
+        user_id: found.id,
+        detail: error instanceof Error ? error.message : String(error),
+      });
+    }
   }
   return toSessionUser(found);
 }

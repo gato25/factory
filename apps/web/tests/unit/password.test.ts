@@ -35,7 +35,9 @@ describe('a hash round-trips', () => {
     const parts = stored.split('$');
     expect(parts[0]).toBe('scrypt');
     expect(parts).toHaveLength(6);
-    expect(Number(parts[1])).toBeGreaterThan(0);
+    // OWASP's 16 MiB row, exactly. An earlier version wrote p=1 and called
+    // it the OWASP baseline; it was a fifth of OWASP's minimum work.
+    expect(parts.slice(1, 4)).toEqual(['16384', '8', '5']);
     expect(needsRehash(stored)).toBe(false);
   });
 
@@ -48,6 +50,20 @@ describe('a hash round-trips', () => {
     const stored = await hashPassword('пароль-🔑-Straße');
     expect(await verifyPassword('пароль-🔑-Straße', stored)).toBe(true);
     expect(await verifyPassword('пароль-🔑-Strasse', stored)).toBe(false);
+  });
+});
+
+describe('a hash at an older cost', () => {
+  test('still verifies, and is flagged so sign-in upgrades it', async () => {
+    // What the self-describing format is for. Raising the cost must not lock
+    // out everybody who registered before the raise.
+    const { scryptSync } = await import('node:crypto');
+    const salt = Buffer.from('0123456789abcdef');
+    const key = scryptSync('old-cost', salt, 64, { N: 16384, r: 8, p: 1 });
+    const stored = `scrypt$16384$8$1$${salt.toString('base64')}$${key.toString('base64')}`;
+    expect(await verifyPassword('old-cost', stored)).toBe(true);
+    expect(await verifyPassword('new-cost', stored)).toBe(false);
+    expect(needsRehash(stored)).toBe(true);
   });
 });
 
@@ -67,11 +83,40 @@ describe('a bad stored value answers false, never throws', () => {
     expect(await verifyPassword('anything', stored)).toBe(false);
   });
 
-  test('a cost a runtime refuses is a miss, not a crash', async () => {
-    // N large enough to exceed Node's default memory ceiling for scrypt.
+  test('a stored value cannot make verification run for a quarter of an hour', async () => {
+    // p=16382 at today's N fits in memory, so the runtime ACCEPTS it, and
+    // one verify then takes roughly fifteen minutes on a pinned thread —
+    // measured by an adversarial review of the first version, which had no
+    // ceiling. Four of those stall the whole process. It has to be refused
+    // before anything is computed, which is what the timing here asserts.
     const salt = Buffer.alloc(16).toString('base64');
     const hash = Buffer.alloc(64).toString('base64');
-    expect(await verifyPassword('x', `scrypt$${2 ** 24}$8$1$${salt}$${hash}`)).toBe(false);
+    const started = performance.now();
+    expect(await verifyPassword('x', `scrypt$16384$8$16382$${salt}$${hash}`)).toBe(false);
+    expect(performance.now() - started).toBeLessThan(1000);
+  });
+
+  test.each([
+    ['N not a power of two', 'scrypt$1000$8$1$'],
+    ['N above the ceiling', `scrypt$${2 ** 21}$8$1$`],
+    ['r above the ceiling', 'scrypt$16384$16$1$'],
+    ['p above the ceiling', 'scrypt$16384$8$9$'],
+    ['N parsed from hex notation', 'scrypt$0x4000$8$1$'],
+  ])('%s is refused before any work is done', async (_label, prefix) => {
+    const salt = Buffer.alloc(16).toString('base64');
+    const hash = Buffer.alloc(64).toString('base64');
+    const started = performance.now();
+    expect(await verifyPassword('x', `${prefix}${salt}$${hash}`)).toBe(false);
+    expect(performance.now() - started).toBeLessThan(1000);
+  });
+
+  test('a cost a runtime refuses is a miss, not a crash', async () => {
+    // Inside this module's ceiling, but 1 GiB at r=8 — over the runtime's
+    // default memory limit for scrypt, which it reports by throwing
+    // synchronously. That throw must become `false`, not a 500.
+    const salt = Buffer.alloc(16).toString('base64');
+    const hash = Buffer.alloc(64).toString('base64');
+    expect(await verifyPassword('x', `scrypt$${2 ** 20}$8$1$${salt}$${hash}`)).toBe(false);
   });
 });
 
@@ -151,6 +196,17 @@ describe('the module itself', () => {
     // through an optional chain on a local — never a bare `Bun.` access that
     // throws where the global is absent.
     expect(source).not.toMatch(/\bBun\.\w+/);
+  });
+
+  test('imports nothing but node:crypto', async () => {
+    // This is what makes the Node-spawn test below meaningful: the file can
+    // be run raw, under Node, with no bundler resolving anything. A version
+    // that imported the project's logger could not be — Node refuses the
+    // extensionless relative imports inside `shared` that Vite resolves —
+    // and the test that proves portability failed on a resolution artefact.
+    const source = codeOnly(await Bun.file('apps/web/src/lib/services/password.ts').text());
+    const specifiers = [...source.matchAll(/from '([^']+)'/g)].map((m) => m[1]);
+    expect(specifiers).toEqual(['node:crypto']);
   });
 
   test('auth.ts no longer calls Bun.password at all', async () => {
