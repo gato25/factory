@@ -1,6 +1,9 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
-  import { MIN_PASSWORD_LENGTH } from '$lib/services/auth';
+  // From `shared`, NOT from `$lib/services/auth`: that module imports
+  // `node:crypto` for the session cookie, and importing it here pulled
+  // `node:crypto` into the browser bundle and killed this page at runtime.
+  import { MIN_PASSWORD_LENGTH } from '@factory/shared';
   import type { ActionData, PageData } from './$types';
 
   let { form, data }: { form: ActionData; data: PageData } = $props();

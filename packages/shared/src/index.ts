@@ -1,3 +1,4 @@
+export * from './account';
 export * from './callbacks';
 export * from './errors';
 export * from './execution-host';

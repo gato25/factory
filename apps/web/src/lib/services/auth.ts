@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import type { Database } from '@factory/db';
 import { users } from '@factory/db/schema';
-import { FactoryError, type Role } from '@factory/shared';
+import { FactoryError, MIN_PASSWORD_LENGTH, type Role } from '@factory/shared';
 import { eq } from 'drizzle-orm';
 
 /**
@@ -82,19 +82,6 @@ export async function hasAnyUser(database: Database): Promise<boolean> {
   const [anyone] = await database.select({ id: users.id }).from(users).limit(1);
   return Boolean(anyone);
 }
-
-/**
- * The shortest password the first account may have.
- *
- * Exported so the form and the check cannot drift: a form that accepts what
- * the service refuses produces a submission that fails for no visible reason.
- *
- * Deliberately low, and lower than it was. This account can read every
- * credential the workspace stores — a git push token and a model key — so the
- * figure is a real trade rather than a formality, and it is set here, in one
- * place, so that raising it is one edit.
- */
-export const MIN_PASSWORD_LENGTH = 6;
 
 /**
  * Creates the first account on a fresh deployment.
