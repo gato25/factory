@@ -1,7 +1,7 @@
 import type { Database } from '@factory/db';
 import { credentials, workspaces } from '@factory/db/schema';
 import { createLogger, invalidInput } from '@factory/shared';
-import { eq } from 'drizzle-orm';
+import { and, eq, isNull, sql } from 'drizzle-orm';
 import { type KeyRing, seal } from '$lib/secrets/store';
 
 const log = createLogger('web');
@@ -282,28 +282,127 @@ export async function storeCredential(
   if (!token) throw invalidInput('Paste the credential.');
 
   const workspace = await ensureWorkspace(database);
+  await attachCredential(database, workspace.id, input.kind, token, ring, user?.id ?? null);
+  return { stored: true };
+}
+
+/**
+ * Seals a credential, stores it, and points the workspace at it.
+ *
+ * `onlyIfUnset` is for seeding: two server processes starting together must
+ * not both store the key from the environment. Each seals and inserts its own
+ * row, but the link is a conditional UPDATE, so exactly one wins; the loser
+ * finds it linked nothing and removes the row it just made, rather than
+ * leaving a sealed copy of the key orphaned in the table.
+ */
+async function attachCredential(
+  database: Database,
+  workspaceId: string,
+  kind: 'model' | 'design',
+  token: string,
+  ring: KeyRing,
+  createdBy: string | null,
+  options: { onlyIfUnset?: boolean } = {},
+): Promise<boolean> {
   const sealed = seal(token, ring);
   const [row] = await database
     .insert(credentials)
     .values({
-      kind: input.kind,
+      kind,
       ciphertext: sealed.ciphertext,
       keyVersion: sealed.keyVersion,
       status: 'unverified',
-      createdBy: user?.id,
+      createdBy: createdBy ?? undefined,
     })
     .returning();
   if (!row) throw new Error('could not store the credential');
 
-  await database
+  const column = kind === 'model' ? workspaces.modelCredentialId : workspaces.designCredentialId;
+  const linked = await database
     .update(workspaces)
     .set(
-      input.kind === 'model'
+      kind === 'model'
         ? { modelCredentialId: row.id, updatedAt: new Date() }
         : { designCredentialId: row.id, updatedAt: new Date() },
     )
-    .where(eq(workspaces.id, workspace.id));
-  return { stored: true };
+    .where(
+      options.onlyIfUnset
+        ? and(eq(workspaces.id, workspaceId), isNull(column))
+        : eq(workspaces.id, workspaceId),
+    )
+    .returning({ id: workspaces.id });
+
+  if (linked.length === 0) {
+    await database.delete(credentials).where(eq(credentials.id, row.id));
+    return false;
+  }
+  return true;
+}
+
+export interface WorkspaceBootstrapInput {
+  runnerBaseUrl?: string;
+  orchestratorBaseUrl?: string;
+  /** The model credential itself. Sealed with `ring` before it is stored. */
+  modelKey?: string;
+  ring?: KeyRing;
+}
+
+/**
+ * Gives the workspace what the environment already knows — once, and only
+ * into fields nobody has set.
+ *
+ * A fresh deployment's dashboard listed the runner address, the orchestration
+ * address and a model credential as missing, and sent the administrator to
+ * Settings to type them. The two addresses were in `.env` already; the
+ * application had read them for itself and then asked again. This is the
+ * fix: the same fact, filled from the place it was first stated.
+ *
+ * Only NULL columns take a value. Settings is the source of truth from the
+ * moment somebody saves it, and a change to `.env` afterwards does not reach
+ * a field that was set by hand — clearing the field in Settings is how you
+ * ask for the environment's value again. The address writes use `coalesce`
+ * so that rule holds even when two servers start at once.
+ *
+ * Runs on every startup, so it is idempotent and cheap: a row with nothing
+ * left to fill costs one SELECT.
+ */
+export async function bootstrapWorkspace(
+  database: Database,
+  input: WorkspaceBootstrapInput,
+): Promise<{ seeded: string[] }> {
+  const workspace = await ensureWorkspace(database);
+  const seeded: string[] = [];
+
+  const wantsRunner = input.runnerBaseUrl && !workspace.runnerBaseUrl;
+  const wantsOrchestrator = input.orchestratorBaseUrl && !workspace.orchestratorBaseUrl;
+  if (wantsRunner || wantsOrchestrator) {
+    const [after] = await database
+      .update(workspaces)
+      .set({
+        runnerBaseUrl: sql`coalesce(${workspaces.runnerBaseUrl}, ${input.runnerBaseUrl ?? null})`,
+        orchestratorBaseUrl: sql`coalesce(${workspaces.orchestratorBaseUrl}, ${input.orchestratorBaseUrl ?? null})`,
+        updatedAt: new Date(),
+      })
+      .where(eq(workspaces.id, workspace.id))
+      .returning();
+    if (wantsRunner && after?.runnerBaseUrl) seeded.push('runner address');
+    if (wantsOrchestrator && after?.orchestratorBaseUrl) seeded.push('orchestration address');
+  }
+
+  if (input.modelKey && input.ring && !workspace.modelCredentialId) {
+    const attached = await attachCredential(
+      database,
+      workspace.id,
+      'model',
+      input.modelKey,
+      input.ring,
+      null,
+      { onlyIfUnset: true },
+    );
+    if (attached) seeded.push('model credential');
+  }
+
+  return { seeded };
 }
 
 /**

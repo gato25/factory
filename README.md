@@ -54,9 +54,12 @@ and that first account is the administrator. (It used to require hand-written SQ
 `member`, every Settings operation needs `admin`, and inviting an admin needs to be one.) After that,
 people arrive by invitation or through a connected provider.
 
-Then open **Settings**, set the two addresses and a model credential, and press **Test every
-connection**. The dashboard names anything still missing and links to where it is fixed, so you
-should not need to come back here.
+Settings should already be filled in. The two service addresses come from `.env`, and the
+application copies them into Settings the first time it starts; a model key in `.env`
+(`ANTHROPIC_API_KEY`, or `CLAUDE_CODE_OAUTH_TOKEN` from `claude setup-token`) is stored the same
+way, sealed. Only a repository is left to connect — the one thing that genuinely needs you. Then
+press **Test every connection**. The dashboard names anything still missing and links to where it
+is fixed, so you should not need to come back here.
 
 ### Where a run actually executes
 

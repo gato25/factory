@@ -198,7 +198,7 @@
               <input
                 name="orchestratorBaseUrl"
                 value={w.orchestratorBaseUrl ?? ''}
-                placeholder="http://n8n:5678"
+                placeholder="http://localhost:5678"
               />
             </label>
             <label class="f">
@@ -246,7 +246,7 @@
               <input
                 name="runnerBaseUrl"
                 value={w.runnerBaseUrl ?? ''}
-                placeholder="http://runner:8080"
+                placeholder="http://localhost:8080"
               />
             </label>
             <label class="f" class:ignored={!limit('image').enforced}>

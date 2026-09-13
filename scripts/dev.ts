@@ -166,6 +166,16 @@ if (!process.env.SECRET_ENCRYPTION_KEY) {
   warn('SECRET_ENCRYPTION_KEY is not set — saving a credential in Settings will fail.');
   note('openssl rand -base64 32');
 }
+// The web application copies the two service addresses from .env into
+// Settings when it starts, and a model key too if there is one. Saying so
+// here is what stops somebody opening Settings expecting to type them.
+if (process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_CODE_OAUTH_TOKEN) {
+  if (process.env.SECRET_ENCRYPTION_KEY)
+    ok('Model key found — Settings will be filled in at start');
+  else warn('A model key is in .env but cannot be stored until SECRET_ENCRYPTION_KEY is set.');
+} else {
+  note('No model key in .env — paste one in Settings, or set ANTHROPIC_API_KEY here.');
+}
 
 // --- 2. the services ---------------------------------------------------------
 
