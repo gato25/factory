@@ -268,8 +268,13 @@ if (!n8nUp) {
       note('Open http://localhost:5678 and ACTIVATE it — an inactive workflow never fires.');
     } else {
       // Not fatal: it can be imported by hand, and everything else still runs.
-      warn('Could not import it automatically.');
-      note(`Import orchestration/n8n/${WORKFLOW_NAME}.json at http://localhost:5678 instead.`);
+      // But SAY WHY. The first version printed only that it had failed, which
+      // left the one person who could diagnose it — whoever is looking at the
+      // screen — with nothing to go on.
+      warn('Could not import it automatically:');
+      for (const line of imported.out.trim().split('\n').slice(-6)) note(line);
+      note(`Import orchestration/n8n/${WORKFLOW_NAME}.json at http://localhost:5678 instead:`);
+      note('Workflows → ⋯ → Import from File. Then open it and switch it Active.');
     }
   }
 }
