@@ -49,11 +49,24 @@ function warn(text: string) {
   console.log(`  ${YELLOW}!${OFF} ${text}`);
 }
 
-/** Runs a command and returns its output, never throwing. */
+/**
+ * Runs a command and returns its output, never throwing.
+ *
+ * `quiet` captures both streams, for a command whose output is only wanted if
+ * it fails. `stream` shows both as they happen, for a command that takes long
+ * enough that silence reads as a hang — which is not a stylistic choice: the
+ * first version of this file ran `docker compose up` quietly, and on a first
+ * run that is several hundred megabytes of image downloading with nothing at
+ * all on screen. It looked exactly like a crash.
+ */
 async function sh(
   argv: string[],
-  options: { cwd?: string; quiet?: boolean } = {},
+  options: { cwd?: string; quiet?: boolean; stream?: boolean } = {},
 ): Promise<{ code: number; out: string }> {
+  if (options.stream) {
+    const proc = Bun.spawn(argv, { cwd: options.cwd, stdout: 'inherit', stderr: 'inherit' });
+    return { code: await proc.exited, out: '' };
+  }
   const proc = Bun.spawn(argv, {
     cwd: options.cwd,
     stdout: options.quiet ? 'pipe' : 'inherit',
@@ -167,22 +180,32 @@ if (docker.code !== 0) {
 }
 ok(`Docker ${docker.out.trim()}`);
 
-const up = await sh(['docker', 'compose', 'up', '-d', 'postgres', 'n8n'], { quiet: true });
-if (up.code !== 0) stop('`docker compose up` failed.', up.out.trim());
+// Streamed, not captured. The first run downloads both images, which takes
+// minutes, and a silent minute is indistinguishable from a hung one.
+note('The first run downloads Postgres and n8n — a few hundred MB, once.');
+const up = await sh(['docker', 'compose', 'up', '-d', 'postgres', 'n8n'], { stream: true });
+if (up.code !== 0) {
+  stop('`docker compose up` failed.', 'The reason is in the output just above.');
+}
 
 /** Waits for compose to report a service healthy, rather than guessing a delay. */
-async function waitHealthy(service: string, seconds = 90): Promise<boolean> {
+async function waitHealthy(service: string, seconds = 120): Promise<boolean> {
   for (let waited = 0; waited < seconds; waited += 2) {
     const state = await sh(['docker', 'compose', 'ps', '--format', '{{.Health}}', service], {
       quiet: true,
     });
     if (state.out.includes('healthy')) return true;
+    // Said out loud every ten seconds. A service that is slow to become
+    // healthy and a service that never will are the same picture otherwise.
+    if (waited > 0 && waited % 10 === 0) note(`still waiting for ${service} (${waited}s)`);
     await Bun.sleep(2000);
   }
   return false;
 }
 
-if (!(await waitHealthy('postgres'))) stop('Postgres did not become healthy.');
+if (!(await waitHealthy('postgres'))) {
+  stop('Postgres did not become healthy.', 'docker compose logs postgres — that says why.');
+}
 ok('Postgres is up');
 
 const n8nUp = await waitHealthy('n8n');
