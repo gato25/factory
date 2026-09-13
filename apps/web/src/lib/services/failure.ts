@@ -73,6 +73,11 @@ const EXPLANATIONS: Record<FailureReason, { what: string; next: string; needsACh
     next: 'Nothing is wrong with the ticket. Retry.',
     needsAChange: false,
   },
+  app_unreachable: {
+    what: 'The execution service could not reach this application to collect something the run needs.',
+    next: 'Nothing is wrong with the ticket. Check that the execution service can reach the address in PUBLIC_BASE_URL, then retry.',
+    needsAChange: false,
+  },
   command_failed: {
     what: 'A command the pipeline runs exited with an error.',
     next: 'Read the step output to see which command and why. If it is the repository, fix that first.',

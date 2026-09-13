@@ -3,6 +3,7 @@ export * from './errors';
 export * from './execution-host';
 export * from './log';
 export * from './redact';
+export * from './requirement-files';
 export * from './snapshot';
 export * from './step';
 export * from './step-loop';

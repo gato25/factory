@@ -1,4 +1,5 @@
 <script lang="ts">
+  import FilePicker from '$components/FilePicker.svelte';
   import Icon from '$components/Icon.svelte';
   import { pipelines } from '$lib/remote/pipelines.remote';
   import { repositories } from '$lib/remote/repositories.remote';
@@ -107,6 +108,16 @@
         rows="4"
         placeholder={'Apple button visible on /login for all users\nSuccessful sign-in creates or links a user record'}
       ></textarea>
+    </div>
+
+    <div class="field">
+      <div class="label-row">
+        <label for="files">Requirement documents</label>
+        <span class="hint">
+          Optional. Text, Markdown or CSV — every agent step reads them as the brief.
+        </span>
+      </div>
+      <FilePicker />
     </div>
 
     <div class="field">

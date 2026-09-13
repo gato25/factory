@@ -1,4 +1,4 @@
-import { FactoryError } from '@factory/shared';
+import { createLogger, FactoryError } from '@factory/shared';
 import { fail, redirect } from '@sveltejs/kit';
 import { loadWebConfig } from '$lib/config';
 import { db } from '$lib/db';
@@ -12,6 +12,8 @@ import {
 } from '$lib/services/auth';
 import { configuredProviders } from '$lib/services/oauth';
 import type { Actions, PageServerLoad } from './$types';
+
+const log = createLogger('web');
 
 export const load: PageServerLoad = async ({ locals, url }) => {
   if (locals.user) redirect(303, '/');
@@ -56,8 +58,22 @@ export const actions: Actions = {
         SESSION_COOKIE_OPTIONS,
       );
     } catch (error) {
+      // A FactoryError is a refusal with a reason somebody can act on, and it
+      // is shown as written. Anything else is a fault — an unreachable
+      // database, a schema that was never migrated — and the screen cannot
+      // say which. What it must not do is swallow it: the first version
+      // showed "Could not create the account just now." and logged nothing at
+      // all, which left the person looking at the screen with no way to find
+      // out and nowhere to look.
+      if (!(error instanceof FactoryError)) {
+        log.error('the first account could not be created', {
+          detail: error instanceof Error ? error.message : String(error),
+        });
+      }
       const message =
-        error instanceof FactoryError ? error.message : 'Could not create the account just now.';
+        error instanceof FactoryError
+          ? error.message
+          : 'Could not create the account. The reason is in the application’s own output.';
       return fail(400, { email, message });
     }
     redirect(303, url.searchParams.get('next') ?? '/');

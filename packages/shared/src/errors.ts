@@ -7,6 +7,18 @@ export type FailureReason =
   | 'credential_invalid'
   | 'credential_missing'
   | 'sandbox_lost'
+  /**
+   * The execution service could not get something it needs FROM THE
+   * APPLICATION — a ticket's requirement documents, so far.
+   *
+   * Distinct from `credential_missing`, which the credentials fetch reuses
+   * for the same situation and which sends an administrator to Settings to
+   * fix a credential that is not the problem. Since the execution service
+   * moved off the application's machine, an unreachable application is an
+   * ordinary and separately fixable failure: an address, a firewall, or an
+   * application that is down.
+   */
+  | 'app_unreachable'
   | 'command_failed'
   | 'not_authorised'
   | 'conflict'

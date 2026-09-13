@@ -84,6 +84,19 @@ export async function hasAnyUser(database: Database): Promise<boolean> {
 }
 
 /**
+ * The shortest password the first account may have.
+ *
+ * Exported so the form and the check cannot drift: a form that accepts what
+ * the service refuses produces a submission that fails for no visible reason.
+ *
+ * Deliberately low, and lower than it was. This account can read every
+ * credential the workspace stores — a git push token and a model key — so the
+ * figure is a real trade rather than a formality, and it is set here, in one
+ * place, so that raising it is one edit.
+ */
+export const MIN_PASSWORD_LENGTH = 6;
+
+/**
  * Creates the first account on a fresh deployment.
  *
  * Deliberately refuses once anybody exists. Open registration on a tool that
@@ -96,10 +109,10 @@ export async function registerFirstUser(
   input: { name: string; email: string; password: string },
 ): Promise<SessionUser> {
   const email = normaliseEmail(input.email);
-  if (input.password.length < 12) {
+  if (input.password.length < MIN_PASSWORD_LENGTH) {
     throw new FactoryError(
       'invalid_input',
-      'Use at least 12 characters. This account can read every credential the workspace stores.',
+      `Use at least ${MIN_PASSWORD_LENGTH} characters. This account can read every credential the workspace stores.`,
     );
   }
   if (await hasAnyUser(database)) {

@@ -58,6 +58,25 @@ export interface PipelineSnapshot {
     title: string;
     description: string | null;
     acceptance_criteria: string[];
+    /**
+     * Requirement documents attached to the ticket: NAMES AND SIZES ONLY.
+     *
+     * The content is deliberately not here. A snapshot is stored as one value
+     * for the life of a run and rewritten on every step, and on the managed
+     * execution host that value lives in Durable Object storage, which caps a
+     * value at 128 KiB. Several megabytes of requirements inside it would
+     * break that host outright and waste the local one.
+     *
+     * So this is a manifest, and the execution service fetches the content
+     * once at start from the application — exactly as it already fetches
+     * credentials, and for a related reason: the orchestration service should
+     * carry neither.
+     *
+     * Optional because a run started before this field existed does not have
+     * it, which is a real state of the database rather than something to
+     * assert away.
+     */
+    requirement_files?: { name: string; bytes: number }[];
   };
   repo: {
     clone_url: string;

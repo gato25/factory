@@ -1,6 +1,7 @@
 import { FactoryError, type PipelineSnapshot } from '@factory/shared';
 import { writeAgentConfig } from './config';
 import type { ContainerHost, ContainerSpec } from './host';
+import { fetchRequirementFiles, writeRequirementFiles } from './requirements';
 import { buildEnvironment, type ResolvedCredentials } from './secrets';
 import { quoteOne } from './shell';
 
@@ -66,10 +67,20 @@ export async function startRunWorkspace(
     workdir: WORKDIR,
   };
 
+  // Collected BEFORE the container exists, so an application that cannot be
+  // reached fails the start rather than leaving a sandbox running with no
+  // brief in it. The call does nothing at all when the ticket has no
+  // documents, which is the ordinary case.
+  const requirements = await fetchRequirementFiles(input.snapshot);
+
   const containerId = await host.create(spec);
   try {
     await cloneRepository(host, containerId, input.snapshot, input.credentials.gitToken);
-    await writeAgentConfig(host, containerId, WORKDIR, { snapshot: input.snapshot });
+    await writeAgentConfig(host, containerId, WORKDIR, {
+      snapshot: input.snapshot,
+      requirementFiles: requirements.map((file) => file.name),
+    });
+    await writeRequirementFiles(host, containerId, WORKDIR, requirements);
     return { containerId };
   } catch (error) {
     // Never leave a half-prepared sandbox behind.

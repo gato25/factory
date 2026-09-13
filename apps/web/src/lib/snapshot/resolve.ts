@@ -17,6 +17,7 @@ import {
   type Step,
 } from '@factory/shared';
 import { and, eq, inArray } from 'drizzle-orm';
+import { fileManifest } from '../services/ticket-files';
 import { type Ceilings, resolveCeilings } from './ceilings';
 
 /**
@@ -132,6 +133,8 @@ export async function resolveSnapshot(
     },
   });
 
+  const requirementFiles = await fileManifest(database, ticket.id);
+
   const snapshotAgents: SnapshotAgent[] = agentRows.map((agent) => ({
     id: agent.id,
     name: agent.name,
@@ -159,6 +162,11 @@ export async function resolveSnapshot(
       title: ticket.title,
       description: ticket.description,
       acceptance_criteria: ticket.acceptanceCriteria,
+      // Pinned like everything else here: attaching a document after a run
+      // has started must not change what that run was asked to build
+      // (FR-044). The next attempt picks it up, which is what the retry is
+      // for.
+      requirement_files: requirementFiles,
     },
     repo: {
       clone_url: repository.cloneUrl,

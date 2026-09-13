@@ -1,5 +1,6 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
+  import { MIN_PASSWORD_LENGTH } from '$lib/services/auth';
   import type { ActionData, PageData } from './$types';
 
   let { form, data }: { form: ActionData; data: PageData } = $props();
@@ -58,10 +59,12 @@
             name="password"
             type="password"
             autocomplete="new-password"
-            minlength="12"
+            minlength={MIN_PASSWORD_LENGTH}
             required
           />
-          <span class="hint">At least 12 characters — this account can read every stored credential.</span>
+          <span class="hint">
+            At least {MIN_PASSWORD_LENGTH} characters — this account can read every stored credential.
+          </span>
         </label>
         {#if form?.message}
           <p class="error" role="alert">{form.message}</p>

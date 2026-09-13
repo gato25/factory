@@ -1,4 +1,4 @@
-import type { PipelineSnapshot, SnapshotAgent } from '@factory/shared';
+import { type PipelineSnapshot, REQUIREMENTS_DIR, type SnapshotAgent } from '@factory/shared';
 import type { ContainerHost } from './host';
 
 /**
@@ -16,6 +16,14 @@ export interface SubstitutionContext {
   hasUi?: boolean;
   /** Exported image paths; empty when no design step ran. */
   designScreens?: string[];
+  /**
+   * Requirement documents written into the sandbox, by name.
+   *
+   * The names rather than the content: the content is on disk where the agent
+   * can read it, and putting several megabytes into a prompt variable would
+   * charge for it on every step whether or not the step needed it.
+   */
+  requirementFiles?: string[];
 }
 
 /** The variables in spec §8.3, plus the two the design stage added. */
@@ -37,6 +45,11 @@ export function substitute(template: string, context: SubstitutionContext): stri
     'run.attempt': String(snapshot.attempt),
     feedback: context.feedback ?? '',
     'design.screens': (context.designScreens ?? []).join('\n'),
+    // A list of paths, so a prompt that mentions this points the agent at
+    // the files rather than inlining them.
+    'ticket.requirements': (context.requirementFiles ?? [])
+      .map((name) => `- ${REQUIREMENTS_DIR}/${name}`)
+      .join('\n'),
   };
 
   return template.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (whole, name: string) =>
@@ -114,6 +127,11 @@ export async function writeAgentConfig(
         // implementing steps can read them (FR-109). Paths, not images: they
         // are on the branch, in the workspace these steps are working in.
         design_screens: context.designScreens ?? [],
+        // Named here as well as in `.factory/requirements.md`, because a step
+        // that reads this file should not have to know about a second one.
+        requirement_files: (context.requirementFiles ?? []).map(
+          (name) => `${REQUIREMENTS_DIR}/${name}`,
+        ),
       },
       null,
       2,

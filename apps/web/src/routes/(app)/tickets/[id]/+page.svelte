@@ -4,6 +4,7 @@
   import ArtifactViewer from '$components/ArtifactViewer.svelte';
   import Icon from '$components/Icon.svelte';
   import LiveLog from '$components/LiveLog.svelte';
+  import RequirementFiles from '$components/RequirementFiles.svelte';
   import RunDetails from '$components/RunDetails.svelte';
   import StepTracker from '$components/StepTracker.svelte';
   import TicketHead from '$components/TicketHead.svelte';
@@ -322,6 +323,7 @@
             mergeRequestUrl={loaded.ticket.mergeRequestUrl}
             branchName={loaded.ticket.branchName}
           />
+          <RequirementFiles ticketId={loaded.ticket.id} hasRun={true} />
           <RunDetails view={loaded} />
         </div>
       </div>
