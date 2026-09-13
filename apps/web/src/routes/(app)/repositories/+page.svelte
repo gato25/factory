@@ -4,6 +4,7 @@
   import { pipelines } from '$lib/remote/pipelines.remote';
   import {
     changeDefaultPipeline,
+    changeRunSettings,
     disconnect,
     replaceToken,
     repositories,
@@ -17,7 +18,8 @@
    *
    * That menu is what the design puts the row's actions behind, and spec.md
    * §4 says what belongs in it: the default pipeline, the token, and
-   * disconnecting.
+   * disconnecting — and, since 003, how the project starts when a ticket is
+   * run.
    */
 
   const repos = $derived(repositories());
@@ -27,6 +29,7 @@
   let openMenu = $state<string | null>(null);
   let replacing = $state<string | null>(null);
   let choosing = $state<string | null>(null);
+  let starting = $state<string | null>(null);
 
   const close = () => {
     openMenu = null;
@@ -128,6 +131,7 @@
                 onclick={() => {
                   choosing = choosing === repo.id ? null : repo.id;
                   replacing = null;
+                  starting = null;
                 }}>Change the default pipeline</button
               >
               <button
@@ -135,7 +139,16 @@
                 onclick={() => {
                   replacing = replacing === repo.id ? null : repo.id;
                   choosing = null;
+                  starting = null;
                 }}>Replace the access token</button
+              >
+              <button
+                type="button"
+                onclick={() => {
+                  starting = starting === repo.id ? null : repo.id;
+                  replacing = null;
+                  choosing = null;
+                }}>Set how it starts</button
               >
               <button
                 type="button"
@@ -165,6 +178,37 @@
                     {/each}
                   </select>
                 </label>
+              {/if}
+
+              {#if starting === repo.id}
+                <!-- How a launch runs this repository's project (003 FR-005).
+                     Empty means detect it from the workspace. -->
+                <form {...changeRunSettings} class="field" onsubmit={close}>
+                  <input type="hidden" name="repositoryId" value={repo.id} />
+                  <label>
+                    <span class="small muted">Start command</span>
+                    <input
+                      name="command"
+                      value={repo.runCommand ?? ''}
+                      placeholder="npm run dev -- --host 0.0.0.0 --port $PORT"
+                      autocomplete="off"
+                    />
+                  </label>
+                  <label>
+                    <span class="small muted">Port it listens on</span>
+                    <input name="port" type="number" min="1" max="65535" value={repo.runPort ?? ''} placeholder="5173" />
+                  </label>
+                  <p class="small muted">
+                    Leave both empty to detect from package.json. The command runs inside the
+                    sandbox with PORT and HOST set; the server has to listen on 0.0.0.0.
+                  </p>
+                  {#each changeRunSettings.fields.allIssues() ?? [] as issue (issue.message)}
+                    <p class="small error" role="alert">{issue.message}</p>
+                  {/each}
+                  <button type="submit" disabled={changeRunSettings.pending > 0}>
+                    {changeRunSettings.pending > 0 ? 'Saving…' : 'Save'}
+                  </button>
+                </form>
               {/if}
 
               {#if replacing === repo.id}

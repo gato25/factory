@@ -10155,6 +10155,384 @@
                         },
                         {
                           "type": "frame",
+                          "id": "b8aV8",
+                          "name": "Run it",
+                          "width": "fill_container",
+                          "fill": "$surface",
+                          "cornerRadius": "$r-lg",
+                          "stroke": "#E6E8EE",
+                          "strokeWidth": 1,
+                          "effect": {
+                            "type": "shadow",
+                            "shadowType": "outer",
+                            "color": "#0F172A0A",
+                            "offset": {
+                              "x": 0,
+                              "y": 1
+                            },
+                            "blur": 2
+                          },
+                          "layout": "vertical",
+                          "gap": 10,
+                          "padding": [
+                            16,
+                            20
+                          ],
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "TON4I",
+                              "name": "Header",
+                              "gap": 8,
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "1kU2W",
+                                  "name": "Icon",
+                                  "width": 15,
+                                  "height": 15,
+                                  "icon": "play",
+                                  "library": "lucide",
+                                  "fill": "$text-2"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "O5ujU",
+                                  "name": "H",
+                                  "fill": "$text",
+                                  "content": "Run it",
+                                  "fontFamily": "$font-head",
+                                  "fontSize": 15,
+                                  "fontWeight": "600"
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "fEJro",
+                                  "name": "State",
+                                  "fill": "$success-soft",
+                                  "cornerRadius": 999,
+                                  "gap": 6,
+                                  "padding": [
+                                    2,
+                                    8
+                                  ],
+                                  "alignItems": "center",
+                                  "children": [
+                                    {
+                                      "type": "ellipse",
+                                      "id": "GlNHM",
+                                      "name": "Dot",
+                                      "fill": "$success",
+                                      "width": 6,
+                                      "height": 6
+                                    },
+                                    {
+                                      "type": "text",
+                                      "id": "pMC8B",
+                                      "name": "Label",
+                                      "fill": "$success",
+                                      "content": "Running",
+                                      "fontFamily": "$font",
+                                      "fontSize": 12,
+                                      "fontWeight": "600"
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "qrvLo",
+                              "name": "Address",
+                              "gap": 6,
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "KTMmY",
+                                  "name": "T",
+                                  "fill": "$text",
+                                  "content": "Running at",
+                                  "fontFamily": "$font",
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "gDNhZ",
+                                  "name": "URL",
+                                  "fill": "$accent-text",
+                                  "content": "http://localhost:49153",
+                                  "fontFamily": "$font-mono",
+                                  "fontSize": 13,
+                                  "fontWeight": "500"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "1Gotx",
+                              "name": "Faces",
+                              "width": "fill_container",
+                              "fill": "$surface-2",
+                              "cornerRadius": "$r-sm",
+                              "gap": 4,
+                              "padding": 3,
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "fbiK2",
+                                  "name": "Page",
+                                  "fill": "$surface",
+                                  "cornerRadius": 6,
+                                  "padding": [
+                                    5,
+                                    10
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "wTwbF",
+                                      "name": "L",
+                                      "fill": "$text",
+                                      "content": "Page",
+                                      "fontFamily": "$font",
+                                      "fontSize": 12,
+                                      "fontWeight": "500"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "MLWAs",
+                                  "name": "Requests",
+                                  "padding": [
+                                    5,
+                                    10
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "b8RwK",
+                                      "name": "L",
+                                      "fill": "$text-2",
+                                      "content": "Requests",
+                                      "fontFamily": "$font",
+                                      "fontSize": 12,
+                                      "fontWeight": "500"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "Ypmu5",
+                                  "name": "Open",
+                                  "gap": 4,
+                                  "alignItems": "center",
+                                  "padding": [
+                                    0,
+                                    8
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "9629S",
+                                      "name": "L",
+                                      "fill": "$accent-text",
+                                      "content": "Open in new tab",
+                                      "fontFamily": "$font",
+                                      "fontSize": 12,
+                                      "fontWeight": "500"
+                                    },
+                                    {
+                                      "type": "icon",
+                                      "id": "rXvbp",
+                                      "name": "Icon",
+                                      "width": 13,
+                                      "height": 13,
+                                      "icon": "external-link",
+                                      "library": "lucide",
+                                      "fill": "$accent-text"
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "oAWo7",
+                              "name": "Console",
+                              "width": "fill_container",
+                              "layout": "vertical",
+                              "gap": 8,
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "1YD6X",
+                                  "name": "Line",
+                                  "width": "fill_container",
+                                  "gap": 8,
+                                  "padding": 6,
+                                  "stroke": "$border",
+                                  "strokeWidth": 1,
+                                  "cornerRadius": "$r-sm",
+                                  "alignItems": "center",
+                                  "children": [
+                                    {
+                                      "type": "frame",
+                                      "id": "H0hfl",
+                                      "name": "Method",
+                                      "padding": [
+                                        6,
+                                        8
+                                      ],
+                                      "stroke": "$border",
+                                      "strokeWidth": 1,
+                                      "cornerRadius": "$r-sm",
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "id": "4Zeip",
+                                          "name": "M",
+                                          "fill": "$text",
+                                          "content": "GET",
+                                          "fontFamily": "$font-mono",
+                                          "fontSize": 13,
+                                          "fontWeight": "600"
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "text",
+                                      "id": "xiqrc",
+                                      "name": "Path",
+                                      "fill": "$text",
+                                      "content": "/api/health",
+                                      "fontFamily": "$font-mono",
+                                      "fontSize": 13,
+                                      "fontWeight": "normal",
+                                      "width": "fill_container",
+                                      "textGrowth": "fixed-width"
+                                    },
+                                    {
+                                      "type": "frame",
+                                      "id": "XonrA",
+                                      "name": "Send",
+                                      "fill": "$accent",
+                                      "cornerRadius": "$r-sm",
+                                      "padding": [
+                                        7,
+                                        14
+                                      ],
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "id": "9wQRl",
+                                          "name": "L",
+                                          "fill": "$text-inv",
+                                          "content": "Send",
+                                          "fontFamily": "$font",
+                                          "fontSize": 13,
+                                          "fontWeight": "600"
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "TeXdr",
+                                  "name": "Status",
+                                  "gap": 10,
+                                  "alignItems": "center",
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "IjHZ9",
+                                      "name": "S",
+                                      "fill": "$success",
+                                      "content": "200 OK",
+                                      "fontFamily": "$font-mono",
+                                      "fontSize": 12,
+                                      "fontWeight": "600"
+                                    },
+                                    {
+                                      "type": "text",
+                                      "id": "TpNLT",
+                                      "name": "Ms",
+                                      "fill": "$text-3",
+                                      "content": "12 ms",
+                                      "fontFamily": "$font",
+                                      "fontSize": 12,
+                                      "fontWeight": "normal"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "v5nwt",
+                                  "name": "Body",
+                                  "width": "fill_container",
+                                  "fill": "#0B1220",
+                                  "cornerRadius": "$r-sm",
+                                  "padding": 12,
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "IxrsY",
+                                      "name": "B",
+                                      "fill": "#E2E8F0",
+                                      "content": "{ \"status\": \"ok\", \"uptime\": 42 }",
+                                      "fontFamily": "$font-mono",
+                                      "fontSize": 12,
+                                      "fontWeight": "normal"
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "7lF4M",
+                              "name": "Stop",
+                              "gap": 6,
+                              "padding": [
+                                8,
+                                14
+                              ],
+                              "stroke": "$border",
+                              "strokeWidth": 1,
+                              "cornerRadius": "$r-sm",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "pL5ni",
+                                  "name": "Icon",
+                                  "width": 14,
+                                  "height": 14,
+                                  "icon": "square-check",
+                                  "library": "lucide",
+                                  "fill": "$text"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "WvMSo",
+                                  "name": "L",
+                                  "fill": "$text",
+                                  "content": "Stop",
+                                  "fontFamily": "$font",
+                                  "fontSize": 13,
+                                  "fontWeight": "600"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
                           "id": "WFMpy",
                           "name": "Details",
                           "width": "fill_container",

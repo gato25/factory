@@ -1,6 +1,7 @@
 import { loadRunnerConfig } from './config';
 import { dockerHost, run } from './container/host';
 import { log } from './errors';
+import { DEFAULT_IDLE_MS, memoryLaunchStore, sweepLaunches } from './launch/launches';
 import { handlerFor } from './router';
 import { memoryStore } from './runs';
 
@@ -15,10 +16,13 @@ import { memoryStore } from './runs';
  */
 const config = loadRunnerConfig();
 
+const launches = memoryLaunchStore();
+
 const fetch = handlerFor({
   config,
   host: dockerHost,
   store: memoryStore(),
+  launches,
   async probeHost() {
     const probe = await run('docker', ['version', '--format', '{{.Server.Version}}'], {
       timeoutMs: 4000,
@@ -34,5 +38,17 @@ const fetch = handlerFor({
 });
 
 const server = Bun.serve({ port: config.port, fetch });
+
+// Launches nobody is looking at are stopped (003 FR-011). Every minute is
+// often enough for a 30-minute idle period, and the container's own lifetime
+// ceiling is underneath this in any case (FR-012).
+setInterval(() => {
+  void sweepLaunches({ host: dockerHost, store: launches, idleMs: DEFAULT_IDLE_MS }).catch(
+    (error) =>
+      log.warn('the launch sweep failed', {
+        detail: error instanceof Error ? error.message : String(error),
+      }),
+  );
+}, 60_000);
 
 log.info('runner listening', { port: server.port });

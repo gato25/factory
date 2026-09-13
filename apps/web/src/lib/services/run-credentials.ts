@@ -25,7 +25,13 @@ function pipelineNeedsDesign(snapshot: PipelineSnapshot): boolean {
   return snapshot.pipeline.steps.some((step) => step.type === 'design');
 }
 
-async function reveal(
+/**
+ * One stored credential, as a value, for a sandbox. Exported for launches
+ * (003 FR-017), which need the repository token the way a run does and must
+ * get it the same way — sealed at rest, revealed only on this side of the
+ * boundary, handed over as environment.
+ */
+export async function revealCredential(
   database: Database,
   credentialId: string | null,
   ring: KeyRing,
@@ -70,17 +76,22 @@ export async function resolveRunCredentials(
     .limit(1);
   if (!workspace) throw new FactoryError('invalid_input', 'the workspace is not configured');
 
-  const gitToken = await reveal(
+  const gitToken = await revealCredential(
     database,
     snapshot.repo.credential_ref,
     ring,
     'repository credential',
   );
-  const modelKey = await reveal(database, workspace.modelCredentialId, ring, 'model credential');
+  const modelKey = await revealCredential(
+    database,
+    workspace.modelCredentialId,
+    ring,
+    'model credential',
+  );
 
   if (!pipelineNeedsDesign(snapshot)) return { gitToken, modelKey };
 
-  const designKey = await reveal(
+  const designKey = await revealCredential(
     database,
     workspace.designCredentialId,
     ring,

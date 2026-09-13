@@ -61,6 +61,21 @@ way, sealed. Only a repository is left to connect — the one thing that genuine
 press **Test every connection**. The dashboard names anything still missing and links to where it
 is fixed, so you should not need to come back here.
 
+### Seeing a change running
+
+A finished ticket has a **Run it** card. It clones the pushed branch into a fresh sandbox, installs,
+starts the project on a port only your machine can reach, and shows the result on the ticket: the
+running page when the ticket changes the interface, a request console — method, path, headers,
+body in; status, headers, body out — when it does not. You can switch between the two. Stop it, or
+walk away: a launch nobody looks at for thirty minutes stops itself, and the sandbox's own lifetime
+ceiling is underneath that.
+
+The first launch on a repository detects the command from `package.json` and says where the guess
+came from. When it is wrong — or the project is not something the sandbox image can run — set the
+command and port once on the repository (**Repositories → ⋯ → Set how it starts**). Whatever the
+command, the server has to listen on `0.0.0.0` inside the container, not `localhost`; the detected
+commands carry each framework's flag for that, and `HOST` and `PORT` are set in the environment.
+
 ### How the model work is paid for
 
 The model credential in **Settings → Claude CLI & keys** accepts either kind, and which one you

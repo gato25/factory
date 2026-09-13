@@ -31,6 +31,15 @@ export interface ContainerSpec {
   /** Credentials arrive as environment, never as files (FR-083). */
   env: Record<string, string>;
   workdir: string;
+  /**
+   * Container ports to publish on the host's loopback interface (003 FR-006).
+   *
+   * Loopback only, never every interface: a launched project is arbitrary
+   * code from a branch, reachable by whoever can reach the machine, and that
+   * should be the person who pressed the button. The host port is chosen by
+   * Docker and read back with `address`, so two launches cannot collide.
+   */
+  publish?: number[];
 }
 
 export interface ExecResult {
@@ -54,6 +63,11 @@ export interface ContainerHost {
   readFile(containerId: string, path: string): Promise<string | null>;
   /** Null when the path does not exist. Size distinguishes empty from absent. */
   stat(containerId: string, path: string): Promise<{ size: number } | null>;
+  /**
+   * Where a published container port can be reached from the host, as
+   * `host:port`, or null when the port was not published (003 FR-006).
+   */
+  address(containerId: string, port: number): Promise<string | null>;
   destroy(containerId: string): Promise<void>;
 }
 
@@ -73,6 +87,8 @@ export const dockerHost: ContainerHost = {
       '--workdir',
       spec.workdir,
       ...(spec.network ? [] : ['--network', 'none']),
+      // `127.0.0.1::<port>` — loopback, and a host port Docker picks.
+      ...(spec.publish ?? []).flatMap((port) => ['--publish', `127.0.0.1::${port}`]),
       ...Object.keys(spec.env).flatMap((key) => ['--env', key]),
       spec.image,
       'sleep',
@@ -152,6 +168,19 @@ export const dockerHost: ContainerHost = {
     // same answer as readFile (F3).
     await assertContainerAlive(containerId, path);
     return null;
+  },
+
+  async address(containerId, port) {
+    const result = await run('docker', ['port', containerId, `${port}/tcp`]);
+    if (result.exitCode !== 0) return null;
+    // Docker prints one line per bound address, e.g. `127.0.0.1:49153`, and
+    // on some hosts a second for `[::1]`. The loopback IPv4 one is the one a
+    // browser on this machine reaches.
+    const line = result.stdout
+      .split('\n')
+      .map((entry) => entry.trim())
+      .find((entry) => entry.startsWith('127.0.0.1:'));
+    return line ?? null;
   },
 
   async destroy(containerId) {

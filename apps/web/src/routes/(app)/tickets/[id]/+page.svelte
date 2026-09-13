@@ -3,6 +3,7 @@
   import { page } from '$app/state';
   import ArtifactViewer from '$components/ArtifactViewer.svelte';
   import Icon from '$components/Icon.svelte';
+  import LaunchPanel from '$components/LaunchPanel.svelte';
   import LiveLog from '$components/LiveLog.svelte';
   import RequirementFiles from '$components/RequirementFiles.svelte';
   import RunDetails from '$components/RunDetails.svelte';
@@ -322,6 +323,15 @@
             artifacts={loaded.artifacts}
             mergeRequestUrl={loaded.ticket.mergeRequestUrl}
             branchName={loaded.ticket.branchName}
+          />
+          <!-- The branch, running (003). Under the artifacts because the
+               merge request is what a reviewer reads first, and this is what
+               they press to see whether it works. -->
+          <LaunchPanel
+            ticketId={loaded.ticket.id}
+            status={loaded.ticket.status}
+            branchName={loaded.ticket.branchName}
+            hasUi={loaded.ticket.hasUi}
           />
           <RequirementFiles ticketId={loaded.ticket.id} hasRun={true} />
           <RunDetails view={loaded} />

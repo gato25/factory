@@ -11,6 +11,7 @@ import {
   listRepositories,
   replaceCredential,
   setDefaultPipeline,
+  setRunSettings,
 } from '$lib/services/repository';
 
 /**
@@ -86,6 +87,40 @@ export const changeDefaultPipeline = command(
     requireAdmin(user());
     await setDefaultPipeline(db(), repositoryId, pipelineId || null);
     await repositories().refresh();
+  },
+);
+
+/**
+ * How this repository's projects start when a ticket is launched (003
+ * FR-005). Empty fields mean "detect it". Administrator-only, like every other
+ * change to a repository.
+ */
+export const changeRunSettings = form(
+  v.object({
+    repositoryId: v.pipe(v.string(), v.uuid()),
+    command: v.pipe(
+      v.optional(v.string(), ''),
+      v.trim(),
+      v.maxLength(500, 'Keep the start command under 500 characters.'),
+    ),
+    port: v.pipe(
+      v.optional(v.string(), ''),
+      v.trim(),
+      v.check(
+        (text) =>
+          text === '' || (/^\d{1,5}$/.test(text) && Number(text) >= 1 && Number(text) <= 65535),
+        'The port has to be a whole number between 1 and 65535.',
+      ),
+    ),
+  }),
+  async (data) => {
+    requireAdmin(user());
+    await setRunSettings(db(), data.repositoryId, {
+      command: data.command || null,
+      port: data.port === '' ? null : Number(data.port),
+    });
+    await repositories().refresh();
+    return { saved: true };
   },
 );
 

@@ -52,6 +52,14 @@ export class FakeHost implements ContainerHost {
     return content === undefined ? null : { size: content.length };
   }
 
+  async address(containerId: string, port: number): Promise<string | null> {
+    const index = Number(containerId.replace('container-', ''));
+    const spec = this.created[index - 1];
+    if (!spec?.publish?.includes(port)) return null;
+    // Deterministic, so a test can assert the address a launch reports.
+    return `127.0.0.1:${40000 + index * 10 + spec.publish.indexOf(port)}`;
+  }
+
   async destroy(containerId: string): Promise<void> {
     this.destroyed.push(containerId);
   }

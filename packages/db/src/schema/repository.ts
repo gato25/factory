@@ -1,4 +1,4 @@
-import { pgEnum, pgTable, text, uuid } from 'drizzle-orm/pg-core';
+import { integer, pgEnum, pgTable, text, uuid } from 'drizzle-orm/pg-core';
 import { idColumn, timestamps } from './_shared';
 import { users } from './workspace';
 
@@ -43,5 +43,13 @@ export const repositories = pgTable('repositories', {
   defaultPipelineId: uuid('default_pipeline_id'),
   status: repositoryStatus('status').notNull().default('connected'),
   statusDetail: text('status_detail'),
+  /**
+   * How to start this project for a launch (003 FR-005). Null means "detect
+   * it from the workspace"; a value overrides detection entirely. Set once
+   * per repository, because a wrong guess should cost one edit rather than a
+   * failed start every time.
+   */
+  runCommand: text('run_command'),
+  runPort: integer('run_port'),
   ...timestamps(),
 });

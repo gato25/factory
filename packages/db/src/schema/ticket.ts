@@ -1,4 +1,14 @@
-import { boolean, integer, pgEnum, pgTable, text, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+import {
+  boolean,
+  integer,
+  pgEnum,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+} from 'drizzle-orm/pg-core';
 import { idColumn, timestamps } from './_shared';
 import { pipelines } from './pipeline';
 import { repositories } from './repository';
@@ -76,4 +86,45 @@ export const ticketFiles = pgTable(
   // two files of the same name would write over each other in the sandbox,
   // and the one an agent read would be decided by insertion order.
   (t) => [uniqueIndex('ticket_files_ticket_name_key').on(t.ticketId, t.name)],
+);
+
+export const launchStatus = pgEnum('launch_status', ['starting', 'running', 'failed', 'stopped']);
+
+/**
+ * A ticket's branch, running on a real port (003 FR-001).
+ *
+ * The container itself lives in the execution service and dies with it; this
+ * row is what lets the ticket page find a launch again after a reload, show
+ * how it ended, and stop it. `stoppedAt` set means the row is history: a
+ * ticket has at most one launch that is not stopped, enforced below rather
+ * than in application logic, because two would both hold a port and one of
+ * them would be forgotten.
+ */
+export const launches = pgTable(
+  'launches',
+  {
+    id: idColumn(),
+    ticketId: uuid('ticket_id')
+      .notNull()
+      .references(() => tickets.id, { onDelete: 'cascade' }),
+    repositoryId: uuid('repository_id')
+      .notNull()
+      .references(() => repositories.id),
+    /** The execution service's own identifier for the running container. */
+    runnerLaunchId: text('runner_launch_id').notNull(),
+    branch: text('branch').notNull(),
+    /** What was actually run, whether detected or set on the repository. */
+    command: text('command').notNull(),
+    /** `http://127.0.0.1:<port>` on the machine the execution service runs on. */
+    url: text('url'),
+    status: launchStatus('status').notNull().default('starting'),
+    /** Why it failed, or the last lines of output — for the screen. */
+    detail: text('detail'),
+    startedBy: uuid('started_by').references(() => users.id),
+    stoppedAt: timestamp('stopped_at', { withTimezone: true }),
+    ...timestamps(),
+  },
+  (t) => [
+    uniqueIndex('launches_one_live_per_ticket').on(t.ticketId).where(sql`${t.stoppedAt} is null`),
+  ],
 );

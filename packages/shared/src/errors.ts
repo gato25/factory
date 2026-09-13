@@ -19,6 +19,8 @@ export type FailureReason =
    * application that is down.
    */
   | 'app_unreachable'
+  /** The application could not reach the execution service (003). */
+  | 'runner_unreachable'
   | 'command_failed'
   | 'not_authorised'
   | 'conflict'

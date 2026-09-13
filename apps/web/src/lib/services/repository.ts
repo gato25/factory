@@ -1,6 +1,6 @@
 import type { Database } from '@factory/db';
 import { credentials, pipelines, repositories, tickets } from '@factory/db/schema';
-import { FactoryError, notFound } from '@factory/shared';
+import { FactoryError, invalidInput, notFound } from '@factory/shared';
 import { count, eq, inArray } from 'drizzle-orm';
 import { type KeyRing, seal } from '$lib/secrets/store';
 import {
@@ -228,4 +228,35 @@ export async function setDefaultPipeline(
     .returning({ defaultPipelineId: repositories.defaultPipelineId });
   if (updated.length === 0) throw notFound('no such repository');
   return { defaultPipelineId: updated[0]?.defaultPipelineId ?? null };
+}
+
+/**
+ * How this repository's projects start when launched (003 FR-005).
+ *
+ * Both empty means detect from the workspace; either set overrides that part.
+ * The command runs through a shell inside the sandbox with `PORT` and `HOST`
+ * set, so `npm run dev -- --host 0.0.0.0 --port $PORT` is the shape to write.
+ */
+export async function setRunSettings(
+  database: Database,
+  repositoryId: string,
+  input: { command: string | null; port: number | null },
+): Promise<{ runCommand: string | null; runPort: number | null }> {
+  const command = input.command?.trim() || null;
+  if (command && command.length > 500)
+    throw invalidInput('Keep the start command under 500 characters.');
+  if (
+    input.port !== null &&
+    !(Number.isInteger(input.port) && input.port > 0 && input.port < 65536)
+  ) {
+    throw invalidInput('The port has to be a whole number between 1 and 65535.');
+  }
+  const updated = await database
+    .update(repositories)
+    .set({ runCommand: command, runPort: input.port, updatedAt: new Date() })
+    .where(eq(repositories.id, repositoryId))
+    .returning({ runCommand: repositories.runCommand, runPort: repositories.runPort });
+  const row = updated[0];
+  if (!row) throw notFound('no such repository');
+  return row;
 }

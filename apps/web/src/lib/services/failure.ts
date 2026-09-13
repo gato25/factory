@@ -78,6 +78,11 @@ const EXPLANATIONS: Record<FailureReason, { what: string; next: string; needsACh
     next: 'Nothing is wrong with the ticket. Check that the execution service can reach the address in PUBLIC_BASE_URL, then retry.',
     needsAChange: false,
   },
+  runner_unreachable: {
+    what: 'This application could not reach the execution service.',
+    next: 'Nothing is wrong with the ticket. Check the runner address in Settings and that the runner is running, then try again.',
+    needsAChange: false,
+  },
   command_failed: {
     what: 'A command the pipeline runs exited with an error.',
     next: 'Read the step output to see which command and why. If it is the repository, fix that first.',

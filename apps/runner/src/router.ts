@@ -4,6 +4,14 @@ import type { RunnerConfig } from './config';
 import type { ContainerHost } from './container/host';
 import { log, toResponse } from './errors';
 import {
+  beginLaunch,
+  type LaunchDeps,
+  type LaunchStore,
+  lookAtLaunch,
+  memoryLaunchStore,
+  stopLaunch,
+} from './launch/launches';
+import {
   callbackSender,
   destroyRun,
   fetchCredentials,
@@ -37,6 +45,13 @@ export interface RouterDeps {
    * different questions with different failure modes (FR-020, T030).
    */
   probeHost: () => Promise<{ reachable: boolean; detail: string }>;
+  /**
+   * Where launches live between requests (003). Optional: a deployment that
+   * never launches anything — and every existing test — need not supply one.
+   */
+  launches?: LaunchStore;
+  /** Tunables for the launch lifecycle, injected by tests. */
+  launchDeps?: Partial<Omit<LaunchDeps, 'host' | 'store'>>;
 }
 
 interface Route {
@@ -47,7 +62,87 @@ interface Route {
 
 export function routesFor(deps: RouterDeps): Route[] {
   const { config, host, store, probeHost } = deps;
+  const launchDeps: LaunchDeps = {
+    host,
+    store: deps.launches ?? memoryLaunchStore(),
+    ...deps.launchDeps,
+  };
   return [
+    // --- launches: a ticket's branch, running (003, contracts/launches.md) ---
+    {
+      method: 'POST',
+      pattern: /^\/launches$/,
+      async handle(_match, request) {
+        const body = (await request.json()) as {
+          clone_url?: string;
+          branch?: string;
+          git_token?: string;
+          command?: string;
+          port?: number;
+          sandbox?: {
+            image?: string;
+            cpu?: number;
+            memory_mb?: number;
+            wall_clock_minutes?: number;
+          };
+        };
+        if (!body.clone_url || !body.branch || !body.git_token) {
+          throw new FactoryError('invalid_input', 'expected clone_url, branch and git_token');
+        }
+        if (
+          body.port !== undefined &&
+          !(Number.isInteger(body.port) && body.port > 0 && body.port < 65536)
+        ) {
+          throw new FactoryError(
+            'invalid_input',
+            'port must be a whole number between 1 and 65535',
+          );
+        }
+        const record = beginLaunch(launchDeps, {
+          cloneUrl: body.clone_url,
+          branch: body.branch,
+          gitToken: body.git_token,
+          ...(body.command ? { command: body.command } : {}),
+          ...(body.port ? { port: body.port } : {}),
+          sandbox: {
+            image: body.sandbox?.image || config.sandboxImage,
+            cpu: body.sandbox?.cpu ?? 2,
+            memoryMb: body.sandbox?.memory_mb ?? 4096,
+            wallClockMinutes: body.sandbox?.wall_clock_minutes ?? 90,
+            networkDuringImplement: true,
+          },
+        });
+        log.info('launch begun', { launch_id: record.id, branch: record.branch });
+        return Response.json({ launch_id: record.id, status: record.status }, { status: 202 });
+      },
+    },
+    {
+      method: 'GET',
+      pattern: /^\/launches\/([^/]+)$/,
+      async handle(match) {
+        const looked = await lookAtLaunch(launchDeps, match[1] as string);
+        if (!looked) throw new FactoryError('not_found', 'no such launch');
+        return Response.json({
+          launch_id: looked.id,
+          status: looked.status,
+          address: looked.address,
+          command: looked.command,
+          port: looked.port,
+          from: looked.from,
+          notes: looked.notes,
+          detail: looked.detail,
+          log: looked.log,
+        });
+      },
+    },
+    {
+      method: 'DELETE',
+      pattern: /^\/launches\/([^/]+)$/,
+      async handle(match) {
+        const result = await stopLaunch(launchDeps, match[1] as string);
+        return Response.json(result);
+      },
+    },
     {
       method: 'POST',
       pattern: /^\/runs\/([^/]+)\/start$/,
