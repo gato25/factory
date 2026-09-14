@@ -2,6 +2,8 @@
 
 **Branch**: `003-launch-branch` | **Date**: 2026-09-13 | **Spec**: [spec.md](./spec.md)
 
+**Research**: [research.md](./research.md) · **Data model**: [data-model.md](./data-model.md) · **Quickstart**: [quickstart.md](./quickstart.md) · **Contract**: [contracts/launches.md](./contracts/launches.md) · **Tasks**: [tasks.md](./tasks.md)
+
 ## Summary
 
 A **launch** is a fresh sandbox that clones the ticket's pushed branch, installs, and starts the
@@ -60,3 +62,9 @@ specs/003-launch-branch/contracts/launches.md
   loop checks it, so a crash on boot fails in seconds rather than after the start period (FR-009).
 - **D5 — Detection in the sandbox.** The files are read from the cloned workspace, not fetched from
   the provider: no second provider client, and detection sees exactly what will run.
+- **D6 — The address a browser opens** is the execution service's host name from Settings plus the
+  port the container runtime chose; the page is framed at that address, not proxied.
+- **D7 — On the ticket, after the run; detected, with a per-repository override.** The two
+  questions put to the product owner before building; both answers were the recommended ones.
+
+The alternatives each decision was chosen over, and every figure, are in [research.md](./research.md).

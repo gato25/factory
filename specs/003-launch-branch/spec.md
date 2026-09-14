@@ -6,6 +6,10 @@
 
 **Status**: Accepted
 
+**Last revised**: 2026-09-14 — after the card was rendered at the design's width and reviewed.
+FR-018 and FR-019, two acceptance scenarios and three edge cases were added; one edge case lost an
+implementation detail. The review is recorded in [checklists/requirements.md](./checklists/requirements.md).
+
 **Input**: User description: "I want to run projects — clicking a Start button, then it starts on a real port. If it has a UI, show the live page; if not, a Postman-like thing."
 
 ## User Scenarios & Testing *(mandatory)*
@@ -41,6 +45,11 @@ answers HTTP; press Stop and the address stops answering.
    address stops answering, and the ticket says so.
 5. **Given** a running launch nobody has looked at for the idle period, **When** the period
    passes, **Then** it is stopped without anybody pressing anything, and the ticket says why.
+6. **Given** a running launch, **When** a full address is typed where the console expects a path,
+   **Then** it is refused with a message saying to type a path, and nothing is sent.
+7. **Given** a running launch whose answer is larger than the console shows, **When** the request
+   is sent, **Then** the first part is shown with a note that it was cut short, and the rest is
+   not read.
 
 ---
 
@@ -82,7 +91,13 @@ tickets, and observe that command in the launch's record and its output.
 - The project starts but never listens on the port it was told. After the start period the launch
   fails and says which port it waited on.
 - Two Run its on one ticket: the second is refused while the first is not stopped. One ticket, at
-  most one live launch, enforced in the database rather than by the button.
+  most one live launch, enforced where launches are recorded rather than by the button.
+- The execution service restarts and forgets a launch it was running. The next look reports it
+  stopped and names the restart, rather than showing a running launch that no longer exists.
+- The ticket's column is narrow. The console shows the launch's address once, on the card, and
+  its request line holds method, path and Send, so the path stays typeable.
+- The card makes the ticket's right-hand column taller than the log beside it. The log keeps its
+  own height rather than stretching to match, and stays in view while the column scrolls.
 - The launch's container reaches the sandbox lifetime ceiling while still "running": the next look
   at it reports it stopped and says the lifetime is why.
 - Only text answers are shown in the console; a binary body is described by size and type, not
@@ -128,6 +143,12 @@ tickets, and observe that command in the launch's record and its output.
   nothing this can run: no start script, a Dockerfile, or a language the sandbox image lacks.
 - **FR-017**: The repository credential MUST reach the launch's sandbox as environment, never
   written into its workspace, exactly as it reaches a run.
+- **FR-018**: The request console MUST send only to the launch's own address. A path that is a
+  full address MUST be refused before anything is sent, so the console cannot be turned into a way
+  of reaching anything else from the application.
+- **FR-019**: The console MUST show at most a bounded amount of a response body, MUST say when it
+  has cut one short, and MUST stop reading beyond that amount, so a project that answers without
+  end cannot exhaust the application.
 
 ### Key Entities
 
@@ -161,3 +182,8 @@ tickets, and observe that command in the launch's record and its output.
   somebody needs otherwise.
 - A launch runs the branch as pushed. It does not run a checkpoint's uncommitted workspace; that is
   a later feature.
+- The console shows up to 256 KB of a response body and waits up to 15 seconds for an answer;
+  both are constants until somebody needs otherwise.
+- The address a browser opens is the execution service's host name from Settings together with
+  the launch's port. The person's browser is assumed to reach that name, which is true when both
+  run on one machine.

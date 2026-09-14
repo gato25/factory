@@ -18,7 +18,7 @@ All routes are bearer-authenticated like every other route.
 ```json
 { "launch_id": "…", "status": "starting|running|failed|stopped",
   "address": "127.0.0.1:49153", "command": "…", "port": 5173,
-  "from": "package.json — Vite, via `npm run dev`", "notes": ["…"],
+  "from": "package.json — Vite, npm run dev", "notes": ["…"],
   "detail": "why it failed or stopped", "log": ["last lines of the project's output"] }
 ```
 

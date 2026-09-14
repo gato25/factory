@@ -11,10 +11,10 @@
 ## Phase 2: US1 — see the implementation running (P1) 🎯 MVP
 
 - [x] T004 Lifecycle `apps/runner/src/launch/launches.ts`: clone, install, detached start with exit
-      sentinel, readiness, idle sweep, stop (FR-002, FR-007..FR-012, D1, D4)
+      sentinel, readiness, idle sweep, stop (FR-002, FR-007..FR-012, FR-017, D1, D4)
 - [x] T005 Routes `POST/GET/DELETE /launches` (contracts/launches.md)
 - [x] T006 Web `runner-client.ts`; `launch.ts` records, refresh, stop, server-side console (FR-001,
-      FR-003, FR-013..FR-015, D2)
+      FR-003, FR-013..FR-015, FR-018, FR-019, D2)
 - [x] T007 `launches.remote.ts`; `LaunchPanel.svelte`, `RequestConsole.svelte`; ticket page card
 - [x] T008 Tests: detection (unit), lifecycle through the router (FakeHost + fake fetch), console
       shaping (unit); record layer (integration, Postgres)
@@ -28,4 +28,9 @@
 ## Phase 4: Polish
 
 - [x] T012 README section
-- [ ] T013 Run a launch against a real Docker daemon (needs a machine with one)
+- [x] T014 Render the card at the design's width from the components' own CSS and fix what it
+      showed: the console's request line, the "Command from" wording, the log's height (`c36c1d3`)
+- [x] T015 Complete the specification set — checklist, research, data model, quickstart; FR-018 and
+      FR-019 for the console's two security properties, which were in code with nothing to trace to
+- [ ] T013 Run a launch against a real Docker daemon — [quickstart.md](./quickstart.md) is the
+      script (needs a machine with one)
