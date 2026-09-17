@@ -48,8 +48,17 @@ export class ClaudeStreamRenderer {
   resultJson: string | null = null;
   /** The agent's closing message, for the step's summary. */
   resultText: string | null = null;
+  /** How many tools the agent has called, and the last one, for the heartbeat. */
+  toolCalls = 0;
+  lastTool: string | null = null;
 
   constructor(private readonly write: (text: string) => void) {}
+
+  /** What the heartbeat says a quiet step has done so far. */
+  progress(): string {
+    if (this.toolCalls === 0) return 'no tool calls yet';
+    return `${this.toolCalls} tool call${this.toolCalls === 1 ? '' : 's'} so far, last: ${this.lastTool}`;
+  }
 
   /** Output as it arrives, in whatever pieces the pipe delivers it. */
   feed(text: string): void {
@@ -100,7 +109,10 @@ export class ClaudeStreamRenderer {
           if (block.type === 'text' && 'text' in block && block.text.trim()) {
             this.write(`${block.text.trim()}\n`);
           } else if (block.type === 'tool_use' && 'name' in block) {
-            this.write(`${`▶ ${block.name} ${describe(block.name, block.input)}`.trimEnd()}\n`);
+            const call = `▶ ${block.name} ${describe(block.name, block.input)}`.trimEnd();
+            this.toolCalls += 1;
+            this.lastTool = call.slice(2);
+            this.write(`${call}\n`);
           }
         }
         return;
@@ -214,4 +226,62 @@ function duration(ms: number): string {
   if (seconds < 60) return `${seconds}s`;
   const minutes = Math.floor(seconds / 60);
   return `${minutes}m ${String(seconds % 60).padStart(2, '0')}s`;
+}
+
+/**
+ * A line during silence, so a long turn does not look like a hang.
+ *
+ * Between two tool calls the model can think for a minute, and for that
+ * minute the stream is empty. Somebody watching cannot tell that from a
+ * step that has stopped. So when nothing has arrived for `quietMs`, one line
+ * says how long the step has been going and what it last did — and repeats
+ * at that interval for as long as the silence lasts. Every real event resets
+ * the clock, so a busy step never sees one.
+ */
+export class Heartbeat {
+  private readonly started: number;
+  private lastActivity: number;
+  private timer: ReturnType<typeof setInterval> | null = null;
+
+  constructor(
+    private readonly write: (text: string) => void,
+    private readonly progress: () => string,
+    private readonly options: { quietMs?: number; now?: () => number } = {},
+  ) {
+    this.started = this.now();
+    this.lastActivity = this.started;
+  }
+
+  private now(): number {
+    return (this.options.now ?? Date.now)();
+  }
+
+  private get quietMs(): number {
+    return this.options.quietMs ?? 30_000;
+  }
+
+  /** Something arrived, so the silence is over. */
+  activity(): void {
+    this.lastActivity = this.now();
+  }
+
+  /** Writes the line if the silence has lasted long enough. Exposed for tests. */
+  tick(): void {
+    const now = this.now();
+    if (now - this.lastActivity < this.quietMs) return;
+    const detail = this.progress();
+    this.write(`· still working — ${duration(now - this.started)}${detail ? `, ${detail}` : ''}\n`);
+    this.lastActivity = now;
+  }
+
+  start(): void {
+    if (this.timer) return;
+    this.timer = setInterval(() => this.tick(), Math.max(1000, Math.floor(this.quietMs / 3)));
+    (this.timer as { unref?: () => void }).unref?.();
+  }
+
+  stop(): void {
+    if (this.timer) clearInterval(this.timer);
+    this.timer = null;
+  }
 }

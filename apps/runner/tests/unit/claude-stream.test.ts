@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { ClaudeStreamRenderer } from '../../src/engines/claude-stream';
+import { ClaudeStreamRenderer, Heartbeat } from '../../src/engines/claude-stream';
 import { usageFromClaudeJson } from '../../src/engines/usage';
 
 /**
@@ -166,4 +166,45 @@ test('an empty object is nothing, not a result', () => {
   const { lines, renderer } = render(['{}\n']);
   expect(lines).toEqual([]);
   expect(renderer.resultJson).toBeNull();
+});
+
+describe('the heartbeat during silence', () => {
+  test('says how long and what was last done, and only after the quiet period', () => {
+    let clock = 1_000_000;
+    let out = '';
+    const renderer = new ClaudeStreamRenderer(() => {});
+    const beat = new Heartbeat(
+      (text) => {
+        out += text;
+      },
+      () => renderer.progress(),
+      { quietMs: 30_000, now: () => clock },
+    );
+    renderer.feed(`${read}\n`);
+    beat.activity();
+
+    clock += 20_000;
+    beat.tick();
+    expect(out).toBe('');
+
+    clock += 15_000;
+    beat.tick();
+    expect(out).toBe(
+      '· still working — 35s, 1 tool call so far, last: Read src/routes/admin/+page.svelte\n',
+    );
+
+    // It repeats for as long as the silence lasts, and no sooner.
+    clock += 10_000;
+    beat.tick();
+    expect(out.split('\n').filter(Boolean)).toHaveLength(1);
+    clock += 25_000;
+    beat.tick();
+    expect(out.split('\n').filter(Boolean)).toHaveLength(2);
+    expect(out).toContain('1m 10s');
+  });
+
+  test('a step that has called nothing yet says so', () => {
+    const renderer = new ClaudeStreamRenderer(() => {});
+    expect(renderer.progress()).toBe('no tool calls yet');
+  });
 });

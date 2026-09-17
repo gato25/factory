@@ -11,7 +11,7 @@ import { WORKDIR } from '../container/start';
 import { checkRequiredOutputs } from '../outputs/check';
 import { parseClassification } from '../outputs/classification';
 import type { LogSink } from '../stream/logs';
-import { ClaudeStreamRenderer } from './claude-stream';
+import { ClaudeStreamRenderer, Heartbeat } from './claude-stream';
 import { applyLimits, effectiveLimits, timeoutMsFor } from './limits';
 import { usageFromClaudeJson } from './usage';
 
@@ -97,12 +97,27 @@ export async function runClaudeStep(
   // The agent's own limits, capped at what the run may still consume (FR-080).
   const limits = effectiveLimits(input.agent, input.snapshot.limits, input.spentSoFarUsd);
   const rendered = new ClaudeStreamRenderer((text) => input.logs.write('stdout', text));
-  const result = await host.exec(input.containerId, argv, {
-    cwd: WORKDIR,
-    timeoutMs: timeoutMsFor(limits),
-    onOutput: (stream, text) =>
-      stream === 'stdout' ? rendered.feed(text) : input.logs.write('stderr', text),
-  });
+  // A line every half minute of silence, so a long turn is not mistaken for
+  // a step that has stopped (FR-076).
+  const heartbeat = new Heartbeat(
+    (text) => input.logs.write('stdout', text),
+    () => rendered.progress(),
+  );
+  heartbeat.start();
+  let result: Awaited<ReturnType<typeof host.exec>>;
+  try {
+    result = await host.exec(input.containerId, argv, {
+      cwd: WORKDIR,
+      timeoutMs: timeoutMsFor(limits),
+      onOutput: (stream, text) => {
+        heartbeat.activity();
+        if (stream === 'stdout') rendered.feed(text);
+        else input.logs.write('stderr', text);
+      },
+    });
+  } finally {
+    heartbeat.stop();
+  }
   rendered.end();
   input.logs.end();
 
