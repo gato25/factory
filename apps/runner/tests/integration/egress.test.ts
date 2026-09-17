@@ -260,3 +260,27 @@ describe('a pipeline that needs the model in a sandbox that has no network', () 
     expect(host.disconnected).toEqual(['container-1']);
   });
 });
+
+/**
+ * Where nothing can be isolated, the setting is not a refusal.
+ *
+ * Runs on a development machine execute as processes, and a process cannot be
+ * cut off from the network. The default setting asks for exactly that, so the
+ * first ticket on every fresh install was refused for a reason nothing on the
+ * machine could satisfy. The host says it cannot isolate; the run proceeds
+ * connected and the log says so, which is the honest version of the setting.
+ */
+describe('a host that cannot isolate', () => {
+  test('starts an agent pipeline connected instead of refusing it', async () => {
+    (host as { isolates?: boolean }).isolates = false;
+    const response = await call('POST', `/runs/${snapshot.run_id}/start`, {
+      snapshot,
+      credentials,
+      sandbox: isolated,
+    });
+    expect(response.status).toBeLessThan(400);
+    expect(host.created).toHaveLength(1);
+    expect(host.created[0]?.network).toBe(true);
+    expect(host.disconnected).toEqual([]);
+  });
+});

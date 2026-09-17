@@ -286,16 +286,22 @@ describe.each(
     expect((thrown as FactoryError).reason).toBe('sandbox_lost');
   });
 
-  test.skipIf(!candidate.usesImage)('C9: a failure leaves nothing running', async () => {
-    let thrown: unknown;
-    try {
-      await host.create({ ...spec, image: 'factory/does-not-exist:no-such-tag' });
-    } catch (error) {
-      thrown = error;
-    }
-    expect(thrown).toBeInstanceOf(FactoryError);
-    expect((thrown as FactoryError).reason).toBe('sandbox_lost');
-  });
+  test.skipIf(!candidate.usesImage)(
+    'C9: a failure leaves nothing running',
+    async () => {
+      // A missing image makes Docker try the registry before it gives up, which
+      // on a busy daemon takes longer than the default five seconds.
+      let thrown: unknown;
+      try {
+        await host.create({ ...spec, image: 'factory/does-not-exist:no-such-tag' });
+      } catch (error) {
+        thrown = error;
+      }
+      expect(thrown).toBeInstanceOf(FactoryError);
+      expect((thrown as FactoryError).reason).toBe('sandbox_lost');
+    },
+    30_000,
+  );
 });
 
 /**

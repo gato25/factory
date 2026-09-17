@@ -176,6 +176,7 @@ export function processHost(options: ProcessHostOptions = {}): ContainerHost & {
 
   const host: ContainerHost & { root: string } = {
     root,
+    isolates: false,
 
     async create(spec: ContainerSpec): Promise<string> {
       if (!spec.network) {

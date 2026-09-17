@@ -61,6 +61,16 @@ export interface ExecOptions {
 }
 
 export interface ContainerHost {
+  /**
+   * Whether this host can take a sandbox off the network at all.
+   *
+   * A container can be disconnected; a process on the machine it runs on
+   * cannot. Where it cannot, the workspace's "no network while code is
+   * written" setting is not applied and the run says so, rather than being
+   * refused for asking something no run here could ever be granted.
+   * Absent means yes, which is what every host but the process host is.
+   */
+  readonly isolates?: boolean;
   create(spec: ContainerSpec): Promise<string>;
   exec(containerId: string, argv: string[], options?: ExecOptions): Promise<ExecResult>;
   writeFile(containerId: string, path: string, content: string): Promise<void>;

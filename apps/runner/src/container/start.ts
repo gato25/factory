@@ -1,4 +1,5 @@
 import { FactoryError, type PipelineSnapshot } from '@factory/shared';
+import { log } from '../errors';
 import { writeAgentConfig } from './config';
 import type { ContainerHost, ContainerSpec } from './host';
 import { fetchRequirementFiles, writeRequirementFiles } from './requirements';
@@ -81,8 +82,25 @@ export async function startRunWorkspace(
    *
    * So the combination is refused, and the message names the setting.
    */
+  /**
+   * On a host that cannot isolate — processes on this machine — the setting
+   * is not applied and the run proceeds connected, with that said in the log.
+   * Refusing instead would mean no run could start on the default settings
+   * for a reason nothing on that machine could ever satisfy; and applying it
+   * is not available, so pretending to would be the worse dishonesty.
+   */
+  const canIsolate = host.isolates !== false;
+  if (!input.sandbox.networkDuringImplement && !canIsolate) {
+    log.warn(
+      'this workspace keeps a sandbox off the network while code is written, but runs here ' +
+        'execute as processes on this machine, which cannot be cut off — the run proceeds connected',
+      { run_id: input.snapshot.run_id },
+    );
+  }
+  const isolate = !input.sandbox.networkDuringImplement && canIsolate;
+
   const modelSteps = input.snapshot.pipeline.steps.filter((step) => NEEDS_THE_MODEL.has(step.type));
-  if (!input.sandbox.networkDuringImplement && modelSteps.length > 0) {
+  if (isolate && modelSteps.length > 0) {
     throw new FactoryError(
       'invalid_input',
       'This pipeline has steps that reach the model from inside the sandbox, and this ' +
@@ -101,7 +119,7 @@ export async function startRunWorkspace(
     cpu: input.sandbox.cpu,
     memoryMb: input.sandbox.memoryMb,
     wallClockMinutes: input.sandbox.wallClockMinutes,
-    network: input.sandbox.networkDuringImplement,
+    network: !isolate,
     env,
     workdir: WORKDIR,
   };
@@ -129,7 +147,7 @@ export async function startRunWorkspace(
     // start, and the sandbox is destroyed below. Carrying on would leave an
     // agent writing code in a container with the internet, in a workspace
     // that had asked for the opposite.
-    if (!input.sandbox.networkDuringImplement) await host.disconnectNetwork(containerId);
+    if (isolate) await host.disconnectNetwork(containerId);
     return { containerId };
   } catch (error) {
     // Never leave a half-prepared sandbox behind.
