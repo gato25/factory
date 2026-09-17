@@ -71,7 +71,7 @@ export const retry = command(TicketId, async (ticketId) => {
     const config = loadWebConfig();
     const { run, snapshot } = await retryRun(db(), {
       ticketId,
-      callbackBaseUrl: config.publicBaseUrl,
+      callbackBaseUrl: config.callbackBaseUrl,
     });
     const delivered = await handOver(
       db(),
@@ -105,7 +105,7 @@ export const editRetry = command(EditAndRetry, async (input) => {
     const config = loadWebConfig();
     const { run, snapshot } = await editAndRetry(db(), {
       ticketId: input.ticketId,
-      callbackBaseUrl: config.publicBaseUrl,
+      callbackBaseUrl: config.callbackBaseUrl,
       title: input.title,
       description: input.description,
       acceptanceCriteria:

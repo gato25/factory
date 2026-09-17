@@ -47,7 +47,14 @@
 </script>
 
 <div class="wrap">
-  <form {...create} class="card form">
+  <!--
+    `enctype` because this form carries a file input (the requirement files).
+    Without it a native submit sends the file NAMES and not the files, so the
+    enhanced and unenhanced paths disagree — which is what SvelteKit warns
+    about rather than silently allowing. It goes after the spread so it is not
+    overwritten by it.
+  -->
+  <form {...create} enctype="multipart/form-data" class="card form">
     <h1>Describe what you want built</h1>
 
     <div class="field">

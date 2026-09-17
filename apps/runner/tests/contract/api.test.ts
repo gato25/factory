@@ -19,7 +19,9 @@ test('start creates one fresh non-root container with the configured ceilings', 
       cpu: 2,
       memoryMb: 4096,
       wallClockMinutes: 45,
-      networkDuringImplement: false,
+      // These fixtures run the standard pipeline, whose agent steps reach the
+      // model from inside the sandbox; the isolated combination is refused.
+      networkDuringImplement: true,
     },
   });
   expect(containerId).toBe('container-1');
@@ -29,7 +31,7 @@ test('start creates one fresh non-root container with the configured ceilings', 
     cpu: 2,
     memoryMb: 4096,
     wallClockMinutes: 45,
-    network: false,
+    network: true,
     workdir: '/work',
   });
 });
@@ -99,7 +101,9 @@ test('start clones the CURRENT default branch, then checks out the run branch (F
       cpu: 1,
       memoryMb: 512,
       wallClockMinutes: 10,
-      networkDuringImplement: false,
+      // These fixtures run the standard pipeline, whose agent steps reach the
+      // model from inside the sandbox; the isolated combination is refused.
+      networkDuringImplement: true,
     },
   });
   const clone = host.calls.map((c) => c.argv.join(' ')).find((s) => s.includes('git clone'));
@@ -123,7 +127,9 @@ test('a rejected token is reported as a credential problem, not a sandbox proble
         cpu: 1,
         memoryMb: 512,
         wallClockMinutes: 10,
-        networkDuringImplement: false,
+        // These fixtures run the standard pipeline, whose agent steps reach the
+        // model from inside the sandbox; the isolated combination is refused.
+        networkDuringImplement: true,
       },
     }),
   ).rejects.toThrow(/access token was rejected/);
@@ -141,7 +147,9 @@ test("agent prompts and skills are written with the run's values substituted (FR
       cpu: 1,
       memoryMb: 512,
       wallClockMinutes: 10,
-      networkDuringImplement: false,
+      // These fixtures run the standard pipeline, whose agent steps reach the
+      // model from inside the sandbox; the isolated combination is refused.
+      networkDuringImplement: true,
     },
   });
   const prompt = host.files.get('/work/.claude/agents/spec.md');

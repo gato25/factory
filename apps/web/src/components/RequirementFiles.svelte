@@ -70,7 +70,8 @@
     <p class="empty">Nothing attached. Agents work from the ticket text alone.</p>
   {/if}
 
-  <form {...attach}>
+  <!-- Same reason as the new-ticket form: a file input needs this to submit files. -->
+  <form {...attach} enctype="multipart/form-data">
     <input type="hidden" name="ticketId" value={ticketId} />
     <FilePicker />
     <button class="add" type="submit">

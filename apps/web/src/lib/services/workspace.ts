@@ -342,6 +342,7 @@ async function attachCredential(
 export interface WorkspaceBootstrapInput {
   runnerBaseUrl?: string;
   orchestratorBaseUrl?: string;
+  orchestratorWorkflowId?: string;
   /** The model credential itself. Sealed with `ring` before it is stored. */
   modelKey?: string;
   ring?: KeyRing;
@@ -375,18 +376,21 @@ export async function bootstrapWorkspace(
 
   const wantsRunner = input.runnerBaseUrl && !workspace.runnerBaseUrl;
   const wantsOrchestrator = input.orchestratorBaseUrl && !workspace.orchestratorBaseUrl;
-  if (wantsRunner || wantsOrchestrator) {
+  const wantsWorkflow = input.orchestratorWorkflowId && !workspace.orchestratorWorkflowId;
+  if (wantsRunner || wantsOrchestrator || wantsWorkflow) {
     const [after] = await database
       .update(workspaces)
       .set({
         runnerBaseUrl: sql`coalesce(${workspaces.runnerBaseUrl}, ${input.runnerBaseUrl ?? null})`,
         orchestratorBaseUrl: sql`coalesce(${workspaces.orchestratorBaseUrl}, ${input.orchestratorBaseUrl ?? null})`,
+        orchestratorWorkflowId: sql`coalesce(${workspaces.orchestratorWorkflowId}, ${input.orchestratorWorkflowId ?? null})`,
         updatedAt: new Date(),
       })
       .where(eq(workspaces.id, workspace.id))
       .returning();
     if (wantsRunner && after?.runnerBaseUrl) seeded.push('runner address');
     if (wantsOrchestrator && after?.orchestratorBaseUrl) seeded.push('orchestration address');
+    if (wantsWorkflow && after?.orchestratorWorkflowId) seeded.push('workflow identifier');
   }
 
   if (input.modelKey && input.ring && !workspace.modelCredentialId) {

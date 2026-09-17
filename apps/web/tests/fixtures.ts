@@ -1,4 +1,4 @@
-import { createClient, type Database } from '@factory/db';
+import { createTestClient, type Database } from '@factory/db';
 import {
   agents,
   credentials,
@@ -13,10 +13,17 @@ import {
 import type { ApproverRule, Step, TimeoutBehaviour } from '@factory/shared';
 import { sql } from 'drizzle-orm';
 
+/**
+ * `createTestClient`, which refuses anything but a test database.
+ *
+ * This used to read `DATABASE_URL` and fall back to `factory_test`. The
+ * fallback was right and reading `DATABASE_URL` was wrong: Bun loads `.env`
+ * from the working directory on its own, so on a development machine the
+ * variable was always set, always pointed at the development database, and
+ * `reset` below truncated it.
+ */
 export function connect() {
-  return createClient(
-    process.env.DATABASE_URL ?? 'postgres://postgres:postgres@localhost:5432/factory_test',
-  );
+  return createTestClient();
 }
 
 export async function reset(db: Database) {

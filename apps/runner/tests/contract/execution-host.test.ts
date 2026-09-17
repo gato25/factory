@@ -1,6 +1,10 @@
 import { describe, expect, test } from 'bun:test';
+import { mkdtemp } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { FactoryError } from '@factory/shared';
 import { type ContainerHost, dockerHost, run } from '../../src/container/host';
+import { processHost } from '../../src/container/process-host';
 import { secretValues } from '../../src/container/secrets';
 import { TIMEOUT_EXIT_CODE } from '../../src/engines/limits';
 import { LogSink } from '../../src/stream/logs';
@@ -34,6 +38,12 @@ interface Candidate {
   unavailable?: string;
   /** Whether commands really execute, which decides the process obligations. */
   executes: boolean;
+  /**
+   * Whether `ContainerSpec.image` means anything to this host. The process
+   * host runs on this machine's own tools and has no image to be missing, so
+   * the obligation that a bad image fails cleanly (C9) cannot be put to it.
+   */
+  usesImage: boolean;
 }
 
 const dockerAvailable = await run('docker', ['version', '--format', '{{.Server.Version}}'], {
@@ -42,17 +52,41 @@ const dockerAvailable = await run('docker', ['version', '--format', '{{.Server.V
   .then((probe) => probe.exitCode === 0)
   .catch(() => false);
 
+/**
+ * The image a Docker sandbox is made from — the real one, built from
+ * `infra/sandbox`, because a daemon with no image cannot create a sandbox
+ * and would fail every obligation below for a reason that has nothing to do
+ * with the host. A daemon without the image is reported, not exercised.
+ */
+const SANDBOX_IMAGE = process.env.SANDBOX_IMAGE || 'code-factory/sandbox:latest';
+const imageAvailable =
+  dockerAvailable &&
+  (await run('docker', ['image', 'inspect', SANDBOX_IMAGE], { timeoutMs: 8000 })
+    .then((probe) => probe.exitCode === 0)
+    .catch(() => false));
+
 const candidates: Candidate[] = [
   // Always available, and a first-class implementation rather than a mock: it
   // is what lets the whole suite run with no daemon and no account (FR-026,
   // T059).
-  { name: 'fakeHost', host: new FakeHost(), executes: false },
+  { name: 'fakeHost', host: new FakeHost(), executes: false, usesImage: false },
+  // Processes on this machine: always available wherever the runner itself
+  // can run, because it needs only the shell and the tools the runner has.
+  {
+    name: 'processHost',
+    host: processHost({ root: await mkdtemp(join(tmpdir(), 'factory-contract-')) }),
+    executes: true,
+    usesImage: false,
+  },
   {
     name: 'dockerHost',
-    ...(dockerAvailable
+    usesImage: true,
+    ...(imageAvailable
       ? { host: dockerHost, executes: true }
       : {
-          unavailable: 'no container daemon is answering in this environment',
+          unavailable: dockerAvailable
+            ? `the sandbox image ${SANDBOX_IMAGE} is not built — docker build -t ${SANDBOX_IMAGE} infra/sandbox`
+            : 'no container daemon is answering in this environment',
           executes: false,
         }),
   },
@@ -63,7 +97,7 @@ const available = candidates.filter((candidate): candidate is Candidate & { host
 );
 
 const spec = {
-  image: 'factory/runner:1',
+  image: SANDBOX_IMAGE,
   cpu: 2,
   memoryMb: 4096,
   wallClockMinutes: 60,
@@ -168,6 +202,9 @@ describe.each(
   test('C3: commands run as an unprivileged user in a writable workspace', async () => {
     const containerId = await host.create(spec);
     const who = await host.exec(containerId, ['id', '-u']);
+    // Not root. The process host runs as whoever started the runner, which
+    // is the accepted weakening this host is documented with; what is held
+    // here is that it is at least not the superuser.
     expect(who.stdout.trim()).not.toBe('0');
     // And the workspace belongs to that user, or every step that writes fails.
     const touch = await host.exec(containerId, ['touch', '/work/writable'], { cwd: '/work' });
@@ -249,7 +286,7 @@ describe.each(
     expect((thrown as FactoryError).reason).toBe('sandbox_lost');
   });
 
-  test('C9: a failure leaves nothing running', async () => {
+  test.skipIf(!candidate.usesImage)('C9: a failure leaves nothing running', async () => {
     let thrown: unknown;
     try {
       await host.create({ ...spec, image: 'factory/does-not-exist:no-such-tag' });

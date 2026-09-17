@@ -20,21 +20,62 @@ describe('addresses', () => {
     expect(out.orchestratorBaseUrl).toBe('http://localhost:5678');
   });
 
-  test('an empty environment seeds nothing, and does not throw', () => {
-    expect(bootstrapFromEnv({})).toEqual({});
+  test('an empty environment still gets the local addresses', () => {
+    // The point of the defaults: with nothing configured at all, the two
+    // addresses are still filled in, because compose already decided them.
+    expect(bootstrapFromEnv({})).toEqual({
+      runnerBaseUrl: 'http://localhost:8080',
+      orchestratorBaseUrl: 'http://localhost:5678',
+    });
+  });
+
+  test('a deployment gets no default — the variable is still required there', () => {
+    // A deployment's services are somewhere else by definition. Pointing it
+    // at its own localhost would turn a missing variable into a connection
+    // refused much further along.
+    expect(bootstrapFromEnv({ NODE_ENV: 'production' })).toEqual({});
+  });
+
+  test('a set variable wins over the default', () => {
+    const out = bootstrapFromEnv({ RUNNER_BASE_URL: 'http://runner.internal:8080' });
+    expect(out.runnerBaseUrl).toBe('http://runner.internal:8080');
   });
 
   test('a value that is not an address is left out rather than stored', () => {
     // The settings screen and `loadWebConfig` both refuse it with a message
-    // that names the variable; seeding it silently would bypass both.
-    const out = bootstrapFromEnv({ RUNNER_BASE_URL: 'not a url', ORCHESTRATOR_BASE_URL: '   ' });
+    // that names the variable; seeding it silently would bypass both. It does
+    // NOT fall back to the default either — replacing a typo with localhost
+    // would start the application against the wrong service and call it well.
+    const out = bootstrapFromEnv({ RUNNER_BASE_URL: 'not a url' });
     expect(out.runnerBaseUrl).toBeUndefined();
-    expect(out.orchestratorBaseUrl).toBeUndefined();
+  });
+
+  test('a blank variable is treated as unset, and takes the default', () => {
+    expect(bootstrapFromEnv({ ORCHESTRATOR_BASE_URL: '   ' }).orchestratorBaseUrl).toBe(
+      'http://localhost:5678',
+    );
   });
 
   test('surrounding whitespace is not part of an address', () => {
     expect(bootstrapFromEnv({ RUNNER_BASE_URL: '  http://runner:8080  ' }).runnerBaseUrl).toBe(
       'http://runner:8080',
+    );
+  });
+});
+
+describe('the workflow identifier', () => {
+  test('is taken from the environment', () => {
+    // `bun run dev` imports the workflow, reads back the identifier n8n gave
+    // it and passes it in here. Nobody can type it before the import has run.
+    expect(bootstrapFromEnv({ ORCHESTRATOR_WORKFLOW_ID: 'AbC123' }).orchestratorWorkflowId).toBe(
+      'AbC123',
+    );
+  });
+
+  test('has no default — it does not exist until the import has happened', () => {
+    expect(bootstrapFromEnv({}).orchestratorWorkflowId).toBeUndefined();
+    expect(bootstrapFromEnv({ ORCHESTRATOR_WORKFLOW_ID: '  ' }).orchestratorWorkflowId).toBe(
+      undefined,
     );
   });
 });
@@ -66,6 +107,7 @@ describe('the model credential', () => {
     // Only the named variables. A seed that swept up unrelated values would
     // be a way for something to reach the database that nobody intended.
     const out = bootstrapFromEnv({
+      NODE_ENV: 'production',
       SESSION_SECRET: 'x',
       DATABASE_URL: 'postgres://a',
       PATH: '/bin',

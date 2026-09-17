@@ -60,6 +60,16 @@ export class FakeHost implements ContainerHost {
     return `127.0.0.1:${40000 + index * 10 + spec.publish.indexOf(port)}`;
   }
 
+  /** Which containers were cut off from the network, in order. */
+  disconnected: string[] = [];
+  /** Set to make the restriction fail, which must fail the start. */
+  disconnectFails = false;
+
+  async disconnectNetwork(containerId: string): Promise<void> {
+    if (this.disconnectFails) throw new Error('could not disconnect the sandbox');
+    this.disconnected.push(containerId);
+  }
+
   async destroy(containerId: string): Promise<void> {
     this.destroyed.push(containerId);
   }

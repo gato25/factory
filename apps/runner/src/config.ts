@@ -1,5 +1,21 @@
+import { defaultWorkRoot } from './container/process-host';
+
+/**
+ * Where a run executes.
+ *
+ * `process`: as ordinary processes on this machine, each run in a fresh
+ * directory under `workDir` — the development default, needing nothing but
+ * the git, node and Claude CLI already installed. `docker`: one fresh
+ * container per run, non-root and bounded, which is what the constitution's
+ * sandbox invariant describes and what a deployment should use.
+ */
+export type ExecutionHostKind = 'process' | 'docker';
+
 export interface RunnerConfig {
   port: number;
+  executionHost: ExecutionHostKind;
+  /** Where the process host makes each run's directory. */
+  workDir: string;
   sandboxImage: string;
   authToken: string;
   /**
@@ -33,8 +49,15 @@ export function loadRunnerConfig(env: Record<string, string | undefined> = proce
     return value ?? '';
   };
 
+  const executionHost = need('EXECUTION_HOST', 'process');
+  if (executionHost !== 'process' && executionHost !== 'docker') {
+    throw new Error(`runner: EXECUTION_HOST must be "process" or "docker", not "${executionHost}"`);
+  }
+
   const config: RunnerConfig = {
     port: Number(need('RUNNER_PORT', '8080')),
+    executionHost,
+    workDir: need('FACTORY_WORK_DIR', defaultWorkRoot(env as NodeJS.ProcessEnv)),
     sandboxImage: need('SANDBOX_IMAGE', 'code-factory/sandbox:latest'),
     authToken: need('RUNNER_AUTH_TOKEN', 'dev-only-token'),
     // Optional, and NOT routed through `need`: an absent rotation window is

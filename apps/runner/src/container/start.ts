@@ -50,10 +50,49 @@ export interface StartInput {
   sandbox: SandboxLimits;
 }
 
+/**
+ * Steps that reach the model API, which they do from inside the sandbox.
+ *
+ * A shell step runs a command and needs nothing outside the container. An
+ * agent or design step is a CLI that talks to Anthropic over the network —
+ * the network is not an incidental convenience for it, it is the whole of
+ * what the step does.
+ */
+const NEEDS_THE_MODEL = new Set(['agent', 'design']);
+
 export async function startRunWorkspace(
   host: ContainerHost,
   input: StartInput,
 ): Promise<{ containerId: string }> {
+  /**
+   * Refused here rather than discovered three minutes later.
+   *
+   * `networkDuringImplement: false` isolates the sandbox, and the agent runs
+   * INSIDE that sandbox: with no network it cannot reach the model at all. It
+   * does not fail quickly either — the CLI sits there until it times out and
+   * reports `Request timed out` with zero tokens and zero cost, which reads
+   * as a model problem or a slow step rather than as a setting.
+   *
+   * The setting's own explanation had it backwards — "an agent writing code
+   * does not need the internet" — when an agent writing code is an outbound
+   * API call and nothing else. Narrowing the reach to just that call is not
+   * available: an agent step runs arbitrary code that opens its own sockets,
+   * which is why `egress.test.ts` records the reach as all-or-nothing.
+   *
+   * So the combination is refused, and the message names the setting.
+   */
+  const modelSteps = input.snapshot.pipeline.steps.filter((step) => NEEDS_THE_MODEL.has(step.type));
+  if (!input.sandbox.networkDuringImplement && modelSteps.length > 0) {
+    throw new FactoryError(
+      'invalid_input',
+      'This pipeline has steps that reach the model from inside the sandbox, and this ' +
+        'workspace keeps the sandbox off the network. Turn on “Let a sandbox reach the ' +
+        'network while code is being written” in Settings, or use a pipeline of shell ' +
+        'steps only.',
+      { detail: `${modelSteps.length} of ${input.snapshot.pipeline.steps.length} steps need it` },
+    );
+  }
+
   // Throws before a container exists when a design step has no credential (FR-083b).
   const env = buildEnvironment(input.snapshot, input.credentials);
 
@@ -81,6 +120,16 @@ export async function startRunWorkspace(
       requirementFiles: requirements.map((file) => file.name),
     });
     await writeRequirementFiles(host, containerId, WORKDIR, requirements);
+    // The clone is the one thing a sandbox needs the network for, and it has
+    // just happened. FR-085's restriction is about the rest of the sandbox's
+    // life, so it is applied here rather than at creation — where it stopped
+    // the clone instead of the agent.
+    //
+    // Inside the `try`: a restriction that could not be applied is a failed
+    // start, and the sandbox is destroyed below. Carrying on would leave an
+    // agent writing code in a container with the internet, in a workspace
+    // that had asked for the opposite.
+    if (!input.sandbox.networkDuringImplement) await host.disconnectNetwork(containerId);
     return { containerId };
   } catch (error) {
     // Never leave a half-prepared sandbox behind.

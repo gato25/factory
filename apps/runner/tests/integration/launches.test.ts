@@ -16,7 +16,13 @@ import { FakeHost } from '../fake-host';
  */
 
 const TOKEN = 'a-token';
-const config: RunnerConfig = { port: 8080, sandboxImage: 'factory/runner:1', authToken: TOKEN };
+const config: RunnerConfig = {
+  port: 8080,
+  sandboxImage: 'factory/runner:1',
+  executionHost: 'process',
+  workDir: '/tmp/factory-tests',
+  authToken: TOKEN,
+};
 
 let host: FakeHost;
 let launches: ReturnType<typeof memoryLaunchStore>;

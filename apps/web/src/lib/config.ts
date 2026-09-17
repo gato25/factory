@@ -7,6 +7,18 @@ export interface WebConfig {
   orchestratorBaseUrl: string;
   orchestratorApiKey: string;
   publicBaseUrl: string;
+  /**
+   * Where the orchestration service reaches this application, which is not
+   * necessarily where a browser does.
+   *
+   * `PUBLIC_BASE_URL` is the address a PERSON uses — it is in links and in
+   * the provider sign-in callbacks, so it has to be the one their browser can
+   * open. Where n8n runs on the same machine, as it does in development, the
+   * two are the same address and this falls back to that one. Where n8n runs
+   * somewhere `localhost` means something else — a container, another host —
+   * it needs its own name, and this is it.
+   */
+  callbackBaseUrl: string;
   sessionSecret: string;
 }
 
@@ -26,18 +38,49 @@ const ENV_NAMES: Record<keyof WebConfig, string> = {
   orchestratorBaseUrl: 'ORCHESTRATOR_BASE_URL',
   orchestratorApiKey: 'ORCHESTRATOR_API_KEY',
   publicBaseUrl: 'PUBLIC_BASE_URL',
+  callbackBaseUrl: 'CALLBACK_BASE_URL',
   sessionSecret: 'SESSION_SECRET',
 };
 
+/**
+ * Where the other two local services listen, when nobody has said otherwise.
+ *
+ * These are not preferences. `bun run dev` starts n8n on 5678, and the
+ * execution service defaults itself to 8080 — so on a development machine
+ * there is exactly one right answer for each, written down in the repository
+ * already. Asking for them in `.env` and then AGAIN on the settings screen
+ * asked twice for a fact neither person nor machine had any choice about.
+ *
+ * Development only. A deployment's services are somewhere else by definition,
+ * and silently pointing it at its own localhost would turn a missing variable
+ * into a connection refused much further along, so there the variable is
+ * still required and `loadWebConfig` still refuses to start without it.
+ */
+const DEV_DEFAULTS: Record<string, string> = {
+  RUNNER_BASE_URL: 'http://localhost:8080',
+  ORCHESTRATOR_BASE_URL: 'http://localhost:5678',
+  PUBLIC_BASE_URL: 'http://localhost:5173',
+};
+
+function devDefault(env: NodeJS.ProcessEnv, key: string): string | undefined {
+  if (env.NODE_ENV === 'production') return undefined;
+  return DEV_DEFAULTS[key];
+}
+
 /** Fails at startup rather than at the first run (T035). */
 export function loadWebConfig(env: NodeJS.ProcessEnv = process.env): WebConfig {
+  const read = (key: string): string => env[key]?.trim() || devDefault(env, key) || '';
   const config: WebConfig = {
     databaseUrl: env.DATABASE_URL ?? '',
-    runnerBaseUrl: env.RUNNER_BASE_URL ?? '',
+    runnerBaseUrl: read('RUNNER_BASE_URL'),
     runnerAuthToken: env.RUNNER_AUTH_TOKEN ?? '',
-    orchestratorBaseUrl: env.ORCHESTRATOR_BASE_URL ?? '',
+    orchestratorBaseUrl: read('ORCHESTRATOR_BASE_URL'),
     orchestratorApiKey: env.ORCHESTRATOR_API_KEY ?? '',
-    publicBaseUrl: env.PUBLIC_BASE_URL ?? '',
+    publicBaseUrl: read('PUBLIC_BASE_URL'),
+    // Falls back to the public address: where n8n runs on this machine, as
+    // `bun run dev` starts it, they ARE the same address, and asking for both
+    // would be asking twice for one fact.
+    callbackBaseUrl: read('CALLBACK_BASE_URL') || read('PUBLIC_BASE_URL'),
     sessionSecret: env.SESSION_SECRET ?? '',
   };
 
@@ -80,6 +123,7 @@ export function loadWebConfig(env: NodeJS.ProcessEnv = process.env): WebConfig {
 export interface WorkspaceBootstrap {
   runnerBaseUrl?: string;
   orchestratorBaseUrl?: string;
+  orchestratorWorkflowId?: string;
   modelKey?: { value: string; from: 'ANTHROPIC_API_KEY' | 'CLAUDE_CODE_OAUTH_TOKEN' };
 }
 
@@ -99,10 +143,29 @@ export function bootstrapFromEnv(env: NodeJS.ProcessEnv = process.env): Workspac
       return undefined;
     }
   };
-  const runner = url('RUNNER_BASE_URL');
-  const orchestrator = url('ORCHESTRATOR_BASE_URL');
+  /**
+   * The variable, or — only when it is not set at all — the local default.
+   *
+   * A variable that is SET but malformed falls through to nothing rather than
+   * to the default. Quietly replacing somebody's typo with localhost would
+   * start the application against the wrong service and report it as working;
+   * leaving it out means `loadWebConfig` refuses to start and names the
+   * variable, which is the behaviour a typo deserves.
+   */
+  const address = (key: string): string | undefined =>
+    env[key]?.trim() ? url(key) : devDefault(env, key);
+
+  const runner = address('RUNNER_BASE_URL');
+  const orchestrator = address('ORCHESTRATOR_BASE_URL');
   if (runner) out.runnerBaseUrl = runner;
   if (orchestrator) out.orchestratorBaseUrl = orchestrator;
+
+  // Discovered rather than chosen: `bun run dev` imports the workflow into
+  // n8n, which assigns it an identifier, and passes that identifier back in.
+  // Nobody can type it before the import has happened, so asking for it on
+  // the settings screen only ever asked somebody to go and look it up.
+  const workflow = env.ORCHESTRATOR_WORKFLOW_ID?.trim();
+  if (workflow) out.orchestratorWorkflowId = workflow;
 
   const api = env.ANTHROPIC_API_KEY?.trim();
   const oauth = env.CLAUDE_CODE_OAUTH_TOKEN?.trim();

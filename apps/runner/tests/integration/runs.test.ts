@@ -27,7 +27,9 @@ const sandbox = {
   cpu: 2,
   memoryMb: 4096,
   wallClockMinutes: 60,
-  networkDuringImplement: false,
+  // True because these fixtures run agent steps, which reach the model from
+  // inside the sandbox: the isolated combination is refused at the start.
+  networkDuringImplement: true,
 };
 const context = () => ({ snapshot, credentials, sandbox });
 const send = async (callback: Callback) => {
@@ -51,7 +53,9 @@ test('start creates one sandbox and remembers it', async () => {
   // Non-root, with the configured ceilings (FR-046, FR-085).
   expect(host.created[0]?.cpu).toBe(2);
   expect(host.created[0]?.wallClockMinutes).toBe(60);
-  expect(host.created[0]?.network).toBe(false);
+  // The spec carries what the workspace asked for, which for a pipeline with
+  // agent steps can only be `true` — they reach the model from in here.
+  expect(host.created[0]?.network).toBe(true);
   expect((await store.get(snapshot.run_id))?.containerId).toBe('container-1');
 });
 

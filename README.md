@@ -24,8 +24,10 @@ already in flight.
 
 ## Running it locally
 
-You need [Bun](https://bun.sh) (the version in `.bun-version`) and Docker. Postgres and the
-orchestration service are started for you, so there is nothing else to install.
+You need [Bun](https://bun.sh) (the version in `.bun-version`), Docker for Postgres, and the tools a
+step runs: git, Node and the [Claude CLI](https://docs.anthropic.com/en/docs/claude-code). On
+Windows that means Git for Windows, whose shell every step runs in. n8n is installed for you, once,
+the first time.
 
 ```bash
 bun install
@@ -33,21 +35,36 @@ cp .env.example .env            # then fill it in; the comments say what each va
 bun run dev                     # → http://localhost:5173
 ```
 
-`bun run dev` is the whole of it: Postgres and n8n, the database schema, the sandbox image (built
-once, when it is missing), the orchestration workflow (imported once, when it is not there), and
-then the execution service and the web application together. It names each step as it goes and
-stops at the first thing that genuinely blocks, so a failure tells you where you are. Ctrl-C stops
-the two services; Postgres and n8n keep running.
+`bun run dev` is the whole of it: Postgres in Docker, the database schema, a check that git and the
+Claude CLI are where a step will look for them, n8n on this machine — installed with npm if it is
+missing, the workflow imported and published — and then n8n, the execution service and the web
+application together. It names each step as it goes and stops at the first thing that genuinely
+blocks, so a failure tells you where you are. Ctrl-C stops the three services; Postgres keeps
+running.
 
-It also fixes something the separate commands could not. `bun run dev:runner` starts the execution
-service with its working directory in `apps/runner`, and Bun reads `.env` only from the directory it
-starts in — so the execution service never saw the root `.env`. It fell back to its built-in
-development credential while the web application used the `RUNNER_AUTH_TOKEN` you had just set, and
-every call between the two came back `unauthorised`. `bun run dev` reads the root `.env` itself and
-hands it to both, so they cannot disagree about it.
+It reads the root `.env` itself and hands it to every service, so they cannot disagree about it —
+`bun run dev:runner` on its own starts in `apps/runner`, where Bun would not find that file. The
+separate commands are still there — `dev:web`, `dev:runner`, `db:migrate` — for when you want one
+of them alone.
 
-The separate commands are still there — `dev:web`, `dev:runner`, `db:migrate` — for when you want
-one of them on its own.
+### Where a run executes
+
+By default a run executes as ordinary processes on this machine. Each run gets a fresh directory
+under `~/.code-factory/runs` (`FACTORY_WORK_DIR` moves it); the repository is cloned into it, the
+Claude CLI runs there with the run's credentials in its environment and nothing of yours, and the
+directory is removed when the run ends or reaches its wall-clock ceiling. Nothing about Docker is
+involved, and every address between the pieces is plain `localhost`.
+
+That is a development arrangement, and it gives up three things the constitution's sandbox invariant
+asks for: the process runs as you, not as an unprivileged user; CPU and memory ceilings are recorded
+and not enforced; and a run cannot be cut off from the network, so a workspace that asks for that is
+refused at start rather than quietly given the internet. `EXECUTION_HOST=docker` restores all three
+— one fresh non-root container per run from the sandbox image, which `bun run dev` then builds — and
+a deployment should run that way.
+
+The **Run it** card publishes a port and needs a container for it whichever host runs execute on, so
+it uses Docker and the sandbox image in either mode. Build the image once when you want it:
+`docker build -t code-factory/sandbox:latest infra/sandbox`.
 
 Open it and **create the first account** — the sign-in screen asks for one when nobody has one yet,
 and that first account is the administrator. (It used to require hand-written SQL: `role` defaults to
@@ -131,8 +148,8 @@ apps/web           SvelteKit — every screen, every remote function, the callba
 apps/runner        The only component with rights on the container host, as a daemon
 packages/db        Drizzle schema and migrations — the single datastore
 packages/shared    Types and contracts both deployables agree on
-orchestration/n8n  One generic workflow, for every pipeline
-infra/sandbox      The image a run executes in: fresh per run, non-root, destroyed after
+orchestration/n8n  One generic workflow, for every pipeline; n8n itself runs on your machine
+infra/sandbox      The image a run executes in under EXECUTION_HOST=docker, and Run it always
 scripts/           The maintenance pass, the audits, and the defaults installer
 docs/              Operations guide and the Phase 11 reviews
 specs/             The specification this was built from

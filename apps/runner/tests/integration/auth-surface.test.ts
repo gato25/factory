@@ -19,7 +19,9 @@ const sandbox = {
   cpu: 2,
   memoryMb: 4096,
   wallClockMinutes: 60,
-  networkDuringImplement: false,
+  // True because these fixtures run agent steps, which reach the model from
+  // inside the sandbox: the isolated combination is refused at the start.
+  networkDuringImplement: true,
 };
 
 let host: FakeHost;
@@ -30,6 +32,8 @@ function configWith(extra: Partial<RunnerConfig> = {}): RunnerConfig {
   return {
     port: 8080,
     sandboxImage: 'factory/runner:1',
+    executionHost: 'process',
+    workDir: '/tmp/factory-tests',
     authToken: TOKEN,
     ...extra,
   };

@@ -2,7 +2,7 @@
   import {
   } from '@factory/shared';
   import Icon from '$components/Icon.svelte';
-  import { publicBaseUrl } from '$lib/remote/repositories.remote';
+  import { callbackBaseUrl, publicBaseUrl } from '$lib/remote/repositories.remote';
   import {
     changeRole,
     connections,
@@ -34,6 +34,9 @@
   const people = $derived(members());
   const waiting = $derived(queue());
   const baseUrl = $derived(publicBaseUrl());
+  // Where n8n reaches this application, which inside a container is not the
+  // address a browser uses.
+  const callbackUrl = $derived(callbackBaseUrl());
 
   // A remote form object attaches to one <form>; two cards need two
   // instances, which is what `.for(key)` is for.
@@ -175,8 +178,16 @@
           <div class="grid">
             <div class="f">
               <span class="as-label">Callback webhook (n8n → app)</span>
-              <input readonly value={`${baseUrl.ready ? baseUrl.current : ''}/api/hooks/n8n`} />
-              <small>n8n posts step results and approvals here.</small>
+              <input
+                readonly
+                value={`${callbackUrl.ready ? callbackUrl.current : ''}/api/hooks/n8n`}
+              />
+              <small>
+                n8n posts step results and approvals here. This is the address as
+                <em>n8n</em> reaches it. On one machine that is the same address you open in a
+                browser; where n8n runs somewhere else, set CALLBACK_BASE_URL to the address it
+                can reach.
+              </small>
             </div>
           </div>
         </section>
@@ -247,8 +258,10 @@
             <span class="tx">
               <span class="t">Let a sandbox reach the network while code is being written</span>
               <span class="d">
-                Off is the default: an agent writing code does not need the internet, and a
-                sandbox that cannot reach it cannot send anything out.
+                Needed by every agent and design step: the agent runs inside the sandbox and
+                reaches the model over the network, so a run that has one of those steps is
+                refused while this is off. Turn it off only for pipelines of shell steps,
+                where a sandbox that cannot reach the network cannot send anything out.
               </span>
             </span>
             <input

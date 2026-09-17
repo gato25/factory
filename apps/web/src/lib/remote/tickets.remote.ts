@@ -120,7 +120,7 @@ export const create = form(CreateSchema, async (data) => {
 
   const { run, snapshot } = await startRun(db(), {
     ticketId: created.id,
-    callbackBaseUrl: config.publicBaseUrl,
+    callbackBaseUrl: config.callbackBaseUrl,
   });
 
   const delivery = await handOver(
@@ -152,7 +152,7 @@ export const start = command(v.pipe(v.string(), v.uuid()), async (ticketId) => {
   const config = loadWebConfig();
   const { run, snapshot } = await startRun(db(), {
     ticketId,
-    callbackBaseUrl: config.publicBaseUrl,
+    callbackBaseUrl: config.callbackBaseUrl,
   });
   const delivery = await handOver(
     db(),

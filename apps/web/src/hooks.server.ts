@@ -55,6 +55,7 @@ export const init: ServerInit = async () => {
     const { seeded } = await bootstrapWorkspace(db(), {
       runnerBaseUrl: from.runnerBaseUrl,
       orchestratorBaseUrl: from.orchestratorBaseUrl,
+      orchestratorWorkflowId: from.orchestratorWorkflowId,
       modelKey: from.modelKey?.value,
       ring,
     });

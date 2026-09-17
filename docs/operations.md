@@ -14,10 +14,10 @@ Two long-running services, one database, one workflow definition, and one contai
 | Piece | What it is | Where it may be reached from |
 | --- | --- | --- |
 | **`apps/web`** | SvelteKit. Every screen, every remote function, and the callback and exchange routes the other pieces use. Holds the encryption key. | The public internet — people sign in to it |
-| **`apps/runner`** | An HTTP service with four operations. **The only component with rights on the container host** (Principle V, research.md D5). | The orchestration service and the web application only. **Never the public internet** |
+| **`apps/runner`** | An HTTP service with four operations. **The only component that executes anything** — as processes on its own machine, or as containers on a Docker daemon (Principle V, research.md D5). | The orchestration service and the web application only. **Never the public internet** |
 | **Postgres 16+** | The only datastore. `LISTEN`/`NOTIFY` carries live run updates to browsers | Both services |
 | **n8n** | Executes the one generic workflow, and holds gates paused in `Wait` nodes | The web application posts to it; it posts back |
-| **Sandbox image** | `infra/sandbox/Dockerfile`. One fresh container per run, non-root, destroyed at the end | Built once, pulled by the container host |
+| **Sandbox image** | `infra/sandbox/Dockerfile`. One fresh container per run, non-root, destroyed at the end. Used under `EXECUTION_HOST=docker`, and by the Run it card always | Built once, pulled by the container host |
 
 The web application never holds a container handle, and the orchestration service never holds a
 credential value. Both are deliberate and both are load-bearing — see
@@ -29,15 +29,20 @@ credential value. Both are deliberate and both are load-bearing — see
 bun install                                   # workspace root; Bun is pinned in .bun-version
 docker compose up -d postgres                 # or point DATABASE_URL at your own
 bun run db:migrate                            # drizzle-kit; idempotent, safe to re-run
-docker build -t code-factory/sandbox:latest infra/sandbox
+docker build -t code-factory/sandbox:latest infra/sandbox   # for EXECUTION_HOST=docker
+EXECUTION_HOST=docker bun run dev:runner      # apps/runner → :8080, needs Docker access
 bun run dev:web                               # apps/web  → :5173
-bun run dev:runner                            # apps/runner → :8080, needs container host access
 ```
 
-Import `orchestration/n8n/run-ticket-pipeline.json` into n8n and activate it. It is **one generic
+On a development machine `bun run dev` does all of this, with runs executing as processes on that
+machine and n8n started there too — see [Execution hosts](#execution-hosts) for what that trades
+away and why a deployment should not.
+
+Import `orchestration/n8n/run-ticket-pipeline.json` into n8n and publish it. It is **one generic
 workflow for every pipeline** — a pipeline's steps are read from the run's snapshot at execution
 time. Do not edit it per pipeline; `apps/web/tests/contract/workflow.test.ts` fails if a step name,
-model or agent name is ever baked into it.
+model or agent name is ever baked into it. n8n needs `RUNNER_BASE_URL` and `RUNNER_AUTH_TOKEN` in
+its environment, and `N8N_BLOCK_ENV_ACCESS_IN_NODE=false` so the workflow may read them.
 
 Then, in the application: sign in, open **Settings**, and set the orchestration service address, the
 container host address and a model credential. The dashboard names anything still missing and links
@@ -89,9 +94,35 @@ Startup fails, loudly, on a missing or malformed value rather than at the first 
 | Variable | Default | Notes |
 | --- | --- | --- |
 | `RUNNER_PORT` | `8080` | |
+| `EXECUTION_HOST` | `process` | `process`: runs execute as processes on this machine. `docker`: one fresh container per run. **A deployment should set `docker`** — see [Execution hosts](#execution-hosts) |
+| `FACTORY_WORK_DIR` | `~/.code-factory/runs` | Where the process host makes each run's directory |
 | `DATABASE_URL` | | Present for parity; the Runner works from the snapshot it is handed |
-| `SANDBOX_IMAGE` | `code-factory/sandbox:latest` | |
+| `SANDBOX_IMAGE` | `code-factory/sandbox:latest` | The image a Docker sandbox, and every Run it launch, is made from |
 | `RUNNER_AUTH_TOKEN` | `dev-only-token` | **Change it.** Every route but `/health` requires it |
+
+### Execution hosts
+
+The Runner executes a run on one of two hosts, chosen by `EXECUTION_HOST`, behind one interface
+(`apps/runner/src/container/host.ts`). Both are held to the same contract by
+`apps/runner/tests/contract/execution-host.test.ts`.
+
+| | `process` | `docker` |
+| --- | --- | --- |
+| A run is | a fresh directory under `FACTORY_WORK_DIR`, removed at the end | a fresh container from the sandbox image, removed at the end |
+| Runs as | whoever started the Runner | an unprivileged user (uid 1000) |
+| CPU and memory ceilings | recorded, **not enforced** | enforced by Docker |
+| Wall-clock ceiling | enforced: the directory and everything it started are removed | enforced: the container's own `sleep` ends |
+| "No network while code is written" | **not available** — a run that asks for it is refused at start, naming the setting | enforced after the clone |
+| Needs | git, Node, the Claude CLI on the machine (on Windows, Git for Windows' shell) | a Docker daemon and the built image |
+
+**Accepted risk, recorded here because this is where the decision lives.** The constitution's
+sandbox invariant — one fresh sandbox per run, non-root, bounded in processing power, memory and
+lifetime — is met only by `docker`. `process` exists because on a development machine the container
+layer cost more than it protected: every address had to be spelt twice, the clone failed inside an
+isolated container, and the token never reached the containerised orchestrator. A run under
+`process` executes an agent's arbitrary code as the person running the Runner, on their machine,
+against repositories they already hold credentials for. That is acceptable for that person's own
+machine and for nothing else. A deployment MUST set `EXECUTION_HOST=docker`.
 
 ### The shipped agents and pipelines
 
@@ -182,9 +213,10 @@ determine; the exclusions are printed with the result so the number always carri
    a residual risk in [credential-path.md](./reviews/credential-path.md); it cannot be fixed inside
    the application.
 
-3. **Sandboxes have no network while code is being written, by default.** Leave it that way unless a
-   repository's tests genuinely need the internet. An agent writing code does not, and a sandbox
-   that cannot reach the internet cannot send anything out of it.
+3. **Under `EXECUTION_HOST=docker`, a sandbox can be kept off the network while code is being
+   written.** The setting is refused under `process`, which cannot enforce it. Note that an agent
+   step is an outbound call to the model made from inside the sandbox, so a pipeline with agent
+   steps needs the network on either way; the setting is for pipelines of shell steps.
 
 ## Rotating the encryption key
 

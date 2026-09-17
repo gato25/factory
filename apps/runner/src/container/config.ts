@@ -68,6 +68,47 @@ export function agentSlug(agent: SnapshotAgent): string {
  * Writes the agent and skill files the CLI reads. Nothing here is a
  * credential: those are environment only (FR-083).
  */
+/**
+ * Marks the workspace as trusted, because nobody is there to be asked.
+ *
+ * The CLI asks a person, once per directory, whether they trust it — and
+ * until they say so it ignores that directory's `.claude/settings.local.json`
+ * entirely. In a sandbox there is no person and no second chance: the CLI
+ * writes `hasTrustDialogAccepted: false` on first start and then reports
+ * `Ignoring N permissions.allow entries from .claude/settings.local.json`,
+ * so every permission the repository grants itself is silently dropped and
+ * the agent is refused tools it was meant to have. In `-p` mode a refusal is
+ * not a prompt; it is simply a tool that does not work.
+ *
+ * Deciding it here is not a loosening. The sandbox is one container, built
+ * for one run, holding one repository that somebody already connected on
+ * purpose — the question the dialog asks has been answered by the act of
+ * starting the run. What the agent may actually do is governed by the
+ * agent's own allowed tools, which is a different mechanism and still applies.
+ *
+ * Written before the CLI first runs, and merged rather than replaced, so a
+ * config the image ships with is not thrown away.
+ */
+async function trustWorkspace(
+  host: ContainerHost,
+  containerId: string,
+  workdir: string,
+): Promise<void> {
+  const path = '$HOME/.claude.json';
+  const script =
+    `set -e; mkdir -p "$(dirname ${path})"; [ -f ${path} ] || echo '{}' > ${path}; ` +
+    `WORKDIR=${JSON.stringify(workdir)} node -e '` +
+    'const fs=require("fs");const p=process.env.HOME+"/.claude.json";' +
+    'let c={};try{c=JSON.parse(fs.readFileSync(p,"utf8"))}catch{}' +
+    'c.projects=c.projects||{};const w=process.env.WORKDIR;' +
+    'c.projects[w]={...(c.projects[w]||{}),hasTrustDialogAccepted:true};' +
+    'fs.writeFileSync(p,JSON.stringify(c,null,2));' +
+    "'";
+  // Not fatal: the run still works, with fewer permissions than the
+  // repository asked for, and the CLI says so in its own output.
+  await host.exec(containerId, ['sh', '-c', script]);
+}
+
 export async function writeAgentConfig(
   host: ContainerHost,
   containerId: string,
@@ -83,6 +124,8 @@ export async function writeAgentConfig(
     `${workdir}/.claude/skills`,
     `${workdir}/.factory`,
   ]);
+
+  await trustWorkspace(host, containerId, workdir);
 
   // Screens a design step produced are named where a following step will
   // look for them, not only interpolated into a prompt that may not mention

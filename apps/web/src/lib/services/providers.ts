@@ -70,6 +70,19 @@ export interface AccessCheck {
   defaultBranch?: string;
   /** Why a capability is missing, in the provider's own words. */
   detail?: string;
+  /**
+   * Set when the provider refused the request outright, instead of answering
+   * with a set of permissions that fell short.
+   *
+   * The difference matters because it changes what there is to do about it.
+   * A token that is real but under-scoped needs three permissions granting;
+   * a token the provider will not accept at all needs replacing, and being
+   * told to go and grant it permissions sends somebody to edit a token that
+   * was never the one being checked. Reporting the second as the first is
+   * what this field exists to stop — it replaces the list of missing
+   * permissions rather than adding to it.
+   */
+  rejected?: string;
 }
 
 export interface ProviderClient {
@@ -77,21 +90,26 @@ export interface ProviderClient {
   checkAccess(repo: ParsedRepository, token: string): Promise<AccessCheck>;
 }
 
+/**
+ * The three capabilities, as opposed to the rest of `AccessCheck`.
+ *
+ * Named separately because `PERMISSION_NAMES` below is a name per capability,
+ * and typing it over every key of `AccessCheck` meant every new field had to
+ * be given an empty string in both providers to keep the compiler quiet.
+ */
+export type Capability = 'canRead' | 'canCreateBranch' | 'canOpenMergeRequest';
+
 /** The permission each provider calls the capability, for the message in FR-009. */
-export const PERMISSION_NAMES: Record<Provider, Record<keyof AccessCheck & string, string>> = {
+export const PERMISSION_NAMES: Record<Provider, Record<Capability, string>> = {
   gitlab: {
     canRead: 'read_api (or read_repository)',
     canCreateBranch: 'write_repository',
     canOpenMergeRequest: 'api',
-    defaultBranch: '',
-    detail: '',
   },
   github: {
     canRead: 'Contents: Read',
     canCreateBranch: 'Contents: Read and write',
     canOpenMergeRequest: 'Pull requests: Read and write',
-    defaultBranch: '',
-    detail: '',
   },
 };
 
@@ -139,6 +157,53 @@ const DEFAULT_HOSTS: Record<Provider, string> = {
   github: 'https://github.com',
 };
 
+/**
+ * What a refusal means, said in terms of the thing to do next.
+ *
+ * These four are not interchangeable, and the status code is the only place
+ * the difference is recorded:
+ *
+ * - **401** the credential was not accepted at all. Neither provider returns
+ *   this for a valid token that merely lacks permissions — that is 403 or
+ *   404 — so it means expired, revoked, truncated on the way in, or not a
+ *   personal access token in the first place.
+ * - **403** the credential is real and was refused anyway: on GitHub usually
+ *   a fine-grained token whose organisation has not approved it, or single
+ *   sign-on that has not been authorised for it.
+ * - **404** either there is no such repository, or there is and this token
+ *   cannot see it. GitHub deliberately does not distinguish the two — telling
+ *   an unauthorised caller that a private repository exists is itself a leak
+ *   — so the message must offer both.
+ */
+function refusal(provider: Provider, status: number, fullPath: string): string {
+  const providerName = provider === 'github' ? 'GitHub' : 'GitLab';
+  const tokenName = provider === 'github' ? 'personal access token' : 'project access token';
+  switch (status) {
+    case 401:
+      return (
+        `${providerName} did not accept this token (401). A token that is valid but ` +
+        'lacks permissions is refused differently, so this one is expired, revoked, ' +
+        `incomplete, or not a ${tokenName}. Issue a new one and paste it whole.`
+      );
+    case 403:
+      return (
+        `${providerName} accepted the token but refused it for ${fullPath} (403). ` +
+        (provider === 'github'
+          ? 'A fine-grained token needs the organisation to approve it, and single ' +
+            'sign-on needs authorising for the token separately.'
+          : 'The token may be expired or the project may be outside its scope.')
+      );
+    case 404:
+      return (
+        `${providerName} has no ${fullPath} that this token can see (404). Either the ` +
+        'path is wrong, or the repository is private and the token does not cover it — ' +
+        'the answer is the same for both, deliberately.'
+      );
+    default:
+      return `${providerName} answered ${status} for ${fullPath}.`;
+  }
+}
+
 // --- real clients ---
 
 export const gitlabClient: ProviderClient = {
@@ -153,7 +218,7 @@ export const gitlabClient: ProviderClient = {
         canRead: false,
         canCreateBranch: false,
         canOpenMergeRequest: false,
-        detail: `GitLab answered ${response.status} for ${repo.fullPath}`,
+        rejected: refusal('gitlab', response.status, repo.fullPath),
       };
     }
     const project = (await response.json()) as {
@@ -193,7 +258,7 @@ export const githubClient: ProviderClient = {
         canRead: false,
         canCreateBranch: false,
         canOpenMergeRequest: false,
-        detail: `GitHub answered ${response.status} for ${repo.fullPath}`,
+        rejected: refusal('github', response.status, repo.fullPath),
       };
     }
     const body = (await response.json()) as {

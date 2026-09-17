@@ -161,7 +161,15 @@ test('the merge request body is composed by the application, not the workflow', 
   const url = JSON.stringify(compose?.parameters);
   expect(url).toContain('/merge-request');
   // Authenticated with the run's own secret, as every other callback is.
-  expect(url).toContain('$json.resume_secret');
+  //
+  // Matched on the field rather than on `$json.resume_secret`, because WHERE
+  // the secret is read from is exactly what had to change: this node follows
+  // an HTTP request, and `$json` at that point is that request's response,
+  // not the run. It now names the node holding the state.
+  expect(url).toContain('resume_secret');
+  expect(url, 'the secret must come from the state, not from the last response').not.toMatch(
+    /\$json\.resume_secret/,
+  );
 
   const open = workflow.nodes.find((n) => n.name === 'Open merge request');
   const body = JSON.stringify(open?.parameters);
@@ -188,4 +196,121 @@ test('both providers get the field names they expect', () => {
     expect(shaping.includes(field), `${field} is not set for either provider`).toBe(true);
   }
   expect(shaping).toContain('gitlab');
+});
+
+/**
+ * The state has to survive an HTTP node.
+ *
+ * n8n hands each node the OUTPUT of the one before it, so after an HTTP
+ * Request node `$json` is that request's response — not the run. Nine nodes
+ * read run state through `$json` while sitting directly behind an HTTP call,
+ * and every one of them got undefined: the first to use a value, `Callback:
+ * started` reading `$json.callback_url`, failed with ERR_INVALID_URL, and the
+ * application reported it as `orchestrator answered 500`.
+ *
+ * The fix is to name the node the value comes from. This is the guard, because
+ * the mistake is invisible in the editor — the expression is valid, the field
+ * exists somewhere, and nothing says it is being read from the wrong place.
+ */
+test('no node reads run state from whatever answered last', () => {
+  // Set once at the start and never changed, so reading one of these from
+  // anywhere but the state means reading it from the wrong node.
+  const RUN_SCOPED = [
+    'callback_url',
+    'resume_secret',
+    'run_id',
+    'attempt',
+    'sandbox',
+    'repo',
+    'pipeline',
+    'limits',
+  ];
+
+  const previous = new Map<string, string[]>();
+  for (const [from, connection] of Object.entries(workflow.connections)) {
+    for (const outputs of connection.main ?? []) {
+      for (const output of outputs ?? []) {
+        previous.set(output.node, [...(previous.get(output.node) ?? []), from]);
+      }
+    }
+  }
+  const typeOf = new Map(workflow.nodes.map((n) => [n.name, n.type]));
+  const loses = (name: string) =>
+    typeOf.get(name) === 'n8n-nodes-base.httpRequest' || typeOf.get(name) === 'n8n-nodes-base.wait';
+
+  const offences: string[] = [];
+  for (const node of workflow.nodes) {
+    const behind = (previous.get(node.name) ?? []).filter(loses);
+    if (behind.length === 0) continue;
+    const text = JSON.stringify(node.parameters);
+    for (const field of RUN_SCOPED) {
+      if (text.includes(`$json.${field}`)) {
+        offences.push(`${node.name} reads $json.${field} but follows ${behind.join(', ')}`);
+      }
+    }
+  }
+  expect(offences).toEqual([]);
+});
+
+/**
+ * Every action the loop can decide has somewhere to go.
+ *
+ * `Advance` returns `action: 'fail'` when a cost ceiling is reached (FR-081),
+ * and the switch had no branch for it — while `Callback: failed` sat in the
+ * workflow with nothing connected to it at all. A run that went over budget
+ * stopped in the middle and told nobody.
+ */
+test('every action the code can return is a wired switch branch', () => {
+  const decide = workflow.nodes.find((n) => n.name === 'Decide next step');
+  const advance = workflow.nodes.find((n) => n.name === 'Advance');
+  const source = `${decide?.parameters.jsCode ?? ''}\n${advance?.parameters.jsCode ?? ''}`;
+  const returned = new Set([...source.matchAll(/action:\s*'([a-z_]+)'/g)].map((m) => m[1]));
+  expect(returned.size, 'no actions found — has the code moved?').toBeGreaterThan(0);
+
+  const branch = workflow.nodes.find((n) => n.name === 'Switch on action');
+  const rules = (branch?.parameters.rules as { values?: { outputKey?: string }[] } | undefined)
+    ?.values;
+  const wired = workflow.connections['Switch on action']?.main ?? [];
+  const handled = new Set(
+    (rules ?? [])
+      .map((rule, index) => ((wired[index] ?? []).length > 0 ? rule.outputKey : undefined))
+      .filter((key): key is string => Boolean(key)),
+  );
+  expect([...returned].filter((action) => !handled.has(action))).toEqual([]);
+});
+
+/**
+ * An error from the runner is a failed run, not a finished step.
+ *
+ * Every `Runner:` node sets `neverError`, so an HTTP failure arrives as
+ * ordinary data with an `error` in it rather than stopping the workflow. That
+ * is the right choice — the run can then fail with the runner's own words
+ * instead of an n8n node error — but it only works if something reads it.
+ *
+ * Nothing did. A sandbox that could not be created answered `{error,
+ * reason}`, the workflow treated it as a success, and every step afterwards
+ * answered "that run has no sandbox" — each of those a success too. The run
+ * walked the entire pipeline without executing anything and stopped at the
+ * first checkpoint, asking a person to approve work that had never happened,
+ * with nothing spent and every step still marked waiting.
+ */
+test('an error from the runner is read, not walked past', () => {
+  const neverError = workflow.nodes.filter(
+    (n) => n.name.startsWith('Runner:') && JSON.stringify(n.parameters).includes('neverError'),
+  );
+  expect(neverError.length, 'no runner call tolerates its own errors').toBeGreaterThan(0);
+
+  // Something has to look at what those calls answered. The two Code nodes
+  // that carry the run forward are the only places that can.
+  const readers = ['Carry state past the first callback', 'Advance']
+    .map((name) => workflow.nodes.find((n) => n.name === name))
+    .map((n) => String(n?.parameters.jsCode ?? ''));
+  expect(readers.every((code) => /\.error\b/.test(code))).toBe(true);
+
+  // And reading it has to end the run, not merely note it.
+  expect(readers.some((code) => code.includes("action: 'fail'"))).toBe(true);
+  const decide = String(
+    workflow.nodes.find((n) => n.name === 'Decide next step')?.parameters.jsCode ?? '',
+  );
+  expect(decide, 'a run that already failed still consults the pipeline').toContain('fatal');
 });

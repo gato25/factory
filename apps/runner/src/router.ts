@@ -50,6 +50,14 @@ export interface RouterDeps {
    * never launches anything — and every existing test — need not supply one.
    */
   launches?: LaunchStore;
+  /**
+   * The host a launch runs on, when it is not the one runs use.
+   *
+   * A launch publishes a port and needs a network namespace of its own, which
+   * only a container gives; so where runs execute as processes on this
+   * machine, launches still go to Docker. Absent, launches use `host`.
+   */
+  launchHost?: ContainerHost;
   /** Tunables for the launch lifecycle, injected by tests. */
   launchDeps?: Partial<Omit<LaunchDeps, 'host' | 'store'>>;
 }
@@ -63,7 +71,7 @@ interface Route {
 export function routesFor(deps: RouterDeps): Route[] {
   const { config, host, store, probeHost } = deps;
   const launchDeps: LaunchDeps = {
-    host,
+    host: deps.launchHost ?? host,
     store: deps.launches ?? memoryLaunchStore(),
     ...deps.launchDeps,
   };

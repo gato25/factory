@@ -80,6 +80,16 @@ export async function connectRepository(input: ConnectInput, deps: ConnectDeps) 
  * the person can go and grant that exact thing.
  */
 export function assertUsable(access: AccessCheck, provider: 'gitlab' | 'github'): void {
+  // A refusal is reported as itself, not as three missing permissions.
+  //
+  // Every non-OK answer used to be flattened into "all three capabilities are
+  // absent", so a token the provider would not accept at all came back as
+  // "The token is missing Contents: Read, Contents: Read and write and Pull
+  // requests: Read and write (GitHub answered 401)" — an instruction to go and
+  // grant permissions on a token that was never accepted, with the one word
+  // that said so, `401`, in brackets at the end.
+  if (access.rejected) throw new FactoryError('credential_invalid', access.rejected);
+
   const names = PERMISSION_NAMES[provider];
   const missing: string[] = [];
   if (!access.canRead) missing.push(names.canRead);

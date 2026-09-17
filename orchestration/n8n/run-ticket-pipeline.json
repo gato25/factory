@@ -1,4 +1,6 @@
 {
+  "id": "RunTicketPipeln1",
+  "active": false,
   "name": "run-ticket-pipeline",
   "nodes": [
     {
@@ -12,17 +14,24 @@
       "name": "Webhook: ticket queued",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [-720, 300]
+      "position": [
+        -720,
+        300
+      ],
+      "webhookId": "9f2b1c7e-3a44-4a2e-8f51-6d0c5b1e7a90"
     },
     {
       "parameters": {
-        "jsCode": "const s = $input.first().json;\nreturn [{ json: { ...s, index: 0, facts: {}, spent_usd: 0, step_index: 0 } }];"
+        "jsCode": "// A webhook node does not hand on the posted body — it hands on an envelope:\n// { headers, params, query, body }. Spreading THAT put `headers` and `query`\n// into the state and left every field of the snapshot undefined, so the first\n// node to use one — `Callback: started`, reading `callback_url` — failed with\n// ERR_INVALID_URL, and the app reported 'orchestrator answered 500'.\n//\n// `?? json` so the workflow can still be run by hand from the n8n editor with\n// a snapshot pasted straight in, where there is no envelope.\nconst json = $input.first().json;\nconst s = json.body ?? json;\nif (!s || !s.run_id) {\n  throw new Error('the posted body is not a run snapshot: no run_id in it');\n}\nreturn [{ json: { ...s, index: 0, facts: {}, spent_usd: 0, step_index: 0 } }];"
       },
       "id": "initialise-state",
       "name": "Initialise state",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [-520, 300]
+      "position": [
+        -520,
+        300
+      ]
     },
     {
       "parameters": {
@@ -53,41 +62,50 @@
       "name": "Runner: start",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
-      "position": [-320, 300]
+      "position": [
+        -320,
+        300
+      ]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $json.callback_url }}",
+        "url": "={{ $('Initialise state').first().json.callback_url }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
               "name": "authorization",
-              "value": "=Bearer {{ $json.resume_secret }}"
+              "value": "=Bearer {{ $('Initialise state').first().json.resume_secret }}"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ run_id: $json.run_id, attempt: $json.attempt, step_index: $json.step_index ?? 0, event: 'started', ...($json.callback_extra ?? {}) }) }}",
+        "jsonBody": "={{ JSON.stringify({ run_id: $('Initialise state').first().json.run_id, attempt: $('Initialise state').first().json.attempt, step_index: 0, event: 'started', ...($('Initialise state').first().json.callback_extra ?? {}) }) }}",
         "options": {}
       },
       "id": "callback-started",
       "name": "Callback: started",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
-      "position": [-120, 300]
+      "position": [
+        -120,
+        300
+      ]
     },
     {
       "parameters": {
-        "jsCode": "\n// Mirrors packages/shared/src/step-loop.ts \u2014 the orchestrator's ONLY logic:\n// evaluate the condition, then branch on the type. It knows nothing about what\n// a specification, a design or a plan is (Constitution Principle III).\nconst state = $input.first().json;\nconst steps = state.pipeline.steps;\nconst index = state.index ?? 0;\nconst facts = state.facts ?? {};\n\nfunction conditionHolds(condition) {\n  if (condition === 'always') return true;\n  if (condition === 'ticket_has_ui') return facts.hasUi === true;\n  if (condition === 'ticket_has_no_ui') return facts.hasUi !== true;\n  return true;\n}\n\nconst CONDITION_TEXT = {\n  ticket_has_ui: 'ticket has no UI change',\n  ticket_has_no_ui: 'ticket changes the interface'\n};\n\nif (index >= steps.length) {\n  return [{ json: { ...state, action: 'finish' } }];\n}\n// A pause was asked for: the step that was running has already concluded and\n// been reported, and nothing further begins (FR-096). The run keeps its\n// status, so the interface shows exactly where it stopped.\nif (state.paused === true) {\n  return [{ json: { ...state, action: 'hold', step_index: index } }];\n}\nconst step = steps[index];\nif (conditionHolds(step.condition)) {\n  return [{ json: { ...state, action: 'run', step, step_index: index } }];\n}\nreturn [\n  {\n    json: {\n      ...state,\n      action: 'skip',\n      step,\n      step_index: index,\n      condition_not_met: CONDITION_TEXT[step.condition] ?? 'never'\n    }\n  }\n];\n"
+        "jsCode": "// A run that has already failed decides nothing else.\n//\n// Checked before anything reads the pipeline, because the failure is that\n// the sandbox does not exist: there is nothing to run a step in, and every\n// step would answer \"that run has no sandbox\" in turn.\nconst incoming = $input.first().json;\nif (incoming.fatal) {\n  return [{ json: { ...incoming, action: 'fail',\n    reason: incoming.fatal.reason, detail: incoming.fatal.detail } }];\n}\n\n\n// Mirrors packages/shared/src/step-loop.ts — the orchestrator's ONLY logic:\n// evaluate the condition, then branch on the type. It knows nothing about what\n// a specification, a design or a plan is (Constitution Principle III).\nconst state = $input.first().json;\nconst steps = state.pipeline.steps;\nconst index = state.index ?? 0;\nconst facts = state.facts ?? {};\n\nfunction conditionHolds(condition) {\n  if (condition === 'always') return true;\n  if (condition === 'ticket_has_ui') return facts.hasUi === true;\n  if (condition === 'ticket_has_no_ui') return facts.hasUi !== true;\n  return true;\n}\n\nconst CONDITION_TEXT = {\n  ticket_has_ui: 'ticket has no UI change',\n  ticket_has_no_ui: 'ticket changes the interface'\n};\n\nif (index >= steps.length) {\n  return [{ json: { ...state, action: 'finish' } }];\n}\n// A pause was asked for: the step that was running has already concluded and\n// been reported, and nothing further begins (FR-096). The run keeps its\n// status, so the interface shows exactly where it stopped.\nif (state.paused === true) {\n  return [{ json: { ...state, action: 'hold', step_index: index } }];\n}\nconst step = steps[index];\nif (conditionHolds(step.condition)) {\n  return [{ json: { ...state, action: 'run', step, step_index: index } }];\n}\nreturn [\n  {\n    json: {\n      ...state,\n      action: 'skip',\n      step,\n      step_index: index,\n      condition_not_met: CONDITION_TEXT[step.condition] ?? 'never'\n    }\n  }\n];\n"
       },
       "id": "decide-next-step",
       "name": "Decide next step",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [80, 300]
+      "position": [
+        80,
+        300
+      ]
     },
     {
       "parameters": {
@@ -172,6 +190,26 @@
                 "combinator": "and"
               },
               "outputKey": "hold"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "fail",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "outputKey": "fail"
             }
           ]
         },
@@ -181,7 +219,10 @@
       "name": "Switch on action",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3,
-      "position": [280, 300]
+      "position": [
+        280,
+        300
+      ]
     },
     {
       "parameters": {
@@ -295,12 +336,15 @@
       "name": "Switch on step type",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3,
-      "position": [500, 200]
+      "position": [
+        500,
+        200
+      ]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.RUNNER_BASE_URL }}/runs/{{ $json.run_id }}/steps/{{ $json.step_index }}",
+        "url": "={{ $env.RUNNER_BASE_URL }}/runs/{{ $('Initialise state').first().json.run_id }}/steps/{{ $('Decide next step').first().json.step_index }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -312,7 +356,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ step: $json.step, feedback: $json.feedback, has_ui: $json.facts.hasUi }) }}",
+        "jsonBody": "={{ JSON.stringify({ step: $('Decide next step').first().json.step, feedback: $('Decide next step').first().json.feedback ?? null, has_ui: ($('Decide next step').first().json.facts ?? {}).hasUi }) }}",
         "options": {
           "response": {
             "response": {
@@ -326,79 +370,91 @@
       "name": "Runner: run step",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
-      "position": [720, 60]
+      "position": [
+        720,
+        60
+      ]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $json.callback_url }}",
+        "url": "={{ $('Initialise state').first().json.callback_url }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
               "name": "authorization",
-              "value": "=Bearer {{ $json.resume_secret }}"
+              "value": "=Bearer {{ $('Initialise state').first().json.resume_secret }}"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ run_id: $json.run_id, attempt: $json.attempt, step_index: $json.step_index ?? 0, event: 'step_finished', ...($json.callback_extra ?? {}) }) }}",
+        "jsonBody": "={{ JSON.stringify({ run_id: $('Initialise state').first().json.run_id, attempt: $('Initialise state').first().json.attempt, step_index: $('Decide next step').first().json.step_index ?? 0, event: 'step_finished', ...($('Decide next step').first().json.callback_extra ?? {}) }) }}",
         "options": {}
       },
       "id": "callback-step-finished",
       "name": "Callback: step finished",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
-      "position": [920, 60]
+      "position": [
+        920,
+        60
+      ]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $json.callback_url }}",
+        "url": "={{ $('Initialise state').first().json.callback_url }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
               "name": "authorization",
-              "value": "=Bearer {{ $json.resume_secret }}"
+              "value": "=Bearer {{ $('Initialise state').first().json.resume_secret }}"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ run_id: $json.run_id, attempt: $json.attempt, step_index: $json.step_index ?? 0, event: 'step_skipped', ...($json.callback_extra ?? {}) }) }}",
+        "jsonBody": "={{ JSON.stringify({ run_id: $('Initialise state').first().json.run_id, attempt: $('Initialise state').first().json.attempt, step_index: $('Decide next step').first().json.step_index ?? 0, event: 'step_skipped', ...($('Decide next step').first().json.callback_extra ?? {}) }) }}",
         "options": {}
       },
       "id": "callback-step-skipped",
       "name": "Callback: step skipped",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
-      "position": [720, 300]
+      "position": [
+        720,
+        300
+      ]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $json.callback_url }}",
+        "url": "={{ $('Initialise state').first().json.callback_url }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
               "name": "authorization",
-              "value": "=Bearer {{ $json.resume_secret }}"
+              "value": "=Bearer {{ $('Initialise state').first().json.resume_secret }}"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ run_id: $json.run_id, attempt: $json.attempt, step_index: $json.step_index, event: 'waiting_approval', resume_url: $execution.resumeUrl, approvers: $json.step.approvers ?? 'anyone' }) }}",
+        "jsonBody": "={{ JSON.stringify({ run_id: $('Initialise state').first().json.run_id, attempt: $('Initialise state').first().json.attempt, step_index: $('Decide next step').first().json.step_index, event: 'waiting_approval', resume_url: $execution.resumeUrl, approvers: $('Decide next step').first().json.step.approvers ?? 'anyone' }) }}",
         "options": {}
       },
       "id": "callback-waiting-approval",
       "name": "Callback: waiting approval",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
-      "position": [720, 440]
+      "position": [
+        720,
+        440
+      ]
     },
     {
       "parameters": {
@@ -409,22 +465,28 @@
       "name": "Wait for a human",
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1,
-      "position": [920, 440]
+      "position": [
+        920,
+        440
+      ]
     },
     {
       "parameters": {
-        "jsCode": "\n// Carries forward what the step established, then advances. The classification\n// is the only fact today and comes from the specification step (FR-099).\nconst state = $input.first().json;\nconst result = state.result ?? {};\n// The callback reply says whether a pause has been asked for.\nconst paused = state.callback?.paused === true || state.paused === true;\nconst facts = { ...(state.facts ?? {}) };\nif (result.classification) facts.hasUi = result.classification.has_ui;\n\n// A ceiling reached is a failure, checked after every step (FR-081).\nconst spent = Number(state.spent_usd ?? 0) + Number(result.costUsd ?? 0);\nconst ceiling = Number(state.limits.cost_ceiling_usd);\nif (spent > ceiling) {\n  return [{ json: { ...state, facts, spent_usd: spent, action: 'fail',\n    reason: 'budget_exceeded',\n    detail: `the run reached its ceiling of $${ceiling.toFixed(4)}` } }];\n}\n// A change request at a checkpoint re-runs the PRECEDING step with the\n// feedback, then returns to the same checkpoint (FR-061).\nconst decision = state.resume?.decision ?? state.decision;\nif (decision === 'changes_requested') {\n  const steps = state.pipeline.steps;\n  let back = (state.step_index ?? 0) - 1;\n  while (back >= 0 && !['agent', 'design', 'shell'].includes(steps[back].type)) back--;\n  if (back >= 0) {\n    return [{ json: { ...state, facts, spent_usd: spent, index: back,\n      feedback: state.resume?.feedback ?? state.feedback, returning_to: state.step_index } }];\n  }\n}\n// After a re-run triggered by a change request, come back to the checkpoint.\nif (state.returning_to !== undefined && state.returning_to !== null) {\n  const target = state.returning_to;\n  return [{ json: { ...state, facts, spent_usd: spent, index: target,\n    returning_to: null, feedback: null } }];\n}\nreturn [{ json: { ...state, facts, paused, spent_usd: spent, index: (state.step_index ?? 0) + 1 } }];\n"
+        "jsCode": "// Where the state comes from, said explicitly.\n//\n// This node is reached from four places, and three of them are an HTTP request\n// or a Wait — so `$input` holds whatever answered last, not the run. The state\n// is taken from the decision that started this iteration; the reply is whatever\n// did answer, which is exactly what carries a pause or an approval.\nconst state = $('Decide next step').first().json;\nconst reply = $input.first().json ?? {};\n// The step's own outcome, when a step ran at all — a skipped step never called\n// the runner, and asking a node that did not execute for its data throws.\nconst result = $('Runner: run step').isExecuted\n  ? ($('Runner: run step').first().json ?? {})\n  : {};\n\n// The step did not run at all. `Runner: run step` sets `neverError` too,\n// so this is what a refused or impossible step looks like, and treating\n// it as a finished one is what let a run reach its checkpoint having\n// executed nothing.\nif (result.error) {\n  return [{ json: { ...state, action: 'fail',\n    reason: result.reason ?? 'step_failed', detail: result.error } }];\n}\n\nconst facts = { ...(state.facts ?? {}) };\nif (result.classification) facts.hasUi = result.classification.has_ui;\n\n// The app's latest word on whether a pause was asked for, wherever it reached\n// us from: a callback reply, or the body that resumed a wait.\nconst paused = reply.paused === true || reply.callback?.paused === true || state.paused === true;\n\n// A ceiling reached is a failure, checked after every step (FR-081).\nconst spent = Number(state.spent_usd ?? 0) + Number(result.costUsd ?? 0);\nconst ceiling = Number(state.limits.cost_ceiling_usd);\nif (spent > ceiling) {\n  return [{ json: { ...state, facts, spent_usd: spent, action: 'fail',\n    reason: 'budget_exceeded',\n    detail: `the run reached its ceiling of $${ceiling.toFixed(4)}` } }];\n}\n\n// A change request at a checkpoint re-runs the PRECEDING step with the\n// feedback, then returns to the same checkpoint (FR-061).\nconst decision = reply.resume?.decision ?? reply.decision ?? state.decision;\nconst feedback = reply.resume?.feedback ?? reply.feedback ?? state.feedback;\nif (decision === 'changes_requested') {\n  const steps = state.pipeline.steps;\n  let back = (state.step_index ?? 0) - 1;\n  while (back >= 0 && !['agent', 'design', 'shell'].includes(steps[back].type)) back--;\n  if (back >= 0) {\n    return [{ json: { ...state, facts, spent_usd: spent, index: back,\n      feedback, returning_to: state.step_index } }];\n  }\n}\n// After a re-run triggered by a change request, come back to the checkpoint.\nif (state.returning_to !== undefined && state.returning_to !== null) {\n  return [{ json: { ...state, facts, spent_usd: spent, index: state.returning_to,\n    returning_to: null, feedback: null } }];\n}\nreturn [{ json: { ...state, facts, paused, spent_usd: spent, index: (state.step_index ?? 0) + 1 } }];"
       },
       "id": "advance",
       "name": "Advance",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1140, 250]
+      "position": [
+        1140,
+        250
+      ]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.RUNNER_BASE_URL }}/runs/{{ $json.run_id }}/verify-and-push",
+        "url": "={{ $env.RUNNER_BASE_URL }}/runs/{{ $('Initialise state').first().json.run_id }}/verify-and-push",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -450,23 +512,29 @@
       "name": "Runner: verify and push",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
-      "position": [500, 620]
+      "position": [
+        500,
+        620
+      ]
     },
     {
       "id": "compose-merge-request",
       "name": "Compose merge request",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
-      "position": [610, 740],
+      "position": [
+        610,
+        740
+      ],
       "parameters": {
         "method": "GET",
-        "url": "={{ $json.callback_url.replace(\"/api/hooks/n8n\", \"/api/runs/\" + $json.run_id + \"/merge-request\") }}",
+        "url": "={{ $('Initialise state').first().json.callback_url.replace(\"/api/hooks/n8n\", \"/api/runs/\" + $('Initialise state').first().json.run_id + \"/merge-request\") }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
               "name": "authorization",
-              "value": "=Bearer {{ $json.resume_secret }}"
+              "value": "=Bearer {{ $('Initialise state').first().json.resume_secret }}"
             }
           ]
         },
@@ -484,10 +552,13 @@
       "name": "Merge request ready",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [720, 740],
+      "position": [
+        720,
+        740
+      ],
       "parameters": {
         "mode": "raw",
-        "jsonOutput": "={{ JSON.stringify({ ...$('Runner: verify and push').item.json, merge_request: $json.repo?.provider === \"gitlab\" ? { source_branch: $json.source_branch, target_branch: $json.target_branch, title: $json.title, description: $json.description, labels: $json.labels } : { head: $json.source_branch, base: $json.target_branch, title: $json.title, body: $json.description } }) }}",
+        "jsonOutput": "={{ JSON.stringify({ ...$('Initialise state').first().json, merge_request: $('Initialise state').first().json.repo.provider === \"gitlab\" ? { source_branch: $json.source_branch, target_branch: $json.target_branch, title: $json.title, description: $json.description, labels: $json.labels } : { head: $json.source_branch, base: $json.target_branch, title: $json.title, body: $json.description } }) }}",
         "options": {}
       }
     },
@@ -510,84 +581,96 @@
       "name": "Open merge request",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
-      "position": [720, 620]
+      "position": [
+        720,
+        620
+      ]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $json.callback_url }}",
+        "url": "={{ $('Initialise state').first().json.callback_url }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
               "name": "authorization",
-              "value": "=Bearer {{ $json.resume_secret }}"
+              "value": "=Bearer {{ $('Initialise state').first().json.resume_secret }}"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ run_id: $json.run_id, attempt: $json.attempt, step_index: $json.step_index ?? 0, event: 'mr_opened', ...($json.callback_extra ?? {}) }) }}",
+        "jsonBody": "={{ JSON.stringify({ run_id: $('Initialise state').first().json.run_id, attempt: $('Initialise state').first().json.attempt, step_index: $('Decide next step').first().json.step_index ?? 0, event: 'mr_opened', ...($('Decide next step').first().json.callback_extra ?? {}) }) }}",
         "options": {}
       },
       "id": "callback-mr-opened",
       "name": "Callback: mr opened",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
-      "position": [920, 620]
+      "position": [
+        920,
+        620
+      ]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $json.callback_url }}",
+        "url": "={{ $('Initialise state').first().json.callback_url }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
               "name": "authorization",
-              "value": "=Bearer {{ $json.resume_secret }}"
+              "value": "=Bearer {{ $('Initialise state').first().json.resume_secret }}"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ run_id: $json.run_id, attempt: $json.attempt, step_index: $json.step_index ?? 0, event: 'done', ...($json.callback_extra ?? {}) }) }}",
+        "jsonBody": "={{ JSON.stringify({ run_id: $('Initialise state').first().json.run_id, attempt: $('Initialise state').first().json.attempt, step_index: $('Decide next step').first().json.step_index ?? 0, event: 'done', ...($('Decide next step').first().json.callback_extra ?? {}) }) }}",
         "options": {}
       },
       "id": "callback-done",
       "name": "Callback: done",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
-      "position": [1140, 620]
+      "position": [
+        1140,
+        620
+      ]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $json.callback_url }}",
+        "url": "={{ $('Initialise state').first().json.callback_url }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
               "name": "authorization",
-              "value": "=Bearer {{ $json.resume_secret }}"
+              "value": "=Bearer {{ $('Initialise state').first().json.resume_secret }}"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ run_id: $json.run_id, attempt: $json.attempt, step_index: $json.step_index ?? 0, event: 'failed', ...($json.callback_extra ?? {}) }) }}",
+        "jsonBody": "={{ JSON.stringify({ run_id: $('Initialise state').first().json.run_id, attempt: $('Initialise state').first().json.attempt, step_index: $('Decide next step').first().json.step_index ?? 0, event: 'failed', ...($('Decide next step').first().json.callback_extra ?? {}) }) }}",
         "options": {}
       },
       "id": "callback-failed",
       "name": "Callback: failed",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
-      "position": [500, 820]
+      "position": [
+        500,
+        820
+      ]
     },
     {
       "parameters": {
         "method": "DELETE",
-        "url": "={{ $env.RUNNER_BASE_URL }}/runs/{{ $json.run_id }}",
+        "url": "={{ $env.RUNNER_BASE_URL }}/runs/{{ $('Initialise state').first().json.run_id }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -603,7 +686,10 @@
       "name": "Runner: destroy",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
-      "position": [1360, 620]
+      "position": [
+        1360,
+        620
+      ]
     },
     {
       "parameters": {
@@ -615,31 +701,37 @@
       "name": "Respond",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [1580, 620]
+      "position": [
+        1580,
+        620
+      ]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $json.callback_url }}",
+        "url": "={{ $('Initialise state').first().json.callback_url }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
               "name": "authorization",
-              "value": "=Bearer {{ $json.resume_secret }}"
+              "value": "=Bearer {{ $('Initialise state').first().json.resume_secret }}"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ run_id: $json.run_id, attempt: $json.attempt, step_index: $json.step_index, event: 'paused', resume_url: $execution.resumeUrl }) }}",
+        "jsonBody": "={{ JSON.stringify({ run_id: $('Initialise state').first().json.run_id, attempt: $('Initialise state').first().json.attempt, step_index: $('Decide next step').first().json.step_index, event: 'paused', resume_url: $execution.resumeUrl }) }}",
         "options": {}
       },
       "id": "callback-paused",
       "name": "Callback: paused",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
-      "position": [720, 700]
+      "position": [
+        720,
+        700
+      ]
     },
     {
       "parameters": {
@@ -650,17 +742,36 @@
       "name": "Wait while paused",
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1,
-      "position": [920, 700]
+      "position": [
+        920,
+        700
+      ]
     },
     {
       "parameters": {
-        "jsCode": "\n// Continuing after a pause. The request was cleared before this webhook was\n// called, so the flag is dropped here too and the run picks up at the step\n// it had reached \u2014 not the one that had already concluded (FR-096).\nconst state = $input.first().json;\nreturn [{ json: { ...state, paused: false, index: state.step_index ?? state.index ?? 0 } }];\n"
+        "jsCode": "// Continuing after a pause. The request was cleared before this webhook was\n// called, so the flag is dropped here too and the run picks up at the step it\n// had reached — not the one that had already concluded (FR-096).\n//\n// The state comes from the decision, not from `$input`: this node is reached\n// through a Wait that was resumed by an HTTP call, so `$input` is that call's\n// body.\nconst state = $('Decide next step').first().json;\nreturn [{ json: { ...state, paused: false, index: state.step_index ?? state.index ?? 0 } }];"
       },
       "id": "cleared-to-continue",
       "name": "Cleared to continue",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1120, 700]
+      "position": [
+        1120,
+        700
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// The reply to `Callback: started` is not the run, so the state is taken\n// from where it was made.\nconst state = $('Initialise state').first().json;\n\n// Whether the sandbox was actually created. `Runner: start` sets\n// `neverError`, so a refusal arrives here as an ordinary answer with an\n// `error` in it, and this is the only place that looks.\nconst started = $('Runner: start').first().json ?? {};\nif (started.error) {\n  return [{ json: { ...state, fatal: {\n    reason: started.reason ?? 'sandbox_lost',\n    detail: started.error,\n  } } }];\n}\nreturn [{ json: state }];"
+      },
+      "id": "carry-state-first-callback",
+      "name": "Carry state past the first callback",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        300
+      ]
     }
   ],
   "connections": {
@@ -701,7 +812,7 @@
       "main": [
         [
           {
-            "node": "Decide next step",
+            "node": "Carry state past the first callback",
             "type": "main",
             "index": 0
           }
@@ -745,6 +856,13 @@
         [
           {
             "node": "Callback: paused",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Callback: failed",
             "type": "main",
             "index": 0
           }
@@ -971,6 +1089,17 @@
         [
           {
             "node": "Open merge request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Carry state past the first callback": {
+      "main": [
+        [
+          {
+            "node": "Decide next step",
             "type": "main",
             "index": 0
           }

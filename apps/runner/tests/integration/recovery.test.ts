@@ -17,7 +17,9 @@ const sandbox = {
   cpu: 2,
   memoryMb: 4096,
   wallClockMinutes: 60,
-  networkDuringImplement: false,
+  // True because these fixtures run agent steps, which reach the model from
+  // inside the sandbox: the isolated combination is refused at the start.
+  networkDuringImplement: true,
 };
 const input = { snapshot, credentials, sandbox };
 const lost = () => new FactoryError('sandbox_lost', 'the sandbox went away');

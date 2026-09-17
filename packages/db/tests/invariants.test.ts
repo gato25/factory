@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, expect, test } from 'bun:test';
 import { sql } from 'drizzle-orm';
-import { createClient } from '../src/client';
+import { createTestClient } from '../src/client';
 import {
   approvals,
   pipelines,
@@ -46,7 +46,7 @@ function first<T>(rows: T[], what: string): T {
   return row;
 }
 
-const { db, sql: raw } = createClient();
+const { db, sql: raw } = createTestClient();
 let userId: string;
 let repoId: string;
 let ticketId: string;
