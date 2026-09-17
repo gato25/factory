@@ -35,6 +35,9 @@ itself, from the version the command did record, against n8n's own SQLite file �
   right in the interface, and answers the address the app posts to with 404.
 - **`active`**. The column is `NOT NULL`, so importing a file without it fails
   with `SQLITE_CONSTRAINT` and no other explanation.
+- **`responseMode: onReceived`** on the webhook node. The app posts a snapshot
+  and needs an answer at once; with `responseNode` the answer came when the
+  workflow ended, minutes later, and was whatever ended it.
 - **`id`**. The import matches on it, so re-importing updates this workflow
   instead of adding a second one with the same name beside it.
 
@@ -105,11 +108,18 @@ the application**, which authenticates it. The three fields above, the
 `--separate` form and the state rule are what the first real executions turned
 out to need, exactly as the note that used to sit here predicted.
 
-Against n8n 2.40.2 on a Windows machine, with Node 24: it imports and publishes
-from the command line (with the published-version row above), registers its
-webhook, and refuses an empty body with its own message — `the posted body is
-not a run snapshot: no run_id in it` — which is the Code node and the `$env`
-expressions working under n8n 2.
+Against n8n 2.40.2 on a Windows machine, with Node 24, runs executing as
+processes: it imports and publishes from the command line (with the
+published-version row above), registers its webhook, starts a run, runs the
+specification step to completion and posts its result. The first real step to
+finish found two things the happy-path reasoning had not: the **step finished**
+callback carried no status, cost or artifacts — it spread a field only a skipped
+step sets — so the app answered 500 and every run stopped at its first finished
+step; and the webhook answered only when the whole workflow ended, so the app's
+trigger request sat open for the entire run and then reported whatever ended
+it. The callback now carries the runner's own answer, and the webhook answers
+as soon as it has the body. The steps after the first, the checkpoint and the
+merge request have still not been observed.
 
 Past that first callback, only the **happy path** has been reasoned through and
 none of it observed:

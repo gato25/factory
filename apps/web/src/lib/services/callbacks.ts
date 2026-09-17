@@ -4,6 +4,7 @@ import {
   type Callback,
   createLogger,
   createRedactor,
+  FactoryError,
   notAuthorised,
   type PipelineSnapshot,
 } from '@factory/shared';
@@ -55,9 +56,12 @@ export async function applyCallback(
 
   switch (callback.event) {
     case 'started': {
+      // The run has started, so "not started yet: the orchestrator could not
+      // be reached" — recorded when the trigger's answer was late or wrong —
+      // is no longer true, and was left standing over a running run.
       await database
         .update(runs)
-        .set({ containerId: callback.container_id, updatedAt: new Date() })
+        .set({ containerId: callback.container_id, failureReason: null, updatedAt: new Date() })
         .where(eq(runs.id, runId));
       await setRunStatus(database, runId, 'running');
       await mirrorTicket(database, runId, 'running');
@@ -75,6 +79,21 @@ export async function applyCallback(
     }
 
     case 'step_finished': {
+      // Named, not swallowed. The first version of the workflow posted this
+      // event with none of these fields, the insert failed on a null status,
+      // and the orchestrator was told `internal error` — which said nothing
+      // about which side was wrong or what was missing.
+      const missing = [
+        callback.status === 'done' || callback.status === 'failed' ? null : 'status',
+        typeof callback.cost_usd === 'string' ? null : 'cost_usd',
+        Array.isArray(callback.artifacts) ? null : 'artifacts',
+      ].filter((field): field is string => field !== null);
+      if (missing.length > 0) {
+        throw new FactoryError(
+          'invalid_input',
+          `a step_finished callback needs ${missing.join(', ')} — the orchestrator posted none`,
+        );
+      }
       const { applied } = await recordStep(database, {
         runId,
         stepIndex,

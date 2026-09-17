@@ -606,11 +606,24 @@ if (!workflowId) {
    * needs nothing. Each command boots n8n for a few seconds; the very first
    * import on a fresh install also creates the database, which is minutes.
    */
+  /**
+   * Re-imported whenever the file has changed since the last import, not
+   * only when n8n has never seen it: a fix to the workflow that stays on disk
+   * while n8n runs the version it imported last week is the most confusing
+   * kind of not-fixed. The hash of the last import is kept beside n8n's own
+   * files; a matching hash and an active workflow mean nothing to do.
+   */
+  const fileHash = new Bun.CryptoHasher('sha256')
+    .update(await Bun.file(`orchestration/n8n/${WORKFLOW_NAME}.json`).arrayBuffer())
+    .digest('hex');
+  const hashFile = Bun.file(join(N8N_HOME, `${WORKFLOW_NAME}.imported.sha256`));
+  const importedHash = (await hashFile.exists()) ? (await hashFile.text()).trim() : '';
+
   const active = await n8n('list:workflow', '--active=true');
   if (active.code !== 0) {
     warn('Could not ask n8n for its workflows:');
     for (const line of active.out.trim().split('\n').slice(-4)) note(line);
-  } else if (listed(active.out, workflowId)) {
+  } else if (listed(active.out, workflowId) && importedHash === fileHash) {
     ensurePublishedVersion(workflowId);
     ok('Workflow imported and published');
   } else {
@@ -644,7 +657,12 @@ if (!workflowId) {
         (await n8n('update:workflow', `--id=${workflowId}`, '--active=true')).code === 0;
       if (switchedOn) {
         ensurePublishedVersion(workflowId);
-        ok('Workflow imported and published');
+        await Bun.write(hashFile, `${fileHash}\n`);
+        ok(
+          importedHash
+            ? 'Workflow re-imported and published — the file had changed'
+            : 'Workflow imported and published',
+        );
       } else {
         warn('Imported, but could not be published — its webhook will not answer:');
         for (const line of published.out.trim().split('\n').slice(-4)) note(line);

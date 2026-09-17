@@ -7,8 +7,10 @@
       "parameters": {
         "httpMethod": "POST",
         "path": "run-ticket-pipeline",
-        "responseMode": "responseNode",
-        "options": {}
+        "responseMode": "onReceived",
+        "options": {
+          "responseData": "noData"
+        }
       },
       "id": "webhook-ticket-queued",
       "name": "Webhook: ticket queued",
@@ -390,7 +392,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ run_id: $('Initialise state').first().json.run_id, attempt: $('Initialise state').first().json.attempt, step_index: $('Decide next step').first().json.step_index ?? 0, event: 'step_finished', ...($('Decide next step').first().json.callback_extra ?? {}) }) }}",
+        "jsonBody": "={{ JSON.stringify({ run_id: $('Initialise state').first().json.run_id, attempt: $('Initialise state').first().json.attempt, step_index: $('Decide next step').first().json.step_index ?? 0, event: 'step_finished', status: ($('Runner: run step').first().json.status === 'done' ? 'done' : 'failed'), duration_s: Number($('Runner: run step').first().json.durationS ?? 0), cost_usd: String($('Runner: run step').first().json.costUsd ?? '0.0000'), engine_session_id: $('Runner: run step').first().json.sessionId ?? undefined, summary: $('Runner: run step').first().json.summary ?? ($('Runner: run step').first().json.error ? $('Runner: run step').first().json.error.detail : undefined), artifacts: $('Runner: run step').first().json.outputs ?? [] }) }}",
         "options": {}
       },
       "id": "callback-step-finished",
@@ -400,7 +402,8 @@
       "position": [
         920,
         60
-      ]
+      ],
+      "notes": "The body is the runner's own answer to Runner: run step, in the app's vocabulary: status, duration_s, cost_usd, engine_session_id, summary, artifacts. It used to spread callback_extra from Decide next step, which is set for a skipped step and never for a finished one — so the app received an event with no status, answered 500, and every run stopped at its first finished step."
     },
     {
       "parameters": {
@@ -688,21 +691,6 @@
       "typeVersion": 4,
       "position": [
         1360,
-        620
-      ]
-    },
-    {
-      "parameters": {
-        "respondWith": "json",
-        "responseBody": "={{ JSON.stringify({ executionId: $execution.id }) }}",
-        "options": {}
-      },
-      "id": "respond",
-      "name": "Respond",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1,
-      "position": [
-        1580,
         620
       ]
     },
@@ -1031,13 +1019,7 @@
     },
     "Runner: destroy": {
       "main": [
-        [
-          {
-            "node": "Respond",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     },
     "Callback: paused": {

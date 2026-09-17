@@ -22,6 +22,8 @@ export interface TriggerDeps {
    *  function rather than the whole platform fetch. */
   fetch?: (url: string, init?: RequestInit) => Promise<Response>;
   sleep?: (ms: number) => Promise<void>;
+  /** How long one attempt may wait for the webhook's answer. */
+  timeoutMs?: number;
 }
 
 export type TriggerResult =
@@ -48,6 +50,10 @@ export async function deliverTrigger(
           ...(deps.apiKey ? { 'X-N8N-API-KEY': deps.apiKey } : {}),
         },
         body: JSON.stringify(snapshot),
+        // The webhook answers as soon as it has the body. One that does not
+        // answer at all — a hung orchestrator held this open for minutes —
+        // is a failed attempt to retry, not a request to wait on.
+        signal: AbortSignal.timeout(deps.timeoutMs ?? 30_000),
       });
       if (response.ok) {
         const body = (await response.json().catch(() => ({}))) as { executionId?: string };

@@ -314,3 +314,24 @@ test('an error from the runner is read, not walked past', () => {
   );
   expect(decide, 'a run that already failed still consults the pipeline').toContain('fatal');
 });
+
+test('the step finished callback carries the runner’s answer, in the app’s vocabulary', () => {
+  // It used to spread `callback_extra` from `Decide next step`, which only a
+  // skipped step sets — so a finished step arrived with no status, the app
+  // answered 500, and every run stopped at its first finished step.
+  const node = workflow.nodes.find((n) => n.name === 'Callback: step finished');
+  const body = String(node?.parameters.jsonBody ?? '');
+  expect(body).toContain("$('Runner: run step').first().json");
+  for (const field of ['status', 'duration_s', 'cost_usd', 'artifacts']) {
+    expect(body).toContain(`${field}:`);
+  }
+  expect(body).not.toContain('callback_extra');
+});
+
+test('the webhook answers as soon as it has the body', () => {
+  // With `responseNode` the app’s trigger request waited for the whole run
+  // and then reported whatever ended it as the reason the run never started.
+  const hook = workflow.nodes.find((n) => n.type === 'n8n-nodes-base.webhook');
+  expect(hook?.parameters.responseMode).toBe('onReceived');
+  expect(workflow.nodes.some((n) => n.type === 'n8n-nodes-base.respondToWebhook')).toBe(false);
+});

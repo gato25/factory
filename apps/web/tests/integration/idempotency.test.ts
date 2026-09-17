@@ -1,6 +1,6 @@
 import { afterAll, beforeEach, expect, test } from 'bun:test';
 import { logChunks, runs, stepResults, tickets } from '@factory/db/schema';
-import type { Callback } from '@factory/shared';
+import { type Callback, FactoryError } from '@factory/shared';
 import { eq } from 'drizzle-orm';
 import { applyCallback, authenticateCallback } from '../../src/lib/services/callbacks';
 import { startRun } from '../../src/lib/services/run';
@@ -201,4 +201,24 @@ test('a retry after failure is attempt 2 and keeps attempt 1 readable (FR-088, F
   expect(retry.run.attempt).toBe(2);
   const all = await db.select().from(runs).where(eq(runs.ticketId, scenario.ticketId));
   expect(all).toHaveLength(2);
+});
+
+// --- the shape of a finished step, checked at the door ---
+
+test('a step_finished with no outcome is refused by name, not with an internal error', async () => {
+  // What the workflow posted before it carried the runner's answer: the
+  // envelope alone. The insert failed on a null status and the orchestrator
+  // saw `internal error`, which named neither side nor field.
+  let thrown: unknown;
+  try {
+    await applyCallback(db, envelope('step_finished'));
+  } catch (error) {
+    thrown = error;
+  }
+  expect(thrown).toBeInstanceOf(FactoryError);
+  expect((thrown as FactoryError).reason).toBe('invalid_input');
+  expect((thrown as FactoryError).message).toContain('status');
+  expect((thrown as FactoryError).message).toContain('cost_usd');
+  expect((thrown as FactoryError).message).toContain('artifacts');
+  expect(await stepRows()).toHaveLength(0);
 });
