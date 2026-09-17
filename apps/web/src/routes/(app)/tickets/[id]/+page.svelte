@@ -12,6 +12,7 @@
   import { subscribeToRun } from '$lib/events/subscribe';
   import {
     cancel,
+    continueFrom,
     editRetry,
     failure,
     pause,
@@ -181,6 +182,22 @@
               >
                 <Icon name="pause" size={16} />
                 <span>Pause</span>
+              </button>
+            {/if}
+            <!-- A run nothing is driving any more — the orchestrator's
+                 execution died — picks up at its first unfinished step,
+                 keeping what finished and what it cost. A person decides it
+                 is stuck; the application cannot see an execution die. -->
+            {#if !loaded.run.pauseRequestedAt && (loaded.run.status === 'queued' || loaded.run.status === 'running')}
+              <button
+                type="button"
+                class="secondary"
+                disabled={working}
+                title="If nothing has happened for a while, drive the run again from its first unfinished step. Finished steps and their cost are kept. Only for a run that is stuck: a step still running would run twice."
+                onclick={() => act(() => continueFrom(loaded.run.id))}
+              >
+                <Icon name="rotate-ccw" size={16} />
+                <span>Continue run</span>
               </button>
             {/if}
             <button

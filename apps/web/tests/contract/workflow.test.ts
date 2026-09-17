@@ -335,3 +335,13 @@ test('the webhook answers as soon as it has the body', () => {
   expect(hook?.parameters.responseMode).toBe('onReceived');
   expect(workflow.nodes.some((n) => n.type === 'n8n-nodes-base.respondToWebhook')).toBe(false);
 });
+
+test('the loop can start at a resume point the application hands it', () => {
+  // Continuing a stuck run: the same snapshot, plus where to pick up and what
+  // is already known. Without this the only way out was cancel and retry.
+  const init = workflow.nodes.find((n) => n.name === 'Initialise state');
+  const code = String(init?.parameters.jsCode ?? '');
+  expect(code).toContain('s.resume');
+  expect(code).toContain('spent_usd');
+  expect(code).toContain('facts');
+});

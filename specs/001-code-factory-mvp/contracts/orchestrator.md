@@ -28,7 +28,21 @@ workspace setting, and without this it fell back to figures compiled into it, so
 administrator set had any effect.
 
 Delivery is retried with increasing delays if the orchestrator is unreachable; the ticket stays
-`queued` and the user is told the run has not begun (FR-094).
+`queued` and the user is told the run has not begun (FR-094). A delivery that times out is not
+retried: the body may have arrived, and posting it again would start the same run twice.
+
+**Continuing a stuck run.** The orchestrator holds no state, so when its execution dies the run
+is left `running` with nothing driving it. The application may post the same body again with one
+extra field, and the loop starts there instead of at zero:
+
+```
+resume: { index, facts: { hasUi? }, spent_usd }
+```
+
+`index` is the first step neither done nor skipped, `facts` what the specification step has
+established, `spent_usd` the run's cost so far — all read from the application's own records. The
+Runner's start is idempotent, so a workspace that still exists is kept. A person decides that a run
+is stuck; the application cannot see an execution die.
 
 ## 2. Step loop — the orchestrator's only logic
 

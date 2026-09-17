@@ -3,6 +3,7 @@ import * as v from 'valibot';
 import { command, getRequestEvent, query } from '$app/server';
 import { loadWebConfig } from '$lib/config';
 import { db } from '$lib/db';
+import { continueRun } from '$lib/services/continue';
 import { attemptsOf, failureOf } from '$lib/services/failure';
 import { handOver } from '$lib/services/orchestrator';
 import {
@@ -172,6 +173,34 @@ export const cancel = command(RunId, async (runId) => {
       message: cancelled
         ? 'Cancelled. The sandbox is released and the branch pushed so far is untouched.'
         : 'This run had already finished.',
+    };
+  });
+});
+
+/**
+ * A stuck run, driven again from its first unfinished step (FR-094 in
+ * spirit: a run is never left looking as though it is running when nothing
+ * drives it). Finished steps and their cost are kept; the orchestrator
+ * starts its loop where this run stopped.
+ */
+export const continueFrom = command(RunId, async (runId) => {
+  requireUser();
+  return attempt(async () => {
+    const config = loadWebConfig();
+    const { snapshot, index, stepName } = await continueRun(db(), runId);
+    const delivered = await handOver(
+      db(),
+      { runId, snapshot },
+      { baseUrl: config.orchestratorBaseUrl, apiKey: config.orchestratorApiKey || undefined },
+    );
+    const run = await getRun(db(), runId);
+    await runForTicket(run.ticketId).refresh();
+    return {
+      ok: delivered.delivered,
+      runId,
+      message: delivered.delivered
+        ? `Continuing from ${stepName} (step ${index + 1}). Steps already finished are kept.`
+        : `Could not hand the run back to the orchestrator: ${delivered.detail}`,
     };
   });
 });
