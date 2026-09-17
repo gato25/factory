@@ -86,6 +86,42 @@ export function buildPrompt(input: ClaudeStepInput): string {
   });
 }
 
+/**
+ * What a person is told when the CLI exits non-zero (FR-084).
+ *
+ * `stderr` first, because a crash lands there. But the CLI says its most
+ * actionable refusals on STDOUT and exits 1 with stderr empty — a spend limit
+ * reached, a session limit, a model not available to the account. The detail
+ * then fell back to "the CLI exited 1", which names nothing anybody can act
+ * on, while the sentence that did ("You've hit your org's monthly spend limit
+ * · ask your admin to raise it") sat in the step's own log one pane away.
+ *
+ * So: stderr, else the assistant's last words, else the tail of stdout. The
+ * tail rather than the head, because a refusal is the last thing printed and
+ * the banner is the first.
+ */
+export function failureDetail(
+  logs: Pick<LogSink, 'clean'>,
+  result: { exitCode: number; stdout: string; stderr: string },
+  rendered: Pick<ClaudeStreamRenderer, 'resultText'>,
+): string {
+  const stderr = logs.clean(result.stderr.trim()).trim();
+  if (stderr) return stderr.slice(0, 4000);
+
+  const spoken = logs.clean((rendered.resultText ?? '').trim()).trim();
+  if (spoken) return spoken.slice(0, 4000);
+
+  const tail = logs
+    .clean(result.stdout.trim())
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .slice(-20)
+    .join('\n')
+    .trim();
+  return tail ? tail.slice(-4000) : `the CLI exited ${result.exitCode}`;
+}
+
 export async function runClaudeStep(
   host: ContainerHost,
   input: ClaudeStepInput,
@@ -138,9 +174,7 @@ export async function runClaudeStep(
         error: {
           reason: 'command_failed',
           // Redacted: a failure detail is retained and shown (FR-084).
-          detail:
-            input.logs.clean(result.stderr.trim()).slice(0, 4000) ||
-            `the CLI exited ${result.exitCode}`,
+          detail: failureDetail(input.logs, result, rendered),
         },
       },
       limits,
