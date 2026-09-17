@@ -28,28 +28,60 @@ import { LogSink } from './stream/logs';
  */
 
 /**
+ * How long to keep trying an application that cannot be reached at all.
+ *
+ * Roughly 30 seconds in seven tries. A run picked up after a restart asks for
+ * its credentials the instant the service is listening, and on one machine
+ * both start together — the execution service was answering in 23 ms while the
+ * application needed a second to boot, so a resumed run died of
+ * `credential_missing` before the thing it was asking had opened its port. An
+ * application that is genuinely down still fails the run; it just takes half a
+ * minute to say so, which is the right trade for not losing a run's work to a
+ * restart.
+ */
+const REACH_WAITS_MS = [250, 500, 1000, 2000, 4000, 8000, 15000] as const;
+
+/**
  * The Runner asks the app for a run's credentials rather than receiving them
  * through the orchestrator, which FR-083 forbids holding any. Authenticated
  * with the run's own secret, exactly as a callback is.
+ *
+ * A refusal is immediate: the application answered, and waiting will not
+ * change its mind. Being unreachable is retried — see `REACH_WAITS_MS`.
  */
 export async function fetchCredentials(
   snapshot: PipelineSnapshot,
   doFetch: (url: string, init?: RequestInit) => Promise<Response> = fetch,
+  options: { sleep?: (ms: number) => Promise<void>; waits?: readonly number[] } = {},
 ): Promise<ResolvedCredentials> {
   const url = snapshot.callback_url.replace(
     /\/api\/hooks\/[^/]+$/,
     `/api/runs/${snapshot.run_id}/credentials`,
   );
-  let response: Response;
-  try {
-    response = await doFetch(url, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        authorization: `Bearer ${snapshot.resume_secret}`,
-      },
-    });
-  } catch (error) {
+  const waits = options.waits ?? REACH_WAITS_MS;
+  const sleep = options.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
+
+  let response: Response | undefined;
+  let unreachable: unknown;
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      response = await doFetch(url, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          authorization: `Bearer ${snapshot.resume_secret}`,
+        },
+      });
+      break;
+    } catch (error) {
+      unreachable = error;
+      if (attempt >= waits.length) break;
+      await sleep(waits[attempt] ?? 0);
+    }
+  }
+
+  if (!response) {
+    const error = unreachable;
     // The application being unreachable is a distinct failure from it refusing
     // the request, and it must say which application (002 FR-021). This became
     // worth naming when the execution service moved off the same machine: what

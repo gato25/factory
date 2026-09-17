@@ -318,9 +318,16 @@ test('an unreachable application is named, and named without its secrets (FR-021
   // misconfigured host from a firewall from an application that is down.
   let failed: Error | null = null;
   try {
-    await fetchCredentials(snapshot, async () => {
-      throw new TypeError('fetch failed');
-    });
+    // No waiting: an unreachable application is now retried for half a minute
+    // (a resumed run asks before the application beside it has finished
+    // booting), and what this test is about is the message, not the patience.
+    await fetchCredentials(
+      snapshot,
+      async () => {
+        throw new TypeError('fetch failed');
+      },
+      { sleep: async () => {} },
+    );
   } catch (error) {
     failed = error as Error;
   }
