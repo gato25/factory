@@ -134,7 +134,12 @@ export const DEFAULT_AGENTS: DefaultAgent[] = [
     engine: 'claude_cli',
     model: 'claude-opus-5',
     systemPrompt: IMPLEMENT_PROMPT,
-    allowedTools: ['Read', 'Edit', 'Bash', 'GitPush'],
+    // `Write` as well as `Edit`: this is the agent that creates files, and a
+    // ticket on a new or nearly empty repository is all creation. Without it
+    // every `Write` was refused — silently, as far as the step was concerned —
+    // and the agent either improvised with a shell heredoc or gave up and
+    // reported success having produced nothing.
+    allowedTools: ['Read', 'Write', 'Edit', 'Bash', 'GitPush'],
     outputFiles: [],
   },
 ];

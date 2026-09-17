@@ -33,6 +33,11 @@ test('it has the tools that responsibility requires', () => {
   expect(implement?.allowedTools).toContain('Bash');
   expect(implement?.allowedTools).toContain('Edit');
   expect(implement?.allowedTools).toContain('Read');
+  // And creating one. `Edit` changes a file that exists; a ticket on a new or
+  // nearly empty repository is all creation, and without `Write` every
+  // attempt at it was refused. A real run then reported "implemented" having
+  // written nothing, because a refused tool does not fail a step.
+  expect(implement?.allowedTools).toContain('Write');
 });
 
 test('no default agent claims to be a verification stage', () => {
