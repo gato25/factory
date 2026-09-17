@@ -246,10 +246,19 @@ test('verify-and-push runs no tests of its own (FR-055a, FR-055b)', async () => 
 test('a second attempt pushes with a lease rather than blindly (FR-091)', async () => {
   await startRun(host, store, { ...context(), snapshot: { ...snapshot, attempt: 2 } });
   host.responses.unshift({ match: 'git push', result: { exitCode: 0 } });
+  // Where the remote branch stands, which is what the lease is against. A
+  // bare `--force-with-lease` has nothing to lease against on a single-branch
+  // clone pushed to a URL, and git refuses it as "stale info".
+  const remote = 'b'.repeat(40);
+  host.responses.unshift({
+    match: 'ls-remote',
+    result: { exitCode: 0, stdout: `${remote}\trefs/heads/${snapshot.repo.branch}\n`, stderr: '' },
+  });
   await verifyAndPush(host, store, snapshot.run_id);
 
   const push = host.calls.find((call) => call.argv.join(' ').includes('git push'));
-  expect(push?.argv.join(' ')).toContain('--force-with-lease');
+  expect(push?.argv.join(' ')).toContain(`--force-with-lease=`);
+  expect(push?.argv.join(' ')).toContain(remote);
 });
 
 test('destroy releases the sandbox and forgets the run (SC-012)', async () => {
