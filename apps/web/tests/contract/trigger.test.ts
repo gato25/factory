@@ -120,6 +120,28 @@ test('a 4xx is not retried, because waiting will not fix it', async () => {
   expect(result.delivered).toBe(false);
 });
 
+test('a 408 IS retried: it is a timeout from a server that stopped reading, not a bad request', async () => {
+  // Seen from an n8n that had hung and was then restarted. Giving up on the
+  // first answer left the run queued with a stale reason and nothing to retry it.
+  const { snapshot } = await startRun(db, {
+    ticketId: scenario.ticketId,
+    callbackBaseUrl: 'https://factory.example',
+  });
+  let calls = 0;
+  const result = await deliverTrigger(snapshot, {
+    baseUrl: 'https://n8n.example',
+    fetch: async () => {
+      calls++;
+      return calls < 2
+        ? new Response('Request Timeout', { status: 408 })
+        : new Response(JSON.stringify({ executionId: 'exec_2' }), { status: 200 });
+    },
+    sleep: async () => {},
+  });
+  expect(result.delivered).toBe(true);
+  expect(calls).toBe(2);
+});
+
 test('a 5xx IS retried, then succeeds', async () => {
   const { snapshot } = await startRun(db, {
     ticketId: scenario.ticketId,

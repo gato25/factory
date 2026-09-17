@@ -54,8 +54,17 @@ export async function deliverTrigger(
         return { delivered: true, executionId: body.executionId, attempts: attempt + 1 };
       }
       lastError = `orchestrator answered ${response.status}`;
-      // A 4xx will not fix itself by waiting.
-      if (response.status >= 400 && response.status < 500) {
+      // A 4xx will not fix itself by waiting — except the two that are about
+      // time rather than about the request: 408 is what a server that has
+      // stopped processing sends when a request sits unread, and 429 is a
+      // request to come back later. Both were seen from an n8n that had hung
+      // and was then restarted; giving up on them left the run queued for ever.
+      if (
+        response.status >= 400 &&
+        response.status < 500 &&
+        response.status !== 408 &&
+        response.status !== 429
+      ) {
         return { delivered: false, attempts: attempt + 1, lastError };
       }
     } catch (error) {
