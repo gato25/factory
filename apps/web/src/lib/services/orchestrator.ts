@@ -75,6 +75,21 @@ export async function deliverTrigger(
       }
     } catch (error) {
       lastError = error instanceof Error ? error.message : String(error);
+      // A timeout is not a refusal: the body may well have arrived and the
+      // run may already be executing. Posting it again would start the same
+      // run a second time in parallel — which is what happened when a webhook
+      // that answered only at the end met this timeout. So one attempt, and
+      // the run is left queued with the reason for a person to decide.
+      if (
+        error instanceof Error &&
+        (error.name === 'TimeoutError' || error.name === 'AbortError')
+      ) {
+        return {
+          delivered: false,
+          attempts: attempt + 1,
+          lastError: `the orchestrator did not answer in time — it may still have started the run; check it before starting again`,
+        };
+      }
     }
     log.warn('trigger delivery failed, will retry', {
       run_id: snapshot.run_id,

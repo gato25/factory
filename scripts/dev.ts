@@ -546,12 +546,46 @@ async function listeningOn(port: number): Promise<{ pid: number; command: string
   return found.filter((entry) => Number.isInteger(entry.pid) && entry.pid > 0);
 }
 
+/**
+ * Whether the workflow file has changed since n8n last imported it. Computed
+ * here, before anything is started, because it also decides whether an n8n
+ * already running can be kept: one that runs last week's workflow cannot.
+ */
+const fileHash = new Bun.CryptoHasher('sha256')
+  .update(await Bun.file(`orchestration/n8n/${WORKFLOW_NAME}.json`).arrayBuffer())
+  .digest('hex');
+const hashFile = Bun.file(join(N8N_HOME, `${WORKFLOW_NAME}.imported.sha256`));
+const importedHash = (await hashFile.exists()) ? (await hashFile.text()).trim() : '';
+
 if (await healthy()) {
-  // Somebody's n8n already answers on the port — most likely one this script
-  // started and Ctrl-C did not reach. Used as it is, rather than fought over.
-  warn(`Something already answers on port ${N8N_PORT}; using it rather than starting another.`);
-  n8nReady = true;
-} else {
+  if (importedHash === fileHash) {
+    // Somebody's n8n already answers on the port — most likely one this
+    // script started and Ctrl-C did not reach — and it has the current
+    // workflow. Used as it is, rather than fought over.
+    warn(`Something already answers on port ${N8N_PORT}; using it rather than starting another.`);
+    n8nReady = true;
+  } else {
+    // It answers, but it imported an older workflow, and n8n does not pick
+    // up a re-import without a restart. Ours is ended and started afresh;
+    // anything else is left alone and named.
+    const holders = await listeningOn(N8N_PORT);
+    const ours = holders.filter((holder) => /n8n/i.test(holder.command));
+    if (holders.length > 0 && ours.length === holders.length) {
+      for (const holder of ours) {
+        stopTree({ pid: holder.pid, kill: () => process.kill(holder.pid) });
+      }
+      await Bun.sleep(2000);
+      ok(`Ended the n8n on port ${N8N_PORT}: it runs an older workflow than the file`);
+    } else {
+      warn(
+        `The n8n on port ${N8N_PORT} runs an older workflow than the file, and is not one this script can restart.`,
+      );
+      note('Stop it, then run this again.');
+      n8nReady = true;
+    }
+  }
+}
+if (!n8nReady) {
   const holders = await listeningOn(N8N_PORT);
   if (holders.length > 0) {
     const ours = holders.filter((holder) => /n8n/i.test(holder.command));
@@ -613,12 +647,6 @@ if (!workflowId) {
    * kind of not-fixed. The hash of the last import is kept beside n8n's own
    * files; a matching hash and an active workflow mean nothing to do.
    */
-  const fileHash = new Bun.CryptoHasher('sha256')
-    .update(await Bun.file(`orchestration/n8n/${WORKFLOW_NAME}.json`).arrayBuffer())
-    .digest('hex');
-  const hashFile = Bun.file(join(N8N_HOME, `${WORKFLOW_NAME}.imported.sha256`));
-  const importedHash = (await hashFile.exists()) ? (await hashFile.text()).trim() : '';
-
   const active = await n8n('list:workflow', '--active=true');
   if (active.code !== 0) {
     warn('Could not ask n8n for its workflows:');

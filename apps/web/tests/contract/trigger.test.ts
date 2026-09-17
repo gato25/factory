@@ -180,3 +180,24 @@ test('the callback vocabulary is exactly twelve events', () => {
     'cancelled',
   ]);
 });
+
+test('a timeout is NOT retried: the run may already have started', async () => {
+  // Retrying after a timeout started the same run three times in parallel,
+  // because the body had arrived and only the answer was late.
+  const { snapshot } = await startRun(db, {
+    ticketId: scenario.ticketId,
+    callbackBaseUrl: 'https://factory.example',
+  });
+  let calls = 0;
+  const result = await deliverTrigger(snapshot, {
+    baseUrl: 'https://n8n.example',
+    fetch: async () => {
+      calls++;
+      throw new DOMException('The operation was aborted due to timeout', 'TimeoutError');
+    },
+    sleep: async () => {},
+  });
+  expect(calls).toBe(1);
+  expect(result.delivered).toBe(false);
+  expect(result.delivered === false && result.lastError).toContain('may still have started');
+});
