@@ -26,7 +26,7 @@ both are load-bearing — see [credential-path.md](./reviews/credential-path.md)
 
 ```bash
 bun install                                   # workspace root; Bun is pinned in .bun-version
-docker compose up -d postgres                 # or point DATABASE_URL at your own
+docker compose up -d postgres                 # or point DATABASE_URL at a Postgres of your own
 bun run db:migrate                            # drizzle-kit; idempotent, safe to re-run
 docker build -t code-factory/sandbox:latest infra/sandbox   # for EXECUTION_HOST=docker
 EXECUTION_HOST=docker bun run dev:runner      # apps/runner → :8080, needs Docker access
@@ -35,7 +35,10 @@ bun run dev:web                               # apps/web  → :5173
 
 On a development machine `bun run dev` does all of this, with runs executing as processes on that
 machine — see [Execution hosts](#execution-hosts) for what that trades away and why a deployment
-should not.
+should not. `DATABASE_MODE` decides where its Postgres comes from: `docker` starts the one in
+`docker-compose.yml`; `system` uses the one `DATABASE_URL` names, and creates the database and its
+`_test` sibling if they are missing. A deployment points `DATABASE_URL` at its own Postgres and does
+not use this script.
 
 There is no separate orchestration service. The runner drives each run: `POST /runs/{id}/execute`
 accepts the snapshot and answers at once, the run proceeds and reports through the callbacks in

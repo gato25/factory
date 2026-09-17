@@ -10,15 +10,19 @@
  * failure much later. That is not a documentation problem; it is a missing
  * command.
  *
- * Everything but Postgres runs on this machine directly. There used to be a
- * fourth service, an orchestration workflow in n8n, and it was where most of
- * what went wrong on a first run went wrong; the runner drives runs itself
- * now, and writes each run's position to disk so a restart resumes it.
+ * Everything runs on this machine directly, Postgres included when
+ * `DATABASE_MODE=system` names one you installed; with the default,
+ * `DATABASE_MODE=docker`, Postgres is the one thing still started in a
+ * container. There used to be a fourth service, an orchestration workflow in
+ * n8n, and it was where most of what went wrong on a first run went wrong;
+ * the runner drives runs itself now, and writes each run's position to disk
+ * so a restart resumes it.
  *
  * What this does, in order, stopping at the first thing that genuinely blocks:
  *
  *   1. The environment, read once here and handed to both services
- *   2. Postgres, via docker compose, waited for until healthy
+ *   2. Postgres — started in Docker and waited for, or reached where it is —
+ *      and the two databases, made if they are missing
  *   3. The database schema
  *   4. The execution host — the tools a step runs, or the sandbox image
  *   5. The runner and the web app, together, until you stop them
@@ -31,6 +35,7 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { quote } from '../apps/runner/src/container/shell';
 import { resolveShell } from '../apps/runner/src/container/shell-path';
+import { createClient } from '../packages/db/src/client';
 import { stopTree } from './lib/process-tree';
 
 const BOLD = '[1m';
@@ -216,26 +221,131 @@ if (executionHost !== 'process' && executionHost !== 'docker') {
   stop(`EXECUTION_HOST is "${executionHost}"; it must be "process" or "docker".`);
 }
 
+/**
+ * Where Postgres comes from. `docker` starts the one in docker-compose.yml
+ * and is the default, because it needs nothing installed. `system` uses a
+ * Postgres already on this machine — or anywhere DATABASE_URL points — and
+ * then Docker is not needed at all for a development machine that also runs
+ * its steps as processes.
+ */
+const databaseMode = process.env.DATABASE_MODE || 'docker';
+if (databaseMode !== 'docker' && databaseMode !== 'system') {
+  stop(`DATABASE_MODE is "${databaseMode}"; it must be "docker" or "system".`);
+}
+const databaseUrl = process.env.DATABASE_URL as string;
+
+/** Whether Docker answers, asked once and only when something needs it. */
+async function dockerVersion(): Promise<string | null> {
+  const probe = await sh(['docker', 'version', '--format', '{{.Server.Version}}'], {
+    quiet: true,
+  });
+  return probe.code === 0 ? probe.out.trim() : null;
+}
+
 // --- 2. Postgres -------------------------------------------------------------
 
-step('2/5  Postgres');
+step(`2/5  Postgres (${databaseMode})`);
 
-const docker = await sh(['docker', 'version', '--format', '{{.Server.Version}}'], { quiet: true });
-if (docker.code !== 0) {
-  stop(
-    'Docker is not answering.',
-    'Postgres runs in a container, so Docker has to be running before anything else. ' +
-      'Or point DATABASE_URL at a Postgres of your own — then this step is yours.',
-  );
+/** The address without its password, for a line on screen. */
+function describeDatabase(url: string): string {
+  try {
+    const parsed = new URL(url);
+    return `${parsed.hostname}:${parsed.port || '5432'}${parsed.pathname}`;
+  } catch {
+    return 'DATABASE_URL';
+  }
 }
-ok(`Docker ${docker.out.trim()}`);
 
-// Streamed, not captured. The first run downloads the image, which takes a
-// while, and a silent minute is indistinguishable from a hung one.
-note('The first run downloads Postgres — a couple of hundred MB, once.');
-const up = await sh(['docker', 'compose', 'up', '-d', 'postgres'], { stream: true });
-if (up.code !== 0) {
-  stop('`docker compose up` failed.', 'The reason is in the output just above.');
+/**
+ * Whether Postgres answers at `url`, and if the database named in it does not
+ * exist, whether that is the only thing wrong. Postgres says so with a
+ * specific code (`3D000`), which is what lets the database be made rather
+ * than the whole thing reported as unreachable.
+ */
+async function probeDatabase(
+  url: string,
+): Promise<{ state: 'ok' | 'no-database' | 'down'; detail: string }> {
+  const { sql } = createClient(url);
+  try {
+    await sql`select 1`;
+    return { state: 'ok', detail: '' };
+  } catch (error) {
+    const code = (error as { code?: string }).code;
+    const detail = error instanceof Error ? error.message : String(error);
+    return { state: code === '3D000' ? 'no-database' : 'down', detail };
+  } finally {
+    await sql.end({ timeout: 2 }).catch(() => {});
+  }
+}
+
+/**
+ * Makes the database `url` names, on the same server, through its
+ * maintenance database. A name is checked before it becomes SQL: it comes
+ * from `.env`, which is the developer's, but a quoted identifier is cheap.
+ */
+async function createDatabase(url: string): Promise<{ created: boolean; detail: string }> {
+  const target = new URL(url);
+  const name = target.pathname.replace(/^\//, '');
+  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) {
+    return { created: false, detail: `"${name}" is not a name this script will create` };
+  }
+  const maintenance = new URL(url);
+  maintenance.pathname = '/postgres';
+  const { sql } = createClient(maintenance.toString());
+  try {
+    await sql.unsafe(`create database "${name}"`);
+    return { created: true, detail: '' };
+  } catch (error) {
+    return { created: false, detail: error instanceof Error ? error.message : String(error) };
+  } finally {
+    await sql.end({ timeout: 2 }).catch(() => {});
+  }
+}
+
+/** Reachable, with its database in place — made if it was not. */
+async function ensureDatabase(url: string, what: string): Promise<void> {
+  const first = await probeDatabase(url);
+  if (first.state === 'ok') {
+    ok(`${what} at ${describeDatabase(url)}`);
+    return;
+  }
+  if (first.state === 'down') {
+    stop(
+      `Postgres did not answer at ${describeDatabase(url)}: ${first.detail}`,
+      databaseMode === 'system'
+        ? 'Start it, check DATABASE_URL in .env, or set DATABASE_MODE=docker to use the one in docker-compose.yml.'
+        : 'docker compose logs postgres — that says why.',
+    );
+  }
+  const made = await createDatabase(url);
+  if (!made.created) {
+    stop(
+      `The database at ${describeDatabase(url)} does not exist and could not be created: ${made.detail}`,
+    );
+  }
+  const second = await probeDatabase(url);
+  if (second.state !== 'ok') stop(`Created the database, but it did not answer: ${second.detail}`);
+  ok(`${what} at ${describeDatabase(url)} — created, it was missing`);
+}
+
+if (databaseMode === 'docker') {
+  const docker = await dockerVersion();
+  if (!docker) {
+    stop(
+      'Docker is not answering.',
+      'DATABASE_MODE=docker starts Postgres in a container, so Docker has to be running. ' +
+        'Or install Postgres, point DATABASE_URL at it and set DATABASE_MODE=system.',
+    );
+  }
+  ok(`Docker ${docker}`);
+
+  // Streamed, not captured. The first run downloads the image, which takes a
+  // while, and a silent minute is indistinguishable from a hung one.
+  note('The first run downloads Postgres — a couple of hundred MB, once.');
+  const up = await sh(['docker', 'compose', 'up', '-d', 'postgres'], { stream: true });
+  if (up.code !== 0) {
+    stop('`docker compose up` failed.', 'The reason is in the output just above.');
+  }
 }
 
 /** Waits for compose to report a service healthy, rather than guessing a delay. */
@@ -253,10 +363,22 @@ async function waitHealthy(service: string, seconds = 120): Promise<boolean> {
   return false;
 }
 
-if (!(await waitHealthy('postgres'))) {
+if (databaseMode === 'docker' && !(await waitHealthy('postgres'))) {
   stop('Postgres did not become healthy.', 'docker compose logs postgres — that says why.');
 }
-ok('Postgres is up');
+
+// The application's database, and the one the tests empty — both made if
+// they are missing, whichever Postgres this is. The tests' default is the
+// same server with `_test` on the name; TEST_DATABASE_URL moves it.
+await ensureDatabase(databaseUrl, 'Database');
+const testUrl =
+  process.env.TEST_DATABASE_URL ||
+  (() => {
+    const url = new URL(databaseUrl);
+    url.pathname = `${url.pathname.replace(/_test$/, '')}_test`;
+    return url.toString();
+  })();
+await ensureDatabase(testUrl, 'Test database');
 
 // --- 3. the schema -----------------------------------------------------------
 
@@ -270,6 +392,12 @@ ok('Schema is current');
 step('4/5  Execution host');
 
 if (executionHost === 'docker') {
+  if (!(await dockerVersion())) {
+    stop(
+      'Docker is not answering.',
+      'EXECUTION_HOST=docker runs every step in a container, so Docker has to be running.',
+    );
+  }
   const existing = await sh(['docker', 'images', '-q', SANDBOX_IMAGE], { quiet: true });
   if (existing.out.trim()) {
     ok(`${SANDBOX_IMAGE} already built`);
@@ -320,16 +448,26 @@ if (executionHost === 'docker') {
   // Run it publishes a port and needs a container for it, whichever host runs
   // execute on. Not built here — it is minutes of work for a card most
   // sessions never press — but named, so its failure has an explanation.
-  const image = await sh(['docker', 'images', '-q', SANDBOX_IMAGE], { quiet: true });
-  if (!image.out.trim()) {
-    note(`The Run it card needs the sandbox image: docker build -t ${SANDBOX_IMAGE} infra/sandbox`);
+  if (await dockerVersion()) {
+    const image = await sh(['docker', 'images', '-q', SANDBOX_IMAGE], { quiet: true });
+    if (!image.out.trim()) {
+      note(
+        `The Run it card needs the sandbox image: docker build -t ${SANDBOX_IMAGE} infra/sandbox`,
+      );
+    }
+  } else {
+    note('Docker is not running, so the Run it card will not work; everything else does.');
   }
 }
 
 // --- 5. the two services that stay in the foreground -------------------------
 
 step('5/5  Runner and web app');
-note('Both run here. Ctrl-C stops them together; Postgres keeps running.');
+note(
+  databaseMode === 'docker'
+    ? 'Both run here. Ctrl-C stops them together; Postgres keeps running.'
+    : 'Both run here. Ctrl-C stops them together.',
+);
 
 /**
  * Runs one long-lived process, tagging each line so two streams in one

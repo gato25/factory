@@ -24,9 +24,10 @@ already in flight.
 
 ## Running it locally
 
-You need [Bun](https://bun.sh) (the version in `.bun-version`), Docker for Postgres, and the tools a
-step runs: git, Node and the [Claude CLI](https://docs.anthropic.com/en/docs/claude-code). On
-Windows that means Git for Windows, whose shell every step runs in.
+You need [Bun](https://bun.sh) (the version in `.bun-version`), a Postgres — Docker's, or one you
+installed — and the tools a step runs: git, Node and the
+[Claude CLI](https://docs.anthropic.com/en/docs/claude-code). On Windows that means Git for
+Windows, whose shell every step runs in.
 
 ```bash
 bun install
@@ -34,9 +35,9 @@ cp .env.example .env            # then fill it in; the comments say what each va
 bun run dev                     # → http://localhost:5173
 ```
 
-`bun run dev` is the whole of it: Postgres in Docker, the database schema, a check that git and the
-Claude CLI are where a step will look for them, and then the execution service and the web
-application together. It names each step as it goes and stops at the first thing that genuinely
+`bun run dev` is the whole of it: Postgres, the two databases if they are missing, the schema, a
+check that git and the Claude CLI are where a step will look for them, and then the execution
+service and the web application together. It names each step as it goes and stops at the first thing that genuinely
 blocks, so a failure tells you where you are. Ctrl-C stops the two services; Postgres keeps running.
 
 There is no orchestration service any more. The execution service drives each run itself — decides
@@ -47,6 +48,14 @@ It reads the root `.env` itself and hands it to every service, so they cannot di
 `bun run dev:runner` on its own starts in `apps/runner`, where Bun would not find that file. The
 separate commands are still there — `dev:web`, `dev:runner`, `db:migrate` — for when you want one
 of them alone.
+
+### Where Postgres comes from
+
+`DATABASE_MODE=docker`, the default, starts the Postgres in `docker-compose.yml` and needs nothing
+installed. `DATABASE_MODE=system` uses a Postgres you already have — on this machine or wherever
+`DATABASE_URL` points — and then Docker is not needed at all, since runs execute as processes too.
+In either mode `bun run dev` creates the database named in `DATABASE_URL`, and its `_test` sibling
+the tests use, when they do not exist yet.
 
 ### Where a run executes
 
