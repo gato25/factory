@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import type { Database } from '@factory/db';
-import { runs, tickets } from '@factory/db/schema';
+import { pipelines, runs, tickets } from '@factory/db/schema';
 import { conflict, FactoryError, notFound } from '@factory/shared';
 import { desc, eq, sql } from 'drizzle-orm';
 import { resolveSnapshot } from '$lib/snapshot/resolve';
@@ -15,6 +15,42 @@ import type { ReleaseSandbox } from './sandbox';
 export interface StartRunInput {
   ticketId: string;
   callbackBaseUrl: string;
+}
+
+/**
+ * Pins the pipeline's current version onto the ticket, if nothing is pinned.
+ *
+ * A ticket saved as a draft (FR-017) carries the pipeline its author chose and
+ * no version, because the version is meant to be fixed when the run starts —
+ * that is what stops a later edit of the pipeline from reaching a run already
+ * going (FR-027, SC-010). Nothing did that fixing: `createTicket` writes the
+ * version only for a ticket started at creation, and the snapshot resolver
+ * refuses a ticket with nothing pinned. So every draft was unstartable, and
+ * the refusal said the ticket "has no pinned pipeline version" as though the
+ * author had done something wrong.
+ *
+ * Pinning here, rather than at creation, is the choice FR-027 asks for: a
+ * draft left for a week starts on the pipeline as it stands that day, and
+ * from that instant the version cannot move under the run.
+ */
+async function pinPipelineVersion(
+  database: Database,
+  ticket: { id: string; pipelineId: string | null; pipelineVersion: number | null },
+): Promise<void> {
+  if (!ticket.pipelineId || ticket.pipelineVersion !== null) return;
+
+  const [pipeline] = await database
+    .select({ version: pipelines.currentVersion })
+    .from(pipelines)
+    .where(eq(pipelines.id, ticket.pipelineId))
+    .limit(1);
+  if (!pipeline) throw notFound('that pipeline does not exist');
+
+  await database
+    .update(tickets)
+    .set({ pipelineVersion: pipeline.version, updatedAt: new Date() })
+    .where(eq(tickets.id, ticket.id));
+  ticket.pipelineVersion = pipeline.version;
 }
 
 export async function startRun(database: Database, input: StartRunInput) {
@@ -32,6 +68,8 @@ export async function startRun(database: Database, input: StartRunInput) {
     .orderBy(desc(runs.attempt))
     .limit(1);
   const attempt = (previous?.attempt ?? 0) + 1;
+
+  await pinPipelineVersion(database, ticket);
 
   const runId = crypto.randomUUID();
   const resumeSecret = randomBytes(32).toString('base64url');
