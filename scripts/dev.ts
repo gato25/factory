@@ -513,7 +513,9 @@ let n8nProc: ReturnType<typeof Bun.spawn> | undefined;
 async function listeningOn(port: number): Promise<{ pid: number; command: string }[]> {
   const found: { pid: number; command: string }[] = [];
   if (process.platform === 'win32') {
-    const netstat = await sh(['netstat', '-ano', '-p', 'tcp'], { quiet: true });
+    // No protocol filter: `-p tcp` is IPv4 only, and a server bound to
+    // `[::1]` — Vite, for one — appears only under TCPv6.
+    const netstat = await sh(['netstat', '-ano'], { quiet: true });
     const pids = new Set<number>();
     for (const line of netstat.out.split('\n')) {
       const columns = line.trim().split(/\s+/);
