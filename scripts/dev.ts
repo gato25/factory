@@ -515,8 +515,7 @@ async function listeningOn(port: number): Promise<{ pid: number; command: string
   if (process.platform === 'win32') {
     const netstat = await sh(['netstat', '-ano', '-p', 'tcp'], { quiet: true });
     const pids = new Set<number>();
-    for (const line of netstat.out.split('
-')) {
+    for (const line of netstat.out.split('\n')) {
       const columns = line.trim().split(/\s+/);
       if (columns[3] === 'LISTENING' && columns[1]?.endsWith(`:${port}`)) {
         pids.add(Number(columns[4]));
@@ -536,8 +535,7 @@ async function listeningOn(port: number): Promise<{ pid: number; command: string
     }
   } else {
     const lsof = await sh(['lsof', '-ti', `tcp:${port}`, '-sTCP:LISTEN'], { quiet: true });
-    for (const raw of lsof.out.trim().split('
-').filter(Boolean)) {
+    for (const raw of lsof.out.trim().split('\n').filter(Boolean)) {
       const pid = Number(raw);
       const who = await sh(['ps', '-o', 'command=', '-p', String(pid)], { quiet: true });
       found.push({ pid, command: who.out.trim() });
@@ -560,12 +558,13 @@ if (await healthy()) {
         stopTree({ pid: holder.pid, kill: () => process.kill(holder.pid) });
       }
       await Bun.sleep(2000);
-      ok(`Ended an n8n that held port ${N8N_PORT} without answering (pid ${ours.map((h) => h.pid).join(', ')})`);
+      ok(
+        `Ended an n8n that held port ${N8N_PORT} without answering (pid ${ours.map((h) => h.pid).join(', ')})`,
+      );
     } else {
       stop(
         `Port ${N8N_PORT} is held by something that does not answer as n8n.`,
-        holders.map((holder) => `pid ${holder.pid}: ${holder.command || '(unknown)'}`).join('
-'),
+        holders.map((holder) => `pid ${holder.pid}: ${holder.command || '(unknown)'}`).join('\n'),
       );
     }
   }
