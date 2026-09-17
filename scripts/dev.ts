@@ -500,12 +500,76 @@ async function workflowIdFromFile(): Promise<string | undefined> {
 let n8nReady = false;
 let n8nProc: ReturnType<typeof Bun.spawn> | undefined;
 
+/**
+ * The processes listening on a port, with what they are running.
+ *
+ * For the one case that is worse than a port in use: a port held by an n8n
+ * that no longer answers. An earlier `bun run dev` that was closed rather than
+ * stopped leaves its n8n behind, and that n8n can hang — every route waiting
+ * for ever — while still holding the port. Adopting it because "something is
+ * on 5678" put every ticket in a queue nothing would ever drain. So a holder
+ * that does not answer is identified, and if it is n8n, ended.
+ */
+async function listeningOn(port: number): Promise<{ pid: number; command: string }[]> {
+  const found: { pid: number; command: string }[] = [];
+  if (process.platform === 'win32') {
+    const netstat = await sh(['netstat', '-ano', '-p', 'tcp'], { quiet: true });
+    const pids = new Set<number>();
+    for (const line of netstat.out.split('
+')) {
+      const columns = line.trim().split(/\s+/);
+      if (columns[3] === 'LISTENING' && columns[1]?.endsWith(`:${port}`)) {
+        pids.add(Number(columns[4]));
+      }
+    }
+    for (const pid of pids) {
+      const who = await sh(
+        [
+          'powershell',
+          '-NoProfile',
+          '-Command',
+          `(Get-CimInstance Win32_Process -Filter "ProcessId = ${pid}").CommandLine`,
+        ],
+        { quiet: true },
+      );
+      found.push({ pid, command: who.out.trim() });
+    }
+  } else {
+    const lsof = await sh(['lsof', '-ti', `tcp:${port}`, '-sTCP:LISTEN'], { quiet: true });
+    for (const raw of lsof.out.trim().split('
+').filter(Boolean)) {
+      const pid = Number(raw);
+      const who = await sh(['ps', '-o', 'command=', '-p', String(pid)], { quiet: true });
+      found.push({ pid, command: who.out.trim() });
+    }
+  }
+  return found.filter((entry) => Number.isInteger(entry.pid) && entry.pid > 0);
+}
+
 if (await healthy()) {
   // Somebody's n8n already answers on the port — most likely one this script
   // started and Ctrl-C did not reach. Used as it is, rather than fought over.
   warn(`Something already answers on port ${N8N_PORT}; using it rather than starting another.`);
   n8nReady = true;
 } else {
+  const holders = await listeningOn(N8N_PORT);
+  if (holders.length > 0) {
+    const ours = holders.filter((holder) => /n8n/i.test(holder.command));
+    if (ours.length === holders.length) {
+      for (const holder of ours) {
+        stopTree({ pid: holder.pid, kill: () => process.kill(holder.pid) });
+      }
+      await Bun.sleep(2000);
+      ok(`Ended an n8n that held port ${N8N_PORT} without answering (pid ${ours.map((h) => h.pid).join(', ')})`);
+    } else {
+      stop(
+        `Port ${N8N_PORT} is held by something that does not answer as n8n.`,
+        holders.map((holder) => `pid ${holder.pid}: ${holder.command || '(unknown)'}`).join('
+'),
+      );
+    }
+  }
+
   // Installed once, globally, with npm — it is a Node application and that
   // is how it ships. It is large, so the install is streamed rather than
   // hidden behind a spinner.
