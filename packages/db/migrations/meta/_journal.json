@@ -50,6 +50,13 @@
       "when": 1789291030558,
       "tag": "0006_launches",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1789639470707,
+      "tag": "0007_drop_orchestrator_settings",
+      "breakpoints": true
     }
   ]
 }

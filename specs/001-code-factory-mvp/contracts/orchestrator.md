@@ -1,12 +1,18 @@
-# Contract: Factory App ⇄ Orchestrator (n8n)
+# Contract: Factory App ⇄ Orchestrator
+
+> **Where the orchestrator lives.** It was an n8n workflow; since 2026-09-17 it is a module of the
+> execution service (`apps/runner/src/orchestrate/`), and the three interactions below are routes on
+> it. The logic is unchanged and unchanged in principle: it is `packages/shared/src/step-loop.ts`,
+> called rather than copied. The old workflow is in git history under the commit that removed it.
 
 Three interactions: the app **triggers** a run, the orchestrator **reports** progress, and the app
-**resumes** a paused run. One generic workflow serves every pipeline — it is never edited per
-pipeline, because a pipeline is data (FR-024).
+**resumes** a paused run. One generic loop serves every pipeline — it is never edited per pipeline,
+because a pipeline is data (FR-024).
 
 ## 1. Trigger — app → orchestrator
 
-`POST {orchestrator_base_url}/webhook/run-ticket-pipeline`
+`POST {runner_base_url}/runs/{run_id}/execute`, authenticated with the runner's own credential.
+Answers `202` at once; the run proceeds on its own.
 
 The body is the **resolved snapshot**: pipeline, agents, skills and ceilings already flattened
 (FR-044). The orchestrator looks nothing up.
@@ -92,8 +98,9 @@ step in flight concludes and this reply is what stops the next one beginning (FR
 
 ## 4. Resume — app → orchestrator
 
-`POST {resume_url}` when a human decides at a gate (FR-060, FR-061), or `{ paused: false }` when a
-pause is withdrawn and the run continues from where it stopped (FR-096):
+`POST {resume_url}` — which is `{runner_base_url}/runs/{run_id}/resume`, authenticated with the
+runner's own credential — when a human decides at a gate (FR-060, FR-061), or `{ paused: false }`
+when a pause is withdrawn and the run continues from where it stopped (FR-096):
 
 ```
 { decision: "approved" | "changes_requested" | "edited" | "cancelled",
@@ -114,7 +121,8 @@ execution is lost. Change-request loops are bounded by the run's ceilings, not a
 ## What the orchestrator must never do
 
 - Look up a pipeline, agent, skill or ceiling — it only ever reads the snapshot it was handed
-- Hold state beyond the current execution
+- Hold state beyond a run's position in its pipeline — which it writes down, without credentials,
+  so a restart resumes rather than loses the run
 - Decide what a step *means*; it branches on `type` and `condition`, nothing more
 - Store a credential (FR-083)
 - Merge a merge request (FR-070)

@@ -154,14 +154,20 @@ test('no remote function and no route reveals a credential', () => {
 });
 
 test('revealForRun is called only where a run needs an environment', () => {
-  const callers = filesUnder(join(WEB, 'src'), '.ts').filter(
-    (file) =>
-      readFileSync(file, 'utf8').includes('revealForRun(') && !file.endsWith('secrets/store.ts'),
-  );
+  // Paths as forward-slash names whatever the platform, so the exclusion and
+  // the list below are one list; the suffix match used to miss on Windows and
+  // count the definer itself as a caller.
+  const names = filesUnder(join(WEB, 'src'), '.ts')
+    .map((file) => file.slice(WEB.length + 1).replaceAll('\\', '/'))
+    .filter(
+      (name) =>
+        name !== 'src/lib/secrets/store.ts' &&
+        readFileSync(join(WEB, name), 'utf8').includes('revealForRun('),
+    )
+    .sort();
   // Exactly one place: where a run is handed to the Runner, which needs
   // environment variables for the sandbox. A new caller here is a new way
   // out, and should be a deliberate change rather than a surprise.
-  const names = callers.map((file) => file.slice(WEB.length + 1)).sort();
   expect(names).toEqual(['src/lib/services/run-credentials.ts']);
 });
 

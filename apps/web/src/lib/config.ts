@@ -4,19 +4,17 @@ export interface WebConfig {
   databaseUrl: string;
   runnerBaseUrl: string;
   runnerAuthToken: string;
-  orchestratorBaseUrl: string;
-  orchestratorApiKey: string;
   publicBaseUrl: string;
   /**
-   * Where the orchestration service reaches this application, which is not
-   * necessarily where a browser does.
+   * Where the execution service reaches this application to post callbacks,
+   * which is not necessarily where a browser does.
    *
    * `PUBLIC_BASE_URL` is the address a PERSON uses — it is in links and in
    * the provider sign-in callbacks, so it has to be the one their browser can
-   * open. Where n8n runs on the same machine, as it does in development, the
-   * two are the same address and this falls back to that one. Where n8n runs
-   * somewhere `localhost` means something else — a container, another host —
-   * it needs its own name, and this is it.
+   * open. Where the execution service runs on the same machine, as it does in
+   * development, the two are the same address and this falls back to that
+   * one. Where it runs somewhere `localhost` means something else — a
+   * container, another host — it needs its own name, and this is it.
    */
   callbackBaseUrl: string;
   sessionSecret: string;
@@ -26,7 +24,6 @@ const REQUIRED: (keyof WebConfig)[] = [
   'databaseUrl',
   'runnerBaseUrl',
   'runnerAuthToken',
-  'orchestratorBaseUrl',
   'publicBaseUrl',
   'sessionSecret',
 ];
@@ -35,21 +32,20 @@ const ENV_NAMES: Record<keyof WebConfig, string> = {
   databaseUrl: 'DATABASE_URL',
   runnerBaseUrl: 'RUNNER_BASE_URL',
   runnerAuthToken: 'RUNNER_AUTH_TOKEN',
-  orchestratorBaseUrl: 'ORCHESTRATOR_BASE_URL',
-  orchestratorApiKey: 'ORCHESTRATOR_API_KEY',
   publicBaseUrl: 'PUBLIC_BASE_URL',
   callbackBaseUrl: 'CALLBACK_BASE_URL',
   sessionSecret: 'SESSION_SECRET',
 };
 
 /**
- * Where the other two local services listen, when nobody has said otherwise.
+ * Where the execution service listens, and where this application does, when
+ * nobody has said otherwise.
  *
- * These are not preferences. `bun run dev` starts n8n on 5678, and the
- * execution service defaults itself to 8080 — so on a development machine
- * there is exactly one right answer for each, written down in the repository
- * already. Asking for them in `.env` and then AGAIN on the settings screen
- * asked twice for a fact neither person nor machine had any choice about.
+ * These are not preferences. The execution service defaults itself to 8080
+ * and Vite serves 5173 — so on a development machine there is exactly one
+ * right answer for each, written down in the repository already. Asking for
+ * them in `.env` and then AGAIN on the settings screen asked twice for a fact
+ * neither person nor machine had any choice about.
  *
  * Development only. A deployment's services are somewhere else by definition,
  * and silently pointing it at its own localhost would turn a missing variable
@@ -58,7 +54,6 @@ const ENV_NAMES: Record<keyof WebConfig, string> = {
  */
 const DEV_DEFAULTS: Record<string, string> = {
   RUNNER_BASE_URL: 'http://localhost:8080',
-  ORCHESTRATOR_BASE_URL: 'http://localhost:5678',
   PUBLIC_BASE_URL: 'http://localhost:5173',
 };
 
@@ -74,12 +69,10 @@ export function loadWebConfig(env: NodeJS.ProcessEnv = process.env): WebConfig {
     databaseUrl: env.DATABASE_URL ?? '',
     runnerBaseUrl: read('RUNNER_BASE_URL'),
     runnerAuthToken: env.RUNNER_AUTH_TOKEN ?? '',
-    orchestratorBaseUrl: read('ORCHESTRATOR_BASE_URL'),
-    orchestratorApiKey: env.ORCHESTRATOR_API_KEY ?? '',
     publicBaseUrl: read('PUBLIC_BASE_URL'),
-    // Falls back to the public address: where n8n runs on this machine, as
-    // `bun run dev` starts it, they ARE the same address, and asking for both
-    // would be asking twice for one fact.
+    // Falls back to the public address: where the execution service runs on
+    // this machine, as `bun run dev` starts it, they ARE the same address, and
+    // asking for both would be asking twice for one fact.
     callbackBaseUrl: read('CALLBACK_BASE_URL') || read('PUBLIC_BASE_URL'),
     sessionSecret: env.SESSION_SECRET ?? '',
   };
@@ -91,7 +84,7 @@ export function loadWebConfig(env: NodeJS.ProcessEnv = process.env): WebConfig {
       `web: missing required configuration: ${missing.join(', ')}`,
     );
   }
-  for (const key of ['runnerBaseUrl', 'orchestratorBaseUrl', 'publicBaseUrl'] as const) {
+  for (const key of ['runnerBaseUrl', 'publicBaseUrl'] as const) {
     try {
       new URL(config[key]);
     } catch {
@@ -104,14 +97,13 @@ export function loadWebConfig(env: NodeJS.ProcessEnv = process.env): WebConfig {
 /**
  * What a fresh workspace can be given from the environment, once, at startup.
  *
- * Two of the things the dashboard reported missing on a new deployment —
- * the runner address and the orchestration address — were already in `.env`,
- * where the same person had just typed them. The application read them for
- * its own use and then asked for them again in Settings. That is not a
- * setting; it is the same fact wanted in two places, and the second place
- * should be filled from the first.
+ * The runner address the dashboard reported missing on a new deployment was
+ * already in `.env`, where the same person had just typed it. The application
+ * read it for its own use and then asked for it again in Settings. That is
+ * not a setting; it is the same fact wanted in two places, and the second
+ * place should be filled from the first.
  *
- * The model credential is the third. It cannot have a default, but it can be
+ * The model credential is the second. It cannot have a default, but it can be
  * read from the environment the way every CLI tool reads it, and stored
  * sealed. `ANTHROPIC_API_KEY` first, then `CLAUDE_CODE_OAUTH_TOKEN`, which is
  * the same order the execution service resolves them in.
@@ -122,8 +114,6 @@ export function loadWebConfig(env: NodeJS.ProcessEnv = process.env): WebConfig {
  */
 export interface WorkspaceBootstrap {
   runnerBaseUrl?: string;
-  orchestratorBaseUrl?: string;
-  orchestratorWorkflowId?: string;
   modelKey?: { value: string; from: 'ANTHROPIC_API_KEY' | 'CLAUDE_CODE_OAUTH_TOKEN' };
 }
 
@@ -156,16 +146,7 @@ export function bootstrapFromEnv(env: NodeJS.ProcessEnv = process.env): Workspac
     env[key]?.trim() ? url(key) : devDefault(env, key);
 
   const runner = address('RUNNER_BASE_URL');
-  const orchestrator = address('ORCHESTRATOR_BASE_URL');
   if (runner) out.runnerBaseUrl = runner;
-  if (orchestrator) out.orchestratorBaseUrl = orchestrator;
-
-  // Discovered rather than chosen: `bun run dev` imports the workflow into
-  // n8n, which assigns it an identifier, and passes that identifier back in.
-  // Nobody can type it before the import has happened, so asking for it on
-  // the settings screen only ever asked somebody to go and look it up.
-  const workflow = env.ORCHESTRATOR_WORKFLOW_ID?.trim();
-  if (workflow) out.orchestratorWorkflowId = workflow;
 
   const api = env.ANTHROPIC_API_KEY?.trim();
   const oauth = env.CLAUDE_CODE_OAUTH_TOKEN?.trim();

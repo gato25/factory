@@ -162,7 +162,7 @@
     <!-- What starts a run. Not a step: it is the pipeline's entry (plan.md). -->
     <p class="trigger">
       <Icon name="zap" size={16} />
-      <span>Trigger: ticket created (webhook → n8n)</span>
+      <span>Trigger: ticket created</span>
     </p>
 
     <ol>

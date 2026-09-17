@@ -72,6 +72,13 @@ export interface ContainerHost {
    */
   readonly isolates?: boolean;
   create(spec: ContainerSpec): Promise<string>;
+  /**
+   * Takes charge of a sandbox this process did not create — one that
+   * outlived a restart of the runner. Resolves when the sandbox is there and
+   * usable; throws `sandbox_lost` when it is not, and the caller builds a new
+   * one. Absent means every sandbox this host knows is in memory only.
+   */
+  adopt?(containerId: string, spec: ContainerSpec): Promise<void>;
   exec(containerId: string, argv: string[], options?: ExecOptions): Promise<ExecResult>;
   writeFile(containerId: string, path: string, content: string): Promise<void>;
   readFile(containerId: string, path: string): Promise<string | null>;
@@ -133,6 +140,12 @@ export const dockerHost: ContainerHost = {
       });
     }
     return result.stdout.trim();
+  },
+
+  async adopt(containerId) {
+    // A container is Docker's to keep, so adopting one is asking whether it
+    // is still running.
+    await assertContainerAlive(containerId, 'the workspace');
   },
 
   async disconnectNetwork(containerId) {

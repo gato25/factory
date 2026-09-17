@@ -36,7 +36,7 @@ export const STEP_KIND_DETAIL: Record<
   design: { description: 'Draw screens with the pen.dev CLI', icon: 'palette' },
   agent: { description: 'Run one of your agents via Claude CLI', icon: 'bot' },
   shell: { description: 'Run a script in the sandbox (lint, build)', icon: 'terminal' },
-  notify: { description: 'Slack / email / webhook via n8n', icon: 'bell' },
+  notify: { description: 'Slack / email / webhook', icon: 'bell' },
 };
 
 /** The order the design's palette lists them in. */

@@ -19,15 +19,14 @@ Ticket ─→ Spec ─→ Design ─→ Plan ─→ Tasks ─→ Implement ─�
 ```
 
 The pipeline is data, not code. It lives in the database, you edit it in the interface, and the
-orchestration service reads each run's own copy of it — so changing a pipeline never disturbs a run
+execution service reads each run's own copy of it — so changing a pipeline never disturbs a run
 already in flight.
 
 ## Running it locally
 
 You need [Bun](https://bun.sh) (the version in `.bun-version`), Docker for Postgres, and the tools a
 step runs: git, Node and the [Claude CLI](https://docs.anthropic.com/en/docs/claude-code). On
-Windows that means Git for Windows, whose shell every step runs in. n8n is installed for you, once,
-the first time.
+Windows that means Git for Windows, whose shell every step runs in.
 
 ```bash
 bun install
@@ -36,11 +35,13 @@ bun run dev                     # → http://localhost:5173
 ```
 
 `bun run dev` is the whole of it: Postgres in Docker, the database schema, a check that git and the
-Claude CLI are where a step will look for them, n8n on this machine — installed with npm if it is
-missing, the workflow imported and published — and then n8n, the execution service and the web
+Claude CLI are where a step will look for them, and then the execution service and the web
 application together. It names each step as it goes and stops at the first thing that genuinely
-blocks, so a failure tells you where you are. Ctrl-C stops the three services; Postgres keeps
-running.
+blocks, so a failure tells you where you are. Ctrl-C stops the two services; Postgres keeps running.
+
+There is no orchestration service any more. The execution service drives each run itself — decides
+the next step, runs it, waits at a checkpoint, opens the merge request — and writes every run's
+position under `~/.code-factory/state`, so restarting it resumes runs rather than losing them.
 
 It reads the root `.env` itself and hands it to every service, so they cannot disagree about it —
 `bun run dev:runner` on its own starts in `apps/runner`, where Bun would not find that file. The
@@ -145,10 +146,9 @@ examine, so nothing was proved. Exit 2 is not a pass.
 
 ```
 apps/web           SvelteKit — every screen, every remote function, the callback routes
-apps/runner        The only component with rights on the container host, as a daemon
+apps/runner        Executes every step and drives every run, as a daemon; the only component with execution rights
 packages/db        Drizzle schema and migrations — the single datastore
 packages/shared    Types and contracts both deployables agree on
-orchestration/n8n  One generic workflow, for every pipeline; n8n itself runs on your machine
 infra/sandbox      The image a run executes in under EXECUTION_HOST=docker, and Run it always
 scripts/           The maintenance pass, the audits, and the defaults installer
 docs/              Operations guide and the Phase 11 reviews
@@ -177,8 +177,8 @@ constraint from an accident.
 ## State of it
 
 Every one of the 235 tasks is done. 494 unit and integration tests pass, and 37 of 40 browser tests;
-the three that are skipped need a GitLab or GitHub credential, an n8n instance and a Docker daemon,
-none of which exist in the environment this was built in.
+the three that are skipped need a GitLab or GitHub credential and a real repository, which do not
+exist in the environment this was built in.
 
 **No end-to-end run has ever executed**, and that is stated here rather than left to be found out.
 What is verified, what is not, and why is set out in

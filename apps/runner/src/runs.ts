@@ -37,7 +37,7 @@ export async function fetchCredentials(
   doFetch: (url: string, init?: RequestInit) => Promise<Response> = fetch,
 ): Promise<ResolvedCredentials> {
   const url = snapshot.callback_url.replace(
-    /\/api\/hooks\/n8n$/,
+    /\/api\/hooks\/[^/]+$/,
     `/api/runs/${snapshot.run_id}/credentials`,
   );
   let response: Response;
@@ -278,6 +278,8 @@ export async function runStep(
     state.containerId,
     { snapshot, credentials, sandbox: state.sandbox, lostContainerId: state.containerId },
     (containerId) => dispatch(host, containerId, state, stepIndex, request, logs),
+    // A run whose record is gone was released on purpose: not rebuilt.
+    async () => Boolean((await store.get(runId))?.containerId),
   );
   if (recovery.recovered) {
     // The replacement is what later steps must use.

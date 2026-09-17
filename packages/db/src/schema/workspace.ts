@@ -16,8 +16,6 @@ export const workspaces = pgTable(
     name: text('name').notNull(),
     modelCredentialId: text('model_credential_id'),
     designCredentialId: text('design_credential_id'),
-    orchestratorBaseUrl: text('orchestrator_base_url'),
-    orchestratorWorkflowId: text('orchestrator_workflow_id'),
     runnerBaseUrl: text('runner_base_url'),
     defaultCostCeilingUsd: money('default_cost_ceiling_usd').notNull().default('5.0000'),
     defaultTimeCeilingMinutes: integer('default_time_ceiling_minutes').notNull().default(45),

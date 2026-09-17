@@ -7,25 +7,25 @@ import { getRun } from './run';
 /**
  * Continuing a run from its first unfinished step.
  *
- * The orchestrator holds no state of its own: every run lives in one
- * execution, and when that execution dies — n8n restarted, a node errored, a
- * callback refused — the run is stuck as `running` with nothing driving it.
- * Until now the only way out was to cancel and retry, which threw away every
- * finished step and paid for it again.
+ * The execution service writes each run's position to disk and resumes it
+ * after a restart, so a stuck run is rare now. It is still possible — the
+ * state directory wiped, a service moved to another machine — and then the
+ * run is `running` with nothing driving it, and the only way out used to be
+ * cancel and retry, which threw away every finished step and paid for it
+ * again.
  *
  * What the run has established is all in this database: which steps are
  * done or skipped, what has been spent, and whether the ticket changes the
- * interface. So the same snapshot is handed to the orchestrator once more,
- * with a `resume` block saying where to pick up and what is already known,
- * and the workflow starts its loop there instead of at zero. The runner's
- * start is idempotent, so a workspace that still exists is kept; a step that
- * was `running` when the execution died is run again, and the ledger accepts
- * its second finish as the first (FR-095).
+ * interface. So the same snapshot is handed to the execution service once
+ * more, with a `resume` block saying where to pick up and what is already
+ * known, and its loop starts there instead of at zero. Its start is
+ * idempotent, so a workspace that still exists is kept; a step that was
+ * `running` is run again, and the ledger accepts its second finish as the
+ * first (FR-095).
  *
- * A person decides when a run is stuck — the application cannot see an
- * orchestrator execution die — so this is a control on the ticket, not a
- * timer. Continuing a run whose execution is in fact still alive would run a
- * step twice in parallel; the control says so.
+ * A person decides when a run is stuck, so this is a control on the ticket,
+ * not a timer. Continuing a run that is in fact still being driven is refused
+ * by the service, which knows.
  */
 
 export interface ResumePoint {

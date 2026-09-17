@@ -20,7 +20,7 @@ const resolveFor = (s: Scenario) =>
     ticketId: s.ticketId,
     attempt: 1,
     runId: crypto.randomUUID(),
-    callbackUrl: 'https://factory.example/api/hooks/n8n',
+    callbackUrl: 'https://factory.example/api/hooks/orchestrator',
     resumeSecret: 'secret',
   });
 
@@ -33,7 +33,7 @@ test('a snapshot is complete: nothing in it requires a later lookup (FR-044)', a
   expect(snapshot.repo.default_branch).toBe('main');
   expect(snapshot.pipeline.steps).toHaveLength(2);
   expect(snapshot.limits.cost_ceiling_usd).toBe('5.0000');
-  expect(snapshot.callback_url).toContain('/api/hooks/n8n');
+  expect(snapshot.callback_url).toContain('/api/hooks/orchestrator');
 
   // Every agent a step names is carried in full, with its prompt and tools.
   for (const step of snapshot.pipeline.steps) {
@@ -168,7 +168,7 @@ test("the snapshot pins the sandbox's limits, so what an administrator set appli
     ticketId: scenario.ticketId,
     runId: crypto.randomUUID(),
     attempt: 1,
-    callbackUrl: 'https://factory.example/api/hooks/n8n',
+    callbackUrl: 'https://factory.example/api/hooks/orchestrator',
     resumeSecret: 's',
   });
 
@@ -188,7 +188,7 @@ test('changing a sandbox limit does not reshape a run already resolved', async (
     ticketId: scenario.ticketId,
     runId: crypto.randomUUID(),
     attempt: 1,
-    callbackUrl: 'https://factory.example/api/hooks/n8n',
+    callbackUrl: 'https://factory.example/api/hooks/orchestrator',
     resumeSecret: 's',
   });
   await db.update(workspaces).set({ sandboxMemoryMb: 65536 });

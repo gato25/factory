@@ -93,7 +93,7 @@ async function seed(): Promise<Seeded> {
         limits: {},
       },
     ],
-    callback_url: 'http://localhost:5173/api/hooks/n8n',
+    callback_url: 'http://localhost:5173/api/hooks/orchestrator',
     resume_secret: secret,
   };
 
@@ -136,7 +136,7 @@ test.describe('watching a run', () => {
     ]);
 
     const callback = (body: Record<string, unknown>) =>
-      page.request.post('http://localhost:5173/api/hooks/n8n', {
+      page.request.post('http://localhost:5173/api/hooks/orchestrator', {
         headers: { authorization: `Bearer ${seeded.secret}` },
         data: { run_id: seeded.runId, attempt: 1, ...body },
       });

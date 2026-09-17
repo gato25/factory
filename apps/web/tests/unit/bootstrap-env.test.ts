@@ -11,22 +11,15 @@ import { bootstrapFromEnv } from '../../src/lib/config';
  */
 
 describe('addresses', () => {
-  test('both addresses are taken when present', () => {
-    const out = bootstrapFromEnv({
-      RUNNER_BASE_URL: 'http://localhost:8080',
-      ORCHESTRATOR_BASE_URL: 'http://localhost:5678',
-    });
+  test('the address is taken when present', () => {
+    const out = bootstrapFromEnv({ RUNNER_BASE_URL: 'http://localhost:8080' });
     expect(out.runnerBaseUrl).toBe('http://localhost:8080');
-    expect(out.orchestratorBaseUrl).toBe('http://localhost:5678');
   });
 
-  test('an empty environment still gets the local addresses', () => {
-    // The point of the defaults: with nothing configured at all, the two
-    // addresses are still filled in, because compose already decided them.
-    expect(bootstrapFromEnv({})).toEqual({
-      runnerBaseUrl: 'http://localhost:8080',
-      orchestratorBaseUrl: 'http://localhost:5678',
-    });
+  test('an empty environment still gets the local address', () => {
+    // The point of the default: with nothing configured at all, the address
+    // is still filled in, because the execution service's own default decided it.
+    expect(bootstrapFromEnv({})).toEqual({ runnerBaseUrl: 'http://localhost:8080' });
   });
 
   test('a deployment gets no default — the variable is still required there', () => {
@@ -51,31 +44,14 @@ describe('addresses', () => {
   });
 
   test('a blank variable is treated as unset, and takes the default', () => {
-    expect(bootstrapFromEnv({ ORCHESTRATOR_BASE_URL: '   ' }).orchestratorBaseUrl).toBe(
-      'http://localhost:5678',
+    expect(bootstrapFromEnv({ RUNNER_BASE_URL: '   ' }).runnerBaseUrl).toBe(
+      'http://localhost:8080',
     );
   });
 
   test('surrounding whitespace is not part of an address', () => {
     expect(bootstrapFromEnv({ RUNNER_BASE_URL: '  http://runner:8080  ' }).runnerBaseUrl).toBe(
       'http://runner:8080',
-    );
-  });
-});
-
-describe('the workflow identifier', () => {
-  test('is taken from the environment', () => {
-    // `bun run dev` imports the workflow, reads back the identifier n8n gave
-    // it and passes it in here. Nobody can type it before the import has run.
-    expect(bootstrapFromEnv({ ORCHESTRATOR_WORKFLOW_ID: 'AbC123' }).orchestratorWorkflowId).toBe(
-      'AbC123',
-    );
-  });
-
-  test('has no default — it does not exist until the import has happened', () => {
-    expect(bootstrapFromEnv({}).orchestratorWorkflowId).toBeUndefined();
-    expect(bootstrapFromEnv({ ORCHESTRATOR_WORKFLOW_ID: '  ' }).orchestratorWorkflowId).toBe(
-      undefined,
     );
   });
 });

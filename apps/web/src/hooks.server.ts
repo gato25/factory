@@ -54,8 +54,6 @@ export const init: ServerInit = async () => {
     const ring = from.modelKey && process.env.SECRET_ENCRYPTION_KEY ? keyRingFromEnv() : undefined;
     const { seeded } = await bootstrapWorkspace(db(), {
       runnerBaseUrl: from.runnerBaseUrl,
-      orchestratorBaseUrl: from.orchestratorBaseUrl,
-      orchestratorWorkflowId: from.orchestratorWorkflowId,
       modelKey: from.modelKey?.value,
       ring,
     });

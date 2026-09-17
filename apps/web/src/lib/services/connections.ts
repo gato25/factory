@@ -23,7 +23,7 @@ export type ConnectionState =
   | 'wrong_shape';
 
 export interface ConnectionResult {
-  what: 'orchestrator' | 'runner' | 'design';
+  what: 'runner' | 'design';
   state: ConnectionState;
   /** One sentence naming what to do about it. */
   detail: string;
@@ -136,17 +136,6 @@ async function probe(
   }
 }
 
-export async function testOrchestrator(
-  database: Database,
-  user: SessionUser | null,
-  deps: ProbeDeps = {},
-): Promise<ConnectionResult> {
-  requireAdmin(user);
-  const workspace = await getWorkspace(database);
-  const base = workspace.orchestratorBaseUrl;
-  return probe('orchestrator', base ? `${base.replace(/\/+$/, '')}/healthz` : null, {}, deps);
-}
-
 export async function testRunner(
   database: Database,
   user: SessionUser | null,
@@ -211,7 +200,6 @@ export async function testEverything(
 ): Promise<ConnectionResult[]> {
   requireAdmin(user);
   const results = await Promise.all([
-    testOrchestrator(database, user, deps),
     testRunner(database, user, deps),
     testDesign(database, user, deps),
   ]);
@@ -237,7 +225,6 @@ export async function testEverything(
 export async function readiness(database: Database) {
   const workspace = await getWorkspace(database);
   const missing: string[] = [];
-  if (!workspace.orchestratorBaseUrl) missing.push('the orchestration service address');
   if (!workspace.runnerBaseUrl) missing.push('the runner address');
   if (!workspace.hasModelCredential) missing.push('a model credential');
 

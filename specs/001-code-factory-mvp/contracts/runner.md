@@ -86,6 +86,13 @@ Destroys the container within five minutes of the run ending (SC-012), unless th
 configured to retain failed runs' sandboxes for diagnosis, in which case it is retained for the
 configured window and destroyed after (FR-086).
 
+## `POST /runs/{run_id}/execute`, `POST /runs/{run_id}/resume`, `GET /runs/{run_id}/orchestration`
+
+The orchestrator's own routes, since it moved into this service: the trigger, the answer to a wait,
+and where a run is. Their payloads are those of [orchestrator.md](./orchestrator.md) §1 and §4; the
+third returns the run's position without its snapshot. The four operations above remain, and are
+what the loop calls.
+
 ## Recovery
 
 If the sandbox or its host becomes unavailable part-way through a step, the step is attempted once

@@ -9,19 +9,18 @@ to discover.
 
 ## What you are deploying
 
-Two long-running services, one database, one workflow definition, and one container image.
+Two long-running services, one database, and one container image.
 
 | Piece | What it is | Where it may be reached from |
 | --- | --- | --- |
 | **`apps/web`** | SvelteKit. Every screen, every remote function, and the callback and exchange routes the other pieces use. Holds the encryption key. | The public internet — people sign in to it |
-| **`apps/runner`** | An HTTP service with four operations. **The only component that executes anything** — as processes on its own machine, or as containers on a Docker daemon (Principle V, research.md D5). | The orchestration service and the web application only. **Never the public internet** |
+| **`apps/runner`** | An HTTP service. **The only component that executes anything** — as processes on its own machine, or as containers on a Docker daemon (Principle V, research.md D5) — and the orchestrator: it drives each run from snapshot to merge request and writes every run's position to disk. | The web application only. **Never the public internet** |
 | **Postgres 16+** | The only datastore. `LISTEN`/`NOTIFY` carries live run updates to browsers | Both services |
-| **n8n** | Executes the one generic workflow, and holds gates paused in `Wait` nodes | The web application posts to it; it posts back |
 | **Sandbox image** | `infra/sandbox/Dockerfile`. One fresh container per run, non-root, destroyed at the end. Used under `EXECUTION_HOST=docker`, and by the Run it card always | Built once, pulled by the container host |
 
-The web application never holds a container handle, and the orchestration service never holds a
-credential value. Both are deliberate and both are load-bearing — see
-[credential-path.md](./reviews/credential-path.md).
+The web application never holds a container handle, and the runner holds credentials only in
+memory for the life of a run — never on disk, never in the state it writes. Both are deliberate and
+both are load-bearing — see [credential-path.md](./reviews/credential-path.md).
 
 ## Bringing it up
 
@@ -35,17 +34,17 @@ bun run dev:web                               # apps/web  → :5173
 ```
 
 On a development machine `bun run dev` does all of this, with runs executing as processes on that
-machine and n8n started there too — see [Execution hosts](#execution-hosts) for what that trades
-away and why a deployment should not.
+machine — see [Execution hosts](#execution-hosts) for what that trades away and why a deployment
+should not.
 
-Import `orchestration/n8n/run-ticket-pipeline.json` into n8n and publish it. It is **one generic
-workflow for every pipeline** — a pipeline's steps are read from the run's snapshot at execution
-time. Do not edit it per pipeline; `apps/web/tests/contract/workflow.test.ts` fails if a step name,
-model or agent name is ever baked into it. n8n needs `RUNNER_BASE_URL` and `RUNNER_AUTH_TOKEN` in
-its environment, and `N8N_BLOCK_ENV_ACCESS_IN_NODE=false` so the workflow may read them.
+There is no separate orchestration service. The runner drives each run: `POST /runs/{id}/execute`
+accepts the snapshot and answers at once, the run proceeds and reports through the callbacks in
+`contracts/orchestrator.md`, a checkpoint or a pause waits for `POST /runs/{id}/resume`, and the
+merge request is opened by the runner with the body the application composes. Each run's position
+is written under `FACTORY_STATE_DIR`, so restarting the runner resumes every run in flight.
 
-Then, in the application: sign in, open **Settings**, and set the orchestration service address, the
-container host address and a model credential. The dashboard names anything still missing and links
+Then, in the application: sign in, open **Settings**, and set the execution service address and a
+model credential. The dashboard names anything still missing and links
 to where it is fixed, so you do not need this document open to know what is left.
 
 Finally press **Test every connection** and do not proceed until each says what you expect. The
@@ -72,8 +71,6 @@ fix Docker access, not the address.
 | `DATABASE_URL` | yes | |
 | `RUNNER_BASE_URL` | yes | Validated as an absolute URL at startup |
 | `RUNNER_AUTH_TOKEN` | yes | Must match the Runner's |
-| `ORCHESTRATOR_BASE_URL` | yes | |
-| `ORCHESTRATOR_API_KEY` | | |
 | `PUBLIC_BASE_URL` | yes | Appears in merge request bodies and callback addresses, so it must be the address others can reach |
 | `SESSION_SECRET` | yes | 32+ random bytes. Changing it signs everyone out |
 | `SECRET_ENCRYPTION_KEY` | yes | base64 of exactly 32 bytes: `openssl rand -base64 32` |
@@ -94,6 +91,8 @@ Startup fails, loudly, on a missing or malformed value rather than at the first 
 | Variable | Default | Notes |
 | --- | --- | --- |
 | `RUNNER_PORT` | `8080` | |
+| `RUNNER_BASE_URL` | `http://localhost:<port>` | This service's address as the application reaches it; it appears in the resume addresses handed to the application at a checkpoint or pause |
+| `FACTORY_STATE_DIR` | `~/.code-factory/state` | Where each run's position is written, so a restart resumes it. Never holds a credential |
 | `EXECUTION_HOST` | `process` | `process`: runs execute as processes on this machine. `docker`: one fresh container per run. **A deployment should set `docker`** — see [Execution hosts](#execution-hosts) |
 | `FACTORY_WORK_DIR` | `~/.code-factory/runs` | Where the process host makes each run's directory |
 | `DATABASE_URL` | | Present for parity; the Runner works from the snapshot it is handed |
@@ -205,13 +204,12 @@ determine; the exclusions are printed with the result so the number always carri
    line, not the boundary.
 
 2. **`/api/runs/:id/credentials` should be reachable only from the Runner's address.** This is the
-   route that exchanges credential references for values. It requires the run's own secret, and the
-   orchestration service holds that secret because it needs it for callbacks — so anyone who can
-   read an n8n execution can call this route and be handed the git token and the model key. An n8n
-   execution list is, in effect, a list of bearer tokens. Restrict the route at the proxy, keep
-   n8n's execution retention short, and keep n8n's own access controls tight. This is documented as
-   a residual risk in [credential-path.md](./reviews/credential-path.md); it cannot be fixed inside
-   the application.
+   route that exchanges credential references for values. It requires the run's own secret, which
+   lives in the run's snapshot — in the application's database and in the runner's state files. Anyone
+   who can read either can call this route and be handed the git token and the model key. Restrict
+   the route at the proxy and keep the state directory as private as the database. This is
+   documented as a residual risk in [credential-path.md](./reviews/credential-path.md); it cannot be
+   fixed inside the application.
 
 3. **Under `EXECUTION_HOST=docker`, a sandbox can be kept off the network while code is being
    written.** The setting is refused under `process`, which cannot enforce it. Note that an agent
@@ -244,7 +242,9 @@ there is one. The lines worth alerting on:
 | `could not release the sandbox of a run stopped at its ceiling` | A container is running that nobody is watching. The maintenance pass will retry; if it repeats, the container host is refusing |
 | `maintenance pass finished with problems` | Read the pass's own output; the count is in `problems` |
 | `a workspace connection is not usable` | A dependency changed under you. The `state` field says which fault |
-| `trigger delivery failed, will retry` | n8n is not answering. Retries with backoff; a ticket sits `queued` meanwhile |
+| `trigger delivery failed, will retry` | The runner is not answering. Retries with backoff; a ticket sits `queued` meanwhile |
+| `run failed` (runner) | A run ended on the failure path; `reason` and `detail` say why, and the application has been told |
+| `could not report the failure to the application` (runner) | The run failed AND the application could not be reached. The run's row is stale until somebody looks |
 | `the specification step produced no usable classification` | FR-102 — the run continues, treated as not interface work, and the warning is on the run for a person to see. Not an outage |
 | `run stopped at a ceiling` | Working as intended. Worth counting, not alerting |
 
@@ -256,22 +256,21 @@ been spent, what the last agent produced, and the failing step and reason when i
 **The web application** is stateless apart from its database connections; restart freely. Browsers
 watching a run reconnect and re-read, so a viewer sees correct state rather than a frozen one.
 
-**The Runner keeps its run-to-container mapping in memory.** A restart loses it, and a sandbox
-belonging to an in-flight run can then only be reclaimed by hand or by its own lifetime limit. Drain
-before restarting where you can: `Settings → Runs now` shows what is executing.
-
-**n8n holds paused gates in `Wait` nodes.** Its own persistence is what survives a restart; if an
-execution is lost, the run's `resume_url` is stored on the run so a gate stays drivable.
+**The Runner writes each run's position to `FACTORY_STATE_DIR`** and, on start, drives every run
+that was in flight again from that position and keeps waiting on every run that was waiting. A
+sandbox that still exists is adopted; one that does not is rebuilt from the branch. A step that was
+executing when the runner stopped runs again from its start. Credentials are fetched from the
+application again; none are on disk.
 
 ## What has not been run
 
 Stated plainly, because a deployment guide that implies more was tested than was is worse than a
 short one:
 
-- **No end-to-end run has ever executed.** This environment has no Docker daemon, no n8n instance,
-  and no provider credential. The Runner starts, authenticates, and correctly reports its container
-  host unreachable; the workflow is importable and its structure is checked by contract tests, but
-  it has never executed a step.
+- **No end-to-end run has finished.** On a development machine the runner has driven a run through
+  its specification step and posted the result; the steps after that, the checkpoint, the pause and
+  the merge request are exercised only by `apps/runner/tests/integration/orchestrate.test.ts`,
+  against the fake host and a fake application.
 - **No merge request has been opened on a provider.** The body is composed and asserted against
   (see [merge-request-legibility.md](./reviews/merge-request-legibility.md)), and both providers'
   field shapes are produced, but neither GitLab nor GitHub has replied to either.

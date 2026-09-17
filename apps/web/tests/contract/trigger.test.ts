@@ -59,7 +59,7 @@ test('the body carries everything the orchestrator needs, and nothing to look up
   }
 });
 
-test('the trigger is posted to the workflow webhook with the snapshot as its body', async () => {
+test('the trigger is posted to the execution service with the snapshot as its body', async () => {
   const { snapshot } = await startRun(db, {
     ticketId: scenario.ticketId,
     callbackBaseUrl: 'https://factory.example',
@@ -67,17 +67,21 @@ test('the trigger is posted to the workflow webhook with the snapshot as its bod
 
   let seenUrl = '';
   let seenBody: unknown;
+  let seenAuth = '';
   const result = await deliverTrigger(snapshot, {
-    baseUrl: 'https://n8n.example',
+    baseUrl: 'https://runner.example',
+    token: 'runner-token',
     fetch: async (url, init) => {
       seenUrl = String(url);
       seenBody = JSON.parse(String(init?.body));
-      return new Response(JSON.stringify({ executionId: 'exec_1' }), { status: 200 });
+      seenAuth = String(((init?.headers ?? {}) as Record<string, string>).authorization);
+      return new Response(JSON.stringify({ execution_id: snapshot.run_id }), { status: 202 });
     },
   });
 
-  expect(result).toMatchObject({ delivered: true, executionId: 'exec_1', attempts: 1 });
-  expect(seenUrl).toBe('https://n8n.example/webhook/run-ticket-pipeline');
+  expect(result).toMatchObject({ delivered: true, executionId: snapshot.run_id, attempts: 1 });
+  expect(seenUrl).toBe(`https://runner.example/runs/${snapshot.run_id}/execute`);
+  expect(seenAuth).toBe('Bearer runner-token');
   expect(seenBody).toEqual(snapshot);
 });
 
@@ -88,7 +92,8 @@ test('delivery retries with increasing delays, then reports failure (FR-094)', a
   });
   const delays: number[] = [];
   const result = await deliverTrigger(snapshot, {
-    baseUrl: 'https://n8n.example',
+    baseUrl: 'https://runner.example',
+    token: 'runner-token',
     fetch: async () => {
       throw new Error('connection refused');
     },
@@ -109,7 +114,8 @@ test('a 4xx is not retried, because waiting will not fix it', async () => {
   });
   let calls = 0;
   const result = await deliverTrigger(snapshot, {
-    baseUrl: 'https://n8n.example',
+    baseUrl: 'https://runner.example',
+    token: 'runner-token',
     fetch: async () => {
       calls++;
       return new Response('bad path', { status: 404 });
@@ -129,7 +135,8 @@ test('a 408 IS retried: it is a timeout from a server that stopped reading, not 
   });
   let calls = 0;
   const result = await deliverTrigger(snapshot, {
-    baseUrl: 'https://n8n.example',
+    baseUrl: 'https://runner.example',
+    token: 'runner-token',
     fetch: async () => {
       calls++;
       return calls < 2
@@ -149,7 +156,8 @@ test('a 5xx IS retried, then succeeds', async () => {
   });
   let calls = 0;
   const result = await deliverTrigger(snapshot, {
-    baseUrl: 'https://n8n.example',
+    baseUrl: 'https://runner.example',
+    token: 'runner-token',
     fetch: async () => {
       calls++;
       return calls < 3
@@ -190,7 +198,8 @@ test('a timeout is NOT retried: the run may already have started', async () => {
   });
   let calls = 0;
   const result = await deliverTrigger(snapshot, {
-    baseUrl: 'https://n8n.example',
+    baseUrl: 'https://runner.example',
+    token: 'runner-token',
     fetch: async () => {
       calls++;
       throw new DOMException('The operation was aborted due to timeout', 'TimeoutError');

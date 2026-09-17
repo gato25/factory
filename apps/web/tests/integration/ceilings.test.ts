@@ -246,4 +246,6 @@ test('SC-006 holds when a step costs no more than 5% of the ceiling', async () =
 
   // The largest of those steps is exactly 5% of $5.00, which is the boundary.
   expect(Math.max(...worst)).toBeLessThanOrEqual(0.05);
-});
+  // Hundreds of round trips to a real Postgres: on a slower machine this takes
+  // longer than the default five seconds, and a timeout here is not a finding.
+}, 30_000);

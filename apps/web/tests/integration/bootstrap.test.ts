@@ -9,7 +9,7 @@ import { connect, seed } from '../fixtures';
 /**
  * A fresh deployment starts with Settings filled in from `.env`.
  *
- * The dashboard used to list the runner address, the orchestration address
+ * The dashboard used to list the runner address
  * and a model credential as missing, and send the administrator to Settings
  * to type them — two of which were in `.env` already. These tests hold the
  * seed to its one rule: it fills what nobody has set, and never touches what
@@ -20,7 +20,6 @@ const { db } = connect();
 const ring = keyRingFromEnv({ SECRET_ENCRYPTION_KEY: Buffer.alloc(32, 7).toString('base64') });
 const fromEnv = {
   runnerBaseUrl: 'http://localhost:8080',
-  orchestratorBaseUrl: 'http://localhost:5678',
   modelKey: 'sk-ant-api03-from-env',
   ring,
 };
@@ -33,13 +32,12 @@ beforeEach(async () => {
   admin = { id: scenario.userId, name: row?.name ?? 'Bat', email: row?.email ?? '', role: 'admin' };
 });
 
-test('a fresh workspace gets both addresses and the model credential', async () => {
+test('a fresh workspace gets the runner address and the model credential', async () => {
   const { seeded } = await bootstrapWorkspace(db, fromEnv);
-  expect(seeded.sort()).toEqual(['model credential', 'orchestration address', 'runner address']);
+  expect(seeded.sort()).toEqual(['model credential', 'runner address']);
 
   const [row] = await db.select().from(workspaces);
   expect(row?.runnerBaseUrl).toBe('http://localhost:8080');
-  expect(row?.orchestratorBaseUrl).toBe('http://localhost:5678');
   expect(row?.modelCredentialId).toBeTruthy();
 
   // The point of it all: the dashboard has nothing left to ask for. The seed
@@ -51,7 +49,9 @@ test('a fresh workspace gets both addresses and the model credential', async () 
 
 test('the credential is stored sealed, never as the key itself', async () => {
   await bootstrapWorkspace(db, fromEnv);
-  const [stored] = await db.select().from(credentials);
+  // The seed connects a repository with its own git credential; the one
+  // this test is about is the model's.
+  const stored = (await db.select().from(credentials)).find((row) => row.kind === 'model');
   expect(stored?.kind).toBe('model');
   expect(stored?.ciphertext).not.toContain('sk-ant-api03-from-env');
   expect(JSON.stringify(stored)).not.toContain('from-env');
@@ -63,10 +63,9 @@ test('a value somebody set by hand is never overwritten', async () => {
 
   const [row] = await db.select().from(workspaces);
   expect(row?.runnerBaseUrl).toBe('https://runner.internal');
-  // The other address WAS unset, so it is filled — the rule is per field.
-  expect(row?.orchestratorBaseUrl).toBe('http://localhost:5678');
   expect(seeded).not.toContain('runner address');
-  expect(seeded).toContain('orchestration address');
+  // The credential WAS unset, so it is filled — the rule is per field.
+  expect(seeded).toContain('model credential');
 });
 
 test('running it again seeds nothing and stores no second credential', async () => {
@@ -93,9 +92,9 @@ test('two servers starting together store exactly one credential', async () => {
   expect(stored.filter((c) => c.kind === 'model')).toHaveLength(1);
 });
 
-test('without a key ring the credential is not stored, and the addresses still are', async () => {
+test('without a key ring the credential is not stored, and the address still is', async () => {
   const { seeded } = await bootstrapWorkspace(db, { ...fromEnv, ring: undefined });
-  expect(seeded.sort()).toEqual(['orchestration address', 'runner address']);
+  expect(seeded.sort()).toEqual(['runner address']);
   const [row] = await db.select().from(workspaces);
   expect(row?.modelCredentialId).toBeNull();
 });

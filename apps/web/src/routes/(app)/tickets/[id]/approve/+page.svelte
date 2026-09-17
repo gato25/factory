@@ -141,7 +141,7 @@
         </p>
         <p class="s">
           {d.gate.precedingLabel ?? 'The previous step'} finished. The pipeline is
-          {`paused at step ${d.gate.stepIndex + 1}`} (an n8n Wait node) until you approve, ask for
+          {`paused at step ${d.gate.stepIndex + 1}`} (held by the execution service) until you approve, ask for
           changes, or edit the document yourself. Cancelling instead releases the sandbox and
           leaves the branch alone.
         </p>

@@ -21,8 +21,6 @@ import { requireAdmin } from './authz';
 export interface WorkspaceSettings {
   id: string;
   name: string;
-  orchestratorBaseUrl: string | null;
-  orchestratorWorkflowId: string | null;
   runnerBaseUrl: string | null;
   /** Present or absent; never readable back in full (FR-011). */
   hasModelCredential: boolean;
@@ -67,8 +65,6 @@ export async function getWorkspace(database: Database): Promise<WorkspaceSetting
   return {
     id: row.id,
     name: row.name,
-    orchestratorBaseUrl: row.orchestratorBaseUrl,
-    orchestratorWorkflowId: row.orchestratorWorkflowId,
     runnerBaseUrl: row.runnerBaseUrl,
     // Whether one is stored, not what it is (FR-011).
     hasModelCredential: Boolean(row.modelCredentialId),
@@ -122,8 +118,6 @@ export async function ensureWorkspace(database: Database, name = 'Workspace') {
 
 export interface WorkspaceInput {
   name?: string;
-  orchestratorBaseUrl?: string | null;
-  orchestratorWorkflowId?: string | null;
   runnerBaseUrl?: string | null;
   defaultCostCeilingUsd?: string;
   defaultTimeCeilingMinutes?: number;
@@ -154,12 +148,6 @@ export async function updateWorkspace(
     .update(workspaces)
     .set({
       ...(input.name === undefined ? {} : { name: input.name.trim() }),
-      ...(input.orchestratorBaseUrl === undefined
-        ? {}
-        : { orchestratorBaseUrl: input.orchestratorBaseUrl }),
-      ...(input.orchestratorWorkflowId === undefined
-        ? {}
-        : { orchestratorWorkflowId: input.orchestratorWorkflowId }),
       ...(input.runnerBaseUrl === undefined ? {} : { runnerBaseUrl: input.runnerBaseUrl }),
       ...(input.defaultCostCeilingUsd === undefined
         ? {}
@@ -341,8 +329,6 @@ async function attachCredential(
 
 export interface WorkspaceBootstrapInput {
   runnerBaseUrl?: string;
-  orchestratorBaseUrl?: string;
-  orchestratorWorkflowId?: string;
   /** The model credential itself. Sealed with `ring` before it is stored. */
   modelKey?: string;
   ring?: KeyRing;
@@ -352,11 +338,11 @@ export interface WorkspaceBootstrapInput {
  * Gives the workspace what the environment already knows — once, and only
  * into fields nobody has set.
  *
- * A fresh deployment's dashboard listed the runner address, the orchestration
- * address and a model credential as missing, and sent the administrator to
- * Settings to type them. The two addresses were in `.env` already; the
- * application had read them for itself and then asked again. This is the
- * fix: the same fact, filled from the place it was first stated.
+ * A fresh deployment's dashboard listed the runner address and a model
+ * credential as missing, and sent the administrator to Settings to type them.
+ * The address was in `.env` already; the application had read it for itself
+ * and then asked again. This is the fix: the same fact, filled from the place
+ * it was first stated.
  *
  * Only NULL columns take a value. Settings is the source of truth from the
  * moment somebody saves it, and a change to `.env` afterwards does not reach
@@ -375,22 +361,16 @@ export async function bootstrapWorkspace(
   const seeded: string[] = [];
 
   const wantsRunner = input.runnerBaseUrl && !workspace.runnerBaseUrl;
-  const wantsOrchestrator = input.orchestratorBaseUrl && !workspace.orchestratorBaseUrl;
-  const wantsWorkflow = input.orchestratorWorkflowId && !workspace.orchestratorWorkflowId;
-  if (wantsRunner || wantsOrchestrator || wantsWorkflow) {
+  if (wantsRunner) {
     const [after] = await database
       .update(workspaces)
       .set({
         runnerBaseUrl: sql`coalesce(${workspaces.runnerBaseUrl}, ${input.runnerBaseUrl ?? null})`,
-        orchestratorBaseUrl: sql`coalesce(${workspaces.orchestratorBaseUrl}, ${input.orchestratorBaseUrl ?? null})`,
-        orchestratorWorkflowId: sql`coalesce(${workspaces.orchestratorWorkflowId}, ${input.orchestratorWorkflowId ?? null})`,
         updatedAt: new Date(),
       })
       .where(eq(workspaces.id, workspace.id))
       .returning();
-    if (wantsRunner && after?.runnerBaseUrl) seeded.push('runner address');
-    if (wantsOrchestrator && after?.orchestratorBaseUrl) seeded.push('orchestration address');
-    if (wantsWorkflow && after?.orchestratorWorkflowId) seeded.push('workflow identifier');
+    if (after?.runnerBaseUrl) seeded.push('runner address');
   }
 
   if (input.modelKey && input.ring && !workspace.modelCredentialId) {

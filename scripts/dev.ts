@@ -4,35 +4,29 @@
  *
  *   bun run dev
  *
- * Four things have to be up before a ticket can execute — Postgres, n8n, the
+ * Three things have to be up before a ticket can execute — Postgres, the
  * runner and the web app — plus a schema. Starting them by hand is several
- * commands across several terminals, and forgetting any one of them produces a
- * different confusing failure much later. That is not a documentation problem;
- * it is a missing command.
+ * commands across several terminals, and forgetting one produces a confusing
+ * failure much later. That is not a documentation problem; it is a missing
+ * command.
  *
- * Everything but Postgres runs on this machine directly. n8n used to run in a
- * container and runs used to execute in one, and every address between the
- * pieces then had to be spelt twice — once as a browser reaches it and once as
- * a container reaches the host it runs on. Most of what went wrong on a first
- * run was one of those addresses; with everything on one machine, `localhost`
- * means the same thing everywhere.
+ * Everything but Postgres runs on this machine directly. There used to be a
+ * fourth service, an orchestration workflow in n8n, and it was where most of
+ * what went wrong on a first run went wrong; the runner drives runs itself
+ * now, and writes each run's position to disk so a restart resumes it.
  *
  * What this does, in order, stopping at the first thing that genuinely blocks:
  *
- *   1. The environment, read once here and handed to every service
+ *   1. The environment, read once here and handed to both services
  *   2. Postgres, via docker compose, waited for until healthy
  *   3. The database schema
  *   4. The execution host — the tools a step runs, or the sandbox image
- *   5. n8n on this machine: installed if missing, the workflow imported and
- *      published, then started
- *   6. The runner and the web app, together with n8n, until you stop them
+ *   5. The runner and the web app, together, until you stop them
  *
  * Every step says what it is doing and what it found, because the point is to
  * be able to see WHERE it stopped rather than to hide the steps.
  */
 
-import { Database } from 'bun:sqlite';
-import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { quote } from '../apps/runner/src/container/shell';
@@ -45,16 +39,9 @@ const RED = '[31m';
 const GREEN = '[32m';
 const YELLOW = '[33m';
 const BLUE = '[34m';
-const MAGENTA = '[35m';
 const OFF = '[0m';
 
 const SANDBOX_IMAGE = 'code-factory/sandbox:latest';
-const WORKFLOW_NAME = 'run-ticket-pipeline';
-/** The n8n this was exercised against. Node 24 needs a 2.x release. */
-const N8N_VERSION = '2.40.2';
-const N8N_PORT = 5678;
-/** n8n's own files — its SQLite database, its encryption key — kept beside the runs. */
-const N8N_HOME = join(homedir(), '.code-factory', 'n8n');
 
 function step(text: string) {
   console.log(`\n${BOLD}${text}${OFF}`);
@@ -81,16 +68,14 @@ function warn(text: string) {
  */
 async function sh(
   argv: string[],
-  options: { cwd?: string; quiet?: boolean; stream?: boolean; env?: Record<string, string> } = {},
+  options: { cwd?: string; quiet?: boolean; stream?: boolean } = {},
 ): Promise<{ code: number; out: string }> {
-  const env = { ...process.env, ...options.env } as Record<string, string>;
   if (options.stream) {
-    const proc = Bun.spawn(argv, { cwd: options.cwd, env, stdout: 'inherit', stderr: 'inherit' });
+    const proc = Bun.spawn(argv, { cwd: options.cwd, stdout: 'inherit', stderr: 'inherit' });
     return { code: await proc.exited, out: '' };
   }
   const proc = Bun.spawn(argv, {
     cwd: options.cwd,
-    env,
     stdout: options.quiet ? 'pipe' : 'inherit',
     stderr: 'pipe',
   });
@@ -101,11 +86,11 @@ async function sh(
 }
 
 /**
- * A command through the POSIX shell, which is where `n8n`, `claude` and `git`
- * all resolve on every platform — on Windows they are shims and links the
- * shell that comes with Git knows how to run, and that shell is not on the
- * PATH there. Same resolver the runner uses, so what this checks and what a
- * step gets are the same shell.
+ * A command through the POSIX shell, which is where `claude` and `git`
+ * resolve on every platform — on Windows they are links and shims the shell
+ * that comes with Git knows how to run, and that shell is not on the PATH
+ * there. Same resolver the runner uses, so what this checks and what a step
+ * gets are the same shell.
  */
 function viaShell(argv: string[]): string[] {
   return [resolveShell(), '-c', quote(argv)];
@@ -160,27 +145,23 @@ function loadEnvFile(text: string): Record<string, string> {
 const PLACEHOLDERS = new Set(['change-me', 'change-me-to-32-plus-random-bytes']);
 
 /**
- * Where the other local services listen, when nobody has said otherwise.
+ * Where the two services listen, when nobody has said otherwise.
  *
- * This script starts n8n on 5678, the execution service defaults itself to
- * 8080 and Vite serves 5173 — so on this machine there is exactly one right
- * answer for each, already written down in the repository. These were
- * required in `.env` and then asked for AGAIN on the settings screen, which is
- * twice for a fact nobody had a choice about.
- *
- * The web application applies the same three defaults for itself; they are
- * repeated here so that what this script checks and what it starts agree.
+ * The execution service defaults itself to 8080 and Vite serves 5173 — so on
+ * this machine there is exactly one right answer for each, already written
+ * down in the repository. The web application applies the same defaults for
+ * itself; they are repeated here so that what this script checks and what it
+ * starts agree.
  */
 const DEV_DEFAULTS: Record<string, string> = {
   RUNNER_BASE_URL: 'http://localhost:8080',
-  ORCHESTRATOR_BASE_URL: `http://localhost:${N8N_PORT}`,
   PUBLIC_BASE_URL: 'http://localhost:5173',
 };
 
 /** What the web application refuses to start without, and cannot default. */
 const REQUIRED = ['DATABASE_URL', 'RUNNER_AUTH_TOKEN', 'SESSION_SECRET'];
 
-step('1/6  Environment');
+step('1/5  Environment');
 
 const envFile = Bun.file('.env');
 if (!(await envFile.exists())) {
@@ -191,7 +172,7 @@ const fileValues = loadEnvFile(await envFile.text());
 for (const [key, value] of Object.entries(fileValues)) {
   if (process.env[key] === undefined) process.env[key] = value;
 }
-ok(`.env read — ${Object.keys(fileValues).length} values, given to every service`);
+ok(`.env read — ${Object.keys(fileValues).length} values, given to both services`);
 
 const defaulted: string[] = [];
 for (const [key, value] of Object.entries(DEV_DEFAULTS)) {
@@ -219,9 +200,9 @@ if (!process.env.SECRET_ENCRYPTION_KEY) {
   warn('SECRET_ENCRYPTION_KEY is not set — saving a credential in Settings will fail.');
   note('openssl rand -base64 32');
 }
-// The web application copies the two service addresses from .env into
-// Settings when it starts, and a model key too if there is one. Saying so
-// here is what stops somebody opening Settings expecting to type them.
+// The web application copies the runner's address from .env into Settings
+// when it starts, and a model key too if there is one. Saying so here is
+// what stops somebody opening Settings expecting to type them.
 if (process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_CODE_OAUTH_TOKEN) {
   if (process.env.SECRET_ENCRYPTION_KEY)
     ok('Model key found — Settings will be filled in at start');
@@ -237,7 +218,7 @@ if (executionHost !== 'process' && executionHost !== 'docker') {
 
 // --- 2. Postgres -------------------------------------------------------------
 
-step('2/6  Postgres');
+step('2/5  Postgres');
 
 const docker = await sh(['docker', 'version', '--format', '{{.Server.Version}}'], { quiet: true });
 if (docker.code !== 0) {
@@ -248,34 +229,6 @@ if (docker.code !== 0) {
   );
 }
 ok(`Docker ${docker.out.trim()}`);
-
-/**
- * The containerised n8n this project used to run, if it is still up.
- *
- * It holds the port the native one is about to take, and a second n8n on the
- * same port fails to bind with a message that names the port and nothing
- * else. Stopped, not removed: its data is still there for anybody who wants
- * to look at it, and `docker compose` will list it as an orphan until they
- * decide.
- */
-const oldN8n = await sh(
-  [
-    'docker',
-    'ps',
-    '-q',
-    '--filter',
-    'label=com.docker.compose.project=factory',
-    '--filter',
-    'label=com.docker.compose.service=n8n',
-  ],
-  { quiet: true },
-);
-if (oldN8n.code === 0 && oldN8n.out.trim()) {
-  const stopped = await sh(['docker', 'stop', ...oldN8n.out.trim().split(/\s+/)], { quiet: true });
-  if (stopped.code === 0) ok('Stopped the old containerised n8n, which held port 5678');
-  else
-    warn('An old containerised n8n is running and could not be stopped; port 5678 may be taken.');
-}
 
 // Streamed, not captured. The first run downloads the image, which takes a
 // while, and a silent minute is indistinguishable from a hung one.
@@ -307,14 +260,14 @@ ok('Postgres is up');
 
 // --- 3. the schema -----------------------------------------------------------
 
-step('3/6  Database schema');
+step('3/5  Database schema');
 const migrated = await sh(['bun', 'run', 'db:migrate'], { quiet: true });
 if (migrated.code !== 0) stop('Migrations failed.', migrated.out.trim());
 ok('Schema is current');
 
 // --- 4. the execution host ---------------------------------------------------
 
-step('4/6  Execution host');
+step('4/5  Execution host');
 
 if (executionHost === 'docker') {
   const existing = await sh(['docker', 'images', '-q', SANDBOX_IMAGE], { quiet: true });
@@ -360,6 +313,9 @@ if (executionHost === 'docker') {
   }
   const workDir = process.env.FACTORY_WORK_DIR || join(homedir(), '.code-factory', 'runs');
   ok(`Runs execute as processes under ${workDir}`);
+  note(
+    `Each run's position is kept under ${join(homedir(), '.code-factory', 'state')}, so a restart resumes it.`,
+  );
 
   // Run it publishes a port and needs a container for it, whichever host runs
   // execute on. Not built here — it is minutes of work for a card most
@@ -370,359 +326,17 @@ if (executionHost === 'docker') {
   }
 }
 
-// --- 5. n8n ------------------------------------------------------------------
+// --- 5. the two services that stay in the foreground -------------------------
 
-step('5/6  n8n');
-
-/**
- * The environment n8n runs with. The two `RUNNER_*` values are what the
- * workflow reads as `$env.RUNNER_BASE_URL` and `$env.RUNNER_AUTH_TOKEN` on
- * every call to the execution service; `N8N_BLOCK_ENV_ACCESS_IN_NODE` is
- * what allows an expression to read them at all.
- */
-const n8nEnv: Record<string, string> = {
-  N8N_PORT: String(N8N_PORT),
-  N8N_USER_FOLDER: N8N_HOME,
-  N8N_SECURE_COOKIE: 'false',
-  N8N_BLOCK_ENV_ACCESS_IN_NODE: 'false',
-  N8N_DIAGNOSTICS_ENABLED: 'false',
-  N8N_VERSION_NOTIFICATIONS_ENABLED: 'false',
-  GENERIC_TIMEZONE: 'UTC',
-  N8N_WEBHOOK_URL: `http://localhost:${N8N_PORT}/`,
-  RUNNER_BASE_URL: process.env.RUNNER_BASE_URL ?? DEV_DEFAULTS.RUNNER_BASE_URL ?? '',
-  RUNNER_AUTH_TOKEN: process.env.RUNNER_AUTH_TOKEN ?? '',
-};
-
-/** Runs an `n8n` subcommand, against the same files the server will use. */
-function n8n(...argv: string[]) {
-  return sh(viaShell(['n8n', ...argv]), { quiet: true, env: n8nEnv });
-}
-
-async function healthy(): Promise<boolean> {
-  try {
-    const response = await fetch(`http://localhost:${N8N_PORT}/healthz`, {
-      signal: AbortSignal.timeout(2000),
-    });
-    return response.ok;
-  } catch {
-    return false;
-  }
-}
+step('5/5  Runner and web app');
+note('Both run here. Ctrl-C stops them together; Postgres keeps running.');
 
 /**
- * Whether the workflow's webhook is answering — which is later than healthy.
- *
- * `/healthz` says yes some thirty seconds before n8n's database is ready and
- * its published workflows are registered; in between, the webhook route
- * answers `503 Database is not ready` and, before that, a plain HTML 404. A
- * ticket started in that window comes back as a failure that looks like the
- * application's. So the thing waited for is the route itself: a GET on a
- * POST-only webhook answers a JSON 404 that names the method, and that is
- * the sign it is registered. Nothing is executed by asking.
- */
-async function webhookState(): Promise<'not-yet' | 'unpublished' | 'registered'> {
-  try {
-    const response = await fetch(`http://localhost:${N8N_PORT}/webhook/${WORKFLOW_NAME}`, {
-      signal: AbortSignal.timeout(5000),
-    });
-    const body = await response.text();
-    if (response.status === 503 || !body.trimStart().startsWith('{')) return 'not-yet';
-    const message = (JSON.parse(body) as { message?: string }).message ?? '';
-    return /is not registered\.?$/i.test(message.trim()) ? 'unpublished' : 'registered';
-  } catch {
-    return 'not-yet';
-  }
-}
-
-/**
- * The row n8n 2's publication service reads, which its own CLI does not write.
- *
- * Since n8n 2, what the server activates at start is not the workflow marked
- * `active` but the one recorded in `workflow_published_version`; the editor's
- * Publish button writes that row and `publish:workflow` on the command line
- * does not — it sets the flag and the version and stops there. So a workflow
- * imported and published from the command line is listed as active and its
- * webhook still answers "not registered". Filled in here from the version the
- * CLI did record, against the same SQLite file. Idempotent, and quietly
- * skipped on an n8n old enough not to have the table.
- */
-function ensurePublishedVersion(id: string): boolean {
-  const file = join(N8N_HOME, '.n8n', 'database.sqlite');
-  if (!existsSync(file)) return false;
-  try {
-    const db = new Database(file);
-    try {
-      db.run(
-        `INSERT OR REPLACE INTO workflow_published_version (workflowId, publishedVersionId)
-         SELECT id, activeVersionId FROM workflow_entity WHERE id = ? AND activeVersionId IS NOT NULL`,
-        [id],
-      );
-      const row = db
-        .query('SELECT publishedVersionId FROM workflow_published_version WHERE workflowId = ?')
-        .get(id);
-      return Boolean(row);
-    } finally {
-      db.close();
-    }
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Whether n8n's own list contains the workflow, matched on IDENTIFIER.
- *
- * `list:workflow` prints `id|name` a line at a time, and the obvious thing is
- * to match the name — but the name is not unique and n8n does not make it so.
- * Anybody who has imported this workflow by hand as well has several rows all
- * called `run-ticket-pipeline`, and matching the name picks whichever n8n
- * happens to list first. That is how you end up activating one workflow and
- * pointing the application at another.
- */
-function listed(listing: string, id: string): boolean {
-  for (const line of listing.split('\n')) {
-    const at = line.indexOf('|');
-    if (at > 0 && line.slice(0, at).trim() === id) return true;
-  }
-  return false;
-}
-
-/** The identifier the workflow file itself carries, which the import preserves. */
-async function workflowIdFromFile(): Promise<string | undefined> {
-  try {
-    const parsed = await Bun.file(`orchestration/n8n/${WORKFLOW_NAME}.json`).json();
-    return typeof parsed?.id === 'string' ? parsed.id : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-let n8nReady = false;
-let n8nProc: ReturnType<typeof Bun.spawn> | undefined;
-
-/**
- * The processes listening on a port, with what they are running.
- *
- * For the one case that is worse than a port in use: a port held by an n8n
- * that no longer answers. An earlier `bun run dev` that was closed rather than
- * stopped leaves its n8n behind, and that n8n can hang — every route waiting
- * for ever — while still holding the port. Adopting it because "something is
- * on 5678" put every ticket in a queue nothing would ever drain. So a holder
- * that does not answer is identified, and if it is n8n, ended.
- */
-async function listeningOn(port: number): Promise<{ pid: number; command: string }[]> {
-  const found: { pid: number; command: string }[] = [];
-  if (process.platform === 'win32') {
-    // No protocol filter: `-p tcp` is IPv4 only, and a server bound to
-    // `[::1]` — Vite, for one — appears only under TCPv6.
-    const netstat = await sh(['netstat', '-ano'], { quiet: true });
-    const pids = new Set<number>();
-    for (const line of netstat.out.split('\n')) {
-      const columns = line.trim().split(/\s+/);
-      if (columns[3] === 'LISTENING' && columns[1]?.endsWith(`:${port}`)) {
-        pids.add(Number(columns[4]));
-      }
-    }
-    for (const pid of pids) {
-      const who = await sh(
-        [
-          'powershell',
-          '-NoProfile',
-          '-Command',
-          `(Get-CimInstance Win32_Process -Filter "ProcessId = ${pid}").CommandLine`,
-        ],
-        { quiet: true },
-      );
-      found.push({ pid, command: who.out.trim() });
-    }
-  } else {
-    const lsof = await sh(['lsof', '-ti', `tcp:${port}`, '-sTCP:LISTEN'], { quiet: true });
-    for (const raw of lsof.out.trim().split('\n').filter(Boolean)) {
-      const pid = Number(raw);
-      const who = await sh(['ps', '-o', 'command=', '-p', String(pid)], { quiet: true });
-      found.push({ pid, command: who.out.trim() });
-    }
-  }
-  return found.filter((entry) => Number.isInteger(entry.pid) && entry.pid > 0);
-}
-
-/**
- * Whether the workflow file has changed since n8n last imported it. Computed
- * here, before anything is started, because it also decides whether an n8n
- * already running can be kept: one that runs last week's workflow cannot.
- */
-const fileHash = new Bun.CryptoHasher('sha256')
-  .update(await Bun.file(`orchestration/n8n/${WORKFLOW_NAME}.json`).arrayBuffer())
-  .digest('hex');
-const hashFile = Bun.file(join(N8N_HOME, `${WORKFLOW_NAME}.imported.sha256`));
-const importedHash = (await hashFile.exists()) ? (await hashFile.text()).trim() : '';
-
-if (await healthy()) {
-  if (importedHash === fileHash) {
-    // Somebody's n8n already answers on the port — most likely one this
-    // script started and Ctrl-C did not reach — and it has the current
-    // workflow. Used as it is, rather than fought over.
-    warn(`Something already answers on port ${N8N_PORT}; using it rather than starting another.`);
-    n8nReady = true;
-  } else {
-    // It answers, but it imported an older workflow, and n8n does not pick
-    // up a re-import without a restart. Ours is ended and started afresh;
-    // anything else is left alone and named.
-    const holders = await listeningOn(N8N_PORT);
-    const ours = holders.filter((holder) => /n8n/i.test(holder.command));
-    if (holders.length > 0 && ours.length === holders.length) {
-      for (const holder of ours) {
-        stopTree({ pid: holder.pid, kill: () => process.kill(holder.pid) });
-      }
-      await Bun.sleep(2000);
-      ok(`Ended the n8n on port ${N8N_PORT}: it runs an older workflow than the file`);
-    } else {
-      warn(
-        `The n8n on port ${N8N_PORT} runs an older workflow than the file, and is not one this script can restart.`,
-      );
-      note('Stop it, then run this again.');
-      n8nReady = true;
-    }
-  }
-}
-if (!n8nReady) {
-  const holders = await listeningOn(N8N_PORT);
-  if (holders.length > 0) {
-    const ours = holders.filter((holder) => /n8n/i.test(holder.command));
-    if (ours.length === holders.length) {
-      for (const holder of ours) {
-        stopTree({ pid: holder.pid, kill: () => process.kill(holder.pid) });
-      }
-      await Bun.sleep(2000);
-      ok(
-        `Ended an n8n that held port ${N8N_PORT} without answering (pid ${ours.map((h) => h.pid).join(', ')})`,
-      );
-    } else {
-      stop(
-        `Port ${N8N_PORT} is held by something that does not answer as n8n.`,
-        holders.map((holder) => `pid ${holder.pid}: ${holder.command || '(unknown)'}`).join('\n'),
-      );
-    }
-  }
-
-  // Installed once, globally, with npm — it is a Node application and that
-  // is how it ships. It is large, so the install is streamed rather than
-  // hidden behind a spinner.
-  const installed = await sh(viaShell(['n8n', '--version']), { quiet: true });
-  if (installed.code !== 0) {
-    note(`Installing n8n ${N8N_VERSION} with npm — several hundred MB, once.`);
-    const install = await sh(['npm', 'install', '-g', `n8n@${N8N_VERSION}`, '--no-fund'], {
-      stream: true,
-    });
-    if (install.code !== 0) {
-      warn('n8n could not be installed, so no run will start until it is:');
-      note(`npm install -g n8n@${N8N_VERSION}`);
-    }
-  } else {
-    const version = installed.out.trim().split('\n').pop() ?? '';
-    ok(`n8n ${version}`);
-    if (!version.startsWith('2.')) {
-      warn(
-        `This was exercised against n8n ${N8N_VERSION}; ${version} may import the workflow differently.`,
-      );
-    }
-  }
-}
-
-const workflowId = await workflowIdFromFile();
-if (!workflowId) {
-  warn(`orchestration/n8n/${WORKFLOW_NAME}.json has no "id" — it cannot be kept track of.`);
-} else if (!n8nReady) {
-  /**
-   * Imported and published BEFORE the server starts, through n8n's own
-   * command line against the same database. Doing it while the server runs
-   * needs a restart afterwards — n8n says so itself — and doing it first
-   * needs nothing. Each command boots n8n for a few seconds; the very first
-   * import on a fresh install also creates the database, which is minutes.
-   */
-  /**
-   * Re-imported whenever the file has changed since the last import, not
-   * only when n8n has never seen it: a fix to the workflow that stays on disk
-   * while n8n runs the version it imported last week is the most confusing
-   * kind of not-fixed. The hash of the last import is kept beside n8n's own
-   * files; a matching hash and an active workflow mean nothing to do.
-   */
-  const active = await n8n('list:workflow', '--active=true');
-  if (active.code !== 0) {
-    warn('Could not ask n8n for its workflows:');
-    for (const line of active.out.trim().split('\n').slice(-4)) note(line);
-  } else if (listed(active.out, workflowId) && importedHash === fileHash) {
-    ensurePublishedVersion(workflowId);
-    ok('Workflow imported and published');
-  } else {
-    note(
-      'Importing the workflow — on a fresh install this creates n8n’s database first, which takes minutes.',
-    );
-    /**
-     * `--separate --input=<directory>`, not `--input=<file>`: given a single
-     * file the importer expects an array and fails with `workflows.map is
-     * not a function`. Keeping the file a single object is what lets it be
-     * dragged into the n8n interface by hand, so the directory form is used.
-     */
-    const imported = await n8n('import:workflow', '--separate', '--input=orchestration/n8n');
-    if (imported.code !== 0) {
-      warn('Could not import the workflow:');
-      for (const line of imported.out.trim().split('\n').slice(-6)) note(line);
-      note(
-        `Import orchestration/n8n/${WORKFLOW_NAME}.json at http://localhost:${N8N_PORT} by hand.`,
-      );
-    } else {
-      /**
-       * An imported workflow arrives inactive, and an inactive workflow's
-       * webhook is not registered — so a ticket launched against it comes
-       * back 404 from n8n, which reads on screen as the application being
-       * broken rather than as a switch nobody flicked. n8n 2 calls the switch
-       * publishing; older releases call it activating, so both are tried.
-       */
-      const published = await n8n('publish:workflow', `--id=${workflowId}`);
-      const switchedOn =
-        published.code === 0 ||
-        (await n8n('update:workflow', `--id=${workflowId}`, '--active=true')).code === 0;
-      if (switchedOn) {
-        ensurePublishedVersion(workflowId);
-        await Bun.write(hashFile, `${fileHash}\n`);
-        ok(
-          importedHash
-            ? 'Workflow re-imported and published — the file had changed'
-            : 'Workflow imported and published',
-        );
-      } else {
-        warn('Imported, but could not be published — its webhook will not answer:');
-        for (const line of published.out.trim().split('\n').slice(-4)) note(line);
-        note(`Open http://localhost:${N8N_PORT}, open the workflow and publish it.`);
-      }
-    }
-  }
-}
-
-/**
- * Handed to the web application, which writes it into Settings at startup.
- * This is the one orchestration field nobody could have typed in advance:
- * the identifier is in the file, and the settings screen was asking for a
- * value whose only source was a list command.
- */
-if (workflowId) process.env.ORCHESTRATOR_WORKFLOW_ID = workflowId;
-
-// --- 6. the services that stay in the foreground ------------------------------
-
-step('6/6  n8n, runner and web app');
-note('All three run here. Ctrl-C stops them together; Postgres keeps running.');
-
-/**
- * Runs one long-lived process, tagging each line so three streams in one
+ * Runs one long-lived process, tagging each line so two streams in one
  * terminal stay readable.
  */
-function serve(label: string, colour: string, argv: string[], env?: Record<string, string>) {
-  const proc = Bun.spawn(argv, {
-    env: { ...process.env, ...env } as Record<string, string>,
-    stdout: 'pipe',
-    stderr: 'pipe',
-  });
+function serve(label: string, colour: string, argv: string[]) {
+  const proc = Bun.spawn(argv, { stdout: 'pipe', stderr: 'pipe' });
   const tag = `${colour}${label.padEnd(6)}${OFF} `;
   for (const stream of [proc.stdout, proc.stderr]) {
     void (async () => {
@@ -739,33 +353,6 @@ function serve(label: string, colour: string, argv: string[], env?: Record<strin
   return proc;
 }
 
-if (!n8nReady) {
-  n8nProc = serve('n8n', MAGENTA, viaShell(['n8n', 'start']), n8nEnv);
-  let state: Awaited<ReturnType<typeof webhookState>> = 'not-yet';
-  for (let waited = 0; waited < 240 && state !== 'registered'; waited += 2) {
-    state = await webhookState();
-    if (state !== 'registered') {
-      // Said out loud, because n8n prints "ready" well before it is: the
-      // database comes up half a minute later, and the published workflows a
-      // few seconds after THAT — in between, the route answers "not
-      // registered" for a workflow that is about to be. So "unpublished" is
-      // provisional until the deadline, and only then a verdict.
-      if (waited > 0 && waited % 10 === 0) note(`still waiting for n8n (${waited}s)`);
-      await Bun.sleep(2000);
-    }
-  }
-  if (state === 'registered') {
-    n8nReady = true;
-    ok(`n8n is up at http://localhost:${N8N_PORT}, and the workflow's webhook answers`);
-  } else if (state === 'unpublished') {
-    n8nReady = true;
-    warn('n8n is up, but the workflow is not published — a ticket will come back 404 from n8n.');
-    note(`Open http://localhost:${N8N_PORT}, open ${WORKFLOW_NAME} and publish it.`);
-  } else {
-    warn('n8n did not answer on its port — a run will not start until it does.');
-  }
-}
-
 const runner = serve('runner', BLUE, ['bun', 'run', 'dev:runner']);
 const web = serve('web', GREEN, ['bun', 'run', 'dev:web']);
 
@@ -774,24 +361,23 @@ console.log(`${DIM}If nobody has an account yet it will ask you to create one, a
 console.log(`${DIM}first account is the administrator.${OFF}\n`);
 
 let stopping = false;
-function stopAll(): void {
+function stopBoth(): void {
   // A second Ctrl-C while the first is still working must not start the walk
   // again half way through it.
   if (stopping) return;
   stopping = true;
   stopTree(runner);
   stopTree(web);
-  if (n8nProc) stopTree(n8nProc);
 }
 
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {
   process.on(signal, () => {
-    stopAll();
+    stopBoth();
     process.exit(0);
   });
 }
 
-// If one of them dies on its own, take the others down with it rather than
-// leaving part of a system up that looks like a whole one.
-await Promise.race([runner.exited, web.exited, ...(n8nProc ? [n8nProc.exited] : [])]);
-stopAll();
+// If one of them dies on its own, take the other down with it rather than
+// leaving half a system up that looks like a whole one.
+await Promise.race([runner.exited, web.exited]);
+stopBoth();

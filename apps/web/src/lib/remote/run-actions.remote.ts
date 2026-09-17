@@ -5,7 +5,7 @@ import { loadWebConfig } from '$lib/config';
 import { db } from '$lib/db';
 import { continueRun } from '$lib/services/continue';
 import { attemptsOf, failureOf } from '$lib/services/failure';
-import { handOver } from '$lib/services/orchestrator';
+import { handOver, orchestratorAccess } from '$lib/services/orchestrator';
 import {
   cancelRunNow,
   editAndRetry,
@@ -77,7 +77,7 @@ export const retry = command(TicketId, async (ticketId) => {
     const delivered = await handOver(
       db(),
       { runId: run.id, snapshot },
-      { baseUrl: config.orchestratorBaseUrl, apiKey: config.orchestratorApiKey || undefined },
+      await orchestratorAccess(db()),
     );
     await runForTicket(ticketId).refresh();
     return {
@@ -115,7 +115,7 @@ export const editRetry = command(EditAndRetry, async (input) => {
     const delivered = await handOver(
       db(),
       { runId: run.id, snapshot },
-      { baseUrl: config.orchestratorBaseUrl, apiKey: config.orchestratorApiKey || undefined },
+      await orchestratorAccess(db()),
     );
     await runForTicket(input.ticketId).refresh();
     return {
@@ -188,11 +188,7 @@ export const continueFrom = command(RunId, async (runId) => {
   return attempt(async () => {
     const config = loadWebConfig();
     const { snapshot, index, stepName } = await continueRun(db(), runId);
-    const delivered = await handOver(
-      db(),
-      { runId, snapshot },
-      { baseUrl: config.orchestratorBaseUrl, apiKey: config.orchestratorApiKey || undefined },
-    );
+    const delivered = await handOver(db(), { runId, snapshot }, await orchestratorAccess(db()));
     const run = await getRun(db(), runId);
     await runForTicket(run.ticketId).refresh();
     return {

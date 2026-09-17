@@ -39,7 +39,7 @@ export async function startRun(database: Database, input: StartRunInput) {
     ticketId: ticket.id,
     attempt,
     runId,
-    callbackUrl: `${input.callbackBaseUrl}/api/hooks/n8n`,
+    callbackUrl: `${input.callbackBaseUrl}/api/hooks/orchestrator`,
     resumeSecret,
   });
 
@@ -265,7 +265,12 @@ async function defaultResume(url: string) {
   try {
     const response = await fetch(url, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      // The resume address is a route on the execution service, which
+      // authenticates every operation with its own credential (FR-011).
+      headers: {
+        'content-type': 'application/json',
+        authorization: `Bearer ${process.env.RUNNER_AUTH_TOKEN ?? ''}`,
+      },
       body: JSON.stringify({ paused: false }),
     });
     return { ok: response.ok, detail: response.ok ? undefined : `answered ${response.status}` };

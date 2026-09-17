@@ -144,7 +144,7 @@ test.describe('the whole journey', () => {
   test.skip(
     !full,
     'Needs E2E_REPO_URL, E2E_REPO_TOKEN and E2E_ORCHESTRATOR_READY: a real repository with a ' +
-      'test suite, a token that can push and open merge requests, and a reachable orchestrator ' +
+      'test suite, a token that can push and open merge requests, and a reachable execution service ' +
       'and container host.',
   );
 

@@ -117,7 +117,7 @@ async function seed(options: { tickets?: number; cap?: number } = {}): Promise<S
       pipeline: { id: pipeline!.id, version: 1, name: `P ${tag}`, steps },
       limits: { cost_ceiling_usd: '5.0000', time_ceiling_minutes: 45 },
       agents: [],
-      callback_url: 'http://localhost:5173/api/hooks/n8n',
+      callback_url: 'http://localhost:5173/api/hooks/orchestrator',
       resume_secret: `e2e-${randomUUID()}`,
     };
     // The first two hold sandboxes; the rest are the queue.

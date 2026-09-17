@@ -58,7 +58,7 @@ describe('collecting the documents', () => {
     await fetchRequirementFiles(withFiles([{ name: 'a.md', bytes: 1 }]), doFetch);
     const call = calls[0] as { url: string; init?: RequestInit };
     expect(call.url).toContain(`/api/runs/${baseSnapshot.run_id}/requirements`);
-    expect(call.url).not.toContain('/api/hooks/n8n');
+    expect(call.url).not.toContain('/api/hooks/orchestrator');
     const headers = (call.init?.headers ?? {}) as Record<string, string>;
     expect(headers.authorization).toBe(`Bearer ${baseSnapshot.resume_secret}`);
   });

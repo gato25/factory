@@ -115,7 +115,7 @@ async function seed(approvers: 'anyone' | 'ticket_creator'): Promise<Seeded> {
       agent(plan!.id, 'Planner', 'claude-sonnet-5', 'write the plan'),
       agent(build!.id, 'Builder', 'claude-opus-5', 'write the code'),
     ],
-    callback_url: 'http://localhost:5173/api/hooks/n8n',
+    callback_url: 'http://localhost:5173/api/hooks/orchestrator',
     resume_secret: secret,
   };
 
@@ -163,7 +163,7 @@ test.describe('approving before work continues', () => {
   /** Runs the planning step and pauses at the gate, through the real endpoint. */
   async function runToGate(request: APIRequestContext, seeded: Seeded, step = 0) {
     const post = (body: Record<string, unknown>) =>
-      request.post('http://localhost:5173/api/hooks/n8n', {
+      request.post('http://localhost:5173/api/hooks/orchestrator', {
         headers: { authorization: `Bearer ${seeded.secret}` },
         data: { run_id: seeded.runId, attempt: 1, ...body },
       });
@@ -186,7 +186,7 @@ test.describe('approving before work continues', () => {
       event: 'waiting_approval',
       // A POST the app answers immediately: nothing is really orchestrating,
       // and the decision must be recorded whatever the resume address says.
-      resume_url: 'http://localhost:5173/api/hooks/n8n',
+      resume_url: 'http://localhost:5173/api/hooks/orchestrator',
       approvers: [],
     });
     expect(paused.ok()).toBe(true);
@@ -318,7 +318,7 @@ test.describe('approving before work continues', () => {
     await post({
       step_index: 1,
       event: 'waiting_approval',
-      resume_url: 'http://localhost:5173/api/hooks/n8n',
+      resume_url: 'http://localhost:5173/api/hooks/orchestrator',
       approvers: [],
     });
 

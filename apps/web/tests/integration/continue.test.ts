@@ -66,7 +66,9 @@ test('a run that never got going continues from the start with nothing known', a
   expect(snapshot.resume).toEqual({ index: 0, facts: {}, spent_usd: 0 });
 });
 
-test('a finished step counts as settled, and so does a skipped one', async () => {
+test('a skipped step counts as settled, and a run with nothing left cannot be continued', async () => {
+  // The seeded pipeline has two steps. Finish one, skip the other: every step
+  // is settled, and continuing has nothing to do — which is said, not done.
   await applyCallback(db, { ...envelope('started'), container_id: 'ws-1' } as Callback);
   await applyCallback(db, {
     ...envelope('step_finished', 0),
@@ -75,11 +77,18 @@ test('a finished step counts as settled, and so does a skipped one', async () =>
     cost_usd: '0.1000',
     artifacts: [],
   } as Callback);
+  expect((await continueRun(db, runId)).index).toBe(1);
   await applyCallback(db, {
     ...envelope('step_skipped', 1),
     condition_not_met: 'ticket has no UI change',
   } as Callback);
-  expect((await continueRun(db, runId)).index).toBe(2);
+  let thrown: unknown;
+  try {
+    await continueRun(db, runId);
+  } catch (error) {
+    thrown = error;
+  }
+  expect((thrown as Error)?.message).toContain('nothing left to continue');
 });
 
 test('a run waiting at a checkpoint is decided there, not continued', async () => {
@@ -89,7 +98,17 @@ test('a run waiting at a checkpoint is decided there, not continued', async () =
     resume_url: 'https://n8n.example/resume/abc',
     approvers: [],
   } as Callback);
-  await expect(continueRun(db, runId)).rejects.toMatchObject({ reason: 'conflict' });
+  // A try/catch rather than `.rejects`: Bun's matcher never settles when the
+  // promise is made right after database work in the same tick, and the
+  // whole file then times out with a session left mid-query.
+  let thrown: unknown;
+  try {
+    await continueRun(db, runId);
+  } catch (error) {
+    thrown = error;
+  }
+  expect((thrown as { reason?: string })?.reason).toBe('conflict');
+  expect((thrown as Error).message).toContain('checkpoint');
 });
 
 test('the stale "not started yet" reason is cleared when a person continues', async () => {

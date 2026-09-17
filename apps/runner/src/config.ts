@@ -1,3 +1,5 @@
+import { homedir } from 'node:os';
+import { join } from 'node:path';
 import { defaultWorkRoot } from './container/process-host';
 
 /**
@@ -13,9 +15,18 @@ export type ExecutionHostKind = 'process' | 'docker';
 
 export interface RunnerConfig {
   port: number;
+  /**
+   * This service's address as the application reaches it. It appears in the
+   * resume addresses handed to the application when a run waits at a
+   * checkpoint or a pause, and those must be addresses the application can
+   * open — not this process's own idea of `localhost`.
+   */
+  publicBaseUrl: string;
   executionHost: ExecutionHostKind;
   /** Where the process host makes each run's directory. */
   workDir: string;
+  /** Where each run's position in its pipeline is written, so a restart resumes it. */
+  stateDir: string;
   sandboxImage: string;
   authToken: string;
   /**
@@ -54,10 +65,13 @@ export function loadRunnerConfig(env: Record<string, string | undefined> = proce
     throw new Error(`runner: EXECUTION_HOST must be "process" or "docker", not "${executionHost}"`);
   }
 
+  const port = Number(need('RUNNER_PORT', '8080'));
   const config: RunnerConfig = {
-    port: Number(need('RUNNER_PORT', '8080')),
+    port,
+    publicBaseUrl: need('RUNNER_BASE_URL', `http://localhost:${port}`),
     executionHost,
     workDir: need('FACTORY_WORK_DIR', defaultWorkRoot(env as NodeJS.ProcessEnv)),
+    stateDir: need('FACTORY_STATE_DIR', join(homedir(), '.code-factory', 'state')),
     sandboxImage: need('SANDBOX_IMAGE', 'code-factory/sandbox:latest'),
     authToken: need('RUNNER_AUTH_TOKEN', 'dev-only-token'),
     // Optional, and NOT routed through `need`: an absent rotation window is

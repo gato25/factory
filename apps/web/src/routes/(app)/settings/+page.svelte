@@ -2,7 +2,7 @@
   import {
   } from '@factory/shared';
   import Icon from '$components/Icon.svelte';
-  import { callbackBaseUrl, publicBaseUrl } from '$lib/remote/repositories.remote';
+  import { publicBaseUrl } from '$lib/remote/repositories.remote';
   import {
     changeRole,
     connections,
@@ -34,9 +34,6 @@
   const people = $derived(members());
   const waiting = $derived(queue());
   const baseUrl = $derived(publicBaseUrl());
-  // Where n8n reaches this application, which inside a container is not the
-  // address a browser uses.
-  const callbackUrl = $derived(callbackBaseUrl());
 
   // A remote form object attaches to one <form>; two cards need two
   // instances, which is what `.for(key)` is for.
@@ -49,7 +46,6 @@
 
   const SECTIONS = [
     { id: 'workspace', label: 'Workspace' },
-    { id: 'orchestration', label: 'Orchestration (n8n)' },
     { id: 'sandbox', label: 'Sandbox (Docker)' },
     { id: 'keys', label: 'Claude CLI & keys' },
     { id: 'design', label: 'Design (pen.dev)' },
@@ -66,7 +62,6 @@
     wrong_shape: 'warn',
   };
   const WHAT: Record<string, string> = {
-    orchestrator: 'Orchestration service',
     runner: 'Container host',
     design: 'Design service',
   };
@@ -141,54 +136,6 @@
               <span>Name</span>
               <input name="name" value={w.name} required />
             </label>
-          </div>
-        </section>
-
-        <section class="card" id="orchestration">
-          <header>
-            <span class="ic"><Icon name="workflow" size={18} /></span>
-            <div class="tx">
-              <h2>Orchestration · n8n</h2>
-              <p>
-                Every ticket run is executed by an n8n workflow. The app only stores data and
-                shows progress.
-              </p>
-            </div>
-            {#await Promise.resolve(stateOf('orchestrator', Boolean(w.orchestratorBaseUrl))) then s}
-              <span class="badge {s.tone}"><span class="dot"></span>{s.label}</span>
-            {/await}
-          </header>
-          <div class="grid">
-            <label class="f">
-              <span>Orchestration service address</span>
-              <input
-                name="orchestratorBaseUrl"
-                value={w.orchestratorBaseUrl ?? ''}
-                placeholder="http://localhost:5678"
-              />
-            </label>
-            <label class="f">
-              <span>Workflow identifier</span>
-              <input name="orchestratorWorkflowId" value={w.orchestratorWorkflowId ?? ''} />
-              <small>
-                One generic workflow: it reads the ticket's pipeline steps and loops over them.
-              </small>
-            </label>
-          </div>
-          <div class="grid">
-            <div class="f">
-              <span class="as-label">Callback webhook (n8n → app)</span>
-              <input
-                readonly
-                value={`${callbackUrl.ready ? callbackUrl.current : ''}/api/hooks/n8n`}
-              />
-              <small>
-                n8n posts step results and approvals here. This is the address as
-                <em>n8n</em> reaches it. On one machine that is the same address you open in a
-                browser; where n8n runs somewhere else, set CALLBACK_BASE_URL to the address it
-                can reach.
-              </small>
-            </div>
           </div>
         </section>
 

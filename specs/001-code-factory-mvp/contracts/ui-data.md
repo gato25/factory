@@ -39,7 +39,7 @@ A `query` cannot push. Two conventional routes carry the live behaviour (D4):
 - `GET /api/events/{run_id}` — server-sent events. Subscribes with Postgres `LISTEN` on a
   run-scoped channel and emits a change signal; the client refreshes the affected query (FR-074).
   Log chunks ride the same stream as payloads rather than signals (FR-076).
-- `POST /api/hooks/n8n` — the callback sink. External caller, so an explicit route with a versioned
+- `POST /api/hooks/orchestrator` — the callback sink. External caller, so an explicit route with a versioned
   payload, not a generated endpoint ([orchestrator.md](./orchestrator.md)).
 
 Staleness budget: five seconds (SC-004).

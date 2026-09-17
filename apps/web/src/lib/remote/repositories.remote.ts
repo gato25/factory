@@ -133,7 +133,7 @@ export const disconnect = command(v.pipe(v.string(), v.uuid()), async (repositor
 export const publicBaseUrl = query(async () => loadWebConfig().publicBaseUrl);
 
 /**
- * The address the ORCHESTRATION service reaches this application at.
+ * The address the EXECUTION service reaches this application at.
  *
  * Not the same as `publicBaseUrl`, and the settings screen showed that one
  * next to the words "n8n posts step results and approvals here" — which was

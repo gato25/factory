@@ -72,8 +72,6 @@ export const connections = command(async () => {
 
 const WorkspaceSchema = v.object({
   name: v.pipe(v.string(), v.trim(), v.minLength(1, 'Give the workspace a name.')),
-  orchestratorBaseUrl: v.optional(v.string(), ''),
-  orchestratorWorkflowId: v.optional(v.string(), ''),
   runnerBaseUrl: v.optional(v.string(), ''),
   defaultCostCeilingUsd: v.pipe(v.string(), v.trim(), v.minLength(1, 'Set a cost ceiling.')),
   defaultTimeCeilingMinutes: formInteger('Set a time ceiling in whole minutes.'),
@@ -93,8 +91,6 @@ export const saveWorkspace = form(WorkspaceSchema, async (input) => {
       db(),
       {
         ...input,
-        orchestratorBaseUrl: input.orchestratorBaseUrl.trim() || null,
-        orchestratorWorkflowId: input.orchestratorWorkflowId.trim() || null,
         runnerBaseUrl: input.runnerBaseUrl.trim() || null,
       },
       user,

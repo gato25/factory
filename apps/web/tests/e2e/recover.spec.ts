@@ -100,7 +100,7 @@ async function seed(options: { ceilingUsd?: string } = {}): Promise<Seeded> {
       agent(plan!.id, 'Planner', 'claude-sonnet-5'),
       agent(build!.id, 'Builder', 'claude-opus-5'),
     ],
-    callback_url: 'http://localhost:5173/api/hooks/n8n',
+    callback_url: 'http://localhost:5173/api/hooks/orchestrator',
     resume_secret: secret,
   };
 
@@ -135,7 +135,7 @@ async function signIn(context: BrowserContext, userId: string) {
 
 function callbacks(request: APIRequestContext, seeded: Seeded) {
   return (body: Record<string, unknown>) =>
-    request.post('http://localhost:5173/api/hooks/n8n', {
+    request.post('http://localhost:5173/api/hooks/orchestrator', {
       headers: { authorization: `Bearer ${seeded.secret}` },
       data: { run_id: seeded.runId, attempt: 1, ...body },
     });

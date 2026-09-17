@@ -204,6 +204,29 @@ export function processHost(options: ProcessHostOptions = {}): ContainerHost & {
       return id;
     },
 
+    async adopt(id: string, spec: ContainerSpec): Promise<void> {
+      if (boxes.has(id)) return;
+      const dir = join(root, id);
+      let exists = false;
+      try {
+        exists = (await stat(dir)).isDirectory();
+      } catch {
+        exists = false;
+      }
+      if (!exists) {
+        throw new FactoryError('sandbox_lost', 'the workspace directory is gone', {
+          detail: dir,
+        });
+      }
+      // The ceiling starts again from now: how long the directory had before
+      // the restart is not recorded, and a generous restart beats a run that
+      // dies the moment it is picked up.
+      const ms = spec.wallClockMinutes * 60_000;
+      const timer = setTimeout(() => void destroy(id), ms);
+      (timer as { unref?: () => void }).unref?.();
+      boxes.set(id, { dir, env: { ...spec.env }, deadline: now() + ms, timer, live: new Set() });
+    },
+
     async exec(id: string, argv: string[], options?: ExecOptions): Promise<ExecResult> {
       const b = box(id, 'running a command');
       const proc = Bun.spawn(command(argv.map((argument) => rewrite(b, argument))), {

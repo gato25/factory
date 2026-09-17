@@ -43,11 +43,18 @@ export async function withSandboxRecovery<T>(
   containerId: string,
   input: RecoverInput,
   work: (containerId: string) => Promise<T>,
+  /**
+   * Whether a lost sandbox is worth replacing. A run the application has
+   * cancelled had its sandbox released on purpose, and rebuilding it would
+   * clone the repository again for a step nobody wants — so the caller says.
+   */
+  canRecover: () => Promise<boolean> = async () => true,
 ): Promise<Recovery<T>> {
   try {
     return { outcome: await work(containerId), recovered: false };
   } catch (error) {
     if (!isSandboxLoss(error)) throw error;
+    if (!(await canRecover())) throw error;
 
     // Do not wait on the corpse: it is the host that is unreliable.
     await host.destroy(input.lostContainerId ?? containerId).catch(() => {});

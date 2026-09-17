@@ -1,4 +1,4 @@
-import { FactoryError } from '@factory/shared';
+import { FactoryError, type ResumeRequest } from '@factory/shared';
 import { authenticate } from './auth';
 import type { RunnerConfig } from './config';
 import type { ContainerHost } from './container/host';
@@ -11,6 +11,7 @@ import {
   memoryLaunchStore,
   stopLaunch,
 } from './launch/launches';
+import type { Orchestrator, ResumePoint } from './orchestrate/loop';
 import {
   callbackSender,
   destroyRun,
@@ -60,6 +61,12 @@ export interface RouterDeps {
   launchHost?: ContainerHost;
   /** Tunables for the launch lifecycle, injected by tests. */
   launchDeps?: Partial<Omit<LaunchDeps, 'host' | 'store'>>;
+  /**
+   * The loop that drives a run from its snapshot to its merge request
+   * (contracts/orchestrator.md), when this deployment orchestrates. Optional
+   * so the step-level routes can still be driven on their own by tests.
+   */
+  orchestrator?: Orchestrator;
 }
 
 interface Route {
@@ -75,7 +82,94 @@ export function routesFor(deps: RouterDeps): Route[] {
     store: deps.launches ?? memoryLaunchStore(),
     ...deps.launchDeps,
   };
+  const orchestrator = deps.orchestrator;
   return [
+    // --- the whole run: accepted here, driven by the orchestrator -----------
+    {
+      /**
+       * `POST /runs/{run_id}/execute` — the trigger (contracts/orchestrator.md
+       * §1). The body is the resolved snapshot, with an optional `resume`
+       * block when a person is continuing a run from where the application
+       * knows it stands. Answers at once; the run proceeds on its own and
+       * reports through callbacks.
+       */
+      method: 'POST',
+      pattern: /^\/runs\/([^/]+)\/execute$/,
+      async handle(match, request) {
+        if (!orchestrator) {
+          throw new FactoryError(
+            'invalid_input',
+            'this execution service does not orchestrate runs',
+          );
+        }
+        const runId = match[1] as string;
+        const body = (await request.json()) as
+          | (RunContext['snapshot'] & { resume?: ResumePoint })
+          | { snapshot?: RunContext['snapshot'] & { resume?: ResumePoint } };
+        const snapshot =
+          'snapshot' in body && body.snapshot
+            ? body.snapshot
+            : (body as RunContext['snapshot'] & { resume?: ResumePoint });
+        if (!snapshot?.run_id || !snapshot.pipeline?.steps) {
+          throw new FactoryError('invalid_input', 'expected a run snapshot');
+        }
+        if (snapshot.run_id !== runId) {
+          throw new FactoryError('invalid_input', 'the snapshot names a different run');
+        }
+        const limits = snapshot.sandbox;
+        const result = await orchestrator.execute({
+          snapshot,
+          sandbox: {
+            image: limits?.image || config.sandboxImage,
+            cpu: limits?.cpu ?? 2,
+            memoryMb: limits?.memory_mb ?? 4096,
+            wallClockMinutes: limits?.wall_clock_minutes ?? 90,
+            networkDuringImplement: limits?.network_during_implement ?? false,
+          },
+        });
+        log.info(result.accepted ? 'run accepted' : 'run not accepted', {
+          run_id: runId,
+          phase: result.phase,
+        });
+        return Response.json(
+          { execution_id: runId, accepted: result.accepted, phase: result.phase },
+          { status: result.accepted ? 202 : 409 },
+        );
+      },
+    },
+    {
+      /**
+       * `POST /runs/{run_id}/resume` — the application's answer to a wait
+       * (§4): a decision at a checkpoint, or a pause withdrawn.
+       */
+      method: 'POST',
+      pattern: /^\/runs\/([^/]+)\/resume$/,
+      async handle(match, request) {
+        if (!orchestrator) {
+          throw new FactoryError(
+            'invalid_input',
+            'this execution service does not orchestrate runs',
+          );
+        }
+        const body = (await request.json().catch(() => ({}))) as Partial<ResumeRequest> & {
+          paused?: boolean;
+        };
+        await orchestrator.resume(match[1] as string, body);
+        return Response.json({ ok: true });
+      },
+    },
+    {
+      /** Where a run is in its pipeline, for anybody debugging one. */
+      method: 'GET',
+      pattern: /^\/runs\/([^/]+)\/orchestration$/,
+      async handle(match) {
+        const state = await orchestrator?.state(match[1] as string);
+        if (!state)
+          throw new FactoryError('not_found', 'that run is not one this service is driving');
+        const { snapshot: _snapshot, ...rest } = state;
+        return Response.json(rest);
+      },
+    },
     // --- launches: a ticket's branch, running (003, contracts/launches.md) ---
     {
       method: 'POST',
@@ -263,6 +357,8 @@ export function routesFor(deps: RouterDeps): Route[] {
       pattern: /^\/runs\/([^/]+)$/,
       async handle(match, request) {
         const url = new URL(request.url);
+        // Released on purpose, so the loop must not rebuild it.
+        await orchestrator?.cancel(match[1] as string);
         const outcome = url.searchParams.get('outcome');
         const result = await destroyRun(host, store, match[1] as string, {
           outcome:

@@ -209,7 +209,12 @@ async function defaultResume(url: string, body: ResumeRequest) {
   try {
     const response = await fetch(url, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      // The resume address is a route on the execution service, which
+      // authenticates every operation with its own credential (FR-011).
+      headers: {
+        'content-type': 'application/json',
+        authorization: `Bearer ${process.env.RUNNER_AUTH_TOKEN ?? ''}`,
+      },
       body: JSON.stringify(body),
     });
     return { ok: response.ok, detail: response.ok ? undefined : `answered ${response.status}` };

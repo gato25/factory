@@ -5,7 +5,6 @@ import {
   readiness,
   testDesign,
   testEverything,
-  testOrchestrator,
   testRunner,
 } from '../../src/lib/services/connections';
 import { ensureWorkspace } from '../../src/lib/services/workspace';
@@ -154,22 +153,13 @@ test('an unexpected status names the status rather than guessing', async () => {
   expect(result.detail).toMatch(/It answered 502/);
 });
 
-test('the orchestrator is probed at its own health route', async () => {
-  await db.update(workspaces).set({ orchestratorBaseUrl: 'http://n8n:5678/' });
-  const probe = host(() => new Response('ok', { status: 200 }));
-  expect((await testOrchestrator(db, admin, { fetch: probe.fetch })).state).toBe('reachable');
-  // The trailing slash is not doubled: an address an administrator typed
-  // should work whether or not they ended it with one.
-  expect(probe.seen[0]?.url).toBe('http://n8n:5678/healthz');
-});
-
 test('the design service is only a problem for a pipeline that needs it', async () => {
   const result = await testDesign(db, admin);
   expect(result.state).toBe('unconfigured');
   expect(result.detail).toMatch(/only a problem for a pipeline containing a design step/);
 });
 
-test('testing everything reports all three, whatever each one says', async () => {
+test('testing everything reports both, whatever each one says', async () => {
   await db.update(workspaces).set({ runnerBaseUrl: 'http://runner:8080' });
   const probe = host((url) =>
     url.includes('/ready')
@@ -177,8 +167,8 @@ test('testing everything reports all three, whatever each one says', async () =>
       : new Response('ok', { status: 200 }),
   );
   const results = await testEverything(db, admin, { fetch: probe.fetch });
-  expect(results.map((r) => r.what)).toEqual(['orchestrator', 'runner', 'design']);
-  expect(results.map((r) => r.state)).toEqual(['unconfigured', 'unauthorised', 'unconfigured']);
+  expect(results.map((r) => r.what)).toEqual(['runner', 'design']);
+  expect(results.map((r) => r.state)).toEqual(['unauthorised', 'unconfigured']);
 });
 
 test('a member cannot test connections, because the address is a workspace setting', async () => {
@@ -190,17 +180,12 @@ test('a member cannot test connections, because the address is a workspace setti
 test('readiness names what is missing rather than only refusing', async () => {
   const before = await readiness(db);
   expect(before.ready).toBe(false);
-  expect(before.missing).toEqual([
-    'the orchestration service address',
-    'the runner address',
-    'a model credential',
-  ]);
+  expect(before.missing).toEqual(['the runner address', 'a model credential']);
   // seed() connects a repository, so that one is not on the list. A run
   // needs one as much as it needs an address, which is why it is checked
   // here rather than only on the screen.
 
   await db.update(workspaces).set({
-    orchestratorBaseUrl: 'http://n8n:5678',
     runnerBaseUrl: 'http://runner:8080',
     modelCredentialId: null,
   });

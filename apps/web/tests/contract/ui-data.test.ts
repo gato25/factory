@@ -151,7 +151,7 @@ test('remote functions stay THIN: no query building, no table access (research.m
 
 test('live updates are NOT remote functions — a query cannot push (D4)', () => {
   // The two conventional routes the contract names.
-  expect(existsSync(join(WEB, 'src/routes/api/hooks/n8n/+server.ts'))).toBe(true);
+  expect(existsSync(join(WEB, 'src/routes/api/hooks/orchestrator/+server.ts'))).toBe(true);
   for (const file of remoteFiles) {
     expect(read(file)).not.toContain('EventSource');
     expect(read(file)).not.toContain('ReadableStream');
@@ -159,7 +159,7 @@ test('live updates are NOT remote functions — a query cannot push (D4)', () =>
 });
 
 test('the external callback sink is an explicit route with a versioned payload', () => {
-  const sink = readFileSync(join(WEB, 'src/routes/api/hooks/n8n/+server.ts'), 'utf8');
+  const sink = readFileSync(join(WEB, 'src/routes/api/hooks/orchestrator/+server.ts'), 'utf8');
   expect(sink).toContain('export const POST');
   // It authenticates, and answers identically whatever went wrong.
   expect(sink).toContain('authenticateCallback');

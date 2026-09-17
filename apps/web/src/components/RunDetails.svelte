@@ -41,8 +41,8 @@
       {/if}
     </dd>
 
-    <!-- A reference identifying the execution in the orchestrator (FR-078) -->
-    <dt>n8n execution</dt>
+    <!-- A reference identifying the execution on the execution service (FR-078) -->
+    <dt>Execution</dt>
     <dd>
       {#if view.run.orchestratorExecutionId}
         <code>{view.run.orchestratorExecutionId}</code>

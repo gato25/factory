@@ -36,7 +36,7 @@ export interface RequirementFile {
 /** Where the application serves a run's requirement documents. */
 function requirementsUrl(snapshot: PipelineSnapshot): string {
   return snapshot.callback_url.replace(
-    /\/api\/hooks\/n8n$/,
+    /\/api\/hooks\/[^/]+$/,
     `/api/runs/${snapshot.run_id}/requirements`,
   );
 }

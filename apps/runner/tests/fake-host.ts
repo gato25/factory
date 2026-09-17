@@ -1,3 +1,4 @@
+import { FactoryError } from '@factory/shared';
 import type { ContainerHost, ContainerSpec, ExecOptions, ExecResult } from '../src/container/host';
 
 /**
@@ -74,6 +75,18 @@ export class FakeHost implements ContainerHost {
     this.destroyed.push(containerId);
   }
 
+  /** Which sandboxes a restarted runner took charge of again, in order. */
+  adopted: string[] = [];
+  /** Set to make every adoption fail, as a host that lost its sandboxes would. */
+  adoptFails = false;
+
+  async adopt(containerId: string): Promise<void> {
+    if (this.adoptFails || this.destroyed.includes(containerId)) {
+      throw new FactoryError('sandbox_lost', 'no such sandbox any more');
+    }
+    this.adopted.push(containerId);
+  }
+
   argvFor(match: string): string[] | undefined {
     return this.calls.find((c) => c.argv.join(' ').includes(match))?.argv;
   }
@@ -121,7 +134,7 @@ export const snapshot = {
       limits: { max_turns: 20 },
     },
   ],
-  callback_url: 'https://factory.example/api/hooks/n8n',
+  callback_url: 'https://factory.example/api/hooks/orchestrator',
   resume_secret: 'run-secret-value-long-enough',
 };
 

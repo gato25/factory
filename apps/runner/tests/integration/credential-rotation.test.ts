@@ -44,6 +44,8 @@ function handlerWith(authToken: string, previousAuthToken?: string) {
     sandboxImage: 'factory/runner:1',
     executionHost: 'process',
     workDir: '/tmp/factory-tests',
+    publicBaseUrl: 'http://runner.test',
+    stateDir: '/tmp/factory-tests/state',
     authToken,
     ...(previousAuthToken ? { previousAuthToken } : {}),
   };

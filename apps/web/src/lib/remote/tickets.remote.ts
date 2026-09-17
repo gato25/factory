@@ -11,7 +11,7 @@ import { loadWebConfig } from '$lib/config';
 import { db } from '$lib/db';
 import { formBoolean } from '$lib/forms';
 import { previewRun, verificationWarning } from '$lib/services/estimate';
-import { handOver } from '$lib/services/orchestrator';
+import { handOver, orchestratorAccess } from '$lib/services/orchestrator';
 import { startRun } from '$lib/services/run';
 import { createTicket, getTicket, listTickets } from '$lib/services/ticket';
 import { attachFiles, listFiles, removeFile } from '$lib/services/ticket-files';
@@ -126,7 +126,7 @@ export const create = form(CreateSchema, async (data) => {
   const delivery = await handOver(
     db(),
     { runId: run.id, snapshot },
-    { baseUrl: config.orchestratorBaseUrl, apiKey: config.orchestratorApiKey || undefined },
+    await orchestratorAccess(db()),
   );
 
   if (!delivery.delivered) {
@@ -157,7 +157,7 @@ export const start = command(v.pipe(v.string(), v.uuid()), async (ticketId) => {
   const delivery = await handOver(
     db(),
     { runId: run.id, snapshot },
-    { baseUrl: config.orchestratorBaseUrl, apiKey: config.orchestratorApiKey || undefined },
+    await orchestratorAccess(db()),
   );
   await tickets().refresh();
   return { runId: run.id, started: delivery.delivered };

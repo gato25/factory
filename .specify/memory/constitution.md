@@ -1,6 +1,27 @@
 <!--
 Sync Impact Report
 ==================
+Version change: 2.0.0 → 2.0.1
+
+Bump rationale: PATCH — a clarification that changes no obligation. The invariant "the application
+stores and renders; the orchestrator sequences and waits" named two roles, and a reader could take
+it to require two processes. It never did: the obligation is that neither role takes on the other's
+job. Stated now, because the orchestrator moved from a separate service (an n8n workflow) into a
+module of the execution service on 2026-09-17, and the invariant holds exactly as before — the
+loop still branches only on a step's type and condition (Principle III), the application still only
+stores and renders, and the execution service still holds the only execution rights (Principle V).
+
+Sections modified: Architectural Invariants — one sentence added to the second invariant.
+Added sections: none. Removed sections: none.
+
+Provenance: the owner's decision of 2026-09-17, after a day in which every failure past the first
+finished step was in the separate service rather than in the product. Recorded in
+specs/001-code-factory-mvp/contracts/orchestrator.md and docs/operations.md.
+-->
+
+<!--
+Sync Impact Report
+==================
 Version change: 1.0.0 → 2.0.0
 
 Bump rationale: MAJOR, by this document's own rule — "a principle or architectural invariant is
@@ -146,7 +167,8 @@ a MAJOR amendment.
 
 - A ticket belongs to exactly one repository and has at most one active run.
 - The application stores and renders; the orchestrator sequences and waits. Neither takes on the
-  other's job.
+  other's job. The separation is of role, not of process: the orchestrator may be a module of the
+  execution service, and since 2026-09-17 it is.
 - One fresh sandbox per run: non-root, bounded in processing power, memory and lifetime, released
   when the run ends, never reused. A sandbox's lifetime ceiling MUST be enforced by the execution
   host itself, so that a run nothing calls back about is still released.
@@ -212,4 +234,4 @@ until it can.
 Runtime development guidance — stack, structure, interface contracts — lives in each feature's
 `plan.md` and `contracts/`, not here. This file holds only what must not vary between features.
 
-**Version**: 2.0.0 | **Ratified**: 2026-09-10 | **Last Amended**: 2026-09-11
+**Version**: 2.0.1 | **Ratified**: 2026-09-10 | **Last Amended**: 2026-09-17
