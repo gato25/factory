@@ -33,7 +33,7 @@
       : step.type === 'design'
         ? `pen --out … --model ${step.model ?? ''}`
         : step.model
-          ? `claude -p --output-format json --model ${step.model}`
+          ? `claude -p --output-format stream-json --model ${step.model}`
           : '—',
   );
 

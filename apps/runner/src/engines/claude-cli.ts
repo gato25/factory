@@ -11,6 +11,7 @@ import { WORKDIR } from '../container/start';
 import { checkRequiredOutputs } from '../outputs/check';
 import { parseClassification } from '../outputs/classification';
 import type { LogSink } from '../stream/logs';
+import { ClaudeStreamRenderer } from './claude-stream';
 import { applyLimits, effectiveLimits, timeoutMsFor } from './limits';
 import { usageFromClaudeJson } from './usage';
 
@@ -39,8 +40,13 @@ export function buildArgv(input: ClaudeStepInput, prompt: string): string[] {
     'claude',
     '-p',
     prompt,
+    // One JSON line per event as the agent works, rendered into a legible
+    // log by `ClaudeStreamRenderer`; the final `result` line is the same
+    // object `--output-format json` used to print, and the cost is read from
+    // it exactly as before. `--verbose` is required for the stream form.
     '--output-format',
-    'json',
+    'stream-json',
+    '--verbose',
     '--model',
     input.agent.model,
     '--append-system-prompt-file',
@@ -90,15 +96,20 @@ export async function runClaudeStep(
 
   // The agent's own limits, capped at what the run may still consume (FR-080).
   const limits = effectiveLimits(input.agent, input.snapshot.limits, input.spentSoFarUsd);
+  const rendered = new ClaudeStreamRenderer((text) => input.logs.write('stdout', text));
   const result = await host.exec(input.containerId, argv, {
     cwd: WORKDIR,
     timeoutMs: timeoutMsFor(limits),
-    onOutput: (stream, text) => input.logs.write(stream, text),
+    onOutput: (stream, text) =>
+      stream === 'stdout' ? rendered.feed(text) : input.logs.write('stderr', text),
   });
+  rendered.end();
   input.logs.end();
 
   // Cost comes from what the engine reported, never from our own estimate.
-  const usage = usageFromClaudeJson(result.stdout);
+  // The result event when there was one; the raw output otherwise, which is
+  // what a CLI printing a single object, or nothing readable, comes down to.
+  const usage = usageFromClaudeJson(rendered.resultJson ?? result.stdout);
   const durationS = Math.max(1, Math.round((usage.durationMs ?? Date.now() - started) / 1000));
 
   if (result.exitCode !== 0) {
@@ -152,7 +163,11 @@ export async function runClaudeStep(
       costUsd: usage.costUsd,
       durationS,
       sessionId: usage.sessionId,
-      summary: `${input.agent.name} finished in ${durationS}s`,
+      // The agent's own closing line where it wrote one — "Wrote docs/spec.md"
+      // says more on a step card than the time it took.
+      summary: rendered.resultText
+        ? firstSentence(rendered.resultText)
+        : `${input.agent.name} finished in ${durationS}s`,
       outputs: (input.step.output_files ?? []).map((path) => ({
         kind: 'document' as const,
         path,
@@ -177,4 +192,14 @@ async function classify(host: ContainerHost, input: ClaudeStepInput) {
     if (parsed) return parsed;
   }
   return null;
+}
+
+/** The first line of the agent's closing message, bounded for a card. */
+function firstSentence(text: string): string {
+  const line =
+    text
+      .split('\n')
+      .find((candidate) => candidate.trim())
+      ?.trim() ?? '';
+  return line.length > 200 ? `${line.slice(0, 199)}…` : line;
 }
