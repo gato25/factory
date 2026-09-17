@@ -73,14 +73,23 @@ function warn(text: string) {
  */
 async function sh(
   argv: string[],
-  options: { cwd?: string; quiet?: boolean; stream?: boolean } = {},
+  options: { cwd?: string; quiet?: boolean; stream?: boolean; env?: Record<string, string> } = {},
 ): Promise<{ code: number; out: string }> {
+  // This process's environment plus anything named here, so one command can
+  // be pointed somewhere else without moving what every other child sees.
+  const env = options.env ? { ...process.env, ...options.env } : undefined;
   if (options.stream) {
-    const proc = Bun.spawn(argv, { cwd: options.cwd, stdout: 'inherit', stderr: 'inherit' });
+    const proc = Bun.spawn(argv, {
+      cwd: options.cwd,
+      env,
+      stdout: 'inherit',
+      stderr: 'inherit',
+    });
     return { code: await proc.exited, out: '' };
   }
   const proc = Bun.spawn(argv, {
     cwd: options.cwd,
+    env,
     stdout: options.quiet ? 'pipe' : 'inherit',
     stderr: 'pipe',
   });
@@ -385,7 +394,21 @@ await ensureDatabase(testUrl, 'Test database');
 step('3/5  Database schema');
 const migrated = await sh(['bun', 'run', 'db:migrate'], { quiet: true });
 if (migrated.code !== 0) stop('Migrations failed.', migrated.out.trim());
-ok('Schema is current');
+
+/*
+ * The tests' database needs the same schema, and nothing else gives it one:
+ * the fixtures empty and refill it but never migrate it. Created empty above
+ * and left that way, it sends `bun run test` into `relation "…" does not
+ * exist` on a machine where everything is in fact set up correctly.
+ */
+const migratedTest = await sh(['bun', 'run', 'db:migrate'], {
+  quiet: true,
+  env: { DATABASE_URL: testUrl },
+});
+if (migratedTest.code !== 0) {
+  stop("The test database's migrations failed.", migratedTest.out.trim());
+}
+ok('Schema is current, in both databases');
 
 // --- 4. the execution host ---------------------------------------------------
 
