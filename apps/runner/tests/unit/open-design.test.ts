@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { FactoryError } from '@factory/shared';
+import type { FactoryError } from '@factory/shared';
 import { openDesignFile, openerFor } from '../../src/desktop/open';
 import { FakeHost } from '../fake-host';
 
@@ -58,11 +58,20 @@ describe('opening the design', () => {
   });
 
   test('the opener is the one the platform uses', () => {
-    // `start` takes a title first; without the empty one a quoted path is
-    // read AS the title and nothing opens.
-    expect(openerFor('win32', 'C:/x/ui.pen')).toEqual(['cmd', '/c', 'start', '', 'C:/x/ui.pen']);
     expect(openerFor('darwin', '/x/ui.pen')).toEqual(['open', '/x/ui.pen']);
     expect(openerFor('linux', '/x/ui.pen')).toEqual(['xdg-open', '/x/ui.pen']);
+  });
+
+  test('Windows opens through explorer, never through `start`', () => {
+    // `start` wants an empty window title before the path, and that empty
+    // argument does not survive the argument list Bun builds on Windows: the
+    // path became the title, nothing opened, and the command exited 0 — a
+    // button that reported success 39 times and started nothing. Explorer
+    // takes the path and hands it to whatever opens that extension.
+    const argv = openerFor('win32', 'C:\\x\\ui.pen');
+    expect(argv).toEqual(['explorer.exe', 'C:\\x\\ui.pen']);
+    expect(argv).not.toContain('start');
+    expect(argv).not.toContain('');
   });
 });
 

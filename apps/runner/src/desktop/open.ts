@@ -49,9 +49,21 @@ export interface OpenDeps {
  */
 export function openerFor(platform: NodeJS.Platform, path: string): string[] {
   if (platform === 'win32') {
-    // The empty string is `start`'s title argument. Without it, a quoted path
-    // is taken AS the title and nothing opens.
-    return ['cmd', '/c', 'start', '', path];
+    /**
+     * `explorer.exe`, and not `cmd /c start`.
+     *
+     * `start` takes a window title before the file, and the idiom is an empty
+     * one: `start "" "<path>"`. Passed as separate arguments, the empty string
+     * does not survive the argument list Bun builds for Windows, so `start`
+     * read the PATH as its title, opened nothing, and exited 0 — a button
+     * that reported success 39 times without ever starting the application.
+     * Passed as one string for `cmd` to parse, it is "Access is denied".
+     *
+     * `explorer.exe` takes the path and hands it to whatever the machine
+     * associates with it, which is the thing being asked for. It exits 1 even
+     * when it worked, which is why nothing here reads its exit code.
+     */
+    return ['explorer.exe', path];
   }
   return platform === 'darwin' ? ['open', path] : ['xdg-open', path];
 }
