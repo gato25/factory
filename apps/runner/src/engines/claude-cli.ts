@@ -35,7 +35,34 @@ export interface ClaudeStepInput {
   designScreens?: string[];
 }
 
-export function buildArgv(input: ClaudeStepInput, prompt: string): string[] {
+/**
+ * The two names for one permission: may this agent run a command.
+ *
+ * A person permits `Bash`, because that is what the tool is called nearly
+ * everywhere. On Windows the CLI offers `PowerShell` instead, and an agent
+ * permitted only `Bash` there reaches for a tool it may not use and is
+ * refused — silently, because in `-p` mode a refusal is not a prompt. So the
+ * permission is read as what it means and written as what the sandbox calls
+ * it. It grants nothing new: an agent permitted no shell at all is still
+ * permitted none.
+ */
+const SHELL_TOOLS: Record<'posix' | 'windows', string> = {
+  posix: 'Bash',
+  windows: 'PowerShell',
+};
+
+export function shellToolsFor(permitted: string[], shell: 'posix' | 'windows'): string[] {
+  const wantsShell = Object.values(SHELL_TOOLS).some((tool) => permitted.includes(tool));
+  if (!wantsShell) return permitted;
+  const named = SHELL_TOOLS[shell];
+  return permitted.includes(named) ? permitted : [...permitted, named];
+}
+
+export function buildArgv(
+  input: ClaudeStepInput,
+  prompt: string,
+  shell: 'posix' | 'windows' = 'posix',
+): string[] {
   const argv = [
     'claude',
     '-p',
@@ -55,7 +82,8 @@ export function buildArgv(input: ClaudeStepInput, prompt: string): string[] {
   // Tool permissions do not apply to the design engine (FR-036a). The
   // snapshot already empties them, and this holds the claim here too rather
   // than depending on that having happened.
-  const permitted = input.agent.engine === 'design_cli' ? [] : input.agent.allowed_tools;
+  const permitted =
+    input.agent.engine === 'design_cli' ? [] : shellToolsFor(input.agent.allowed_tools, shell);
   if (permitted.length > 0) {
     argv.push('--allowedTools', permitted.join(','));
   }
@@ -128,7 +156,7 @@ export async function runClaudeStep(
 ): Promise<StepOutcome> {
   const started = Date.now();
   const prompt = buildPrompt(input);
-  const argv = buildArgv(input, prompt);
+  const argv = buildArgv(input, prompt, host.shell ?? 'posix');
 
   // The agent's own limits, capped at what the run may still consume (FR-080).
   const limits = effectiveLimits(input.agent, input.snapshot.limits, input.spentSoFarUsd);

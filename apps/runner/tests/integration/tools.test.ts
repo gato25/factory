@@ -1,4 +1,4 @@
-import { beforeEach, expect, test } from 'bun:test';
+import { beforeEach, describe, expect, test } from 'bun:test';
 import type { SnapshotAgent, Step } from '@factory/shared';
 import { buildArgv, runClaudeStep } from '../../src/engines/claude-cli';
 import { LogSink } from '../../src/stream/logs';
@@ -55,6 +55,67 @@ test('exactly the permitted tools are passed, and nothing else', () => {
   // Not merely absent from a list — absent from the invocation entirely.
   expect(argv.join(' ')).not.toContain('Bash');
   expect(argv.join(' ')).not.toContain('GitPush');
+});
+
+/**
+ * One permission, two names for it.
+ *
+ * A person permits `Bash`. On Windows the CLI offers `PowerShell` instead, so
+ * an agent permitted only `Bash` reached for a tool it may not use and was
+ * refused — and in `-p` mode a refusal is not a prompt, it is a step that
+ * quietly cannot run a command. The permission is what the person meant; the
+ * name is what the sandbox calls it.
+ */
+describe('the shell a sandbox actually offers', () => {
+  test('an agent permitted Bash may use PowerShell where that is the shell', () => {
+    const argv = buildArgv(
+      { step, snapshot, agent: agentWith(['Read', 'Bash']), containerId: 'c1', logs: sink().logs },
+      'prompt',
+      'windows',
+    );
+    expect(toolsPassedTo(argv)).toEqual(['Read', 'Bash', 'PowerShell']);
+  });
+
+  test('an agent permitted PowerShell may use Bash where that is the shell', () => {
+    const argv = buildArgv(
+      {
+        step,
+        snapshot,
+        agent: agentWith(['Read', 'PowerShell']),
+        containerId: 'c1',
+        logs: sink().logs,
+      },
+      'prompt',
+      'posix',
+    );
+    expect(toolsPassedTo(argv)).toEqual(['Read', 'PowerShell', 'Bash']);
+  });
+
+  test('an agent permitted no shell is still permitted none', () => {
+    // The translation reads a permission somebody gave; it never grants one.
+    const argv = buildArgv(
+      { step, snapshot, agent: agentWith(['Read', 'Write']), containerId: 'c1', logs: sink().logs },
+      'prompt',
+      'windows',
+    );
+    expect(toolsPassedTo(argv)).toEqual(['Read', 'Write']);
+    expect(argv.join(' ')).not.toContain('PowerShell');
+  });
+
+  test('a sandbox that already names the shell it offers gains nothing twice', () => {
+    const argv = buildArgv(
+      {
+        step,
+        snapshot,
+        agent: agentWith(['Bash', 'PowerShell']),
+        containerId: 'c1',
+        logs: sink().logs,
+      },
+      'prompt',
+      'windows',
+    );
+    expect(toolsPassedTo(argv)).toEqual(['Bash', 'PowerShell']);
+  });
 });
 
 test('an agent permitted nothing is passed no allowlist rather than an empty one', () => {

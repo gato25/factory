@@ -71,6 +71,17 @@ export interface ContainerHost {
    * Absent means yes, which is what every host but the process host is.
    */
   readonly isolates?: boolean;
+  /**
+   * Which shell the sandbox's tools are named for.
+   *
+   * The Claude CLI offers `Bash` on a POSIX machine and `PowerShell` on
+   * Windows, and a model asked to run a command reaches for whichever its
+   * platform presents. An agent's permitted tools are configured by a person
+   * who should not have to know which of the two an execution host runs, so
+   * the host says, and the invocation is built for it. Absent means POSIX,
+   * which every container is.
+   */
+  readonly shell?: 'posix' | 'windows';
   create(spec: ContainerSpec): Promise<string>;
   /**
    * Takes charge of a sandbox this process did not create — one that

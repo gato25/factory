@@ -139,7 +139,9 @@ export const DEFAULT_AGENTS: DefaultAgent[] = [
     // every `Write` was refused — silently, as far as the step was concerned —
     // and the agent either improvised with a shell heredoc or gave up and
     // reported success having produced nothing.
-    allowedTools: ['Read', 'Write', 'Edit', 'Bash', 'GitPush'],
+    // No `GitPush`: pushing the branch is the execution service's own step
+    // after the pipeline finishes, never a tool an agent calls.
+    allowedTools: ['Read', 'Write', 'Edit', 'Bash'],
     outputFiles: [],
   },
 ];

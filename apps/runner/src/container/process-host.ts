@@ -177,6 +177,9 @@ export function processHost(options: ProcessHostOptions = {}): ContainerHost & {
   const host: ContainerHost & { root: string } = {
     root,
     isolates: false,
+    // A step runs on this machine, so the CLI inside it offers this
+    // machine's shell.
+    shell: process.platform === 'win32' ? 'windows' : 'posix',
 
     async create(spec: ContainerSpec): Promise<string> {
       if (!spec.network) {
