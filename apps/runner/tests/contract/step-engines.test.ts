@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test';
 import type { Step, StepOutcome } from '@factory/shared';
 import { buildArgv, buildPrompt, runClaudeStep } from '../../src/engines/claude-cli';
 import {
+  buildBrief,
   buildDesignArgv,
   designConfig,
   runDesignStep,
@@ -430,9 +431,12 @@ test('the design step writes its source and screens where the config says (FR-10
   const outcome = await runDesign(host, logs);
 
   const argv = host.calls.find((c) => c.argv[0] === 'pen')?.argv ?? [];
-  expect(argv).toContain('--source');
-  expect(argv[argv.indexOf('--source') + 1]).toBe('docs/design/ui.pen');
-  expect(argv[argv.indexOf('--export-dir') + 1]).toBe('docs/design/screens');
+  // The flags the tool actually has. It takes `--out` for the design source
+  // it writes and `--export` for one image; it has no `--source` and no
+  // `--export-dir`, and passing those failed every design step on its first
+  // line with "--out or --export is required".
+  expect(argv[argv.indexOf('--out') + 1]).toBe('docs/design/ui.pen');
+  expect(argv[argv.indexOf('--export') + 1]).toBe('docs/design/screens/ui.png');
   expect(argv[argv.indexOf('--export-scale') + 1]).toBe('2');
 
   expect(outcome.status).toBe('done');
@@ -470,11 +474,24 @@ test('a step config overrides the defaults rather than being ignored', () => {
     export_scale: 3,
     screens: ['Sign in', 'Callback'],
   });
-  const argv = buildDesignArgv(
-    { step: configured, snapshot, agent: designAgent, containerId: 'c1', logs: sink().logs },
-    false,
-  );
-  expect(argv[argv.indexOf('--screens') + 1]).toBe('Sign in,Callback');
+  const input = {
+    step: configured,
+    snapshot,
+    agent: designAgent,
+    containerId: 'c1',
+    logs: sink().logs,
+  };
+  const argv = buildDesignArgv(input, false);
+  // The configured paths reach the tool as the flags it has.
+  expect(argv[argv.indexOf('--out') + 1]).toBe('design/app.pen');
+  expect(argv[argv.indexOf('--export') + 1]).toBe('design/out/ui.png');
+  expect(argv[argv.indexOf('--export-scale') + 1]).toBe('3');
+  // The named screens reach it in the brief, because there is no flag for
+  // them. Configuring them has to mean something, and this is where the tool
+  // reads its instructions.
+  const brief = buildBrief(input);
+  expect(brief).toContain('Sign in');
+  expect(brief).toContain('Callback');
 });
 
 /**
@@ -486,7 +503,11 @@ test('an existing design source is revised, not started from an empty canvas', a
   const { logs } = sink();
   const outcome = await runDesign(host, logs);
 
-  expect(host.calls.find((c) => c.argv[0] === 'pen')?.argv[1]).toBe('revise');
+  // Revising is `--in <source> --out <same source>`: the tool reads the
+  // accepted design and writes it back. There is no `revise` subcommand.
+  const argv = host.calls.find((c) => c.argv[0] === 'pen')?.argv ?? [];
+  expect(argv[argv.indexOf('--in') + 1]).toBe('docs/design/ui.pen');
+  expect(argv[argv.indexOf('--out') + 1]).toBe('docs/design/ui.pen');
   expect(outcome.summary).toContain('Revised');
 });
 
@@ -495,12 +516,15 @@ test('a first run with no source creates one', async () => {
   host.files.delete('/work/docs/design/ui.pen');
   // It writes the source during the run, so the check must happen first.
   host.responses.unshift({
-    match: 'pen create',
+    match: '--out',
     result: { stdout: 'created\n' },
   });
   const { logs } = sink();
   await runDesign(host, logs);
-  expect(host.calls.find((c) => c.argv[0] === 'pen')?.argv[1]).toBe('create');
+  // Nothing to read, so no `--in`: the tool starts from an empty canvas.
+  const argv = host.calls.find((c) => c.argv[0] === 'pen')?.argv ?? [];
+  expect(argv).not.toContain('--in');
+  expect(argv[argv.indexOf('--out') + 1]).toBe('docs/design/ui.pen');
 });
 
 test("a reviewer's feedback reaches the design tool as a brief (FR-061a, FR-038)", async () => {
@@ -544,8 +568,11 @@ test('the design brief is a file, so it carries no credential', async () => {
   const { logs } = sink();
   await runDesign(host, logs);
   const argv = host.calls.find((c) => c.argv[0] === 'pen')?.argv ?? [];
-  // The brief is referenced by path; nothing secret is on the command line.
-  expect(argv).toContain('--brief');
+  // The brief is attached by path; nothing secret is on the command line.
+  // `--prompt-file` is the tool's own flag for sending a file with the
+  // instruction, and `--prompt` carries only the short instruction itself.
+  expect(argv[argv.indexOf('--prompt-file') + 1]).toBe('.factory/design-brief.md');
+  expect(argv).toContain('--prompt');
   for (const secret of [credentials.gitToken, credentials.modelKey]) {
     expect(argv.join(' ')).not.toContain(secret);
   }

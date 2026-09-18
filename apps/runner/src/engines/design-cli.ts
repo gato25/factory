@@ -50,24 +50,69 @@ export function designConfig(step: Step): DesignStepConfig {
 /** Where the tool writes what it spent, so we never estimate it (FR-108). */
 const USAGE_PATH = '.factory/design-usage.json';
 
+/** Where the brief is written, and attached from. */
+const BRIEF_PATH = '.factory/design-brief.md';
+
+/**
+ * The single image the tool exports.
+ *
+ * FR-103 asks for one image per screen, and the tool does not offer that: it
+ * exports "an image of the final result" to one path. So the step produces
+ * one image of what was drawn, which is what `checkDesignOutputs` needs and
+ * what a reviewer at the design gate looks at. Per-screen images need the
+ * tool's batch mode and are not attempted here — a step that runs and
+ * produces one reviewable image beats a step that produces nothing.
+ */
+export function exportPath(config: DesignStepConfig): string {
+  return `${config.export_dir.replace(/\/+$/, '')}/ui.png`;
+}
+
+/**
+ * The invocation, as the tool actually accepts it.
+ *
+ * This was written against an interface the CLI does not have — a `create`
+ * subcommand with `--source`, `--export-dir`, `--brief` and `--screens`, none
+ * of which exist. Every design step failed on its first line with "--out or
+ * --export is required", and nothing caught it: no pipeline carried a design
+ * step until now, and the tests compare this function's output against this
+ * function's own expectations through a fake host, which is a test of our
+ * intent and not of the tool.
+ *
+ * What the tool takes: `--in` an optional input file, `--out` the output file
+ * (required), `--prompt` the instruction (required), `--prompt-file` files to
+ * send with it, `--export` one image, `--export-scale`, `--export-type` and
+ * `--usage`. Verified against 0.3.6 on a developer machine and 0.3.7 in the
+ * sandbox image, which agree.
+ */
 export function buildDesignArgv(input: DesignStepInput, revising: boolean): string[] {
   const config = designConfig(input.step);
-  const argv = [
+  return [
     'pen',
-    revising ? 'revise' : 'create',
-    '--source',
+    // Revising reads the accepted design and writes it back to the same path,
+    // which is FR-106: a step that runs again revises rather than replaces.
+    // A first run has nothing to read and starts from an empty canvas.
+    ...(revising ? ['--in', config.source_path] : []),
+    '--out',
     config.source_path,
-    '--export-dir',
-    config.export_dir,
+    // The instruction is required and is kept short on purpose: the brief is
+    // attached whole, and this line is echoed into the step's log (FR-107),
+    // where a ticket's entire brief would bury the command it is naming.
+    '--prompt',
+    revising
+      ? 'Revise the attached design to address the brief. Change what the brief asks for and ' +
+        'leave the rest as it is.'
+      : 'Design the screens this ticket needs, following the attached brief.',
+    '--prompt-file',
+    BRIEF_PATH,
+    '--export',
+    exportPath(config),
     '--export-scale',
     String(config.export_scale),
-    '--brief',
-    '.factory/design-brief.md',
+    '--export-type',
+    'png',
     '--usage',
     USAGE_PATH,
   ];
-  if (config.screens?.length) argv.push('--screens', config.screens.join(','));
-  return argv;
 }
 
 /**
@@ -77,11 +122,19 @@ export function buildDesignArgv(input: DesignStepInput, revising: boolean): stri
  */
 export function buildBrief(input: DesignStepInput): string {
   const { ticket } = input.snapshot;
+  const config = designConfig(input.step);
   const parts = [
     `# ${ticket.reference} ${ticket.title}`,
     ticket.description ?? '',
     ticket.acceptance_criteria.length > 0
       ? `## Acceptance criteria\n\n${ticket.acceptance_criteria.map((c) => `- ${c}`).join('\n')}`
+      : '',
+    // The screens a pipeline author named. They used to be a `--screens`
+    // argument, which the tool has no such flag for; said here instead, where
+    // the tool actually reads its instructions, so configuring them still
+    // means something.
+    config.screens?.length
+      ? `## Screens to draw\n\n${config.screens.map((name) => `- ${name}`).join('\n')}`
       : '',
     // A revision must address the reviewer, not redraw from the ticket.
     input.feedback
@@ -113,9 +166,12 @@ export async function runDesignStep(
     'mkdir',
     '-p',
     `${WORKDIR}/${config.export_dir}`,
+    // The source's own directory, which is only the same one by default: the
+    // tool writes `--out` and does not make the path it was given.
+    `${WORKDIR}/${config.source_path.slice(0, config.source_path.lastIndexOf('/')) || '.'}`,
     `${WORKDIR}/.factory`,
   ]);
-  await host.writeFile(input.containerId, `${WORKDIR}/.factory/design-brief.md`, buildBrief(input));
+  await host.writeFile(input.containerId, `${WORKDIR}/${BRIEF_PATH}`, buildBrief(input));
 
   const argv = buildDesignArgv(input, revising);
   // The command is named in the log, on the same terms as an agent step
