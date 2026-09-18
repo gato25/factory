@@ -1,5 +1,5 @@
 import type { Database } from '@factory/db';
-import { logChunks, runs, tickets } from '@factory/db/schema';
+import { logChunks, runs, stepResults, tickets } from '@factory/db/schema';
 import {
   type Callback,
   createLogger,
@@ -8,7 +8,7 @@ import {
   notAuthorised,
   type PipelineSnapshot,
 } from '@factory/shared';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { addCost, captureArtifacts, recordStep } from '$lib/ledger/record';
 import { matches } from '$lib/secrets/store';
 import { notifyApprovers, notifyDashboard, notifyRun, type RunEvent } from './notify';
@@ -74,8 +74,38 @@ export async function applyCallback(
       if (applied) {
         await setRunStatus(database, runId, 'running', { currentStepIndex: stepIndex });
         await announce(database, runId, { event: 'step_changed', stepIndex });
+        return { applied };
       }
-      return { applied };
+
+      /**
+       * A step that is starting again: a change request sent the run back to
+       * it, or the execution service restarted and drove it from where the
+       * run stood. Either way this is a NEW pass, and its output is numbered
+       * from one — which collided with the previous pass's chunks and was
+       * dropped by the key that exists to drop a repeat of the SAME pass
+       * (FR-095). The live log then stopped updating while the step was
+       * plainly running, which is the worst of both: work happening and
+       * nothing to see.
+       *
+       * So the previous pass's log is cleared and the step is reported as
+       * running again. The log shows the pass that is happening; the step's
+       * record keeps its history of outcomes.
+       */
+      await database
+        .delete(logChunks)
+        .where(sql`${logChunks.runId} = ${runId}::uuid and ${logChunks.stepIndex} = ${stepIndex}`);
+      await database
+        .update(stepResults)
+        .set({ status: 'running', finishedAt: null, startedAt: new Date(), updatedAt: new Date() })
+        .where(sql`${stepResults.runId} = ${runId}::uuid
+          and ${stepResults.stepIndex} = ${stepIndex}`);
+      await setRunStatus(database, runId, 'running', { currentStepIndex: stepIndex });
+      await announce(database, runId, { event: 'step_changed', stepIndex });
+      log.info('a step started again; its previous output was cleared', {
+        run_id: runId,
+        step_index: stepIndex,
+      });
+      return { applied: true };
     }
 
     case 'step_finished': {

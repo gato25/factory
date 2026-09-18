@@ -32,6 +32,11 @@ const costOf = async () =>
 
 const stepRows = async () => db.select().from(stepResults).where(eq(stepResults.runId, runId));
 
+const chunkTexts = async () =>
+  (await db.select().from(logChunks).where(eq(logChunks.runId, runId)).orderBy(logChunks.seq)).map(
+    (row) => row.text,
+  );
+
 // --- the core guarantee (FR-095) ---
 
 test('a repeated step_finished creates no second row and does not charge twice', async () => {
@@ -53,9 +58,12 @@ test('a repeated step_finished creates no second row and does not charge twice',
   expect(await stepRows()).toHaveLength(1);
 });
 
-test('a step may be started then finished, but not started twice', async () => {
+test('a step started twice keeps one record, and finishing twice charges once', async () => {
+  // A second `step_started` is a second PASS, not a repeat of the first —
+  // a change request sent the run back, or the execution service restarted.
+  // It is accepted, and still leaves one row for the step.
   expect((await applyCallback(db, envelope('step_started'))).applied).toBe(true);
-  expect((await applyCallback(db, envelope('step_started'))).applied).toBe(false);
+  expect((await applyCallback(db, envelope('step_started'))).applied).toBe(true);
 
   const finish = {
     ...envelope('step_finished'),
@@ -71,6 +79,36 @@ test('a step may be started then finished, but not started twice', async () => {
   expect(rows).toHaveLength(1);
   expect(rows[0]?.status).toBe('done');
   expect(await costOf()).toBe('0.1000');
+});
+
+/**
+ * A step that runs again starts its output from one, and the key that drops a
+ * repeat of the SAME chunk dropped all of it — so the live log stopped moving
+ * while the step was plainly running. The previous pass's output is cleared
+ * when the new pass starts, which is what makes room for it.
+ */
+test('a step starting again clears the previous pass’s output and shows the new one', async () => {
+  const chunkOne = {
+    ...envelope('log_chunk'),
+    seq: 1,
+    stream: 'stdout',
+    text: 'the first pass',
+  } as Callback;
+  await applyCallback(db, envelope('step_started'));
+  await applyCallback(db, chunkOne);
+  expect(await chunkTexts()).toEqual(['the first pass']);
+
+  // The step runs again. Its output is numbered from one, as any pass is.
+  await applyCallback(db, envelope('step_started'));
+  expect(await chunkTexts()).toEqual([]);
+
+  await applyCallback(db, { ...chunkOne, text: 'the second pass' } as Callback);
+  expect(await chunkTexts()).toEqual(['the second pass']);
+
+  // And the step is reported as running again, not left as it was.
+  const [row] = await stepRows();
+  expect(row?.status).toBe('running');
+  expect(row?.finishedAt).toBeNull();
 });
 
 test('a duplicate log chunk does not appear twice', async () => {
