@@ -170,10 +170,15 @@ describe('a run, start to merge request', () => {
       status: string;
       cost_usd: string;
       artifacts: unknown[];
+      artifact_contents: Record<string, string>;
     };
     expect(finished.status).toBe('done');
     expect(finished.cost_usd).toBe('0.4200');
     expect(finished.artifacts).toEqual([{ kind: 'document', path: 'docs/spec.md', version: 1 }]);
+    // And what is IN the document, not merely that it exists: without this the
+    // application stores a row with nothing in it, and the checkpoint below
+    // has nothing to review (FR-054).
+    expect(finished.artifact_contents).toEqual({ 'docs/spec.md': '# Spec' });
     const waiting = callbacks[3] as Callback & { resume_url: string };
     expect(waiting.resume_url).toBe(`http://runner.test/runs/${base.run_id}/resume`);
 
@@ -243,6 +248,27 @@ describe('a run, start to merge request', () => {
   });
 });
 
+describe('the documents a step produced', () => {
+  test('travel with the outcome, redacted, from the sandbox the step ran in', async () => {
+    host.files.set(
+      '/work/docs/spec.md',
+      `# Spec
+
+Deployed with ${credentials.gitToken}.`,
+    );
+    await call('POST', `/runs/${base.run_id}/execute`, snapshot);
+    await until(phaseIs('waiting_approval'), 'the checkpoint');
+
+    const finished = callbacks.find((c) => c.event === 'step_finished') as Callback & {
+      artifact_contents: Record<string, string>;
+    };
+    const carried = finished.artifact_contents['docs/spec.md'] as string;
+    expect(carried).toContain('# Spec');
+    expect(carried).not.toContain(credentials.gitToken);
+    expect(carried).toContain('[redacted]');
+  });
+});
+
 describe('a pause (FR-096)', () => {
   test('the step that was running concludes, nothing further begins, and a withdrawal continues', async () => {
     pausedReply = true;
@@ -272,6 +298,29 @@ describe('a change request at a checkpoint (FR-061)', () => {
     expect(events()).toEqual(['step_started@0', 'step_finished@0', 'waiting_approval@1']);
     // The reviewer's words were put where the agent reads them (FR-038).
     expect(host.files.get('/work/.factory/feedback.md')).toContain('Name the OAuth scopes.');
+  });
+
+  test('an edit at the checkpoint is written into the workspace the next step reads (FR-062)', async () => {
+    await call('POST', `/runs/${base.run_id}/execute`, snapshot);
+    await until(phaseIs('waiting_approval'), 'the checkpoint');
+
+    await call('POST', `/runs/${base.run_id}/resume`, {
+      decision: 'edited',
+      edited_paths: ['docs/spec.md'],
+      edited_documents: { 'docs/spec.md': '# Spec\n\nRewritten by a person.' },
+    });
+    await until(gone, 'the run to finish');
+
+    // The workspace holds what the person wrote, not what the agent wrote.
+    expect(host.files.get('/work/docs/spec.md')).toBe('# Spec\n\nRewritten by a person.');
+  });
+
+  test('approving without an edit leaves the workspace alone', async () => {
+    await call('POST', `/runs/${base.run_id}/execute`, snapshot);
+    await until(phaseIs('waiting_approval'), 'the checkpoint');
+    await call('POST', `/runs/${base.run_id}/resume`, { decision: 'approved' });
+    await until(gone, 'the run to finish');
+    expect(host.files.get('/work/docs/spec.md')).toBe('# Spec');
   });
 
   test('a cancellation at the checkpoint releases the sandbox and says so', async () => {

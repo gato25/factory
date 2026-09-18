@@ -124,7 +124,12 @@ test('edit writes a new version and names the edited path on resume (FR-062)', a
     approver,
     { resume },
   );
-  expect(sent[0]?.body).toEqual({ decision: 'edited', edited_paths: ['docs/spec.md'] });
+  expect(sent[0]?.body).toEqual({
+    decision: 'edited',
+    feedback: undefined,
+    edited_paths: ['docs/spec.md'],
+    edited_documents: { 'docs/spec.md': '# Spec\n\nRewritten by a human.' },
+  });
 
   // The previous version is retained (FR-054), and the new one is what a
   // later step reads.
@@ -170,6 +175,37 @@ test('the gate names the step a change request will re-run (FR-061)', async () =
   expect(detail.gate.precedingStepIndex).toBe(0);
   expect(detail.gate.precedingLabel).toBe('Spec');
   expect(detail.gate.precedingIsDesign).toBe(false);
+});
+
+/**
+ * FR-062 — the steps after a gate read the edited version.
+ *
+ * An edit writes a new artifact version here, and the workspace the next
+ * step reads is on the execution service's disk. Only the paths were sent,
+ * and there was nothing the execution service could do with a path: the
+ * workspace kept the agent's version and the edit changed nothing that
+ * followed it.
+ */
+test('an edit sends what the person wrote, not only which document they wrote it in', async () => {
+  const { editArtifact } = await import('../../src/lib/services/artifact');
+  await editArtifact(db, runId, 'docs/spec.md', '# Spec\n\nRewritten by a person.', approver);
+  await decide(
+    db,
+    { runId, stepIndex: 1, decision: 'edited', editedPaths: ['docs/spec.md'] },
+    approver,
+    { resume },
+  );
+
+  expect(sent).toHaveLength(1);
+  expect(sent[0]?.body.edited_paths).toEqual(['docs/spec.md']);
+  expect(sent[0]?.body.edited_documents).toEqual({
+    'docs/spec.md': '# Spec\n\nRewritten by a person.',
+  });
+});
+
+test('a decision with no edit carries no documents', async () => {
+  await decide(db, { runId, stepIndex: 1, decision: 'approved' }, approver, { resume });
+  expect(sent[0]?.body.edited_documents).toBeUndefined();
 });
 
 test('a decision still records when no resume address is stored', async () => {

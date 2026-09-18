@@ -55,6 +55,22 @@ export type CallbackPayload =
       engine_session_id?: string;
       summary?: string;
       artifacts: ArtifactRef[];
+      /**
+       * The text of the documents named in `artifacts`, by path.
+       *
+       * `artifacts` alone is a manifest, and a manifest is what the
+       * application stored: a row per document with nothing in it, so a
+       * checkpoint had nothing to review and a merge request would have
+       * opened with an empty Specification. The execution service is the only
+       * component that can reach the workspace, so it sends the text with the
+       * outcome.
+       *
+       * Documents only — a screen or a design source is binary and is not
+       * carried here. Redacted where it is read, never where it is shown
+       * (Principle V, FR-084). Absent from a step that produced no document,
+       * and from a run started before this field existed.
+       */
+      artifact_contents?: Record<string, string>;
     }
   | { event: 'step_skipped'; condition_not_met: string }
   | { event: 'ticket_classified'; has_ui: boolean; rationale: string }
@@ -76,4 +92,15 @@ export interface ResumeRequest {
   decision: GateDecision;
   feedback?: string;
   edited_paths?: string[];
+  /**
+   * What the person wrote, by path, for each of `edited_paths`.
+   *
+   * The paths alone were sent and the execution service could do nothing with
+   * them: the edit became a new artifact version in the application's
+   * database while the workspace kept the agent's version, and the next step
+   * reads the workspace — so an edit at a gate changed nothing about the code
+   * that followed it. FR-062 says the steps after a gate read the edited
+   * version, and this is what carries it to where they read.
+   */
+  edited_documents?: Record<string, string>;
 }

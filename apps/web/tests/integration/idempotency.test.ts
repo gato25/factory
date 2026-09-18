@@ -222,3 +222,38 @@ test('a step_finished with no outcome is refused by name, not with an internal e
   expect((thrown as FactoryError).message).toContain('artifacts');
   expect(await stepRows()).toHaveLength(0);
 });
+
+// --- what a document holds, not merely that it exists (FR-054) ---
+
+test('a step_finished stores the text of the documents it carries', async () => {
+  const { currentVersion } = await import('../../src/lib/services/artifact');
+  await applyCallback(db, {
+    ...envelope('step_finished'),
+    status: 'done',
+    duration_s: 12,
+    cost_usd: '0.4200',
+    artifacts: [{ kind: 'document', path: 'docs/spec.md', version: 1 }],
+    artifact_contents: { 'docs/spec.md': '# Spec\n\nTwo acceptance criteria.' },
+  } as Callback);
+
+  const stored = await currentVersion(db, runId, 'docs/spec.md');
+  expect(stored?.content).toBe('# Spec\n\nTwo acceptance criteria.');
+});
+
+test('a callback with no contents stores the row, so an older run still records what it made', async () => {
+  // The execution service sent a manifest and nothing else until this field
+  // existed. Such a callback is not a failure: the row is the record that the
+  // step produced the document, and the text is simply not there.
+  const { currentVersion } = await import('../../src/lib/services/artifact');
+  await applyCallback(db, {
+    ...envelope('step_finished'),
+    status: 'done',
+    duration_s: 12,
+    cost_usd: '0.4200',
+    artifacts: [{ kind: 'document', path: 'docs/plan.md', version: 1 }],
+  } as Callback);
+
+  const stored = await currentVersion(db, runId, 'docs/plan.md');
+  expect(stored?.path).toBe('docs/plan.md');
+  expect(stored?.content).toBeNull();
+});

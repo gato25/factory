@@ -12,6 +12,7 @@ import {
   type Step,
 } from '@factory/shared';
 import { and, desc, eq, sql } from 'drizzle-orm';
+import { currentVersion } from './artifact';
 import type { SessionUser } from './auth';
 import { requireApprover } from './authz';
 import { notifyRun } from './notify';
@@ -189,10 +190,26 @@ export async function decide(
     return { decision: input.decision };
   }
 
+  /**
+   * The edited documents themselves, not only their names.
+   *
+   * An edit is a new artifact version here; the workspace the next step reads
+   * is on the execution service's disk, and nothing carried the text across.
+   * So the paths arrived and the edit was ignored (FR-062).
+   */
+  const editedDocuments: Record<string, string> = {};
+  for (const path of input.editedPaths ?? []) {
+    const version = await currentVersion(database, input.runId, path);
+    if (version?.content !== null && version?.content !== undefined) {
+      editedDocuments[path] = version.content;
+    }
+  }
+
   const body: ResumeRequest = {
     decision: input.decision,
     feedback: input.feedback?.trim() || undefined,
     edited_paths: input.editedPaths?.length ? input.editedPaths : undefined,
+    ...(Object.keys(editedDocuments).length > 0 ? { edited_documents: editedDocuments } : {}),
   };
   const send = deps.resume ?? defaultResume;
   const result = await send(resumeUrl, body);

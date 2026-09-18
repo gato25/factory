@@ -1,6 +1,7 @@
 import {
   applyStepResult,
   type Callback,
+  createRedactor,
   decideStep,
   FactoryError,
   type PipelineSnapshot,
@@ -9,9 +10,10 @@ import {
   type StepOutcome,
 } from '@factory/shared';
 import type { ContainerHost } from '../container/host';
-import { buildEnvironment } from '../container/secrets';
+import { buildEnvironment, secretValues } from '../container/secrets';
 import { type SandboxLimits, WORKDIR } from '../container/start';
 import { log } from '../errors';
+import { readOutputContents } from '../outputs/contents';
 import {
   callbackSender,
   destroyRun,
@@ -202,6 +204,11 @@ export class Orchestrator {
       case 'approved':
       case 'edited':
       default:
+        // What the person wrote goes into the workspace, which is what the
+        // steps after this gate read (FR-062). Recorded in the application as
+        // a new version already; without this the workspace kept the agent's
+        // version and the edit changed nothing that followed.
+        await this.applyEdits(state, body.edited_documents);
         // `edited` means the document was rewritten in place, so the following
         // steps read the new version by reading the workspace (FR-062). A
         // body with no decision at all is treated as approval, which is what
@@ -212,6 +219,39 @@ export class Orchestrator {
     state.phase = 'stepping';
     await this.save(state);
     void this.drive(runId);
+  }
+
+  /**
+   * Writes a person's edited documents into the run's workspace.
+   *
+   * Failure here is not silent and not fatal either: the run continues, and
+   * the log names the document the next step will not have seen. Losing an
+   * edit quietly is the thing worth avoiding; refusing to continue a run over
+   * one is worse than saying so.
+   */
+  private async applyEdits(
+    state: LoopState,
+    documents: Record<string, string> | undefined,
+  ): Promise<void> {
+    if (!documents) return;
+    const record = await this.deps.store.get(state.runId);
+    const containerId = record?.containerId ?? state.containerId;
+    if (!containerId) return;
+    for (const [path, content] of Object.entries(documents)) {
+      try {
+        await this.deps.host.writeFile(containerId, `${WORKDIR}/${path}`, content);
+        log.info('an edited document was written into the workspace', {
+          run_id: state.runId,
+          path,
+        });
+      } catch (error) {
+        log.error('an edited document could not be written into the workspace', {
+          run_id: state.runId,
+          path,
+          detail: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
   }
 
   /**
@@ -348,6 +388,29 @@ export class Orchestrator {
           },
           callbackSender(state.snapshot, this.doFetch),
         );
+        /**
+         * The sandbox the step actually ran in, which is not always the one
+         * this state names: a step whose sandbox was lost runs again in a
+         * replacement, and the run store is what knows. Taken from there, and
+         * written back, so a restart adopts the sandbox that holds the work
+         * rather than the one that went away.
+         */
+        const record = await this.deps.store.get(runId);
+        if (record?.containerId) state.containerId = record.containerId;
+
+        // The documents the step wrote, so the application stores what is in
+        // them and not merely that they exist (FR-054).
+        const contents =
+          record?.containerId && record.credentials
+            ? await readOutputContents(
+                this.deps.host,
+                record.containerId,
+                WORKDIR,
+                outcome.outputs,
+                createRedactor(secretValues(record.credentials)),
+              )
+            : {};
+
         const reply = await this.post(state, {
           event: 'step_finished',
           step_index: decision.index,
@@ -357,6 +420,7 @@ export class Orchestrator {
           engine_session_id: outcome.sessionId,
           summary: outcome.summary ?? outcome.error?.detail,
           artifacts: outcome.outputs,
+          artifact_contents: contents,
         });
 
         state.facts = applyStepResult(state.facts, outcome);

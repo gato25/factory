@@ -107,7 +107,15 @@ export async function applyCallback(
       // cannot charge twice (FR-095, SC-006).
       if (applied) {
         await addCost(database, runId, callback.cost_usd);
-        await captureArtifacts(database, runId, stepIndex, callback.artifacts);
+        // The documents' text, where the execution service sent it. Without
+        // it every artifact was a row with nothing in it (FR-054).
+        await captureArtifacts(
+          database,
+          runId,
+          stepIndex,
+          callback.artifacts,
+          callback.artifact_contents ?? {},
+        );
         // The step that was expected to classify has now finished. If no
         // usable decision arrived, that absence becomes a field rather than
         // a line in step output, and the run carries on (FR-102).
