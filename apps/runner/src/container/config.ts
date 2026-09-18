@@ -1,4 +1,5 @@
 import { type PipelineSnapshot, REQUIREMENTS_DIR, type SnapshotAgent } from '@factory/shared';
+import { installGuard } from './guard';
 import type { ContainerHost } from './host';
 
 /**
@@ -114,6 +115,12 @@ export async function writeAgentConfig(
   containerId: string,
   workdir: string,
   context: SubstitutionContext,
+  /**
+   * Where to say that something meant to protect the machine is not working.
+   * The step's own log, when there is one — a warning nobody is shown is the
+   * same as no warning. See `installGuard`.
+   */
+  warn?: (line: string) => void,
 ): Promise<void> {
   const { snapshot } = context;
 
@@ -126,6 +133,7 @@ export async function writeAgentConfig(
   ]);
 
   await trustWorkspace(host, containerId, workdir);
+  await installGuard(host, containerId, workdir, warn);
 
   // Screens a design step produced are named where a following step will
   // look for them, not only interpolated into a prompt that may not mention

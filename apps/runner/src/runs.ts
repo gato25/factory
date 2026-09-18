@@ -386,12 +386,20 @@ async function dispatch(
       containerId,
     };
   }
-  await writeAgentConfig(host, containerId, WORKDIR, {
-    snapshot,
-    feedback: request.feedback,
-    hasUi: request.has_ui,
-    designScreens: request.design_screens,
-  });
+  await writeAgentConfig(
+    host,
+    containerId,
+    WORKDIR,
+    {
+      snapshot,
+      feedback: request.feedback,
+      hasUi: request.has_ui,
+      designScreens: request.design_screens,
+    },
+    // Into the step's own log, which is where somebody watching this run is
+    // already looking.
+    (line) => logs.write('stderr', `${line}\n`),
+  );
   return {
     outcome: await runClaudeStep(host, {
       step,

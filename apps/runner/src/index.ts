@@ -1,5 +1,6 @@
 import { loadRunnerConfig } from './config';
 import { type ContainerHost, dockerHost, run } from './container/host';
+import { isolatingHost } from './container/isolate';
 import { processHost } from './container/process-host';
 import { log } from './errors';
 import { DEFAULT_IDLE_MS, memoryLaunchStore, sweepLaunches } from './launch/launches';
@@ -22,8 +23,49 @@ import { memoryStore } from './runs';
  */
 const config = loadRunnerConfig();
 
+/**
+ * Why a run on this machine can still have a container.
+ *
+ * `EXECUTION_HOST=docker` puts the whole run in one, which is what a
+ * deployment does. `process` puts none of it in one, which is fast and is
+ * what a developer wants for the steps that only read files and write
+ * Markdown — and is how an agent stopping its own dev server stopped the
+ * runner. So `process` now means: the workspace is a directory here, and the
+ * steps whose agents may run commands execute in a throwaway container over
+ * it. Docker absent, or its image unbuilt, and the runner says which steps
+ * are unprotected rather than failing to start.
+ */
+async function isolationProblem(image: string): Promise<string | null> {
+  const daemon = await run('docker', ['version', '--format', '{{.Server.Version}}'], {
+    timeoutMs: 8000,
+  }).catch(() => ({ exitCode: 1, stdout: '', stderr: 'docker is not installed' }));
+  if (daemon.exitCode !== 0) return 'docker is not answering';
+  const built = await run('docker', ['image', 'inspect', image], { timeoutMs: 8000 }).catch(() => ({
+    exitCode: 1,
+    stdout: '',
+    stderr: '',
+  }));
+  return built.exitCode === 0
+    ? null
+    : `the sandbox image ${image} is not built — docker build -t ${image} infra/sandbox`;
+}
+
+const base = processHost({ root: config.workDir });
+const isolation =
+  config.executionHost === 'docker' ? null : await isolationProblem(config.sandboxImage);
+if (isolation) {
+  log.warn('steps that may run commands will NOT be isolated', {
+    detail: isolation,
+    consequence: 'a command from an agent reaches this machine, not a container',
+  });
+}
+
 const host: ContainerHost =
-  config.executionHost === 'docker' ? dockerHost : processHost({ root: config.workDir });
+  config.executionHost === 'docker'
+    ? dockerHost
+    : isolation === null
+      ? isolatingHost({ base, image: config.sandboxImage })
+      : base;
 
 /** Whether Docker is answering, and which version. */
 async function probeDocker(): Promise<{ reachable: boolean; detail: string }> {
@@ -115,4 +157,9 @@ log.info('runner listening', {
   execution_host: config.executionHost,
   state_dir: config.stateDir,
   ...(config.executionHost === 'process' ? { work_dir: config.workDir } : {}),
+  // Which steps get a wall, said at startup rather than discovered from a
+  // container that either did or did not appear.
+  ...(config.executionHost === 'process'
+    ? { isolated_steps: isolation === null ? 'agents permitted a shell' : 'none' }
+    : {}),
 });

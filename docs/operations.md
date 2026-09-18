@@ -16,7 +16,7 @@ Two long-running services, one database, and one container image.
 | **`apps/web`** | SvelteKit. Every screen, every remote function, and the callback and exchange routes the other pieces use. Holds the encryption key. | The public internet — people sign in to it |
 | **`apps/runner`** | An HTTP service. **The only component that executes anything** — as processes on its own machine, or as containers on a Docker daemon (Principle V, research.md D5) — and the orchestrator: it drives each run from snapshot to merge request and writes every run's position to disk. | The web application only. **Never the public internet** |
 | **Postgres 16+** | The only datastore. `LISTEN`/`NOTIFY` carries live run updates to browsers | Both services |
-| **Sandbox image** | `infra/sandbox/Dockerfile`. One fresh container per run, non-root, destroyed at the end. Used under `EXECUTION_HOST=docker`, and by the Run it card always | Built once, pulled by the container host |
+| **Sandbox image** | `infra/sandbox/Dockerfile`. One fresh container per run, non-root, destroyed at the end. Used under `EXECUTION_HOST=docker`, for the steps that run commands under `process`, and by the Run it card always | Built once, pulled by the container host |
 
 The web application never holds a container handle, and the runner holds credentials only in
 memory for the life of a run — never on disk, never in the state it writes. Both are deliberate and
@@ -28,7 +28,7 @@ both are load-bearing — see [credential-path.md](./reviews/credential-path.md)
 bun install                                   # workspace root; Bun is pinned in .bun-version
 docker compose up -d postgres                 # or point DATABASE_URL at a Postgres of your own
 bun run db:migrate                            # drizzle-kit; idempotent, safe to re-run
-docker build -t code-factory/sandbox:latest infra/sandbox   # for EXECUTION_HOST=docker
+docker build -t code-factory/sandbox:latest infra/sandbox   # for EXECUTION_HOST=docker, and for isolated steps under `process`
 EXECUTION_HOST=docker bun run dev:runner      # apps/runner → :8080, needs Docker access
 bun run dev:web                               # apps/web  → :5173
 ```
@@ -96,7 +96,7 @@ Startup fails, loudly, on a missing or malformed value rather than at the first 
 | `RUNNER_PORT` | `8080` | |
 | `RUNNER_BASE_URL` | `http://localhost:<port>` | This service's address as the application reaches it; it appears in the resume addresses handed to the application at a checkpoint or pause |
 | `FACTORY_STATE_DIR` | `~/.code-factory/state` | Where each run's position is written, so a restart resumes it. Never holds a credential |
-| `EXECUTION_HOST` | `process` | `process`: runs execute as processes on this machine. `docker`: one fresh container per run. **A deployment should set `docker`** — see [Execution hosts](#execution-hosts) |
+| `EXECUTION_HOST` | `process` | `process`: runs execute as processes on this machine, except steps whose agent may run commands, which get a container over the same workspace. `docker`: one fresh container per run. **A deployment should set `docker`** — see [Execution hosts](#execution-hosts) |
 | `FACTORY_WORK_DIR` | `~/.code-factory/runs` | Where the process host makes each run's directory |
 | `DATABASE_URL` | | Present for parity; the Runner works from the snapshot it is handed |
 | `SANDBOX_IMAGE` | `code-factory/sandbox:latest` | The image a Docker sandbox, and every Run it launch, is made from |
@@ -117,14 +117,36 @@ The Runner executes a run on one of two hosts, chosen by `EXECUTION_HOST`, behin
 | "No network while code is written" | **not available** — a run that asks for it is refused at start, naming the setting | enforced after the clone |
 | Needs | git, Node, the Claude CLI on the machine (on Windows, Git for Windows' shell) | a Docker daemon and the built image |
 
+#### Isolated steps under `process`
+
+A step whose agent may run **shell commands** does not execute as a process on the machine. It gets
+a throwaway container from the sandbox image with the run's workspace bind-mounted at `/work`, runs
+there, and the container is removed — `apps/runner/src/container/isolate.ts`. With the shipped
+agents that is Plan and Implement. Specification, Tasks and Design read files and write Markdown,
+and stay as processes, which is the speed this host exists for.
+
+The workspace does not move: it is one directory per run, made by the process host and handed
+between steps by being the same directory, so an isolated step reads what the step before it wrote
+and leaves its own work where the step after will find it.
+
+Docker absent, or the image unbuilt, and the Runner logs `steps that may run commands will NOT be
+isolated` at startup with the reason, and runs them as processes. It does not refuse to start.
+
+This exists because a step that may run commands can reach the whole machine. An Implement agent
+tidying up after a dev server it had started ran `Get-Process -Name bun | Stop-Process -Force`,
+which on a developer's machine names the Runner supervising it; the run died four steps in, and the
+agent went on working orphaned for twenty minutes. `apps/runner/src/container/guard.ts` refuses
+that shape of command through a `PreToolUse` hook, as a second line for the steps that are not
+isolated and for hosts with no Docker. It is a rule and not a wall: it fails open if the hook cannot
+run, which is why the Runner self-tests it before every step and says so in the step log when it is
+not working.
+
 **Accepted risk, recorded here because this is where the decision lives.** The constitution's
 sandbox invariant — one fresh sandbox per run, non-root, bounded in processing power, memory and
-lifetime — is met only by `docker`. `process` exists because on a development machine the container
-layer cost more than it protected: every address had to be spelt twice, the clone failed inside an
-isolated container, and the token never reached the containerised orchestrator. A run under
-`process` executes an agent's arbitrary code as the person running the Runner, on their machine,
-against repositories they already hold credentials for. That is acceptable for that person's own
-machine and for nothing else. A deployment MUST set `EXECUTION_HOST=docker`.
+lifetime — is met for the whole run only by `docker`. Under `process` it is met for the steps that
+run commands and not for the rest: those execute an agent's code as the person running the Runner,
+on their machine, against repositories they already hold credentials for. That is acceptable for
+that person's own machine and for nothing else. A deployment MUST set `EXECUTION_HOST=docker`.
 
 ### The shipped agents and pipelines
 

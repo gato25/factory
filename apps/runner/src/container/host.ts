@@ -91,6 +91,23 @@ export interface ContainerHost {
    */
   adopt?(containerId: string, spec: ContainerSpec): Promise<void>;
   exec(containerId: string, argv: string[], options?: ExecOptions): Promise<ExecResult>;
+  /**
+   * Runs one command behind a wall, over the same workspace.
+   *
+   * For the hosts whose sandbox is not itself a wall. The process host runs a
+   * step as an ordinary process on a developer's machine, where a command can
+   * reach the whole account — which is how an agent ending its own dev server
+   * ended the runner supervising it. A step whose agent may run commands asks
+   * for this instead, and gets a fresh container with the run's workspace
+   * mounted in it; the workspace is unchanged, so the step before and the step
+   * after still read what it wrote.
+   *
+   * Absent means the host's ordinary `exec` is already isolated, which is
+   * true of the Docker host and of every hosted deployment. Callers fall back
+   * to `exec` rather than refusing: a run on a machine with no Docker is a
+   * run that works, with the guard in `guard.ts` as its remaining protection.
+   */
+  execIsolated?(containerId: string, argv: string[], options?: ExecOptions): Promise<ExecResult>;
   writeFile(containerId: string, path: string, content: string): Promise<void>;
   readFile(containerId: string, path: string): Promise<string | null>;
   /** Null when the path does not exist. Size distinguishes empty from absent. */

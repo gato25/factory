@@ -6,7 +6,9 @@ import {
   type StepOutcome,
 } from '@factory/shared';
 import { agentSlug, substitute } from '../container/config';
+import { GUARD_SETTINGS_PATH } from '../container/guard';
 import type { ContainerHost } from '../container/host';
+import { needsIsolation } from '../container/isolate';
 import { WORKDIR } from '../container/start';
 import { checkRequiredOutputs } from '../outputs/check';
 import { parseClassification } from '../outputs/classification';
@@ -78,6 +80,12 @@ export function buildArgv(
     input.agent.model,
     '--append-system-prompt-file',
     `.claude/agents/${agentSlug(input.agent)}.md`,
+    // The command guard (`container/guard.ts`). Passed here rather than left
+    // in the workspace's own `.claude/settings.json`: this takes precedence
+    // over whatever the cloned repository ships, and it applies whether or
+    // not the trust dialog has been accepted for the directory.
+    '--settings',
+    GUARD_SETTINGS_PATH,
   ];
   // Tool permissions do not apply to the design engine (FR-036a). The
   // snapshot already empties them, and this holds the claim here too rather
@@ -156,7 +164,20 @@ export async function runClaudeStep(
 ): Promise<StepOutcome> {
   const started = Date.now();
   const prompt = buildPrompt(input);
-  const argv = buildArgv(input, prompt, host.shell ?? 'posix');
+
+  /**
+   * Where this step's command runs, and therefore which shell it will find.
+   *
+   * An isolated step runs in the Linux sandbox image whatever this machine
+   * is, so the CLI there offers `Bash` and not `PowerShell`. Asking the host
+   * for its shell would name the machine's, and an agent permitted a tool by
+   * a name its CLI does not use is refused silently in `-p` mode.
+   */
+  const isolated = host.execIsolated !== undefined && needsIsolation(input.agent);
+  const argv = buildArgv(input, prompt, isolated ? 'posix' : (host.shell ?? 'posix'));
+  const execute = isolated
+    ? (host.execIsolated as NonNullable<typeof host.execIsolated>).bind(host)
+    : host.exec.bind(host);
 
   // The agent's own limits, capped at what the run may still consume (FR-080).
   const limits = effectiveLimits(input.agent, input.snapshot.limits, input.spentSoFarUsd);
@@ -170,7 +191,7 @@ export async function runClaudeStep(
   heartbeat.start();
   let result: Awaited<ReturnType<typeof host.exec>>;
   try {
-    result = await host.exec(input.containerId, argv, {
+    result = await execute(input.containerId, argv, {
       cwd: WORKDIR,
       timeoutMs: timeoutMsFor(limits),
       onOutput: (stream, text) => {
