@@ -340,6 +340,7 @@
             artifacts={loaded.artifacts}
             mergeRequestUrl={loaded.ticket.mergeRequestUrl}
             branchName={loaded.ticket.branchName}
+            runId={loaded.run.id}
           />
           <!-- The branch, running (003). Under the artifacts because the
                merge request is what a reviewer reads first, and this is what

@@ -200,3 +200,50 @@ export const continueFrom = command(RunId, async (runId) => {
     };
   });
 });
+
+/**
+ * Open a run's design source in the desktop application.
+ *
+ * A `.pen` file is not something a browser can draw, and pen.dev publishes no
+ * link to follow, so the only way from the ticket page into the design editor
+ * is to ask the machine to open the file with whatever owns that extension.
+ * The execution service does the opening, because it is the only component
+ * with any rights on a machine (Principle V, research.md D5) and the only one
+ * that knows where a run's workspace is.
+ *
+ * Therefore this works only while the execution service is on the same
+ * machine as the browser — the local setup, never a deployment. The refusal
+ * says which of those is the case rather than failing blankly.
+ */
+export const openDesign = command(
+  v.object({ runId: RunId, path: v.pipe(v.string(), v.maxLength(512)) }),
+  async ({ runId, path }) => {
+    requireUser();
+    const access = await orchestratorAccess(db());
+    const url = `${access.baseUrl.replace(/\/+$/, '')}/runs/${encodeURIComponent(runId)}/open-design`;
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          authorization: `Bearer ${access.token}`,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({ path }),
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (response.ok) return { ok: true, message: 'Opening it in pen.dev.' };
+      // The execution service says why — not on this machine, workspace gone,
+      // not a design — and that sentence is worth more than a status code.
+      const said = (await response.json().catch(() => null)) as { message?: string } | null;
+      return {
+        ok: false,
+        message: said?.message ?? `The execution service refused (${response.status}).`,
+      };
+    } catch {
+      return {
+        ok: false,
+        message: 'The execution service did not answer, so nothing was opened.',
+      };
+    }
+  },
+);

@@ -1,6 +1,7 @@
 <script lang="ts">
   import Icon from '$components/Icon.svelte';
   import ScreenGallery from '$components/ScreenGallery.svelte';
+  import { openDesign } from '$lib/remote/run-actions.remote';
   import { artifact } from '$lib/remote/runs.remote';
   import type { RunView } from '$lib/services/run-view';
 
@@ -16,11 +17,41 @@
     artifacts,
     mergeRequestUrl,
     branchName = null,
+    runId = null,
   }: {
     artifacts: RunView['artifacts'];
     mergeRequestUrl: string | null;
     branchName?: string | null;
+    /** Needed to open a design: the execution service works per run. */
+    runId?: string | null;
   } = $props();
+
+  /**
+   * Opening the design source in the desktop application.
+   *
+   * A `.pen` is the one artifact this page cannot show. The screens above are
+   * pictures of it; this is the thing you edit. pen.dev registers no link a
+   * browser can follow, so the execution service hands the file to whatever
+   * the machine opens `.pen` with — which means this does something only
+   * while that service is on the same machine as this browser. When it is
+   * not, it says so here rather than appearing to work.
+   */
+  let opening = $state<string | null>(null);
+  let openNote = $state<string | null>(null);
+
+  async function openInPen(path: string) {
+    if (!runId) return;
+    opening = path;
+    openNote = null;
+    try {
+      const said = await openDesign({ runId, path });
+      openNote = said.ok ? null : said.message;
+    } catch (error) {
+      openNote = error instanceof Error ? error.message : 'It could not be opened.';
+    } finally {
+      opening = null;
+    }
+  }
 
   let openId = $state<string | null>(null);
   const opened = $derived(openId ? artifact(openId) : null);
@@ -83,8 +114,21 @@
         <p class="foot">
           <Icon name="pen-tool" size={12} />
           <span>{source.path} committed</span>
+          {#if runId}
+            <button
+              type="button"
+              class="open"
+              onclick={() => openInPen(source.path)}
+              disabled={opening === source.path}
+            >
+              {opening === source.path ? 'Opening…' : 'Open in pen.dev'}
+            </button>
+          {/if}
         </p>
       {/each}
+      {#if openNote}
+        <p class="foot note">{openNote}</p>
+      {/if}
     </div>
   {/if}
 
@@ -225,6 +269,30 @@
     color: var(--accent-text);
   }
   .foot :global(svg) {
+    color: var(--text-3);
+  }
+  /* Sits at the end of the line the design source is named on, so the thing
+     it opens is the thing it is next to. */
+  .open {
+    margin-left: auto;
+    padding: 3px 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--r-sm);
+    background: var(--surface);
+    color: var(--text-1);
+    font: inherit;
+    font-size: 11px;
+    cursor: pointer;
+  }
+  .open:hover:not(:disabled) {
+    background: var(--surface-2);
+  }
+  .open:disabled {
+    cursor: default;
+    color: var(--text-3);
+  }
+  /* Why nothing opened — on this machine, or not on this machine at all. */
+  .note {
     color: var(--text-3);
   }
 

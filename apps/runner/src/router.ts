@@ -2,6 +2,7 @@ import { FactoryError, type ResumeRequest } from '@factory/shared';
 import { authenticate } from './auth';
 import type { RunnerConfig } from './config';
 import type { ContainerHost } from './container/host';
+import { openDesignFile } from './desktop/open';
 import { log, toResponse } from './errors';
 import {
   beginLaunch,
@@ -315,6 +316,36 @@ export function routesFor(deps: RouterDeps): Route[] {
           callbackSender(state.snapshot),
         );
         return Response.json(outcome);
+      },
+    },
+    {
+      /**
+       * `POST /runs/{run_id}/open-design` — hand a run's design source to the
+       * desktop application on this machine.
+       *
+       * A development convenience, and only that: it does something only when
+       * this service and the person's browser are on the same machine, which
+       * is the local setup and never a deployment. A runner that executes in
+       * containers refuses and says so. See `desktop/open.ts` for what is
+       * checked before anything is opened.
+       */
+      method: 'POST',
+      pattern: /^\/runs\/([^/]+)\/open-design$/,
+      async handle(match, request) {
+        const runId = match[1] as string;
+        const body = (await request.json().catch(() => ({}))) as { path?: string };
+        if (typeof body.path !== 'string' || body.path.length === 0) {
+          throw new FactoryError('invalid_input', 'name the design to open with `path`');
+        }
+        const opened = await openDesignFile(
+          {
+            host,
+            containerIdFor: async (id) => (await orchestrator?.state(id))?.containerId,
+          },
+          runId,
+          body.path,
+        );
+        return Response.json(opened);
       },
     },
     {
