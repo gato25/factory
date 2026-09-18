@@ -27,15 +27,15 @@ export type StepDecision =
  */
 export const CONDITION_DESCRIPTION: Record<StepCondition, string | undefined> = {
   always: undefined,
-  ticket_has_ui: 'only if this ticket changes the interface',
-  ticket_has_no_ui: 'only if this ticket does not change the interface',
+  ticket_has_ui: 'зөвхөн энэ даалгавар интерфейс өөрчилдөг бол',
+  ticket_has_no_ui: 'зөвхөн энэ даалгавар интерфейс өөрчилдөггүй бол',
 };
 
 /** The fact each condition depends on, for a message that names it. */
 export const CONDITION_FACT: Record<StepCondition, string | undefined> = {
   always: undefined,
-  ticket_has_ui: 'whether the ticket changes the interface',
-  ticket_has_no_ui: 'whether the ticket changes the interface',
+  ticket_has_ui: 'даалгавар интерфейс өөрчилдөг эсэх',
+  ticket_has_no_ui: 'даалгавар интерфейс өөрчилдөг эсэх',
 };
 
 /** Why a step did not run, in the past tense — what a skipped step shows. */
@@ -111,17 +111,17 @@ export function validateStepOrder(
       problems.push({
         index,
         message:
-          `Step ${index + 1} runs ${CONDITION_DESCRIPTION[step.condition]}, but ` +
-          `${CONDITION_FACT[step.condition]} is not known yet at that point. ` +
-          'Move it after the step that writes the specification.',
+          `${index + 1}-р алхам ${CONDITION_DESCRIPTION[step.condition]} ажиллах боловч ` +
+          `тэр үед ${CONDITION_FACT[step.condition]} хараахан мэдэгдээгүй байна. ` +
+          'Тодорхойлолт бичдэг алхмын ард нь зөөнө үү.',
       });
     }
     if (step.type === 'design' && (classifyingIndex === null || index <= classifyingIndex)) {
       problems.push({
         index,
         message:
-          `Step ${index + 1} is a design step, but it comes before the specification step that ` +
-          'decides whether the ticket changes the interface. Move it after.',
+          `${index + 1}-р алхам бол дизайн алхам боловч даалгавар интерфейс өөрчилдөг эсэхийг ` +
+          'шийддэг тодорхойлолтын алхмаас өмнө байна. Ард нь зөөнө үү.',
       });
     }
   });

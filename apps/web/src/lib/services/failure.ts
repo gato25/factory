@@ -39,73 +39,73 @@ export interface Failure {
  */
 const EXPLANATIONS: Record<FailureReason, { what: string; next: string; needsAChange: boolean }> = {
   missing_output: {
-    what: 'The step finished without producing the document it was supposed to write.',
-    next: 'Usually the ticket did not give the agent enough to work from. Add detail to the description or the acceptance criteria, then retry.',
+    what: 'Алхам бичих ёстой байсан баримтаа гаргалгүй дуусчээ.',
+    next: 'Ихэвчлэн даалгавар агентад ажиллах хангалттай мэдээлэл өгөөгүй байдаг. Тайлбар эсвэл хүлээн авах шалгуураа дэлгэрүүлээд дахин оролдоно уу.',
     needsAChange: true,
   },
   budget_exceeded: {
-    what: 'The run reached the most it was allowed to spend.',
-    next: 'Either the ticket is larger than the ceiling allows, or it needs narrowing. Split it, or raise the ceiling on the pipeline.',
+    what: 'Ажиллагаа зарцуулж болох дээд хэмжээндээ хүрлээ.',
+    next: 'Даалгавар хязгаараас том байна, эсвэл нарийсгах хэрэгтэй. Хуваах эсвэл дамжлагын хязгаарыг нэмэгдүүлнэ үү.',
     needsAChange: true,
   },
   time_exceeded: {
-    what: 'The run reached the longest it was allowed to take.',
-    next: 'Narrow the ticket, or raise the time ceiling on the pipeline.',
+    what: 'Ажиллагаа зөвшөөрөгдсөн дээд хугацаандаа хүрлээ.',
+    next: 'Даалгавраа нарийсгах эсвэл дамжлагын хугацааны хязгаарыг нэмэгдүүлнэ үү.',
     needsAChange: true,
   },
   engine_unavailable: {
-    what: 'The model could not be reached.',
-    next: 'Nothing is wrong with the ticket. Retry.',
+    what: 'Загвар руу холбогдож чадсангүй.',
+    next: 'Даалгаварт буруу зүйл алга. Дахин оролдоно уу.',
     needsAChange: false,
   },
   credential_invalid: {
-    what: 'A stored credential was rejected.',
-    next: 'An administrator needs to replace it in Settings before a retry can get further.',
+    what: 'Хадгалагдсан нууц түлхүүрийг татгалзлаа.',
+    next: 'Дахин оролдлого цааш явахын өмнө администратор Тохиргоо хэсэгт түүнийг солих хэрэгтэй.',
     needsAChange: true,
   },
   credential_missing: {
-    what: 'A credential this pipeline needs is not configured.',
-    next: 'An administrator needs to add it in Settings before a retry can get further.',
+    what: 'Энэ дамжлагад хэрэгтэй нууц түлхүүр тохируулагдаагүй байна.',
+    next: 'Дахин оролдлого цааш явахын өмнө администратор Тохиргоо хэсэгт түүнийг нэмэх хэрэгтэй.',
     needsAChange: true,
   },
   sandbox_lost: {
-    what: 'The sandbox the step was running in disappeared, and the second attempt did not get further.',
-    next: 'Nothing is wrong with the ticket. Retry.',
+    what: 'Алхмын ажиллаж байсан орчин алга болж, хоёр дахь оролдлого ч цааш яваагүй.',
+    next: 'Даалгаварт буруу зүйл алга. Дахин оролдоно уу.',
     needsAChange: false,
   },
   app_unreachable: {
-    what: 'The execution service could not reach this application to collect something the run needs.',
-    next: 'Nothing is wrong with the ticket. Check that the execution service can reach the address in PUBLIC_BASE_URL, then retry.',
+    what: 'Гүйцэтгэх үйлчилгээ ажиллагаанд хэрэгтэй зүйлийг авахаар энэ аппликэйшн руу хүрч чадсангүй.',
+    next: 'Даалгаварт буруу зүйл алга. Гүйцэтгэх үйлчилгээ PUBLIC_BASE_URL дэх хаяг руу хүрч чадаж байгааг шалгаад дахин оролдоно уу.',
     needsAChange: false,
   },
   runner_unreachable: {
-    what: 'This application could not reach the execution service.',
-    next: 'Nothing is wrong with the ticket. Check the runner address in Settings and that the runner is running, then try again.',
+    what: 'Энэ аппликэйшн гүйцэтгэх үйлчилгээ рүү хүрч чадсангүй.',
+    next: 'Даалгаварт буруу зүйл алга. Тохиргоо дахь ажиллуулагчийн хаягийг болон ажиллуулагч ажиллаж байгааг шалгаад дахин оролдоно уу.',
     needsAChange: false,
   },
   command_failed: {
-    what: 'A command the pipeline runs exited with an error.',
-    next: 'Read the step output to see which command and why. If it is the repository, fix that first.',
+    what: 'Дамжлагын ажиллуулсан команд алдаатай дуусчээ.',
+    next: 'Аль команд, яагаад болохыг алхмын гаралтаас уншина уу. Хэрэв репозиторийн буруу бол эхлээд түүнийг зас.',
     needsAChange: true,
   },
   not_authorised: {
-    what: 'The run was refused access to something it needed.',
-    next: 'Check the credential has the permissions the repository requires.',
+    what: 'Ажиллагаанд хэрэгтэй байсан зүйл рүү хандах эрхийг татгалзлаа.',
+    next: 'Нууц түлхүүр репозиторийн шаардах эрхүүдтэй эсэхийг шалгана уу.',
     needsAChange: true,
   },
   conflict: {
-    what: 'Something changed underneath the run.',
-    next: 'Retry — the run will take a fresh look.',
+    what: 'Ажиллагааны доор ямар нэг зүйл өөрчлөгджээ.',
+    next: 'Дахин оролдоно уу — ажиллагаа шинээр харна.',
     needsAChange: false,
   },
   not_found: {
-    what: 'Something the run expected to exist did not.',
-    next: 'Check the repository and branch still exist, then retry.',
+    what: 'Ажиллагааны байх ёстой гэж үзсэн зүйл байсангүй.',
+    next: 'Репозитори, салбар байсаар байгаа эсэхийг шалгаад дахин оролдоно уу.',
     needsAChange: true,
   },
   invalid_input: {
-    what: 'The run was given something it could not use.',
-    next: 'Read the detail below, correct the ticket, then retry.',
+    what: 'Ажиллагаанд ашиглах боломжгүй зүйл өглөө.',
+    next: 'Доорх дэлгэрэнгүйг уншиж, даалгавраа зассаны дараа дахин оролдоно уу.',
     needsAChange: true,
   },
 };
@@ -118,8 +118,8 @@ export function explain(reason: string | null): {
 } {
   if (!reason) {
     return {
-      what: 'The run stopped without recording why.',
-      next: 'Retry. If it stops again the same way, the step output is the only place left to look.',
+      what: 'Ажиллагаа шалтгаанаа тэмдэглэлгүй зогсчээ.',
+      next: 'Дахин оролдоно уу. Мөн адил зогсвол алхмын гаралтаас өөр харах газар үлдэхгүй.',
       needsAChange: false,
     };
   }
@@ -134,8 +134,8 @@ export function explain(reason: string | null): {
   if (/time ceiling|minutes/i.test(reason)) return EXPLANATIONS.time_exceeded;
   if (/checkpoint within/i.test(reason)) {
     return {
-      what: 'Nobody decided the checkpoint before it expired, and the gate was set to fail.',
-      next: 'Retry, and decide the checkpoint this time — or change the gate to wait indefinitely.',
+      what: 'Хяналтын цэгийн хугацаа дуусахаас өмнө хэн ч шийдээгүй бөгөөд цэг нь амжилтгүй болохоор тохируулагдсан байжээ.',
+      next: 'Дахин оролдоод энэ удаад хяналтын цэгийг шийднэ үү — эсвэл хугацаагүй хүлээхээр өөрчилнө үү.',
       needsAChange: false,
     };
   }
@@ -144,14 +144,14 @@ export function explain(reason: string | null): {
   // rather than wrapping it in a worse one.
   return {
     what: reason.charAt(0).toUpperCase() + reason.slice(1),
-    next: 'Retry, or edit the ticket first if the reason points at the ticket.',
+    next: 'Дахин оролдоно уу, эсвэл шалтгаан нь даалгаврыг заасан бол эхлээд даалгавраа зас.',
     needsAChange: false,
   };
 }
 
 export async function failureOf(database: Database, runId: string): Promise<Failure | null> {
   const [run] = await database.select().from(runs).where(eq(runs.id, runId)).limit(1);
-  if (!run) throw notFound('no such run');
+  if (!run) throw notFound('тийм ажиллагаа алга');
   if (run.status !== 'failed' && run.status !== 'cancelled') return null;
 
   const snapshot = run.snapshot as PipelineSnapshot;
@@ -207,7 +207,7 @@ export async function attemptsOf(database: Database, ticketId: string) {
     .from(tickets)
     .where(eq(tickets.id, ticketId))
     .limit(1);
-  if (!ticket) throw notFound('no such ticket');
+  if (!ticket) throw notFound('тийм даалгавар алга');
 
   const rows = await database
     .select({

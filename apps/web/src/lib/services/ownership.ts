@@ -20,9 +20,9 @@ export type OwnedKind = 'pipeline' | 'agent' | 'skill';
 const TABLE = { pipeline: pipelines, agent: agents, skill: skills } as const;
 
 const WHAT: Record<OwnedKind, string> = {
-  pipeline: 'this pipeline',
-  agent: 'this agent',
-  skill: 'this skill',
+  pipeline: 'дамжлага',
+  agent: 'агент',
+  skill: 'ур чадвар',
 };
 
 export interface Ownership {
@@ -45,7 +45,7 @@ export async function ownershipOf(
 ): Promise<Ownership> {
   const table = TABLE[kind];
   const [row] = await database.select().from(table).where(eq(table.id, id)).limit(1);
-  if (!row) throw notFound(`no such ${kind}`);
+  if (!row) throw notFound(`тийм ${WHAT[kind]} алга`);
 
   const ownerName = row.ownerId ? await nameOf(database, row.ownerId) : null;
   return {
@@ -72,14 +72,15 @@ export async function requireChangeable(
 ): Promise<Ownership> {
   const ownership = await ownershipOf(database, kind, id, user);
   if (ownership.mayChange) return ownership;
-  if (!user) throw notAuthorised('you must be signed in');
+  if (!user) throw notAuthorised('та нэвтэрсэн байх ёстой');
 
   throw notAuthorised(
     ownership.isDefault
-      ? `${WHAT[kind]} ships with Code Factory. You can use it and duplicate it; only an ` +
-          'administrator can change it.'
-      : `${WHAT[kind]} belongs to ${ownership.ownerName ?? 'someone else'}. You can use it and ` +
-          'duplicate it, but not change it.',
+      ? `Энэ ${WHAT[kind]} Code Factory-тай хамт ирдэг. Та үүнийг ашиглаж, хуулбарлаж болно; ` +
+          'зөвхөн администратор өөрчилнө.'
+      : `Энэ ${WHAT[kind]} ` +
+          `${ownership.ownerName ? `${ownership.ownerName}-д харьяалагдана` : 'өөр хүнийх'}. ` +
+          'Та үүнийг ашиглаж, хуулбарлаж болно, гэхдээ өөрчилж болохгүй.',
   );
 }
 

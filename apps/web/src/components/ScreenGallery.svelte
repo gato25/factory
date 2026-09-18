@@ -7,7 +7,7 @@
    */
   let {
     screens,
-    heading = 'Screens',
+    heading = 'Дэлгэцүүд',
     note
   }: {
     screens: { id: string; path: string; screenName: string | null; version: number }[];
@@ -41,7 +41,7 @@
   {#if note}<p class="muted small note">{note}</p>{/if}
 
   {#if screens.length === 0}
-    <p class="muted small">No screens were exported.</p>
+    <p class="muted small">Экспортлосон дэлгэц алга.</p>
   {:else}
     <ul class="grid">
       {#each screens as screen, index (screen.id)}
@@ -71,9 +71,9 @@
     <header>
       <span>
         {label(open)}
-        <span class="muted small">{(openIndex ?? 0) + 1} of {screens.length}</span>
+        <span class="muted small">{screens.length}-аас {(openIndex ?? 0) + 1}</span>
       </span>
-      <button type="button" class="close" onclick={() => (openIndex = null)} aria-label="Close">
+      <button type="button" class="close" onclick={() => (openIndex = null)} aria-label="Хаах">
         ✕
       </button>
     </header>
@@ -82,7 +82,7 @@
         type="button"
         class="nav"
         onclick={() => step(-1)}
-        aria-label="Previous screen"
+        aria-label="Өмнөх дэлгэц"
         disabled={screens.length < 2}>‹</button
       >
       <img src="/api/artifacts/{open.id}/image" alt={label(open)} />
@@ -90,7 +90,7 @@
         type="button"
         class="nav"
         onclick={() => step(1)}
-        aria-label="Next screen"
+        aria-label="Дараагийн дэлгэц"
         disabled={screens.length < 2}>›</button
       >
     </div>

@@ -56,7 +56,7 @@ export async function getSkill(
   user: SessionUser | null,
 ): Promise<SkillDetail> {
   const [row] = await database.select().from(skills).where(eq(skills.id, skillId)).limit(1);
-  if (!row) throw notFound('no such skill');
+  if (!row) throw notFound('тийм ур чадвар алга');
 
   const ownership = await ownershipOf(database, 'skill', skillId, user);
   const usage = await skillUsage(database);
@@ -101,7 +101,7 @@ export async function createSkill(
           updatedBy: user.id,
         })
         .returning();
-      if (!row) throw conflict('could not create the skill');
+      if (!row) throw conflict('ур чадварыг үүсгэж чадсангүй');
       // Version 1 is the skill as it was written, so the history has a
       // beginning rather than starting at the first edit.
       await tx.insert(skillVersions).values({
@@ -118,8 +118,8 @@ export async function createSkill(
   } catch (error) {
     if (flatten(error).includes('skills_name_unique')) {
       throw conflict(
-        `There is already a skill called “${input.name.trim()}”. A skill's name is how an ` +
-          'agent refers to it, so it has to be unique.',
+        `“${input.name.trim()}” нэртэй ур чадвар аль хэдийн байна. Агент ур чадварыг нэрээр нь ` +
+          'дууддаг тул нэр нь давхцах ёсгүй.',
       );
     }
     throw error;
@@ -149,7 +149,7 @@ export async function updateSkill(
         })
         .where(eq(skills.id, skillId))
         .returning();
-      if (!saved) throw notFound('no such skill');
+      if (!saved) throw notFound('тийм ур чадвар алга');
       // The saved state, not the replaced one: the newest version and the
       // skill row then say the same thing, and restoring a version is
       // saving its content again.
@@ -165,7 +165,7 @@ export async function updateSkill(
     });
   } catch (error) {
     if (flatten(error).includes('skills_name_unique')) {
-      throw conflict(`There is already a skill called “${input.name?.trim()}”.`);
+      throw conflict(`“${input.name?.trim()}” нэртэй ур чадвар аль хэдийн байна.`);
     }
     throw error;
   }
@@ -181,7 +181,7 @@ function validate(input: SkillInput) {
   const description = input.description?.trim();
   const content = input.content;
 
-  if (input.name !== undefined && !name) throw invalidInput('Give the skill a name.');
+  if (input.name !== undefined && !name) throw invalidInput('Ур чадварт нэр өгнө үү.');
   if (input.description !== undefined && !description) {
     throw invalidInput(
       'Say when an agent should apply this skill. That sentence is what an agent reads to ' +
@@ -189,7 +189,7 @@ function validate(input: SkillInput) {
     );
   }
   if (input.content !== undefined && !content?.trim()) {
-    throw invalidInput('A skill with no content gives an agent nothing to apply.');
+    throw invalidInput('Агуулгагүй ур чадвар агентад хэрэглэх юу ч өгөхгүй.');
   }
   return { name, description, content };
 }

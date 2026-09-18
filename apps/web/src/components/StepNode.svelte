@@ -23,6 +23,7 @@
     engine: string;
     model: string;
     allowedTools?: string[];
+    toolLabels?: string[];
     skills?: string[];
     isDefault?: boolean;
   }
@@ -85,7 +86,7 @@
 
   const title = $derived(
     step.type === 'agent' || step.type === 'design'
-      ? (agent?.name ?? `${STEP_KIND_LABEL[step.type]} — no agent chosen`)
+      ? (agent?.name ?? `${STEP_KIND_LABEL[step.type]} — агент сонгоогүй`)
       : STEP_KIND_LABEL[step.type],
   );
 
@@ -98,32 +99,30 @@
         return (
           agent?.description ??
           (step.output_files?.length
-            ? `Produces ${step.output_files.join(', ')}`
-            : 'Writes the code')
+            ? `${step.output_files.join(', ')} гаргана`
+            : 'Код бичнэ')
         );
       case 'checkpoint':
         return [
           step.approvers === 'anyone'
-            ? 'Anyone in the workspace decides'
+            ? 'Багийн аль ч гишүүн шийднэ'
             : step.approvers === 'ticket_creator'
-              ? "The ticket's author decides"
-              : `${(step.approvers ?? []).length} named approver${
-                  (step.approvers ?? []).length === 1 ? '' : 's'
-                }`,
+              ? 'Даалгаврыг үүсгэгч шийднэ'
+              : `нэрлэсэн ${(step.approvers ?? []).length} батлагч`,
           step.timeout_hours
-            ? `${step.timeout_hours} h timeout, then ${
+            ? `${step.timeout_hours} ц хүлээнэ, дараа нь ${
                 step.on_timeout === 'continue'
-                  ? 'auto-continue'
+                  ? 'автоматаар үргэлжилнэ'
                   : step.on_timeout === 'fail'
-                    ? 'the run fails'
-                    : 'it keeps waiting'
+                    ? 'ажиллагаа амжилтгүй болно'
+                    : 'хүлээсэн хэвээр байна'
               }`
-            : 'waits indefinitely',
+            : 'хугацаагүй хүлээнэ',
         ].join(' · ');
       case 'shell':
-        return step.command || 'no command yet';
+        return step.command || 'команд хараахан алга';
       case 'notify':
-        return step.channel || 'no channel yet';
+        return step.channel || 'суваг хараахан алга';
       default:
         return undefined;
     }
@@ -134,7 +133,7 @@
       return [
         'pen.dev CLI',
         agent?.model,
-        `writes ${step.design?.source_path ?? 'docs/design/ui.pen'}`,
+        `${step.design?.source_path ?? 'docs/design/ui.pen'} бичнэ`,
       ]
         .filter(Boolean)
         .join(' · ');
@@ -142,8 +141,8 @@
     if (step.type !== 'agent' || !agent) return undefined;
     return [
       agent.model,
-      agent.allowedTools?.length ? agent.allowedTools.join(', ') : undefined,
-      agent.skills?.length ? `skills: ${agent.skills.join(', ')}` : undefined,
+      agent.toolLabels?.length ? agent.toolLabels.join(', ') : undefined,
+      agent.skills?.length ? `ур чадвар: ${agent.skills.join(', ')}` : undefined,
     ]
       .filter(Boolean)
       .join(' · ');
@@ -167,7 +166,7 @@
   <button
     type="button"
     class="open"
-    aria-label="Step {index + 1} — {title}"
+    aria-label="{index + 1}-р алхам — {title}"
     onclick={onSelect}
     disabled={!onSelect}
   >
@@ -180,7 +179,7 @@
           <span class="badge conditional"><span class="dot"></span>{condition}</span>
         {/if}
         {#if custom}
-          <span class="badge custom"><span class="dot"></span>Custom</span>
+          <span class="badge custom"><span class="dot"></span>Захиалгат</span>
         {/if}
       </span>
       {#if description}<span class="d">{description}</span>{/if}
@@ -195,7 +194,7 @@
     <span class="more">
       <button
         type="button"
-        aria-label="Actions for step {index + 1}"
+        aria-label="{index + 1}-р алхмын үйлдэл"
         aria-expanded={menu}
         onclick={(event) => {
           event.stopPropagation();
@@ -214,7 +213,7 @@
             onclick={() => {
               onMoveUp?.();
               menu = false;
-            }}>Move step {index + 1} up</button
+            }}>{index + 1}-р алхмыг дээш зөөх</button
           >
           <button
             type="button"
@@ -222,7 +221,7 @@
             onclick={() => {
               onMoveDown?.();
               menu = false;
-            }}>Move step {index + 1} down</button
+            }}>{index + 1}-р алхмыг доош зөөх</button
           >
           <button
             type="button"
@@ -230,7 +229,7 @@
             onclick={() => {
               onRemove?.();
               menu = false;
-            }}>Remove step {index + 1}</button
+            }}>{index + 1}-р алхмыг устгах</button
           >
         </span>
       {/if}

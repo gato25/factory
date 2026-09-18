@@ -40,7 +40,7 @@
     {/if}
   {/each}
   {#if parsed.length === 0}
-    <p class="empty">Nothing to preview yet.</p>
+    <p class="empty">Урьдчилан харах зүйл хараахан алга.</p>
   {/if}
 </div>
 

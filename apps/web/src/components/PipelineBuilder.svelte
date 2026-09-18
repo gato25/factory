@@ -153,21 +153,21 @@
 
     {#if steps.length > 0 && !verifies}
       <p class="banner warn">
-        Nothing in this pipeline checks the result. The implementing agent is asked to leave the
-        tests passing, and nothing after it confirms that. Add a shell step running your tests to
-        change that.
+        Энэ дамжлагад үр дүнг шалгах юу ч алга. Хөгжүүлэлт агентаас тестүүдийг ажиллаж байхаар нь
+        үлдээхийг хүсдэг ч түүний дараа үүнийг батлах юу ч байхгүй. Тестээ ажиллуулах shell алхам
+        нэмбэл энэ өөрчлөгдөнө.
       </p>
     {/if}
 
     <!-- What starts a run. Not a step: it is the pipeline's entry (plan.md). -->
     <p class="trigger">
       <Icon name="zap" size={16} />
-      <span>Trigger: ticket created</span>
+      <span>Эхлэл: даалгавар үүсэх</span>
     </p>
 
     <ol>
       {#each steps as step, index (index)}
-        {@render connector(index, `Insert a step at position ${index + 1}`)}
+        {@render connector(index, `${index + 1}-р байрлалд алхам оруулах`)}
         <li
           class="slot"
           draggable={editable}
@@ -208,12 +208,12 @@
         </li>
       {/each}
 
-      {@render connector(steps.length, 'Add a step at the end')}
+      {@render connector(steps.length, 'Төгсгөлд алхам нэмэх')}
 
       <!-- Implicit and always last: not a step anyone can move (FR-029) -->
       <li class="finish" title={IMPLICIT_LAST_STEP.why}>
         <Icon name="git-pull-request" size={16} />
-        <span>{IMPLICIT_LAST_STEP.label} → close ticket</span>
+        <span>{IMPLICIT_LAST_STEP.label} → даалгавар хаах</span>
       </li>
       <li class="why">{IMPLICIT_LAST_STEP.why}</li>
     </ol>
@@ -222,8 +222,8 @@
   <aside class="palette">
     {#if editable}
       <section class="card">
-        <h3>Add a step</h3>
-        <p>Drag onto the canvas or click a + on a connector.</p>
+        <h3>Алхам нэмэх</h3>
+        <p>Зураг дээр чирэх эсвэл холбоос дээрх + дарна уу.</p>
         {#each PALETTE_ORDER as kind (kind)}
           <button
             type="button"
@@ -248,9 +248,9 @@
     {/if}
 
     <section class="card">
-      <h3>Your agents</h3>
+      <h3>Таны агентууд</h3>
       {#if agents.length === 0}
-        <p>None yet.</p>
+        <p>Хараахан алга.</p>
       {:else}
         {#each agents as agent (agent.id)}
           <a class="ag" href="/agents/{agent.id}">

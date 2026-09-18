@@ -47,7 +47,7 @@
       const said = await openDesign({ runId, path });
       openNote = said.ok ? null : said.message;
     } catch (error) {
-      openNote = error instanceof Error ? error.message : 'It could not be opened.';
+      openNote = error instanceof Error ? error.message : 'Нээж чадсангүй.';
     } finally {
       opening = null;
     }
@@ -63,18 +63,18 @@
 
   /** What a document is for, in the words the artboard uses. */
   const PURPOSE: Record<string, string> = {
-    'docs/spec.md': 'Requirements',
-    'docs/plan.md': 'Architecture & files to change',
-    'docs/tasks.md': 'Ordered tasks',
+    'docs/spec.md': 'Шаардлага',
+    'docs/plan.md': 'Архитектур ба өөрчлөх файлууд',
+    'docs/tasks.md': 'Дараалсан даалгаврууд',
   };
-  const purposeOf = (path: string) => PURPOSE[path] ?? 'Produced by the run';
+  const purposeOf = (path: string) => PURPOSE[path] ?? 'Ажиллагаанаас гарсан';
 </script>
 
 <section class="card">
-  <h2>Artifacts</h2>
+  <h2>Үр дүн</h2>
 
   {#if artifacts.length === 0 && !mergeRequestUrl}
-    <p class="empty">Nothing produced yet.</p>
+    <p class="empty">Хараахан юу ч гараагүй байна.</p>
   {/if}
 
   {#each documents as doc (doc.id)}
@@ -87,15 +87,15 @@
       <Icon name="file-text" size={16} />
       <span class="tx">
         <span class="n">{doc.path}</span>
-        <span class="s">{purposeOf(doc.path)} · v{doc.version} · step {doc.stepIndex + 1}</span>
+        <span class="s">{purposeOf(doc.path)} · v{doc.version} · {doc.stepIndex + 1}-р алхам</span>
       </span>
       <Icon name={openId === doc.id ? 'chevron-down' : 'chevron-right'} size={14} />
     </button>
     {#if openId === doc.id}
       {#if opened?.ready}
-        <pre>{opened.current.content ?? '(empty)'}</pre>
+        <pre>{opened.current.content ?? '(хоосон)'}</pre>
       {:else}
-        <p class="empty">Loading…</p>
+        <p class="empty">Ачааллаж байна…</p>
       {/if}
     {/if}
   {/each}
@@ -105,15 +105,15 @@
       <div class="head">
         <Icon name="images" size={16} />
         <span class="tx">
-          <span class="n">{screens.length} screen{screens.length === 1 ? '' : 's'}</span>
+          <span class="n">{screens.length} дэлгэц</span>
           <span class="s">docs/design/screens</span>
         </span>
       </div>
-      <ScreenGallery {screens} heading="Screens" />
+      <ScreenGallery {screens} heading="Дэлгэцүүд" />
       {#each designFiles as source (source.id)}
         <p class="foot">
           <Icon name="pen-tool" size={12} />
-          <span>{source.path} committed</span>
+          <span>{source.path} хадгалагдсан</span>
           {#if runId}
             <button
               type="button"
@@ -121,7 +121,7 @@
               onclick={() => openInPen(source.path)}
               disabled={opening === source.path}
             >
-              {opening === source.path ? 'Opening…' : 'Open in pen.dev'}
+              {opening === source.path ? 'Нээж байна…' : 'pen.dev дээр нээх'}
             </button>
           {/if}
         </p>
@@ -138,7 +138,7 @@
         <Icon name="git-commit-horizontal" size={16} />
         <span class="tx">
           <span class="n">{row.path}</span>
-          {#if branchName}<span class="s">on {branchName}</span>{/if}
+          {#if branchName}<span class="s">{branchName} дээр</span>{/if}
         </span>
       </div>
     {/each}
@@ -149,8 +149,8 @@
     <a class="row" href={mergeRequestUrl} target="_blank" rel="noreferrer noopener">
       <Icon name="git-pull-request" size={16} />
       <span class="tx">
-        <span class="n">Merge request</span>
-        <span class="s">Review and merge on the provider, as usual</span>
+        <span class="n">Нэгтгэх хүсэлт</span>
+        <span class="s">Урьдын адил үйлчилгээн дээрээ хянаж нэгтгэнэ</span>
       </span>
       <Icon name="external-link" size={14} />
     </a>
@@ -158,8 +158,8 @@
     <div class="row waiting">
       <Icon name="git-pull-request" size={16} />
       <span class="tx">
-        <span class="n">Merge request</span>
-        <span class="s">Created when the last step finishes</span>
+        <span class="n">Нэгтгэх хүсэлт</span>
+        <span class="s">Сүүлийн алхам дуусахад үүснэ</span>
       </span>
     </div>
   {/if}

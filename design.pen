@@ -21389,7 +21389,7 @@
                   "fill": "$text-inv",
                   "textGrowth": "fixed-width",
                   "width": "fill_container",
-                  "content": "From ticket to merge request, automatically.",
+                  "content": "Даалгавраас нэгтгэх хүсэлт хүртэл, автоматаар.",
                   "lineHeight": 1.15,
                   "fontFamily": "$font-head",
                   "fontSize": 40,
@@ -21402,7 +21402,7 @@
                   "fill": "$text-inv-2",
                   "textGrowth": "fixed-width",
                   "width": "fill_container",
-                  "content": "Connect a repo, describe the change, and a pipeline of AI agents writes the spec, plans, implements, tests and opens the MR. You stay in control with checkpoints wherever you want them.",
+                  "content": "Репозитори холбож, өөрчлөлтөө бичихэд AI агентуудын дамжлага тодорхойлолтыг бичиж, төлөвлөж, хөгжүүлж, тест хийгээд нэгтгэх хүсэлтийг нээнэ. Хүссэн газраа хяналтын цэг тавьж, та жолоогоо хадгална.",
                   "lineHeight": 1.55,
                   "fontFamily": "$font",
                   "fontSize": 16,
@@ -21431,7 +21431,7 @@
                           "id": "lLCEx",
                           "name": "L",
                           "fill": "$text-inv",
-                          "content": "Ticket",
+                          "content": "Даалгавар",
                           "fontFamily": "$font",
                           "fontSize": 13,
                           "fontWeight": "600"
@@ -21464,7 +21464,7 @@
                           "id": "eJjYv",
                           "name": "L",
                           "fill": "$text-inv-2",
-                          "content": "Spec",
+                          "content": "Тодорхойлолт",
                           "fontFamily": "$font",
                           "fontSize": 13,
                           "fontWeight": "600"
@@ -21497,7 +21497,7 @@
                           "id": "V09V4V",
                           "name": "L",
                           "fill": "$text-inv-2",
-                          "content": "Plan",
+                          "content": "Төлөвлөгөө",
                           "fontFamily": "$font",
                           "fontSize": 13,
                           "fontWeight": "600"
@@ -21530,7 +21530,7 @@
                           "id": "CKHNc",
                           "name": "L",
                           "fill": "$text-inv-2",
-                          "content": "Tasks",
+                          "content": "Даалгаврууд",
                           "fontFamily": "$font",
                           "fontSize": 13,
                           "fontWeight": "600"
@@ -21563,7 +21563,7 @@
                           "id": "M1XCO",
                           "name": "L",
                           "fill": "$text-inv-2",
-                          "content": "Implement",
+                          "content": "Хөгжүүлэлт",
                           "fontFamily": "$font",
                           "fontSize": 13,
                           "fontWeight": "600"
@@ -21596,7 +21596,7 @@
                           "id": "Mpnzh",
                           "name": "L",
                           "fill": "$text-inv",
-                          "content": "MR",
+                          "content": "Нэгтгэх хүсэлт",
                           "fontFamily": "$font",
                           "fontSize": 13,
                           "fontWeight": "600"
@@ -21612,7 +21612,7 @@
               "id": "j1Bge",
               "name": "Foot",
               "fill": "#475569",
-              "content": "© 2026 Netgroup · Powered by Claude CLI, n8n and Docker",
+              "content": "© 2026 Netgroup · Claude CLI, n8n, Docker дээр ажиллана",
               "fontFamily": "$font",
               "fontSize": 12,
               "fontWeight": "normal"
@@ -21649,7 +21649,7 @@
                       "id": "K4aeN",
                       "name": "T",
                       "fill": "$text",
-                      "content": "Sign in",
+                      "content": "Нэвтрэх",
                       "fontFamily": "$font-head",
                       "fontSize": 28,
                       "fontWeight": "700"
@@ -21659,7 +21659,7 @@
                       "id": "XoTeY",
                       "name": "S",
                       "fill": "$text-2",
-                      "content": "Use your work account to continue.",
+                      "content": "Үргэлжлүүлэхийн тулд ажлын бүртгэлээрээ нэвтэрнэ үү.",
                       "fontFamily": "$font",
                       "fontSize": 14,
                       "fontWeight": "normal"
@@ -21695,7 +21695,7 @@
                       "id": "ITsqI",
                       "name": "L",
                       "fill": "$text",
-                      "content": "Continue with GitLab",
+                      "content": "GitLab-ээр үргэлжлүүлэх",
                       "fontFamily": "$font",
                       "fontSize": 14,
                       "fontWeight": "600"
@@ -21731,7 +21731,7 @@
                       "id": "tBP5P",
                       "name": "L",
                       "fill": "$text",
-                      "content": "Continue with GitHub",
+                      "content": "GitHub-ээр үргэлжлүүлэх",
                       "fontFamily": "$font",
                       "fontSize": 14,
                       "fontWeight": "600"
@@ -21759,7 +21759,7 @@
                       "id": "tFk2n",
                       "name": "T",
                       "fill": "$text-3",
-                      "content": "or with email",
+                      "content": "эсвэл и-мэйлээр",
                       "fontFamily": "$font",
                       "fontSize": 12,
                       "fontWeight": "normal"
@@ -21787,7 +21787,7 @@
                       "id": "pT08Y",
                       "name": "L",
                       "fill": "$text",
-                      "content": "Work email",
+                      "content": "Ажлын и-мэйл",
                       "fontFamily": "$font",
                       "fontSize": 12,
                       "fontWeight": "600"
@@ -21833,7 +21833,7 @@
                       "id": "K8jdOu",
                       "name": "L",
                       "fill": "$text",
-                      "content": "Password",
+                      "content": "Нууц үг",
                       "fontFamily": "$font",
                       "fontSize": 12,
                       "fontWeight": "600"
@@ -21889,7 +21889,7 @@
                   "fill": "$text-3",
                   "textGrowth": "fixed-width",
                   "width": "fill_container",
-                  "content": "Signing in connects nothing yet. You'll add repositories in the next step.",
+                  "content": "Нэвтэрснээр юу ч хараахан холбогдохгүй. Дараагийн алхамд репозиториудаа нэмнэ.",
                   "textAlign": "center",
                   "fontFamily": "$font",
                   "fontSize": 12,
@@ -24356,7 +24356,7 @@
                               "id": "U1RWk",
                               "name": "A",
                               "fill": "$text-3",
-                              "content": "Tickets",
+                              "content": "Даалгавар",
                               "fontFamily": "$font",
                               "fontSize": 13,
                               "fontWeight": "normal"
@@ -24415,7 +24415,7 @@
                               "id": "dCvxh",
                               "name": "Title",
                               "fill": "$text",
-                              "content": "Add Apple Sign-In to the login page",
+                              "content": "Нэвтрэх хуудсанд Apple нэвтрэлт нэмэх",
                               "fontFamily": "$font-head",
                               "fontSize": 24,
                               "fontWeight": "700"
@@ -24496,7 +24496,7 @@
                                   "id": "N76OFE",
                                   "name": "T",
                                   "fill": "$text-2",
-                                  "content": "Design step · 2m 41s · $0.42",
+                                  "content": "Дизайн алхам · 2м 41с · $0.42",
                                   "fontFamily": "$font",
                                   "fontSize": 13,
                                   "fontWeight": "normal"
@@ -24525,7 +24525,7 @@
                                   "id": "n3HfGL",
                                   "name": "T",
                                   "fill": "$text-2",
-                                  "content": "Paused 4 min ago",
+                                  "content": "4 мин өмнө зогссон",
                                   "fontFamily": "$font",
                                   "fontSize": 13,
                                   "fontWeight": "normal"
@@ -24599,7 +24599,7 @@
                           "id": "vEEOm",
                           "name": "T",
                           "fill": "$text",
-                          "content": "Checkpoint: review the screens before any code is written",
+                          "content": "Хяналтын цэг: код бичихээс өмнө дэлгэцүүдийг хянана уу",
                           "fontFamily": "$font",
                           "fontSize": 15,
                           "fontWeight": "600"
@@ -24611,7 +24611,7 @@
                           "fill": "$text-2",
                           "textGrowth": "fixed-width",
                           "width": "fill_container",
-                          "content": "The Design agent produced 4 screens with the pen.dev CLI. Nothing has been implemented yet. Approve to continue to Plan.",
+                          "content": "Дизайн агент pen.dev CLI-аар 4 дэлгэц гаргалаа. Хараахан юу ч хийгдээгүй байна. Төлөвлөгөө руу үргэлжлүүлэхийн тулд батлана уу.",
                           "fontFamily": "$font",
                           "fontSize": 13,
                           "fontWeight": "normal"
@@ -24708,7 +24708,7 @@
                                   "id": "aUN7U",
                                   "name": "T",
                                   "fill": "$text",
-                                  "content": "Screens",
+                                  "content": "Дэлгэцүүд",
                                   "fontFamily": "$font-head",
                                   "fontSize": 16,
                                   "fontWeight": "600"
@@ -25007,7 +25007,7 @@
                                               "id": "YZ70K",
                                               "name": "N",
                                               "fill": "$text",
-                                              "content": "Login page",
+                                              "content": "Нэвтрэх хуудас",
                                               "fontFamily": "$font",
                                               "fontSize": 13,
                                               "fontWeight": "600"
@@ -25019,7 +25019,7 @@
                                               "fill": "$text-3",
                                               "textGrowth": "fixed-width",
                                               "width": "fill_container",
-                                              "content": "Apple button above Google",
+                                              "content": "Google-ийн дээр Apple товч",
                                               "fontFamily": "$font",
                                               "fontSize": 11,
                                               "fontWeight": "normal"
@@ -25170,7 +25170,7 @@
                                               "id": "o8YFTo",
                                               "name": "N",
                                               "fill": "$text",
-                                              "content": "Apple consent",
+                                              "content": "Apple зөвшөөрөл",
                                               "fontFamily": "$font",
                                               "fontSize": 13,
                                               "fontWeight": "600"
@@ -25182,7 +25182,7 @@
                                               "fill": "$text-3",
                                               "textGrowth": "fixed-width",
                                               "width": "fill_container",
-                                              "content": "Handoff to Apple and back",
+                                              "content": "Apple руу шилжээд буцах",
                                               "fontFamily": "$font",
                                               "fontSize": 11,
                                               "fontWeight": "normal"
@@ -25309,7 +25309,7 @@
                                               "id": "bLnyi",
                                               "name": "N",
                                               "fill": "$text",
-                                              "content": "Linking account",
+                                              "content": "Бүртгэл холбох",
                                               "fontFamily": "$font",
                                               "fontSize": 13,
                                               "fontWeight": "600"
@@ -25321,7 +25321,7 @@
                                               "fill": "$text-3",
                                               "textGrowth": "fixed-width",
                                               "width": "fill_container",
-                                              "content": "Shown while matching the account",
+                                              "content": "Бүртгэлийг тулгах үед харагдана",
                                               "fontFamily": "$font",
                                               "fontSize": 11,
                                               "fontWeight": "normal"
@@ -25487,7 +25487,7 @@
                                               "id": "vnjJC",
                                               "name": "N",
                                               "fill": "$text",
-                                              "content": "Email already used",
+                                              "content": "И-мэйл аль хэдийн ашиглагдсан",
                                               "fontFamily": "$font",
                                               "fontSize": 13,
                                               "fontWeight": "600"
@@ -25499,7 +25499,7 @@
                                               "fill": "$text-3",
                                               "textGrowth": "fixed-width",
                                               "width": "fill_container",
-                                              "content": "Existing account, other provider",
+                                              "content": "Байгаа бүртгэл, өөр үйлчилгээ",
                                               "fontFamily": "$font",
                                               "fontSize": 11,
                                               "fontWeight": "normal"
@@ -25579,7 +25579,7 @@
                                   "id": "w8qTJ",
                                   "name": "T",
                                   "fill": "$text",
-                                  "content": "Why this ticket was designed",
+                                  "content": "Яагаад энэ даалгаврыг зурсан бэ",
                                   "fontFamily": "$font-head",
                                   "fontSize": 15,
                                   "fontWeight": "600"
@@ -25593,7 +25593,7 @@
                               "fill": "$text-2",
                               "textGrowth": "fixed-width",
                               "width": "fill_container",
-                              "content": "“The ticket adds a sign-in button and a callback screen, both visible to end users.”",
+                              "content": "“Даалгавар нь нэвтрэх товч болон буцах дэлгэц нэмж байгаа бөгөөд хоёулаа эцсийн хэрэглэгчид харагдана.”",
                               "lineHeight": 1.5,
                               "fontFamily": "$font",
                               "fontSize": 13,
@@ -25604,7 +25604,7 @@
                               "id": "zj1eK",
                               "name": "By",
                               "fill": "$text-3",
-                              "content": "Decided by the Spec agent · docs/spec.md",
+                              "content": "Тодорхойлолтын алхам шийдсэн · docs/spec.md",
                               "fontFamily": "$font",
                               "fontSize": 11,
                               "fontWeight": "normal"
@@ -25639,7 +25639,7 @@
                               "id": "TgRUY",
                               "name": "H",
                               "fill": "$text",
-                              "content": "Check the screens against",
+                              "content": "Дэлгэцүүдийг юутай тулгах вэ",
                               "fontFamily": "$font-head",
                               "fontSize": 15,
                               "fontWeight": "600"
@@ -25668,7 +25668,7 @@
                                   "fill": "$text-2",
                                   "textGrowth": "fixed-width",
                                   "width": "fill_container",
-                                  "content": "Apple button visible on /login for all users",
+                                  "content": "Бүх хэрэглэгчид /login дээр Apple товч харагдана",
                                   "lineHeight": 1.45,
                                   "fontFamily": "$font",
                                   "fontSize": 12,
@@ -25700,7 +25700,7 @@
                                   "fill": "$text-2",
                                   "textGrowth": "fixed-width",
                                   "width": "fill_container",
-                                  "content": "Successful sign-in creates or links a user record",
+                                  "content": "Амжилттай нэвтрэхэд хэрэглэгч үүснэ эсвэл холбогдоно",
                                   "lineHeight": 1.45,
                                   "fontFamily": "$font",
                                   "fontSize": 12,
@@ -25732,7 +25732,7 @@
                                   "fill": "$text-2",
                                   "textGrowth": "fixed-width",
                                   "width": "fill_container",
-                                  "content": "Existing email shows a clear recovery path",
+                                  "content": "Байгаа и-мэйл сэргээх тодорхой замыг харуулна",
                                   "lineHeight": 1.45,
                                   "fontFamily": "$font",
                                   "fontSize": 12,
@@ -25770,7 +25770,7 @@
                               "id": "i8W22",
                               "name": "H",
                               "fill": "$text",
-                              "content": "After you approve",
+                              "content": "Батласны дараа",
                               "fontFamily": "$font-head",
                               "fontSize": 15,
                               "fontWeight": "600"
@@ -25819,7 +25819,7 @@
                                       "id": "Csu2K",
                                       "name": "T",
                                       "fill": "$text",
-                                      "content": "Plan agent",
+                                      "content": "Төлөвлөгөө агент",
                                       "fontFamily": "$font",
                                       "fontSize": 12,
                                       "fontWeight": "600"
@@ -25829,7 +25829,7 @@
                                       "id": "MvLN8",
                                       "name": "S",
                                       "fill": "$text-3",
-                                      "content": "Plans against these screens",
+                                      "content": "Эдгээр дэлгэцийн дагуу төлөвлөнө",
                                       "fontFamily": "$font",
                                       "fontSize": 11,
                                       "fontWeight": "normal"
@@ -25882,7 +25882,7 @@
                                       "id": "p3BJU",
                                       "name": "T",
                                       "fill": "$text",
-                                      "content": "Tasks agent",
+                                      "content": "Даалгавар агент",
                                       "fontFamily": "$font",
                                       "fontSize": 12,
                                       "fontWeight": "600"
@@ -25892,7 +25892,7 @@
                                       "id": "A3hdm",
                                       "name": "S",
                                       "fill": "$text-3",
-                                      "content": "Breaks the plan into steps",
+                                      "content": "Төлөвлөгөөг алхмуудад хуваана",
                                       "fontFamily": "$font",
                                       "fontSize": 11,
                                       "fontWeight": "normal"
@@ -25945,7 +25945,7 @@
                                       "id": "X0Fx6P",
                                       "name": "T",
                                       "fill": "$text",
-                                      "content": "Implement agent",
+                                      "content": "Хөгжүүлэлт агент",
                                       "fontFamily": "$font",
                                       "fontSize": 12,
                                       "fontWeight": "600"
@@ -25955,7 +25955,7 @@
                                       "id": "iKO9V",
                                       "name": "S",
                                       "fill": "$text-3",
-                                      "content": "Builds the interface to match",
+                                      "content": "Интерфейсийг түүнд тааруулж бүтээнэ",
                                       "fontFamily": "$font",
                                       "fontSize": 11,
                                       "fontWeight": "normal"

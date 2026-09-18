@@ -12,7 +12,7 @@ import type { RequestHandler } from './$types';
  * function — the route being conventional does not make it public.
  */
 export const GET: RequestHandler = async ({ params, locals }) => {
-  if (!locals.user) throw notAuthorised('you must be signed in');
+  if (!locals.user) throw notAuthorised('та нэвтэрсэн байх ёстой');
 
   const screen = await screenBytes(db(), params.id);
   if (!screen) return new Response('not found', { status: 404 });

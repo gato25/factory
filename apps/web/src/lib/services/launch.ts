@@ -63,18 +63,18 @@ export function launchBlocker(ticket: {
   status: string;
   branchName: string | null;
 }): string | null {
-  if (!ticket.branchName) return 'This ticket has no branch yet.';
+  if (!ticket.branchName) return 'Энэ даалгаварт хараахан салбар алга.';
   if (ticket.status === 'done') return null;
   if (ticket.status === 'running' || ticket.status === 'queued') {
-    return 'Available once the run has finished and pushed its branch.';
+    return 'Ажиллагаа дуусаж, салбараа түлхсэний дараа боломжтой болно.';
   }
   if (ticket.status === 'waiting_approval') {
-    return 'Available once the run has finished; it is waiting at a checkpoint.';
+    return 'Ажиллагаа дуусмагц боломжтой болно; одоо хяналтын цэгт хүлээж байна.';
   }
   if (ticket.status === 'failed') {
-    return 'The run did not finish, so the branch may not hold a working project.';
+    return 'Ажиллагаа дуусаагүй тул салбарт ажиллах төсөл байхгүй байж магадгүй.';
   }
-  return 'Available once a run has finished.';
+  return 'Ажиллагаа дуусмагц боломжтой болно.';
 }
 
 /** Presses Run it (FR-001, FR-003, FR-015). */
@@ -85,12 +85,15 @@ export async function startLaunch(
 ): Promise<LaunchRow> {
   const { database } = deps;
   const [ticket] = await database.select().from(tickets).where(eq(tickets.id, ticketId)).limit(1);
-  if (!ticket) throw notFound('no such ticket');
+  if (!ticket) throw notFound('тийм даалгавар алга');
   const blocker = launchBlocker(ticket);
   if (blocker) throw invalidInput(blocker);
 
   if (await liveLaunchFor(database, ticketId)) {
-    throw new FactoryError('conflict', 'This ticket is already running. Stop it first.');
+    throw new FactoryError(
+      'conflict',
+      'Энэ даалгавар аль хэдийн ажиллаж байна. Эхлээд зогсооно уу.',
+    );
   }
 
   const [repository] = await database
@@ -98,7 +101,7 @@ export async function startLaunch(
     .from(repositories)
     .where(eq(repositories.id, ticket.repositoryId))
     .limit(1);
-  if (!repository) throw notFound('that repository is not connected');
+  if (!repository) throw notFound('тэр репозитори холбогдоогүй байна');
 
   const gitToken = await revealCredential(
     database,
@@ -149,7 +152,7 @@ export async function startLaunch(
       startedBy: user.id,
     })
     .returning();
-  if (!row) throw new FactoryError('conflict', 'could not record the launch');
+  if (!row) throw new FactoryError('conflict', 'ажиллуулалтыг бүртгэж чадсангүй');
   return row;
 }
 
@@ -170,7 +173,7 @@ export interface LaunchView {
 export async function refreshLaunch(deps: LaunchDeps, launchId: string): Promise<LaunchView> {
   const { database } = deps;
   const [row] = await database.select().from(launches).where(eq(launches.id, launchId)).limit(1);
-  if (!row) throw notFound('no such launch');
+  if (!row) throw notFound('тийм ажиллуулалт алга');
   if (row.stoppedAt) return { launch: row, log: [], from: null, notes: [] };
 
   const response = await deps.runner.request(`/launches/${row.runnerLaunchId}`);
@@ -181,7 +184,7 @@ export async function refreshLaunch(deps: LaunchDeps, launchId: string): Promise
       .update(launches)
       .set({
         status: 'stopped',
-        detail: 'The execution service restarted, and the launch went with it.',
+        detail: 'Гүйцэтгэх үйлчилгээ дахин эхэлж, ажиллуулалт нь хамт алга болсон.',
         url: null,
         stoppedAt: new Date(),
         updatedAt: new Date(),
@@ -229,7 +232,7 @@ export async function refreshLaunch(deps: LaunchDeps, launchId: string): Promise
 export async function stopLaunch(deps: LaunchDeps, launchId: string): Promise<LaunchRow> {
   const { database } = deps;
   const [row] = await database.select().from(launches).where(eq(launches.id, launchId)).limit(1);
-  if (!row) throw notFound('no such launch');
+  if (!row) throw notFound('тийм ажиллуулалт алга');
   if (row.stoppedAt) return row;
 
   // Best effort against the execution service; the row is marked stopped
@@ -357,7 +360,7 @@ export function parseHeaderLines(text: string): Record<string, string> {
 export function normalisePath(path: string): string {
   const trimmed = path.trim() || '/';
   if (/^[a-z]+:\/\//i.test(trimmed) || trimmed.startsWith('//')) {
-    throw invalidInput('Type a path such as /api/items, not a full address.');
+    throw invalidInput('Бүтэн хаяг биш, /api/items гэх мэт замыг бичнэ үү.');
   }
   return trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
 }
@@ -374,7 +377,7 @@ export async function sendThrough(
 ): Promise<ConsoleResponse> {
   const { launch } = await refreshLaunch(deps, launchId);
   if (launch.status !== 'running' || !launch.url) {
-    throw invalidInput('The project is not running, so there is nothing to send to.');
+    throw invalidInput('Төсөл ажиллахгүй байгаа тул илгээх газар алга.');
   }
   const path = normalisePath(request.path);
   const hasBody = !['GET', 'HEAD'].includes(request.method) && request.body.length > 0;
@@ -382,7 +385,7 @@ export async function sendThrough(
   try {
     headers = new Headers(parseHeaderLines(request.headers));
   } catch {
-    throw invalidInput('One of the headers has a name or value that is not allowed in a header.');
+    throw invalidInput('Толгойнуудын нэг нь зөвшөөрөгдөхгүй нэр эсвэл утгатай байна.');
   }
 
   const controller = new AbortController();
@@ -403,7 +406,7 @@ export async function sendThrough(
       'command_failed',
       controller.signal.aborted
         ? `The project did not answer within ${CONSOLE_TIMEOUT_MS / 1000} seconds.`
-        : 'The project could not be reached. It may have just stopped; the card above will say.',
+        : 'Төсөл рүү хүрч чадсангүй. Саяхан зогссон байж магадгүй; дээрх карт хэлнэ.',
       { detail },
     );
   } finally {

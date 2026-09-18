@@ -34,7 +34,7 @@ export interface ConnectDeps {
 export async function connectRepository(input: ConnectInput, deps: ConnectDeps) {
   const parsed = parseRepositoryUrl(input.url); // T051 refuses other hosts
   if (input.token.trim().length === 0) {
-    throw new FactoryError('credential_missing', 'Paste an access token for this repository.');
+    throw new FactoryError('credential_missing', 'Энэ репозиторийн хандалтын токеноо буулгана уу.');
   }
 
   const client = (deps.clientFor ?? clientFor)(parsed.provider);
@@ -53,7 +53,7 @@ export async function connectRepository(input: ConnectInput, deps: ConnectDeps) 
         lastVerifiedAt: new Date().toISOString(),
       })
       .returning();
-    if (!credential) throw new FactoryError('conflict', 'could not store the credential');
+    if (!credential) throw new FactoryError('conflict', 'нууц түлхүүрийг хадгалж чадсангүй');
 
     return tx
       .insert(repositories)
@@ -71,7 +71,7 @@ export async function connectRepository(input: ConnectInput, deps: ConnectDeps) 
   });
 
   const repository = inserted[0];
-  if (!repository) throw new FactoryError('conflict', 'could not save the repository');
+  if (!repository) throw new FactoryError('conflict', 'репозиторийг хадгалж чадсангүй');
   return { repository, hint: sealed.hint };
 }
 
@@ -116,7 +116,7 @@ export async function assertRepositoryUsable(database: Database, repositoryId: s
     .from(repositories)
     .where(eq(repositories.id, repositoryId))
     .limit(1);
-  if (!repository) throw notFound('that repository is not connected');
+  if (!repository) throw notFound('тэр репозитори холбогдоогүй байна');
   if (repository.status !== 'connected') {
     throw new FactoryError(
       repository.status === 'credential_expired' ? 'credential_invalid' : 'credential_missing',
@@ -148,7 +148,7 @@ export async function replaceCredential(repositoryId: string, token: string, dep
     .where(eq(repositories.id, repositoryId))
     .limit(1)
     .then((rows) => rows[0]);
-  if (!repository) throw notFound('that repository is not connected');
+  if (!repository) throw notFound('тэр репозитори холбогдоогүй байна');
 
   const parsed = parseRepositoryUrl(repository.cloneUrl);
   const client = (deps.clientFor ?? clientFor)(parsed.provider);
@@ -229,14 +229,14 @@ export async function setDefaultPipeline(
       .from(pipelines)
       .where(eq(pipelines.id, pipelineId))
       .limit(1);
-    if (!pipeline) throw notFound('no such pipeline');
+    if (!pipeline) throw notFound('тийм дамжлага алга');
   }
   const updated = await database
     .update(repositories)
     .set({ defaultPipelineId: pipelineId, updatedAt: new Date() })
     .where(eq(repositories.id, repositoryId))
     .returning({ defaultPipelineId: repositories.defaultPipelineId });
-  if (updated.length === 0) throw notFound('no such repository');
+  if (updated.length === 0) throw notFound('тийм репозитори алга');
   return { defaultPipelineId: updated[0]?.defaultPipelineId ?? null };
 }
 
@@ -254,12 +254,12 @@ export async function setRunSettings(
 ): Promise<{ runCommand: string | null; runPort: number | null }> {
   const command = input.command?.trim() || null;
   if (command && command.length > 500)
-    throw invalidInput('Keep the start command under 500 characters.');
+    throw invalidInput('Эхлүүлэх командыг 500 тэмдэгтээс богино байлгана уу.');
   if (
     input.port !== null &&
     !(Number.isInteger(input.port) && input.port > 0 && input.port < 65536)
   ) {
-    throw invalidInput('The port has to be a whole number between 1 and 65535.');
+    throw invalidInput('Порт нь 1-ээс 65535-ийн хооронд бүхэл тоо байх ёстой.');
   }
   const updated = await database
     .update(repositories)
@@ -267,6 +267,6 @@ export async function setRunSettings(
     .where(eq(repositories.id, repositoryId))
     .returning({ runCommand: repositories.runCommand, runPort: repositories.runPort });
   const row = updated[0];
-  if (!row) throw notFound('no such repository');
+  if (!row) throw notFound('тийм репозитори алга');
   return row;
 }

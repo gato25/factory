@@ -26,7 +26,7 @@ export async function runnerClient(
   const workspace = await theWorkspace(database);
   const base = workspace?.runnerBaseUrl?.replace(/\/+$/, '');
   if (!base) {
-    throw new FactoryError('invalid_input', 'The runner address is not set in Settings.');
+    throw new FactoryError('invalid_input', 'Ажиллуулагчийн хаяг Тохиргоонд заагдаагүй байна.');
   }
   const token = deps.authToken ?? process.env.RUNNER_AUTH_TOKEN ?? '';
   const doFetch = deps.fetch ?? fetch;

@@ -65,7 +65,7 @@ export async function continueRun(
   );
   const index = snapshot.pipeline.steps.findIndex((_step, at) => !settled.has(at));
   if (index === -1) {
-    throw conflict('every step of this run has finished; there is nothing left to continue');
+    throw conflict('энэ ажиллагааны алхам бүр дууссан; үргэлжлүүлэх зүйл үлдсэнгүй');
   }
 
   // The one fact a run establishes, when the specification step has said.

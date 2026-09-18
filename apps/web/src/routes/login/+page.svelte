@@ -10,15 +10,40 @@
 
   const NAMES = { gitlab: 'GitLab', github: 'GitHub' } as const;
 
+  /**
+   * A failed round trip comes back as a code in the query string, and a code
+   * is not something to show a person. The ones this application produces get
+   * a sentence; anything the provider sent back in its own words is shown as
+   * it arrived, because a provider's reason is more use than our guess at it.
+   */
+  const PROBLEMS: Record<string, string> = {
+    'unknown-provider': 'Тийм үйлчилгээ байхгүй байна.',
+    'bad-state': 'Нэвтрэх оролдлого баталгаажсангүй. Дахин эхнээс нь оролдоно уу.',
+    'gitlab-not-configured': 'GitLab-аар нэвтрэх тохиргоо хийгдээгүй байна.',
+    'github-not-configured': 'GitHub-аар нэвтрэх тохиргоо хийгдээгүй байна.',
+    access_denied: 'Нэвтрэх зөвшөөрлийг цуцаллаа.',
+  };
+  const problem = $derived(
+    data.problem ? (PROBLEMS[data.problem] ?? data.problem) : null,
+  );
+
   // The pipeline as main describes it: design is conditional on the ticket
   // changing the interface (FR-099, FR-032b).
-  const flow = ['Ticket', 'Spec', 'Design?', 'Plan', 'Tasks', 'Implement', 'MR'];
+  const flow = [
+    'Даалгавар',
+    'Тодорхойлолт',
+    'Дизайн?',
+    'Төлөвлөгөө',
+    'Даалгаврууд',
+    'Хөгжүүлэлт',
+    'Нэгтгэх хүсэлт',
+  ];
 </script>
 
 <div class="split">
   <section class="pitch">
     <h1>Code Factory</h1>
-    <p class="one-liner">Turn a ticket into a reviewable merge request.</p>
+    <p class="one-liner">Даалгавраас хянаж болох нэгтгэх хүсэлт болгоно.</p>
     <ol class="flow">
       {#each flow as step, i (step)}
         <li class:conditional={step.endsWith('?')}>
@@ -27,7 +52,7 @@
         </li>
       {/each}
     </ol>
-    <p class="note">Design runs only when a ticket changes the interface.</p>
+    <p class="note">Дизайн алхам зөвхөн интерфейс өөрчилдөг даалгавар дээр ажиллана.</p>
   </section>
 
   <!--
@@ -37,27 +62,27 @@
     SQL against the database.
   -->
   <section class="signin">
-    <h2>{data.needsFirstAccount ? 'Create the first account' : 'Sign in'}</h2>
-    {#if data.problem}
-      <p class="error" role="alert">{data.problem}</p>
+    <h2>{data.needsFirstAccount ? 'Эхний бүртгэл үүсгэх' : 'Нэвтрэх'}</h2>
+    {#if problem}
+      <p class="error" role="alert">{problem}</p>
     {/if}
 
     {#if data.needsFirstAccount}
       <p class="lede">
-        Nobody has an account here yet. This first one is the administrator — it can set the
-        connections, store credentials and invite everybody else.
+        Энд хараахан хэн ч бүртгэлгүй байна. Эхний бүртгэл нь администратор болно — холболтыг
+        тохируулж, нууц түлхүүрүүдийг хадгалж, бусдыг урьж чадна.
       </p>
       <form method="POST" action="?/register" use:enhance>
         <label>
-          Your name
-          <input name="name" type="text" autocomplete="name" placeholder="Optional" />
+          Таны нэр
+          <input name="name" type="text" autocomplete="name" placeholder="Заавал биш" />
         </label>
         <label>
-          Email
+          И-мэйл
           <input name="email" type="email" autocomplete="email" required value={form?.email ?? ''} />
         </label>
         <label>
-          Password
+          Нууц үг
           <input
             name="password"
             type="password"
@@ -66,39 +91,40 @@
             required
           />
           <span class="hint">
-            At least {MIN_PASSWORD_LENGTH} characters — this account can read every stored credential.
+            Хамгийн багадаа {MIN_PASSWORD_LENGTH} тэмдэгт — энэ бүртгэл хадгалагдсан бүх нууц
+            түлхүүрийг уншиж чадна.
           </span>
         </label>
         {#if form?.message}
           <p class="error" role="alert">{form.message}</p>
         {/if}
-        <button type="submit">Create account and sign in</button>
+        <button type="submit">Бүртгэл үүсгээд нэвтрэх</button>
       </form>
     {:else}
       {#if data.providers.length > 0}
         <div class="providers">
           {#each data.providers as provider (provider)}
-            <a class="provider" href="/login/{provider}">Continue with {NAMES[provider]}</a>
+            <a class="provider" href="/login/{provider}">{NAMES[provider]}-ээр үргэлжлүүлэх</a>
           {/each}
         </div>
-        <div class="or"><span>or</span></div>
+        <div class="or"><span>эсвэл</span></div>
       {/if}
       <form method="POST" action="?/password" use:enhance>
         <label>
-          Email
+          И-мэйл
           <input name="email" type="email" autocomplete="email" required value={form?.email ?? ''} />
         </label>
         <label>
-          Password
+          Нууц үг
           <input name="password" type="password" autocomplete="current-password" required />
         </label>
         {#if form?.message}
           <p class="error" role="alert">{form.message}</p>
         {/if}
-        <button type="submit">Sign in</button>
+        <button type="submit">Нэвтрэх</button>
       </form>
       <p class="note">
-        No account? An administrator invites you, or sign in with a connected provider.
+        Бүртгэлгүй юу? Администратор тань урих эсвэл холбогдсон үйлчилгээгээр нэвтэрнэ үү.
       </p>
     {/if}
   </section>

@@ -156,6 +156,6 @@ test('a member list counts what each person has created, before anyone is remove
 
 test('changing a role for somebody who is not there says so', async () => {
   await expect(setRole(db, '00000000-0000-4000-8000-000000000000', 'admin', admin)).rejects.toThrow(
-    /no such person/i,
+    /тийм хүн алга/i,
   );
 });

@@ -20,7 +20,7 @@ import { runnerClient } from '$lib/services/runner-client';
 
 function requireUser() {
   const user = getRequestEvent().locals.user;
-  if (!user) throw notAuthorised('you must be signed in');
+  if (!user) throw notAuthorised('та нэвтэрсэн байх ёстой');
   return user;
 }
 

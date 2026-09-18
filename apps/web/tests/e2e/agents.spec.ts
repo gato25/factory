@@ -115,7 +115,9 @@ async function signIn(context: BrowserContext, userId: string) {
  */
 async function skillsReady(page: import('@playwright/test').Page) {
   await page.goto('/skills');
-  await expect(page.getByText('Pick a skill on the left')).toHaveCount(0, { timeout: 15_000 });
+  await expect(page.getByText('Зүүн талаас ур чадвараа сонгоно уу')).toHaveCount(0, {
+    timeout: 15_000,
+  });
 }
 
 test.describe('configuring the agents and their skills', () => {
@@ -133,22 +135,22 @@ test.describe('configuring the agents and their skills', () => {
 
     // --- a skill first, so there is one to attach ---
     await skillsReady(page);
-    await page.getByRole('button', { name: 'New' }).click();
-    await page.getByLabel('Name').fill(`house-style-${seeded.tag}`);
+    await page.getByRole('button', { name: 'Шинэ' }).click();
+    await page.getByLabel('Нэр').fill(`house-style-${seeded.tag}`);
     await page
-      .getByLabel('Description (shown to the agent so it knows when to use this)')
+      .getByLabel('Тайлбар (агент хэзээ ашиглахаа мэдэхийн тулд харна)')
       .fill('When writing anything a customer will read');
-    await page.getByLabel('Content (Markdown)').fill('Write plainly. No exclamation marks.');
-    await page.getByRole('button', { name: 'Create skill' }).click();
+    await page.getByLabel('Агуулга (Markdown)').fill('Write plainly. No exclamation marks.');
+    await page.getByRole('button', { name: 'Ур чадвар үүсгэх' }).click();
     await expect(page.getByText(`house-style-${seeded.tag}`).first()).toBeVisible({
       timeout: 15_000,
     });
 
     // --- their own agent ---
     await page.goto('/agents');
-    await page.locator('form').getByLabel('Name').fill(`Planner ${seeded.tag}`);
-    await page.locator('form').getByLabel('What it is for').fill('Turns a spec into a plan');
-    await page.locator('form').getByRole('button', { name: 'Create' }).click();
+    await page.locator('form').getByLabel('Нэр').fill(`Planner ${seeded.tag}`);
+    await page.locator('form').getByLabel('Юунд зориулсан бэ').fill('Turns a spec into a plan');
+    await page.locator('form').getByRole('button', { name: 'Үүсгэх' }).click();
     await expect(page.getByText(`Planner ${seeded.tag}`)).toBeVisible({ timeout: 15_000 });
 
     const [created] = await sql`
@@ -158,8 +160,8 @@ test.describe('configuring the agents and their skills', () => {
 
     // --- change its instructions, model, tools and skills ---
     await page.goto(`/agents/${created!.id}`);
-    await page.getByLabel('System prompt').fill('Read docs/spec.md and write docs/plan.md.');
-    await page.getByLabel('Model').selectOption('claude-opus-5');
+    await page.getByLabel('Системийн заавар').fill('Read docs/spec.md and write docs/plan.md.');
+    await page.getByLabel('Загвар').selectOption('claude-opus-5');
 
     // Withhold Bash: everything but it.
     for (const tool of ['Read', 'Write', 'Edit']) {
@@ -168,11 +170,11 @@ test.describe('configuring the agents and their skills', () => {
     await expect(page.getByRole('checkbox', { name: /^Bash\b/ })).not.toBeChecked();
 
     // Skills are chips with an Add beside them, as the artboard draws them.
-    await page.getByRole('button', { name: 'Add' }).click();
+    await page.getByRole('button', { name: 'Нэмэх' }).click();
     await page.getByRole('button', { name: new RegExp(`house-style-${seeded.tag}`) }).click();
-    await page.getByLabel('Max turns').fill('25');
+    await page.getByLabel('Дээд эргэлт').fill('25');
 
-    await page.getByRole('button', { name: 'Save changes' }).click();
+    await page.getByRole('button', { name: 'Өөрчлөлт хадгалах' }).click();
     await expect(page.getByRole('status').first()).toContainText(
       'Runs already in flight are unaffected',
       { timeout: 15_000 },
@@ -197,10 +199,10 @@ test.describe('configuring the agents and their skills', () => {
     await page.goto(`/pipelines/${seeded.pipelineId}`);
     await page.getByRole('button', { name: /^Step 1 —/ }).click();
     await page
-      .getByRole('combobox', { name: 'Agent', exact: true })
+      .getByRole('combobox', { name: 'Агент', exact: true })
       .selectOption({ label: `Planner ${seeded.tag} — claude-opus-5` });
-    await page.getByRole('button', { name: 'Save as version 2' }).click();
-    await expect(page.getByRole('status').first()).toContainText('Saved as version 2', {
+    await page.getByRole('button', { name: '2-р хувилбар болгон хадгалах' }).click();
+    await expect(page.getByRole('status').first()).toContainText('2-р хувилбар болгон хадгаллаа', {
       timeout: 15_000,
     });
 
@@ -229,16 +231,16 @@ test.describe('configuring the agents and their skills', () => {
     );
 
     // Readable: the instructions are there.
-    await expect(page.getByLabel('System prompt')).toHaveValue('their instructions');
+    await expect(page.getByLabel('Системийн заавар')).toHaveValue('their instructions');
     // Not changeable.
-    await expect(page.getByLabel('System prompt')).not.toBeEditable();
-    await expect(page.getByRole('button', { name: 'Save changes' })).toHaveCount(0);
+    await expect(page.getByLabel('Системийн заавар')).not.toBeEditable();
+    await expect(page.getByRole('button', { name: 'Өөрчлөлт хадгалах' })).toHaveCount(0);
 
     // Usable: it can still be chosen in a pipeline the member owns.
     await page.goto(`/pipelines/${seeded.pipelineId}`);
     await page.getByRole('button', { name: /^Step 1 —/ }).click();
     await expect(
-      page.getByRole('combobox', { name: 'Agent', exact: true }).getByRole('option', {
+      page.getByRole('combobox', { name: 'Агент', exact: true }).getByRole('option', {
         name: new RegExp(`Theirs ${seeded.tag}`),
       }),
     ).toHaveCount(1);
@@ -252,9 +254,9 @@ test.describe('configuring the agents and their skills', () => {
     await signIn(context, seeded.memberId);
 
     await page.goto('/agents');
-    await page.locator('form').getByLabel('Name').fill(`Designer ${seeded.tag}`);
-    await page.locator('form').getByLabel('Engine').selectOption('design_cli');
-    await page.locator('form').getByRole('button', { name: 'Create' }).click();
+    await page.locator('form').getByLabel('Нэр').fill(`Designer ${seeded.tag}`);
+    await page.locator('form').getByLabel('Хөдөлгүүр').selectOption('design_cli');
+    await page.locator('form').getByRole('button', { name: 'Үүсгэх' }).click();
     await expect(page.getByText(`Designer ${seeded.tag}`)).toBeVisible({ timeout: 15_000 });
 
     const [created] = await sql`
@@ -262,14 +264,12 @@ test.describe('configuring the agents and their skills', () => {
     await page.goto(`/agents/${created!.id}`);
 
     // That service's own models, not the coding agent's.
-    const models = page.getByLabel('Model');
+    const models = page.getByLabel('Загвар');
     await expect(models.getByRole('option', { name: 'pen-default' })).toHaveCount(1);
     await expect(models.getByRole('option', { name: 'claude-opus-5' })).toHaveCount(0);
 
     // And no tool toggles at all — they do not apply.
-    await expect(
-      page.getByText('Tool permissions do not apply to the design service'),
-    ).toBeVisible();
+    await expect(page.getByText('Хэрэгслийн эрх дизайны үйлчилгээнд хамаарахгүй')).toBeVisible();
     await expect(page.getByRole('checkbox', { name: /^Bash\b/ })).toHaveCount(0);
   });
 
@@ -284,14 +284,16 @@ test.describe('configuring the agents and their skills', () => {
 
     await page.goto(`/agents/${seeded.shippedAgentId}`);
     // Nothing to reset yet, and the button says so rather than lying.
-    await expect(page.getByRole('button', { name: 'Reset to default' })).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Анхны төлөвт буцаах' })).toBeDisabled();
 
-    await page.getByLabel('System prompt').fill('my own version');
-    await page.getByRole('button', { name: 'Save changes' }).click();
-    await expect(page.getByRole('status').first()).toContainText('Saved', { timeout: 15_000 });
+    await page.getByLabel('Системийн заавар').fill('my own version');
+    await page.getByRole('button', { name: 'Өөрчлөлт хадгалах' }).click();
+    await expect(page.getByRole('status').first()).toContainText('Хадгалагдлаа', {
+      timeout: 15_000,
+    });
 
-    await expect(page.getByRole('button', { name: 'Reset to default' })).toBeEnabled();
-    await page.getByRole('button', { name: 'Reset to default' }).click();
+    await expect(page.getByRole('button', { name: 'Анхны төлөвт буцаах' })).toBeEnabled();
+    await page.getByRole('button', { name: 'Анхны төлөвт буцаах' }).click();
     await expect(page.getByRole('status').first()).toContainText(
       'Back to the configuration this agent shipped with',
       { timeout: 15_000 },
@@ -312,17 +314,17 @@ test.describe('configuring the agents and their skills', () => {
     await signIn(context, seeded.memberId);
     await page.goto(`/agents/${seeded.shippedAgentId}`);
 
-    await expect(page.getByText('Default').first()).toBeVisible();
-    await expect(page.getByRole('main')).toContainText('Changing this one is for an administrator');
-    await expect(page.getByLabel('System prompt')).not.toBeEditable();
+    await expect(page.getByText('Үндсэн').first()).toBeVisible();
+    await expect(page.getByRole('main')).toContainText('Үүнийг администратор өөрчилнө');
+    await expect(page.getByLabel('Системийн заавар')).not.toBeEditable();
 
     // Duplicating is the way through, and the copy is theirs.
     await page.goto('/agents');
     await page
       .locator('.cell', { hasText: `Shipped ${seeded.tag}` })
-      .getByRole('button', { name: 'Duplicate' })
+      .getByRole('button', { name: 'Хуулбарлах' })
       .click();
-    await expect(page.getByRole('status')).toContainText('yours to change', { timeout: 15_000 });
+    await expect(page.getByRole('status')).toContainText('одоо танайх боллоо', { timeout: 15_000 });
 
     const [copy] = await sql`
       select owner_id, system_prompt from agents where name = ${`Shipped ${seeded.tag} (copy)`}`;
@@ -338,13 +340,13 @@ test.describe('configuring the agents and their skills', () => {
     await signIn(context, seeded.memberId);
 
     await skillsReady(page);
-    await page.getByRole('button', { name: 'New' }).click();
-    await page.getByLabel('Name').fill(`house-voice-${seeded.tag}`);
+    await page.getByRole('button', { name: 'Шинэ' }).click();
+    await page.getByLabel('Нэр').fill(`house-voice-${seeded.tag}`);
     await page
-      .getByLabel('Description (shown to the agent so it knows when to use this)')
+      .getByLabel('Тайлбар (агент хэзээ ашиглахаа мэдэхийн тулд харна)')
       .fill('When writing anything a customer will read');
-    await page.getByLabel('Content (Markdown)').fill('# First\n- Write plainly.');
-    await page.getByRole('button', { name: 'Create skill' }).click();
+    await page.getByLabel('Агуулга (Markdown)').fill('# First\n- Write plainly.');
+    await page.getByRole('button', { name: 'Ур чадвар үүсгэх' }).click();
     await expect(
       page.getByRole('button', { name: new RegExp(`house-voice-${seeded.tag}`) }).first(),
     ).toBeVisible({ timeout: 15_000 });
@@ -354,24 +356,24 @@ test.describe('configuring the agents and their skills', () => {
       .getByRole('button', { name: new RegExp(`house-voice-${seeded.tag}`) })
       .first()
       .click();
-    await expect(page.getByLabel('Content (Markdown)')).toHaveValue('# First\n- Write plainly.');
-    await page.getByLabel('Content (Markdown)').fill('# Second\n- No exclamation marks.');
-    await page.getByRole('button', { name: 'Save skill' }).click();
-    await expect(page.getByRole('status').first()).toContainText('Saved as version 2', {
+    await expect(page.getByLabel('Агуулга (Markdown)')).toHaveValue('# First\n- Write plainly.');
+    await page.getByLabel('Агуулга (Markdown)').fill('# Second\n- No exclamation marks.');
+    await page.getByRole('button', { name: 'Ур чадвар хадгалах' }).click();
+    await expect(page.getByRole('status').first()).toContainText('2-р хувилбар болгон хадгаллаа', {
       timeout: 15_000,
     });
 
     // --- the history holds both, and says who wrote each ---
-    await page.getByRole('button', { name: 'History' }).click();
+    await page.getByRole('button', { name: 'Түүх' }).click();
     await expect(page.getByRole('button', { name: /^v2 / })).toBeVisible({ timeout: 15_000 });
     await page.getByRole('button', { name: /^v1 / }).click();
     await expect(page.getByTestId('version-content')).toContainText('- Write plainly.');
 
     // --- bringing an old one back is a new version, not a rewrite ---
     await page.getByRole('button', { name: /Put version 1 in the editor/ }).click();
-    await expect(page.getByLabel('Content (Markdown)')).toHaveValue('# First\n- Write plainly.');
-    await page.getByRole('button', { name: 'Save skill' }).click();
-    await expect(page.getByRole('status').first()).toContainText('Saved as version 3', {
+    await expect(page.getByLabel('Агуулга (Markdown)')).toHaveValue('# First\n- Write plainly.');
+    await page.getByRole('button', { name: 'Ур чадвар хадгалах' }).click();
+    await expect(page.getByRole('status').first()).toContainText('3-р хувилбар болгон хадгаллаа', {
       timeout: 15_000,
     });
 

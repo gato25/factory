@@ -33,8 +33,8 @@ export const repositories = query(async () => {
 export const requiredScopes = query(async () => REQUIRED_SCOPES);
 
 const ConnectSchema = v.object({
-  url: v.pipe(v.string(), v.trim(), v.minLength(1, 'Paste the repository address.')),
-  token: v.pipe(v.string(), v.minLength(1, 'Paste an access token.')),
+  url: v.pipe(v.string(), v.trim(), v.minLength(1, 'Репозиторийн хаягаа буулгана уу.')),
+  token: v.pipe(v.string(), v.minLength(1, 'Хандалтын токен буулгана уу.')),
   defaultPipelineId: v.optional(v.string()),
 });
 
@@ -59,7 +59,7 @@ export const connect = form(ConnectSchema, async (data) => {
 export const replaceToken = form(
   v.object({
     repositoryId: v.pipe(v.string(), v.uuid()),
-    token: v.pipe(v.string(), v.minLength(1, 'Paste the new access token.')),
+    token: v.pipe(v.string(), v.minLength(1, 'Шинэ хандалтын токеноо буулгана уу.')),
   }),
   async (data) => {
     requireAdmin(user());
@@ -101,7 +101,7 @@ export const changeRunSettings = form(
     command: v.pipe(
       v.optional(v.string(), ''),
       v.trim(),
-      v.maxLength(500, 'Keep the start command under 500 characters.'),
+      v.maxLength(500, 'Эхлүүлэх командыг 500 тэмдэгтээс богино байлгана уу.'),
     ),
     port: v.pipe(
       v.optional(v.string(), ''),
@@ -109,7 +109,7 @@ export const changeRunSettings = form(
       v.check(
         (text) =>
           text === '' || (/^\d{1,5}$/.test(text) && Number(text) >= 1 && Number(text) <= 65535),
-        'The port has to be a whole number between 1 and 65535.',
+        'Порт нь 1-ээс 65535-ийн хооронд бүхэл тоо байх ёстой.',
       ),
     ),
   }),

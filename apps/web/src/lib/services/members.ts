@@ -53,9 +53,9 @@ export async function invite(
   requireAdmin(user);
   const name = input.name.trim();
   const email = input.email.trim().toLowerCase();
-  if (!name) throw invalidInput('Give them a name.');
+  if (!name) throw invalidInput('Тэдэнд нэр өгнө үү.');
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
-    throw invalidInput(`${input.email} does not look like an email address.`);
+    throw invalidInput(`${input.email} и-мэйл хаяг шиг харагдахгүй байна.`);
   }
 
   try {
@@ -63,11 +63,11 @@ export async function invite(
       .insert(users)
       .values({ name, email, role: input.role ?? 'member' })
       .returning();
-    if (!created) throw conflict('could not invite them');
+    if (!created) throw conflict('тэднийг урьж чадсангүй');
     return { id: created.id };
   } catch (error) {
     if (flatten(error).includes('users_email_unique')) {
-      throw conflict(`${email} is already in this workspace.`);
+      throw conflict(`${email} аль хэдийн энэ ажлын талбарт байна.`);
     }
     throw error;
   }
@@ -86,7 +86,7 @@ export async function setRole(
 ): Promise<{ role: 'admin' | 'member' }> {
   requireAdmin(user);
   const [target] = await database.select().from(users).where(eq(users.id, userId)).limit(1);
-  if (!target) throw notFound('no such person');
+  if (!target) throw notFound('тийм хүн алга');
 
   if (target.role === 'admin' && role === 'member') {
     const [remaining] = await database
@@ -124,11 +124,11 @@ export async function remove(
 ): Promise<{ removed: true; ticketsKept: number; ownedTransferred: number }> {
   const admin = requireAdmin(user);
   if (userId === admin.id) {
-    throw conflict('You cannot remove yourself. Ask another administrator.');
+    throw conflict('Та өөрийгөө хасч чадахгүй. Өөр администратораас хүсээрэй.');
   }
 
   const [target] = await database.select().from(users).where(eq(users.id, userId)).limit(1);
-  if (!target) throw notFound('no such person');
+  if (!target) throw notFound('тийм хүн алга');
 
   const { agents, pipelines, skills } = await import('@factory/db/schema');
   let ownedTransferred = 0;

@@ -9,8 +9,7 @@
 
 {#if position !== null}
   <p class="badge warn queued">
-    Waiting for a free sandbox — position {position} in the queue{#if cap}, which holds {cap} at
-      once{/if}.
+    Сул орчин хүлээж байна — дараалалд {position}-рт{#if cap}, зэрэг {cap} орчин ажиллана{/if}.
   </p>
 {/if}
 

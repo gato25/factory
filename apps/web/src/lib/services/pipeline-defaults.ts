@@ -30,14 +30,14 @@ const gate = (approvers: 'anyone' | 'ticket_creator' = 'anyone'): Step => ({
 export const DEFAULT_PIPELINES: DefaultPipeline[] = [
   {
     slug: 'quick-fix',
-    name: 'Quick fix',
-    description: 'No checkpoints. For small, well-described changes you trust unattended.',
+    name: 'Хурдан засвар',
+    description: 'Хяналтын цэггүй. Зөвхөн хөгжүүлэлт, сайн тайлбарласан жижиг өөрчлөлтөд.',
     steps: [agentStep('spec'), agentStep('plan'), agentStep('tasks'), agentStep('implement')],
   },
   {
     slug: 'standard',
-    name: 'Standard',
-    description: 'One checkpoint, after the plan, before any code is written.',
+    name: 'Стандарт',
+    description: 'Төлөвлөгөөний дараа, код бичихээс өмнө нэг хяналтын цэг.',
     steps: [
       agentStep('spec'),
       agentStep('plan'),
@@ -48,8 +48,8 @@ export const DEFAULT_PIPELINES: DefaultPipeline[] = [
   },
   {
     slug: 'review-heavy',
-    name: 'Review-heavy',
-    description: 'A checkpoint after the specification, the plan, and the implementation.',
+    name: 'Хяналттай',
+    description: 'Тодорхойлолт, төлөвлөгөө, хөгжүүлэлтийн дараа тус бүр хяналтын цэг.',
     steps: [
       agentStep('spec'),
       gate(),

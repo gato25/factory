@@ -91,9 +91,9 @@
   <header>
     <span class="l">
       <Icon name="terminal" size={16} />
-      <span class="t">{step.label} · {live ? 'live output' : 'output'}</span>
+      <span class="t">{step.label} · {live ? 'шууд гаралт' : 'гаралт'}</span>
       {#if live}
-        <span class="live"><span class="d"></span>LIVE</span>
+        <span class="live"><span class="d"></span>ШУУД</span>
       {/if}
     </span>
     <code>{command}</code>
@@ -101,16 +101,16 @@
 
   <div class="body">
     {#if chunks.error}
-      <p role="alert">Could not load the output.</p>
+      <p role="alert">Гаралтыг ачаалж чадсангүй.</p>
     {:else if !chunks.ready}
-      <p>Loading output…</p>
+      <p>Гаралтыг ачааллаж байна…</p>
     {:else if lines.length === 0}
       <p>
         {step.state === 'pending'
-          ? 'This step has not started.'
+          ? 'Энэ алхам эхлээгүй байна.'
           : step.state === 'skipped'
-            ? `Skipped — ${step.conditionNotMet}.`
-            : 'No output yet.'}
+            ? `Алгассан — ${step.conditionNotMet}.`
+            : 'Хараахан гаралт алга.'}
       </p>
     {:else}
       {#each lines as line (line.key)}

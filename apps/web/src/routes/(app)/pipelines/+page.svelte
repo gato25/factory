@@ -6,7 +6,7 @@
 </script>
 
 <header class="head">
-  <p class="muted small">A pipeline is the order of steps a ticket goes through.</p>
+  <p class="muted small">Дамжлага гэдэг нь даалгаврын дамжин өнгөрөх алхмуудын дараалал юм.</p>
 </header>
 
 {#if notice}<p class="card notice" role="status">{notice}</p>{/if}
@@ -14,12 +14,12 @@
 {#if list.error}
   <p class="card failure" role="alert">{(list.error as Error).message}</p>
 {:else if !list.ready}
-  <p class="card">Loading pipelines…</p>
+  <p class="card">Дамжлагуудыг ачааллаж байна…</p>
 {:else}
   <section class="card">
-    <h2 class="section">Pipelines</h2>
+    <h2 class="section">Дамжлага</h2>
     {#if list.current.length === 0}
-      <p class="muted small">None yet. Create one below.</p>
+      <p class="muted small">Хараахан алга. Доор нэгийг үүсгэнэ үү.</p>
     {:else}
       <ul>
         {#each list.current as item (item.id)}
@@ -33,16 +33,14 @@
             <span class="meta muted small">
               v{item.currentVersion}
               <!-- How many repositories use it, before anyone changes it (FR-030) -->
-              &middot; {item.repositoriesUsing} repositor{item.repositoriesUsing === 1
-                ? 'y'
-                : 'ies'}
+              &middot; {item.repositoriesUsing} репозитори ашиглаж байна
             </span>
             <button
               type="button"
               onclick={async () => {
                 const result = await duplicate(item.id);
                 notice = ('problem' in result ? result.problem : result.message) ?? null;
-              }}>Duplicate</button
+              }}>Хуулбарлах</button
             >
           </li>
         {/each}
@@ -51,14 +49,14 @@
   </section>
 
   <form {...create} class="card new">
-    <h2 class="section">New pipeline</h2>
+    <h2 class="section">Шинэ дамжлага</h2>
     <label>
-      <span class="small muted">Name</span>
-      <input name="name" placeholder="Reviewed before build" required />
+      <span class="small muted">Нэр</span>
+      <input name="name" placeholder="Build хийхээс өмнө хянана" required />
     </label>
     <label>
-      <span class="small muted">What it is for</span>
-      <input name="description" placeholder="Everything customer-facing" />
+      <span class="small muted">Юунд зориулсан бэ</span>
+      <input name="description" placeholder="Харилцагч харах бүх зүйл" />
     </label>
     {#if create.fields.allIssues()?.length}
       <ul class="errors" role="alert">
@@ -71,7 +69,7 @@
       <p class="errors" role="alert">{create.result.problem}</p>
     {/if}
     <div class="row">
-      <button class="primary" type="submit" disabled={create.pending > 0}>Create</button>
+      <button class="primary" type="submit" disabled={create.pending > 0}>Үүсгэх</button>
     </div>
   </form>
 {/if}

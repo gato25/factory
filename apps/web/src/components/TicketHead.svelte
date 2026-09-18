@@ -37,7 +37,7 @@
 <header class="head">
   <div class="l">
     <p class="crumb">
-      <a href="/tickets">Tickets</a>
+      <a href="/tickets">Даалгавар</a>
       <Icon name="chevron-right" size={14} />
       <span>{repositoryName}</span>
       <Icon name="chevron-right" size={14} />
@@ -53,14 +53,14 @@
     </div>
 
     <div class="meta">
-      <span><Icon name="git-branch" size={14} />{branchName ?? 'no branch yet'}</span>
-      <span><Icon name="user" size={14} />Created by {createdByName ?? 'unknown'}</span>
+      <span><Icon name="git-branch" size={14} />{branchName ?? 'салбар хараахан алга'}</span>
+      <span><Icon name="user" size={14} />{createdByName ?? 'тодорхойгүй'} үүсгэсэн</span>
       {#if startedAt}
         <span title={exact(startedAt)}>
-          <Icon name="timer" size={14} />Started {ago(startedAt)}
+          <Icon name="timer" size={14} />{ago(startedAt)} эхэлсэн
         </span>
       {/if}
-      <span><Icon name="coins" size={14} />${costUsd} so far</span>
+      <span><Icon name="coins" size={14} />одоогоор ${costUsd}</span>
     </div>
   </div>
 

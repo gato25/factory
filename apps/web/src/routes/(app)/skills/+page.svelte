@@ -108,7 +108,7 @@
   <section class="panel list">
     <header>
       <div class="title">
-        <h2>Skills</h2>
+        <h2>Ур чадвар</h2>
         <button
           type="button"
           class="new"
@@ -119,26 +119,26 @@
           }}
         >
           <Icon name="plus" size={14} />
-          <span>New</span>
+          <span>Шинэ</span>
         </button>
       </div>
       <p>
-        Reusable instruction files any agent can use. They are copied into .claude/skills/ for each
-        run.
+        Аль ч агент ашиглаж болох дахин хэрэглэгдэх зааврын файлууд. Ажиллагаа бүрт
+        .claude/skills/ дотор хуулагдана.
       </p>
       <label class="search">
         <Icon name="search" size={14} />
-        <input placeholder="Search skills" bind:value={filter} aria-label="Search skills" />
+        <input placeholder="Ур чадвар хайх" bind:value={filter} aria-label="Ур чадвар хайх" />
       </label>
     </header>
 
     {#if list.error}
       <p class="state error" role="alert">{(list.error as Error).message}</p>
     {:else if !list.ready}
-      <p class="state">Loading skills…</p>
+      <p class="state">Ур чадваруудыг ачааллаж байна…</p>
     {:else if shown.length === 0}
       <p class="state">
-        {list.current.length === 0 ? 'No skills yet.' : 'No skill matches that.'}
+        {list.current.length === 0 ? 'Хараахан ур чадвар алга.' : 'Тохирох ур чадвар алга.'}
       </p>
     {:else}
       <ul>
@@ -155,7 +155,7 @@
                 <span class="n">{item.name}</span>
                 <span class="d">{item.description}</span>
               </span>
-              <span class="u">{item.agentCount} agent{item.agentCount === 1 ? '' : 's'}</span>
+              <span class="u">{item.agentCount} агент</span>
             </button>
           </li>
         {/each}
@@ -165,9 +165,9 @@
 
   <section class="panel editor">
     {#if !creating && openId && !open?.ready}
-      <p class="state">Loading…</p>
+      <p class="state">Ачааллаж байна…</p>
     {:else if !creating && !openId}
-      <p class="state">Pick a skill on the left, or start a new one.</p>
+      <p class="state">Зүүн талаас ур чадвараа сонгох эсвэл шинээр эхлүүлнэ үү.</p>
     {:else}
       {@const s = open?.ready ? open.current : null}
       <form {...action} class="sheet">
@@ -178,28 +178,28 @@
         <header class="h">
           <div class="l">
             <div class="nr">
-              <span class="name">{creating ? 'New skill' : (s?.name ?? '')}</span>
+              <span class="name">{creating ? 'Шинэ ур чадвар' : (s?.name ?? '')}</span>
               {#if s}
                 <!-- How much depends on it, at the point of changing it (FR-043a) -->
                 <span class="badge">
                   <span class="dot"></span>
-                  Used by {s.agents.length} agent{s.agents.length === 1 ? '' : 's'}
+                  {s.agents.length} агент ашиглаж байна
                 </span>
               {/if}
             </div>
             <p class="path" title={s ? exact(s.updatedAt) : undefined}>
               {#if creating}
-                Saved to .claude/skills/&lt;name&gt;/SKILL.md inside every run that uses it.
+                Үүнийг ашиглах ажиллагаа бүрт .claude/skills/&lt;name&gt;/SKILL.md болж хадгалагдана.
               {:else if s}
-                .claude/skills/{s.name}/SKILL.md · last edited {ago(s.updatedAt)}
-                {#if s.updatedByName}by {s.updatedByName}{/if}
+                .claude/skills/{s.name}/SKILL.md · {ago(s.updatedAt)}
+                {#if s.updatedByName}{s.updatedByName}{/if} засварласан
                 <!-- Whose it is, where there is something to say: a shipped
                      default belongs to nobody, and another member's is
                      readable but not yours to change (FR-006b, FR-006c). -->
                 {#if s.isDefault}
-                  · shipped
+                  · үндсэн
                 {:else if s.ownerId !== data.user.id && s.ownerName}
-                  · owned by {s.ownerName}
+                  · {s.ownerName}-ийнх
                 {/if}
               {/if}
             </p>
@@ -217,7 +217,7 @@
                 }}
               >
                 <Icon name="history" size={16} />
-                <span>History</span>
+                <span>Түүх</span>
               </button>
             {/if}
             {#if !creating && s?.mayChange}
@@ -234,13 +234,13 @@
                 }}
               >
                 <Icon name="trash-2" size={16} />
-                <span>Delete</span>
+                <span>Устгах</span>
               </button>
             {/if}
             {#if mayChange}
               <button type="submit" class="primary" disabled={action.pending > 0}>
                 <Icon name="save" size={16} />
-                <span>{creating ? 'Create skill' : 'Save skill'}</span>
+                <span>{creating ? 'Ур чадвар үүсгэх' : 'Ур чадвар хадгалах'}</span>
               </button>
             {/if}
           </div>
@@ -261,32 +261,32 @@
 
         <div class="meta">
           <label class="f name">
-            <span>Name</span>
+            <span>Нэр</span>
             <input name="name" bind:value={draft.name} readonly={!mayChange} required />
           </label>
           <label class="f">
-            <span>Description (shown to the agent so it knows when to use this)</span>
+            <span>Тайлбар (агент хэзээ ашиглахаа мэдэхийн тулд харна)</span>
             <input
               name="description"
               bind:value={draft.description}
               readonly={!mayChange}
               required
-              placeholder="Use before creating or moving files"
+              placeholder="Файл үүсгэх, зөөхийн өмнө ашиглана"
             />
           </label>
         </div>
 
         {#if showHistory && versions}
           <div class="ed-label">
-            <span>History</span>
+            <span>Түүх</span>
             <button type="button" class="link" onclick={() => (showHistory = false)}>
-              Back to the content
+              Агуулга руу буцах
             </button>
           </div>
           {#if versions?.error}
             <p class="state error" role="alert">{(versions.error as Error).message}</p>
           {:else if !versions?.ready}
-            <p class="state">Loading history…</p>
+            <p class="state">Түүхийг ачааллаж байна…</p>
           {:else}
             <div class="history">
               <ul class="versions">
@@ -304,24 +304,24 @@
                         <span class="n">{version.name}</span>
                         <span class="d">
                           <time title={exact(version.createdAt)}>{ago(version.createdAt)}</time>
-                          {#if version.authorName}by {version.authorName}{/if}
+                          {#if version.authorName}· {version.authorName}{/if}
                         </span>
                       </span>
-                      {#if version.current}<span class="u">current</span>{/if}
+                      {#if version.current}<span class="u">одоогийн</span>{/if}
                     </button>
                   </li>
                 {/each}
                 {#if versionList.length === 0}
                   <li class="state">
-                    Nothing recorded yet — this skill predates the history, and the next save starts
-                    it.
+                    Хараахан тэмдэглэгдсэн зүйл алга — энэ ур чадвар түүхээс өмнө үүссэн бөгөөд
+                    дараагийн хадгалалт нь түүхийг эхлүүлнэ.
                   </li>
                 {/if}
               </ul>
 
               <div class="reading">
                 {#if chosen === null}
-                  <p class="state">Pick a version to read what it said.</p>
+                  <p class="state">Юу бичсэнийг унших хувилбараа сонгоно уу.</p>
                 {:else}
                   <div class="code" data-testid="version-content">
                     {#each chosen.content.split('\n') as line, i (i)}
@@ -343,14 +343,14 @@
                           content: picked.content,
                         };
                         notice =
-                          `Version ${picked.version} is in the editor. It is not saved until ` +
-                          'you save it, and saving it makes a new version rather than ' +
-                          'rewriting the old one.';
+                          `${picked.version}-р хувилбар засварлагч дотор орлоо. Та хадгалах ` +
+                          'хүртэл хадгалагдахгүй бөгөөд хадгалахад хуучныг дарж бичихгүй, ' +
+                          'шинэ хувилбар үүснэ.';
                         showHistory = false;
                       }}
                     >
                       <Icon name="undo-2" size={16} />
-                      <span>Put version {picked.version} in the editor</span>
+                      <span>{picked.version}-р хувилбарыг засварлагчид оруулах</span>
                     </button>
                   {/if}
                 {/if}
@@ -359,9 +359,9 @@
           {/if}
         {:else}
           <div class="ed-label">
-            <span>Content (Markdown)</span>
+            <span>Агуулга (Markdown)</span>
             <button type="button" class="link" onclick={() => (preview = !preview)}>
-              {preview ? 'Source' : 'Preview'}
+              {preview ? 'Эх бичвэр' : 'Урьдчилан харах'}
             </button>
           </div>
 
@@ -380,7 +380,7 @@
                     >{#if i < lines.length - 1}{'\n'}{/if}{/each}</pre>
                 <textarea
                   name="content"
-                  aria-label="Content (Markdown)"
+                  aria-label="Агуулга (Markdown)"
                   spellcheck="false"
                   readonly={!mayChange}
                   bind:value={draft.content}

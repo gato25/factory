@@ -185,7 +185,7 @@ test('only the owner or an administrator may save', async () => {
   } catch (error) {
     refused = error as Error;
   }
-  expect(refused?.message).toContain('belongs to someone else');
+  expect(refused?.message).toContain('өөр хүнийх');
 
   // An administrator may.
   const admin = { ...stranger, role: 'admin' as const };

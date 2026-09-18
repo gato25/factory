@@ -28,7 +28,7 @@ export function parseRepositoryUrl(input: string): ParsedRepository {
   try {
     url = new URL(input.trim());
   } catch {
-    throw invalidInput(`"${input}" is not a URL. Paste the repository's web address.`);
+    throw invalidInput(`"${input}" нь хаяг биш байна. Репозиторийн вэб хаягийг буулгана уу.`);
   }
   const provider = HOSTS[url.hostname.toLowerCase()];
   if (!provider) {
@@ -146,10 +146,10 @@ export function tokenPageUrl(provider: Provider, host?: string): string {
 
 /** What each provider's token page says about itself, in its own words. */
 export const TOKEN_PAGE_NOTE: Record<Provider, string> = {
-  gitlab: 'Opens with the name and scopes already filled in — set an expiry and create it.',
+  gitlab: 'Нэр, эрхийг нь бөглөсөн хуудас нээнэ — хугацааг нь заагаад үүсгэнэ үү.',
   github:
-    'Opens a classic token with `repo` ticked, which covers all three permissions above. ' +
-    'A fine-grained token works too, but GitHub cannot pre-select its permissions from a link.',
+    '`repo` эрхийг тэмдэглэсэн classic токен нээнэ, энэ нь дээрх гурван эрхийг бүгдийг хамарна. ' +
+    'Fine-grained токен ч болно, гэхдээ GitHub түүний эрхийг холбоосоор урьдчилан сонгож чаддаггүй.',
 };
 
 const DEFAULT_HOSTS: Record<Provider, string> = {

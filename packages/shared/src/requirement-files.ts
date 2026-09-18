@@ -139,7 +139,7 @@ export function byteLength(content: string): number {
 
 /** A size a person reads, not a number of bytes. */
 export function describeBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} bytes`;
+  if (bytes < 1024) return `${bytes} байт`;
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
@@ -157,27 +157,27 @@ export function checkFile(file: IncomingFile): RequirementFileProblem | null {
     return {
       reason: 'type',
       message:
-        `${file.name || 'that file'} is not a kind that can be read as text. ` +
-        `Attach one of: ${ACCEPTED_EXTENSIONS.join(', ')}.`,
+        `${file.name || 'Тэр файл'} нь текстээр уншигдах төрөл биш байна. ` +
+        `Дараахаас нэгийг хавсаргана уу: ${ACCEPTED_EXTENSIONS.join(', ')}.`,
     };
   }
   if (!file.name.trim()) {
-    return { reason: 'name', message: 'That file has no usable name.' };
+    return { reason: 'name', message: 'Тэр файлын нэр ашиглах боломжгүй байна.' };
   }
   const size = byteLength(file.content);
   if (size === 0) {
-    return { reason: 'empty', message: `${file.name} is empty, so there is nothing to read.` };
+    return { reason: 'empty', message: `${file.name} хоосон байна, уншаад ашиг алга.` };
   }
   if (size > MAX_FILE_BYTES) {
     return {
       reason: 'too_large',
-      message: `${file.name} is ${describeBytes(size)}, and the limit for one file is ${describeBytes(MAX_FILE_BYTES)}.`,
+      message: `${file.name} нь ${describeBytes(size)} байна, нэг файлын хязгаар ${describeBytes(MAX_FILE_BYTES)}.`,
     };
   }
   if (!looksLikeText(file.content)) {
     return {
       reason: 'binary',
-      message: `${file.name} is not readable as text, even though its name says it is.`,
+      message: `${file.name} нь нэрнийхээ дагуу текст биш, уншигдахгүй байна.`,
     };
   }
   return null;
@@ -204,7 +204,7 @@ export function checkAddition(
   if (count > MAX_FILES) {
     return {
       reason: 'too_many',
-      message: `A ticket can carry ${MAX_FILES} files, and this would make ${count}.`,
+      message: `Нэг даалгавар ${MAX_FILES} файл дийлнэ, энэ бол ${count} болж байна.`,
     };
   }
   const total =
@@ -214,8 +214,8 @@ export function checkAddition(
     return {
       reason: 'total_too_large',
       message:
-        `That would bring this ticket to ${describeBytes(total)} of requirements, ` +
-        `and the limit is ${describeBytes(MAX_TOTAL_BYTES)}.`,
+        `Ингэвэл энэ даалгаврын шаардлагууд ${describeBytes(total)} болох бөгөөд ` +
+        `хязгаар нь ${describeBytes(MAX_TOTAL_BYTES)}.`,
     };
   }
   return null;

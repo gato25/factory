@@ -92,7 +92,7 @@ test("another member's agent is readable and usable, not changeable (FR-006c)", 
   // Not changeable — and told what they CAN do.
   const message = await refusal(() => updateAgent(db, created.id, { name: 'Mine now' }, theirs));
   expect(message).toBe(
-    'this agent belongs to Bat. You can use it and duplicate it, but not change it.',
+    'Энэ агент Bat-д харьяалагдана. Та үүнийг ашиглаж, хуулбарлаж болно, гэхдээ өөрчилж болохгүй.',
   );
 
   // And it really did not change.
@@ -119,8 +119,8 @@ test('a shipped agent is available to everyone and administrator-only to change'
     updateAgent(db, scenario.specAgentId, { name: 'Spec, edited' }, mine),
   );
   expect(message).toBe(
-    'this agent ships with Code Factory. You can use it and duplicate it; only an ' +
-      'administrator can change it.',
+    'Энэ агент Code Factory-тай хамт ирдэг. Та үүнийг ашиглаж, хуулбарлаж болно; ' +
+      'зөвхөн администратор өөрчилнө.',
   );
 
   // An administrator may.

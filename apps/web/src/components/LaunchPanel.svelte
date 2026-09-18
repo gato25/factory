@@ -41,16 +41,16 @@
   /** Why the button is not available, in words rather than by hiding it (FR-003). */
   const blocker = $derived(
     !branchName
-      ? 'This ticket has no branch yet.'
+      ? 'Энэ даалгаварт хараахан салбар алга.'
       : status === 'done'
         ? null
         : status === 'running' || status === 'queued'
-          ? 'Available once the run has finished and pushed its branch.'
+          ? 'Ажиллагаа дуусаж, салбараа түлхсэний дараа боломжтой болно.'
           : status === 'waiting_approval'
-            ? 'Available once the run has finished; it is waiting at a checkpoint.'
+            ? 'Ажиллагаа дуусмагц боломжтой болно; одоо хяналтын цэгт хүлээж байна.'
             : status === 'failed'
-              ? 'The run did not finish, so the branch may not hold a working project.'
-              : 'Available once a run has finished.'
+              ? 'Ажиллагаа дуусаагүй тул салбарт ажиллах төсөл байхгүй байж магадгүй.'
+              : 'Ажиллагаа дуусмагц боломжтой болно.'
   );
 
   async function act(work: () => Promise<{ ok: boolean; message?: string }>) {
@@ -58,7 +58,7 @@
     notice = null;
     try {
       const result = await work();
-      if (!result.ok) notice = result.message ?? 'That did not work.';
+      if (!result.ok) notice = result.message ?? 'Болсонгүй.';
     } finally {
       working = false;
     }
@@ -82,14 +82,14 @@
   });
 </script>
 
-<section class="card run" aria-label="Run it">
+<section class="card run" aria-label="Ажиллуулж үзэх">
   <header>
     <span class="ic"><Icon name="play" size={15} /></span>
-    <h2>Run it</h2>
+    <h2>Ажиллуулж үзэх</h2>
     {#if launch?.status === 'running'}
-      <span class="state ok"><span class="dot"></span>Running</span>
+      <span class="state ok"><span class="dot"></span>Ажиллаж байна</span>
     {:else if launch?.status === 'starting'}
-      <span class="state live"><span class="dot"></span>Starting</span>
+      <span class="state live"><span class="dot"></span>Эхэлж байна</span>
     {/if}
   </header>
 
@@ -97,19 +97,19 @@
     <!-- Nothing running: the button, or the reason there is none. -->
     {#if launch?.status === 'failed'}
       <p class="ended bad">
-        <strong>It did not start.</strong>
+        <strong>Эхэлж чадсангүй.</strong>
         {#if launch.detail}<span class="detail">{launch.detail}</span>{/if}
       </p>
       <p class="small muted">
-        If the command is wrong for this project, set one on the repository —
-        <a href="/repositories">Repositories → Set how it starts</a>.
+        Хэрэв команд нь энэ төсөлд тохирохгүй бол репозитори дээрээ өөрийг нь зааж өгнө үү —
+        <a href="/repositories">Репозитори → Хэрхэн эхлэхийг тохируулах</a>.
       </p>
     {:else if launch?.status === 'stopped'}
-      <p class="ended">{launch.detail ?? 'Stopped.'}</p>
+      <p class="ended">{launch.detail ?? 'Зогслоо.'}</p>
     {/if}
     <p class="small muted">
-      Starts the branch <code>{branchName ?? '—'}</code> in a fresh sandbox, on a port only this
-      machine can reach.
+      <code>{branchName ?? '—'}</code> салбарыг шинэ sandbox дотор, зөвхөн энэ машин хүрэх портод
+      ажиллуулна.
     </p>
     <button
       type="button"
@@ -119,48 +119,48 @@
       onclick={() => act(() => start(ticketId))}
     >
       <Icon name="play" size={14} />
-      {launch ? 'Run it again' : 'Run it'}
+      {launch ? 'Дахин ажиллуулах' : 'Ажиллуулж үзэх'}
     </button>
     {#if blocker}<p class="small muted">{blocker}</p>{/if}
   {:else if launch.status === 'starting'}
     <p class="small muted">
-      Cloning, installing and starting. The project's own output is below; this usually takes a
-      minute or two the first time.
+      Хуулж, суулгаж, эхлүүлж байна. Төслийн өөрийнх нь гаралт доор байна; эхний удаад ихэвчлэн
+      нэг хоёр минут болдог.
     </p>
-    {#if current?.from}<p class="small muted">Command from {current.from}.</p>{/if}
-    <pre class="log">{(current?.log ?? []).join('\n') || 'Waiting for output…'}</pre>
+    {#if current?.from}<p class="small muted">Команд {current.from}-оос.</p>{/if}
+    <pre class="log">{(current?.log ?? []).join('\n') || 'Гаралтыг хүлээж байна…'}</pre>
     <button type="button" class="secondary" disabled={working} onclick={() => act(() => stop({ ticketId, launchId: launch.id }))}>
       <Icon name="square-check" size={14} />
-      Stop
+      Зогсоох
     </button>
   {:else}
     <!-- Running: the address, the two faces, and Stop. -->
     <p class="address">
-      Running at <a href={launch.url ?? '#'} target="_blank" rel="noopener">{launch.url}</a>
+      Ажиллаж буй хаяг <a href={launch.url ?? '#'} target="_blank" rel="noopener">{launch.url}</a>
     </p>
-    {#if current?.from}<p class="small muted">Command from {current.from}.</p>{/if}
+    {#if current?.from}<p class="small muted">Команд {current.from}-оос.</p>{/if}
     {#each current?.notes ?? [] as note (note)}
       <p class="small muted">{note}</p>
     {/each}
 
     <div class="faces">
-      <button type="button" class:on={showing === 'page'} onclick={() => (face = 'page')}>Page</button>
-      <button type="button" class:on={showing === 'console'} onclick={() => (face = 'console')}>Requests</button>
+      <button type="button" class:on={showing === 'page'} onclick={() => (face = 'page')}>Хуудас</button>
+      <button type="button" class:on={showing === 'console'} onclick={() => (face = 'console')}>Хүсэлт</button>
       <a class="open" href={launch.url ?? '#'} target="_blank" rel="noopener">
-        Open in new tab <Icon name="external-link" size={13} />
+        Шинэ цонхонд нээх <Icon name="external-link" size={13} />
       </a>
     </div>
 
     {#if showing === 'page' && launch.url}
       <!-- A page that refuses to be framed still opens in its own tab above. -->
-      <iframe class="page" src={launch.url} title="The running project"></iframe>
+      <iframe class="page" src={launch.url} title="Ажиллаж буй төсөл"></iframe>
     {:else if launch.url}
       <RequestConsole launchId={launch.id} baseUrl={launch.url} />
     {/if}
 
     <button type="button" class="secondary" disabled={working} onclick={() => act(() => stop({ ticketId, launchId: launch.id }))}>
       <Icon name="square-check" size={14} />
-      Stop
+      Зогсоох
     </button>
   {/if}
 

@@ -9,50 +9,44 @@
 </script>
 
 <section class="card">
-  <h2>Run details</h2>
+  <h2>Ажиллагааны мэдээлэл</h2>
   <dl>
-    <dt>Pipeline</dt>
+    <dt>Дамжлага</dt>
     <dd>{view.pipeline.name} <span class="muted small">v{view.pipeline.version}</span></dd>
 
-    <dt>Run</dt>
+    <dt>Ажиллагаа</dt>
     <dd>
       {view.ticket.reference}-r{view.run.attempt}
-      <span class="muted">({view.run.attempt}{view.run.attempt === 1
-          ? 'st'
-          : view.run.attempt === 2
-            ? 'nd'
-            : view.run.attempt === 3
-              ? 'rd'
-              : 'th'} attempt)</span>
+      <span class="muted">({view.run.attempt}-р оролдлого)</span>
     </dd>
 
-    <dt>Repository</dt>
+    <dt>Репозитори</dt>
     <dd>{view.repository.fullPath}</dd>
 
-    <dt>Branch</dt>
+    <dt>Салбар</dt>
     <dd><code>{view.ticket.branchName}</code> → <code>{view.repository.defaultBranch}</code></dd>
 
-    <dt>Sandbox</dt>
+    <dt>Тусгаарлагдсан орчин</dt>
     <dd>
       {#if view.run.containerId}
         <code>{view.run.containerId.slice(0, 12)}</code>
       {:else}
-        <span class="muted">not created</span>
+        <span class="muted">үүсээгүй</span>
       {/if}
     </dd>
 
     <!-- A reference identifying the execution on the execution service (FR-078) -->
-    <dt>Execution</dt>
+    <dt>Гүйцэтгэл</dt>
     <dd>
       {#if view.run.orchestratorExecutionId}
         <code>{view.run.orchestratorExecutionId}</code>
       {:else}
-        <span class="muted">not started</span>
+        <span class="muted">эхлээгүй</span>
       {/if}
     </dd>
 
-    <dt>Budget</dt>
-    <dd>${view.run.costUsd} of ${view.run.costCeilingUsd} cap</dd>
+    <dt>Төсөв</dt>
+    <dd>${view.run.costCeilingUsd}-ийн хязгаараас ${view.run.costUsd}</dd>
   </dl>
 
   {#if place?.ready}
@@ -63,12 +57,12 @@
   {#if view.ticket.classificationMissing}
     <!-- FR-102: the warning is a field on the run, not a log line -->
     <p class="badge warn">
-      The specification step recorded no decision about the interface, so design was skipped.
-      Check whether this ticket needed screens.
+      Тодорхойлолтын алхам интерфейсийн талаар шийдвэр тэмдэглээгүй тул дизайн алгассан байна. Энэ
+      даалгаварт дэлгэц хэрэгтэй байсан эсэхийг шалгана уу.
     </p>
   {:else if view.ticket.hasUi !== null}
     <p class="small muted">
-      {view.ticket.hasUi ? 'Changes the interface' : 'No interface change'}
+      {view.ticket.hasUi ? 'Интерфейс өөрчилнө' : 'Интерфейс өөрчлөхгүй'}
       {#if view.ticket.uiRationale}— {view.ticket.uiRationale}{/if}
     </p>
   {/if}

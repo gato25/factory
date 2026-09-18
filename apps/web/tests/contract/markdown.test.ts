@@ -60,10 +60,10 @@ test('HTML in a skill stays text', () => {
 
 test('the design writes a distance, not a date', () => {
   const now = new Date('2026-09-11T12:00:00Z');
-  expect(ago(new Date('2026-09-09T12:00:00Z'), now)).toBe('2 days ago');
+  expect(ago(new Date('2026-09-09T12:00:00Z'), now)).toBe('2 хоногийн өмнө');
   // 36 hours is nearer two days than one, and reads that way.
-  expect(ago(new Date('2026-09-10T00:00:00Z'), now)).toBe('2 days ago');
-  expect(ago(new Date('2026-09-11T11:40:00Z'), now)).toBe('20 minutes ago');
-  expect(ago(new Date('2026-09-11T11:59:50Z'), now)).toBe('just now');
-  expect(ago('not a date', now)).toBe('at an unknown time');
+  expect(ago(new Date('2026-09-10T00:00:00Z'), now)).toBe('2 хоногийн өмнө');
+  expect(ago(new Date('2026-09-11T11:40:00Z'), now)).toBe('20 мин өмнө');
+  expect(ago(new Date('2026-09-11T11:59:50Z'), now)).toBe('дөнгөж сая');
+  expect(ago('not a date', now)).toBe('тодорхойгүй хугацаанд');
 });

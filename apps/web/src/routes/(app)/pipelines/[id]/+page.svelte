@@ -54,14 +54,14 @@
 {#if detail.error}
   <p class="card failure" role="alert">{(detail.error as Error).message}</p>
 {:else if !detail.ready || draft === null}
-  <p class="card">Loading the pipeline…</p>
+  <p class="card">Дамжлагыг ачааллаж байна…</p>
 {:else}
   {@const p = detail.current}
 
   <header class="head">
     <div class="l">
       <p class="crumb">
-        <a href="/pipelines">Pipelines</a>
+        <a href="/pipelines">Дамжлага</a>
         <Icon name="chevron-right" size={14} />
         <span>{p.name}</span>
       </p>
@@ -70,7 +70,7 @@
         {#if renaming}
           <input
             class="rename"
-            aria-label="Pipeline name"
+            aria-label="Дамжлагын нэр"
             bind:value={newName}
             onkeydown={async (event) => {
               if (event.key === 'Escape') renaming = false;
@@ -87,7 +87,7 @@
             <button
               type="button"
               class="icon"
-              aria-label="Rename this pipeline"
+              aria-label="Энэ дамжлагыг нэрлэх"
               onclick={() => {
                 newName = p.name;
                 renaming = true;
@@ -101,25 +101,25 @@
         <!-- How many repositories use it, before anyone changes it (FR-030) -->
         <span class="badge">
           <span class="dot"></span>
-          Used by {p.repositoriesUsing} repo{p.repositoriesUsing === 1 ? '' : 's'}
+          {p.repositoriesUsing} репозитори ашиглаж байна
         </span>
-        <span class="badge quiet"><span class="dot"></span>Version {p.currentVersion}</span>
+        <span class="badge quiet"><span class="dot"></span>Хувилбар {p.currentVersion}</span>
         {#if p.runsInFlight > 0}
           <span class="badge quiet">
             <span class="dot"></span>
-            {p.runsInFlight} run{p.runsInFlight === 1 ? '' : 's'} in flight
+            {p.runsInFlight} ажиллагаа явагдаж байна
           </span>
         {/if}
       </div>
 
       <p class="sub">
         {#if p.mayChange}
-          Drag steps into the order you want. Add a checkpoint anywhere a human should look before
-          the pipeline continues.
+          Алхмуудаа хүссэн дарааллаар чирнэ үү. Дамжлага үргэлжлэхээс өмнө хүн харах ёстой газарт
+          хяналтын цэг нэмээрэй.
         {:else if p.ownerId}
-          Someone else owns this pipeline — you can use it, not change it.
+          Энэ дамжлага өөр хүнийх — та ашиглаж болно, өөрчилж болохгүй.
         {:else}
-          This is a shipped default — you can use it, not change it.
+          Энэ бол үндсэн дамжлага — та ашиглаж болно, өөрчилж болохгүй.
         {/if}
       </p>
     </div>
@@ -134,7 +134,7 @@
         }}
       >
         <Icon name="copy" size={16} />
-        <span>Duplicate</span>
+        <span>Хуулбарлах</span>
       </button>
       <button
         type="button"
@@ -143,7 +143,7 @@
         onclick={() => (showPreflight = !showPreflight)}
       >
         <Icon name="play" size={16} />
-        <span>Test run</span>
+        <span>Туршилтаар ажиллуулах</span>
       </button>
     </div>
   </header>
@@ -153,13 +153,15 @@
          do, and what comparable runs cost. It starts nothing (FR-019). -->
     <section class="card dry">
       <header>
-        <h2>If a ticket started on this pipeline now</h2>
-        <span class="small muted">Version {p.currentVersion}, as saved. Nothing is started.</span>
+        <h2>Хэрэв даалгавар яг одоо энэ дамжлагаар эхэлбэл</h2>
+        <span class="small muted">
+          Хадгалагдсан {p.currentVersion}-р хувилбар. Юу ч эхлэхгүй.
+        </span>
       </header>
       {#if dry?.error}
         <p class="failure" role="alert">{(dry.error as Error).message}</p>
       {:else if !dryRun}
-        <p class="small muted">Working it out…</p>
+        <p class="small muted">Тооцож байна…</p>
       {:else}
         <ol class="dry-steps">
           {#each dryRun.steps as preview (preview.index)}
@@ -177,18 +179,16 @@
         </ol>
         <p class="small muted">
           {#if dryRun.estimate.kind === 'measured'}
-            Comparable runs took about {dryRun.estimate.minutes} minutes and cost about ${dryRun
-              .estimate.costUsd} across {dryRun.estimate.samples} run{dryRun.estimate.samples === 1
-              ? ''
-              : 's'}. An estimate, not a commitment.
+            Харьцуулах {dryRun.estimate.samples} ажиллагаанд ойролцоогоор {dryRun.estimate.minutes}
+            минут зарцуулж ${dryRun.estimate.costUsd} орчим төлсөн байна. Энэ бол тооцоо, амлалт биш.
           {:else}
-            No comparable run yet, so there is nothing to estimate from. The ceilings are ${dryRun
-              .estimate.ceilingUsd} and {dryRun.estimate.ceilingMinutes} minutes.
+            Харьцуулах ажиллагаа хараахан алга тул тооцоолох үндэс алга. Хязгаар нь ${dryRun
+              .estimate.ceilingUsd} ба {dryRun.estimate.ceilingMinutes} минут.
           {/if}
         </p>
         {#if !dryRun.verifies}
           <p class="small warn-text">
-            Nothing in this pipeline checks the result (FR-034a).
+            Энэ дамжлагад үр дүнг шалгах юу ч алга (FR-034a).
           </p>
         {/if}
       {/if}
@@ -200,9 +200,8 @@
   {#if p.runsInFlight > 0 && dirty}
     <!-- SC-010: editing changes the behaviour of zero runs already in flight -->
     <p class="card notice" role="status">
-      {p.runsInFlight} run{p.runsInFlight === 1 ? '' : 's'} on this pipeline
-      {p.runsInFlight === 1 ? 'is' : 'are'} in flight. Saving does not affect
-      {p.runsInFlight === 1 ? 'it' : 'them'}: each continues on the version it started with.
+      Энэ дамжлага дээр {p.runsInFlight} ажиллагаа явагдаж байна. Хадгалсан нь тэдэнд нөлөөлөхгүй:
+      тус бүр эхэлсэн хувилбар дээрээ үргэлжилнэ.
     </p>
   {/if}
 
@@ -229,12 +228,11 @@
       <div class="saver-row">
         <span class="small muted">
           {#if problems.length > 0}
-            {problems.length} thing{problems.length === 1 ? '' : 's'} to fix before this can be
-            saved.
+            Хадгалахаас өмнө засах {problems.length} зүйл байна.
           {:else if dirty}
-            Saving writes version {p.currentVersion + 1}.
+            Хадгалахад {p.currentVersion + 1}-р хувилбар бичигдэнэ.
           {:else}
-            Nothing to save.
+            Хадгалах зүйл алга.
           {/if}
         </span>
         <button
@@ -242,7 +240,7 @@
           type="submit"
           disabled={!dirty || problems.length > 0 || save.pending > 0}
         >
-          Save as version {p.currentVersion + 1}
+          {p.currentVersion + 1}-р хувилбар болгон хадгалах
         </button>
       </div>
       {#if save.fields.allIssues()?.length}

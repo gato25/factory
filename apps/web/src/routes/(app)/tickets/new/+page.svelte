@@ -55,12 +55,12 @@
     overwritten by it.
   -->
   <form {...create} enctype="multipart/form-data" class="card form">
-    <h1>Describe what you want built</h1>
+    <h1>Юу хийлгэхээ бичнэ үү</h1>
 
     <div class="field">
       <div class="label-row">
-        <label for="repositoryId">Repository</label>
-        <span class="hint">Required</span>
+        <label for="repositoryId">Репозитори</label>
+        <span class="hint">Заавал</span>
       </div>
       <div class="select">
         {#if repo}<Icon name={repo.provider} size={16} />{:else}<Icon
@@ -68,12 +68,14 @@
             size={16}
           />{/if}
         <select id="repositoryId" name="repositoryId" bind:value={repositoryId} required>
-          <option value="" disabled>Choose a repository…</option>
+          <option value="" disabled>Репозитори сонгоно уу…</option>
           {#each repos.ready ? repos.current : [] as row (row.id)}
             <!-- A repository whose credential no longer works cannot start a
                  run, so it cannot be chosen here (FR-013). -->
             <option value={row.id} disabled={row.status !== 'connected'}>
-              {row.name} · {row.fullPath}{row.status !== 'connected' ? ' — token expired' : ''}
+              {row.name} · {row.fullPath}{row.status !== 'connected'
+                ? ' — токен хугацаа дууссан'
+                : ''}
             </option>
           {/each}
         </select>
@@ -83,45 +85,50 @@
 
     <div class="field">
       <div class="label-row">
-        <label for="title">Title</label>
-        <span class="hint">Required</span>
+        <label for="title">Гарчиг</label>
+        <span class="hint">Заавал</span>
       </div>
-      <input id="title" name="title" required placeholder="Add Apple Sign-In next to Google login" />
+      <input
+        id="title"
+        name="title"
+        required
+        placeholder="Google-ийн хажууд Apple нэвтрэлт нэмэх"
+      />
     </div>
 
     <div class="field">
       <div class="label-row">
-        <label for="description">Description</label>
+        <label for="description">Тайлбар</label>
         <span class="hint">
-          Plain language is fine. The Spec agent will ask itself the clarifying questions.
+          Энгийн үгээр бичсэн ч болно. Тодорхойлолт агент тодруулах асуултаа өөрөө асууна.
         </span>
       </div>
       <textarea
         id="description"
         name="description"
         rows="6"
-        placeholder="What should change, and why?"
+        placeholder="Юу өөрчлөгдөх ёстой вэ, яагаад?"
       ></textarea>
     </div>
 
     <div class="field">
       <div class="label-row">
-        <label for="acceptanceCriteria">Acceptance criteria</label>
-        <span class="hint">One per line. The Implement agent must make all of these pass.</span>
+        <label for="acceptanceCriteria">Хүлээн авах шалгуур</label>
+        <span class="hint">Мөр бүрд нэг. Хөгжүүлэлт агент бүгдийг нь биелүүлнэ.</span>
       </div>
       <textarea
         id="acceptanceCriteria"
         name="acceptanceCriteria"
         rows="4"
-        placeholder={'Apple button visible on /login for all users\nSuccessful sign-in creates or links a user record'}
+        placeholder={'Бүх хэрэглэгчид /login дээр Apple товч харагдана\nАмжилттай нэвтрэхэд хэрэглэгч үүснэ эсвэл холбогдоно'}
       ></textarea>
     </div>
 
     <div class="field">
       <div class="label-row">
-        <label for="files">Requirement documents</label>
+        <label for="files">Шаардлагын баримт</label>
         <span class="hint">
-          Optional. Text, Markdown or CSV — every agent step reads them as the brief.
+          Заавал биш. Текст, Markdown эсвэл CSV — агент алхам бүр үүнийг даалгавар болгон уншина.
         </span>
       </div>
       <FilePicker />
@@ -129,8 +136,8 @@
 
     <div class="field">
       <div class="label-row">
-        <span class="as-label">Pipeline</span>
-        <span class="hint">You can change its steps for this ticket only, in the builder.</span>
+        <span class="as-label">Дамжлага</span>
+        <span class="hint">Зөвхөн энэ даалгаврын алхмуудыг зохиомжлогч дээр өөрчилж болно.</span>
       </div>
       <div class="picks">
         {#each pipes.ready ? pipes.current : [] as row (row.id)}
@@ -143,11 +150,11 @@
             <input type="radio" name="pipelineId" {value} bind:group={pipelineId} />
             <span class="t">
               <span class="n">{row.name}</span>
-              {#if isDefault}<span class="tag">{repo?.name}'s default</span>{/if}
+              {#if isDefault}<span class="tag">{repo?.name}-ийн үндсэн</span>{/if}
               <span class="grow"></span>
               {#if pipelineId === value}<Icon name="circle-check" size={16} />{/if}
             </span>
-            <span class="d">{row.description ?? `Version ${row.currentVersion}`}</span>
+            <span class="d">{row.description ?? `Хувилбар ${row.currentVersion}`}</span>
           </label>
         {/each}
       </div>
@@ -163,24 +170,24 @@
 
     {#if create.result?.queuedNotStarted}
       <p class="banner bad" role="alert">
-        {create.result.reference} was created and is queued, but has <strong>not started</strong>:
-        the orchestrator could not be reached ({create.result.detail}). It will be retried.
+        {create.result.reference} үүсч дараалалд орлоо, гэвч <strong>эхлээгүй</strong> байна:
+        зохицуулагч руу холбогдож чадсангүй ({create.result.detail}). Дахин оролдоно.
       </p>
     {:else if create.result?.started}
-      <p class="banner good" role="status">{create.result.reference} started.</p>
+      <p class="banner good" role="status">{create.result.reference} эхэллээ.</p>
     {:else if create.result}
-      <p class="banner good" role="status">{create.result.reference} saved as a draft.</p>
+      <p class="banner good" role="status">{create.result.reference} ноороглон хадгалагдлаа.</p>
     {/if}
 
     <footer>
       <span class="note">
         {#if shown?.estimate.kind === 'measured'}
-          Estimated cost ≈ ${shown.estimate.costUsd} · usually about {shown.estimate.minutes} min
+          Ойролцоо зардал ≈ ${shown.estimate.costUsd} · ихэвчлэн {shown.estimate.minutes} мин
         {:else if shown}
-          No comparable run yet · up to ${shown.estimate.ceilingUsd} and
-          {shown.estimate.ceilingMinutes} min
+          Харьцуулах ажиллагаа хараахан алга · дээд тал нь ${shown.estimate.ceilingUsd} ба
+          {shown.estimate.ceilingMinutes} мин
         {:else}
-          Choose a repository and a pipeline to see what it will cost.
+          Зардлыг харахын тулд репозитори, дамжлагаа сонгоно уу.
         {/if}
       </span>
       <span class="btns">
@@ -188,13 +195,13 @@
           disabled={create.pending > 0}
         >
           <Icon name="file-text" size={16} />
-          <span>Save as draft</span>
+          <span>Ноороглох</span>
         </button>
         <button class="primary" type="submit" name="start" value="true"
           disabled={create.pending > 0}
         >
           <Icon name="rocket" size={16} />
-          <span>{create.pending > 0 ? 'Creating…' : 'Create & start pipeline'}</span>
+          <span>{create.pending > 0 ? 'Үүсгэж байна…' : 'Үүсгээд эхлүүлэх'}</span>
         </button>
       </span>
     </footer>
@@ -202,11 +209,11 @@
 
   <aside class="side">
     <section class="card">
-      <h2>What will happen</h2>
+      <h2>Юу болох вэ</h2>
       {#if !chosen}
-        <p class="quiet">Choose a repository and a pipeline to see the steps that will run.</p>
+        <p class="quiet">Ажиллах алхмуудыг харахын тулд репозитори, дамжлагаа сонгоно уу.</p>
       {:else if !shown}
-        <p class="quiet">Working out the steps…</p>
+        <p class="quiet">Алхмуудыг тооцож байна…</p>
       {:else}
         <ol class="steps">
           {#each shown.steps as step (step.index)}
@@ -236,8 +243,8 @@
             <span class="line"><span class="ic ok"><Icon name="git-pull-request" size={15} /></span
               ></span>
             <span class="tx">
-              <span class="tr"><span class="n">Open merge request</span></span>
-              <span class="m">Branch pushed, merge request created, ticket closed</span>
+              <span class="tr"><span class="n">Нэгтгэх хүсэлт нээх</span></span>
+              <span class="m">Салбар түлхэгдэж, хүсэлт нээгдэж, даалгавар хаагдана</span>
             </span>
           </li>
         </ol>
@@ -246,7 +253,7 @@
         {#if shown.warning}
           <p class="banner warn">{shown.warning}</p>
         {:else}
-          <p class="quiet">This pipeline runs your tests before opening the merge request.</p>
+          <p class="quiet">Энэ дамжлага нэгтгэх хүсэлт нээхээсээ өмнө таны тестийг ажиллуулна.</p>
         {/if}
       {/if}
     </section>
@@ -254,8 +261,8 @@
     <p class="tip">
       <Icon name="lightbulb" size={16} />
       <span>
-        The Spec agent decides whether this ticket touches the interface. If it does, the Design
-        step runs and you review the screens before any code is written.
+        Энэ даалгавар интерфейс өөрчилж байгаа эсэхийг Тодорхойлолт агент шийднэ. Хэрэв тийм бол
+        Дизайн алхам ажиллаж, код бичихээс өмнө та дэлгэцүүдийг хянана.
       </span>
     </p>
   </aside>

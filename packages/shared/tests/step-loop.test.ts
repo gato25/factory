@@ -83,15 +83,13 @@ test('a condition before the classifying step is refused, naming the step', () =
   const steps = [step({ type: 'design', condition: 'ticket_has_ui' }), step({ agent_id: 'spec' })];
   const problems = validateStepOrder(steps, 1);
   expect(problems.length).toBeGreaterThan(0);
-  expect(problems[0]?.message).toContain('not known yet at that point');
+  expect(problems[0]?.message).toContain('хараахан мэдэгдээгүй байна');
 });
 
 test('a design step before the classifying step is refused (FR-032e)', () => {
   const steps = [step({ type: 'design', condition: 'always' }), step({ agent_id: 'spec' })];
   const problems = validateStepOrder(steps, 1);
-  expect(problems.some((p) => p.message.includes('comes before the specification step'))).toBe(
-    true,
-  );
+  expect(problems.some((p) => p.message.includes('тодорхойлолтын алхмаас өмнө байна'))).toBe(true);
 });
 
 test('a design step after the classifying step is accepted', () => {

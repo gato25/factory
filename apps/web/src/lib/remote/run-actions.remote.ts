@@ -25,7 +25,7 @@ import { runForTicket } from './runs.remote';
 
 function requireUser() {
   const user = getRequestEvent().locals.user;
-  if (!user) throw notAuthorised('you must be signed in');
+  if (!user) throw notAuthorised('та нэвтэрсэн байх ёстой');
   return user;
 }
 
@@ -85,15 +85,15 @@ export const retry = command(TicketId, async (ticketId) => {
       runId: run.id,
       attempt: run.attempt,
       message: delivered.delivered
-        ? `Attempt ${run.attempt} started.`
-        : `Attempt ${run.attempt} is queued but has not begun: ${delivered.detail}. It will be retried.`,
+        ? `${run.attempt}-р оролдлого эхэллээ.`
+        : `${run.attempt}-р оролдлого дараалалд орсон ч эхлээгүй байна: ${delivered.detail}. Дахин оролдоно.`,
     };
   });
 });
 
 const EditAndRetry = v.object({
   ticketId: TicketId,
-  title: v.optional(v.pipe(v.string(), v.trim(), v.minLength(1, 'Give the ticket a title.'))),
+  title: v.optional(v.pipe(v.string(), v.trim(), v.minLength(1, 'Даалгаварт гарчиг өгнө үү.'))),
   description: v.optional(v.string()),
   /** One criterion per line, as the screen presents it. */
   acceptanceCriteria: v.optional(v.string()),
@@ -123,8 +123,8 @@ export const editRetry = command(EditAndRetry, async (input) => {
       runId: run.id,
       attempt: run.attempt,
       message: delivered.delivered
-        ? `Ticket updated, and attempt ${run.attempt} started.`
-        : `Ticket updated. Attempt ${run.attempt} is queued but has not begun: ${delivered.detail}.`,
+        ? `Даалгавар шинэчлэгдэж, ${run.attempt}-р оролдлого эхэллээ.`
+        : `Даалгавар шинэчлэгдлээ. ${run.attempt}-р оролдлого дараалалд орсон ч эхлээгүй байна: ${delivered.detail}.`,
     };
   });
 });
@@ -140,8 +140,8 @@ export const pause = command(RunId, async (runId) => {
       ok: true,
       runId,
       message: alreadyRequested
-        ? 'This run is already pausing.'
-        : 'Pausing. The step running now will finish, and nothing further will start.',
+        ? 'Энэ ажиллагаа аль хэдийн зогсож байна.'
+        : 'Түр зогсож байна. Одоо ажиллаж буй алхам дуусах бөгөөд цаашид юу ч эхлэхгүй.',
     };
   });
 });
@@ -155,7 +155,7 @@ export const unpause = command(RunId, async (runId) => {
     return {
       ok: true,
       runId,
-      message: resumed ? 'Continuing from where it stopped.' : 'This run was not paused.',
+      message: resumed ? 'Зогссон газраасаа үргэлжилж байна.' : 'Энэ ажиллагаа зогсоогүй байсан.',
     };
   });
 });
@@ -171,8 +171,8 @@ export const cancel = command(RunId, async (runId) => {
       ok: cancelled,
       runId,
       message: cancelled
-        ? 'Cancelled. The sandbox is released and the branch pushed so far is untouched.'
-        : 'This run had already finished.',
+        ? 'Цуцлагдлаа. Орчин чөлөөлөгдөж, одоог хүртэл түлхсэн салбар хэвээрээ үлдлээ.'
+        : 'Энэ ажиллагаа аль хэдийн дууссан байсан.',
     };
   });
 });
@@ -195,8 +195,8 @@ export const continueFrom = command(RunId, async (runId) => {
       ok: delivered.delivered,
       runId,
       message: delivered.delivered
-        ? `Continuing from ${stepName} (step ${index + 1}). Steps already finished are kept.`
-        : `Could not hand the run back to the orchestrator: ${delivered.detail}`,
+        ? `${stepName} (${index + 1}-р алхам)-аас үргэлжилж байна. Дууссан алхмууд хэвээр үлдэнэ.`
+        : `Ажиллагааг зохицуулагч руу буцааж чадсангүй: ${delivered.detail}`,
     };
   });
 });
@@ -231,18 +231,18 @@ export const openDesign = command(
         body: JSON.stringify({ path }),
         signal: AbortSignal.timeout(10_000),
       });
-      if (response.ok) return { ok: true, message: 'Opening it in pen.dev.' };
+      if (response.ok) return { ok: true, message: 'pen.dev дээр нээж байна.' };
       // The execution service says why — not on this machine, workspace gone,
       // not a design — and that sentence is worth more than a status code.
       const said = (await response.json().catch(() => null)) as { message?: string } | null;
       return {
         ok: false,
-        message: said?.message ?? `The execution service refused (${response.status}).`,
+        message: said?.message ?? `Гүйцэтгэх үйлчилгээ татгалзлаа (${response.status}).`,
       };
     } catch {
       return {
         ok: false,
-        message: 'The execution service did not answer, so nothing was opened.',
+        message: 'Гүйцэтгэх үйлчилгээ хариу өгсөнгүй, тиймээс юу ч нээгдсэнгүй.',
       };
     }
   },

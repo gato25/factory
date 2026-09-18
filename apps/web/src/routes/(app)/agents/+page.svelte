@@ -27,14 +27,14 @@
 
 <header class="head">
   <div class="page-head">
-    <h2>Agents</h2>
+    <h2>Агент</h2>
     <p>
-      Each agent runs with its own instructions, model, tools and skills. The Design agent runs on
-      the pen.dev CLI; the rest run on the Claude CLI. Anyone can make their own; anyone can use
-      anyone else's.
+      Агент бүр өөрийн заавар, загвар, хэрэгсэл, ур чадвартайгаар ажиллана. Дизайн агент pen.dev
+      CLI дээр, бусад нь Claude CLI дээр ажиллана. Хэн ч өөрийнхөө агентыг үүсгэж, хэн ч бусдынхыг
+      ашиглаж болно.
     </p>
   </div>
-  <input placeholder="Search agents" bind:value={filter} aria-label="Search agents" />
+  <input placeholder="Агент хайх" bind:value={filter} aria-label="Агент хайх" />
 </header>
 
 {#if notice}<p class="card notice" role="status">{notice}</p>{/if}
@@ -42,10 +42,10 @@
 {#if list.error}
   <p class="card failure" role="alert">{(list.error as Error).message}</p>
 {:else if !list.ready}
-  <p class="card">Loading agents…</p>
+  <p class="card">Агентуудыг ачааллаж байна…</p>
 {:else}
   {#if shown.length === 0}
-    <p class="card">No agent matches. Create one below.</p>
+    <p class="card">Тохирох агент алга. Доор нэгийг үүсгэнэ үү.</p>
   {:else}
     <div class="grid">
       {#each shown as agent (agent.id)}
@@ -69,21 +69,21 @@
   {/if}
 
   <form {...create} class="card new">
-    <h2 class="section">New agent</h2>
+    <h2 class="section">Шинэ агент</h2>
     <label>
-      <span class="small muted">Name</span>
-      <input name="name" placeholder="Reviewer" required />
+      <span class="small muted">Нэр</span>
+      <input name="name" placeholder="Хянагч" required />
     </label>
     <label>
-      <span class="small muted">Engine</span>
+      <span class="small muted">Хөдөлгүүр</span>
       <select name="engine">
-        <option value="claude_cli">Coding agent</option>
-        <option value="design_cli">Design service</option>
+        <option value="claude_cli">Кодын агент</option>
+        <option value="design_cli">Дизайны үйлчилгээ</option>
       </select>
     </label>
     <label>
-      <span class="small muted">What it is for</span>
-      <input name="description" placeholder="Reads a diff and objects" />
+      <span class="small muted">Юунд зориулсан бэ</span>
+      <input name="description" placeholder="Өөрчлөлтийг уншиж, эсэргүүцнэ" />
     </label>
     {#if create.fields.allIssues()?.length}
       <ul class="errors" role="alert">
@@ -96,7 +96,7 @@
       <p class="errors" role="alert">{create.result.problem}</p>
     {/if}
     <div class="row end">
-      <button class="primary" type="submit" disabled={create.pending > 0}>Create</button>
+      <button class="primary" type="submit" disabled={create.pending > 0}>Үүсгэх</button>
     </div>
   </form>
 {/if}

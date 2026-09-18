@@ -27,6 +27,7 @@
       engine: string;
       model: string;
       allowedTools: string[];
+      toolLabels: string[];
       skills: string[];
       ownerName: string | null;
       isDefault: boolean;
@@ -45,7 +46,7 @@
     // The design labels the design agent "Conditional", because that is the
     // fact about it that matters: it runs only when a ticket changes the
     // interface (FR-032b).
-    agent.engine === 'design_cli' ? 'Conditional' : agent.isDefault ? 'Default' : 'Custom',
+    agent.engine === 'design_cli' ? 'Нөхцөлт' : agent.isDefault ? 'Үндсэн' : 'Захиалгат',
   );
 </script>
 
@@ -62,32 +63,31 @@
   {#if agent.description}<p class="description">{agent.description}</p>{/if}
 
   <dl class="kv">
-    <dt>Model</dt>
+    <dt>Загвар</dt>
     <dd><code>{agent.model}</code></dd>
 
-    <dt>Tools</dt>
+    <dt>Хэрэгсэл</dt>
     <dd>
       {#if agent.engine === 'design_cli'}
         <!-- Tool permissions do not apply to this engine (FR-036a) -->
-        <span class="muted">not applicable to the design service</span>
+        <span class="muted">дизайны үйлчилгээнд хамаарахгүй</span>
       {:else if agent.allowedTools.length === 0}
-        <span class="muted">none — it can read nothing and write nothing</span>
+        <span class="muted">байхгүй — юу ч уншиж, юу ч бичиж чадахгүй</span>
       {:else}
-        {agent.allowedTools.join(', ')}
+        {agent.toolLabels.join(', ')}
       {/if}
     </dd>
 
-    <dt>Skills</dt>
+    <dt>Ур чадвар</dt>
     <dd>{agent.skills.length > 0 ? agent.skills.join(', ') : '—'}</dd>
   </dl>
 
   <div class="foot">
     <!-- How many pipelines and runs depend on it (FR-043a) -->
     <span class="usage">
-      Used in {agent.usage.pipelines} pipeline{agent.usage.pipelines === 1 ? '' : 's'} &middot;
-      {agent.usage.runs} run{agent.usage.runs === 1 ? '' : 's'}
+      {agent.usage.pipelines} дамжлагад &middot; {agent.usage.runs} ажиллагаа
       {#if agent.usage.runsInFlight > 0}
-        &middot; {agent.usage.runsInFlight} in flight
+        &middot; {agent.usage.runsInFlight} явагдаж байна
       {/if}
     </span>
     <span class="right">
@@ -100,12 +100,12 @@
       {#if onDuplicate}
         <button type="button" class="edit" onclick={onDuplicate}>
           <Icon name="copy" size={16} />
-          <span>Duplicate</span>
+          <span>Хуулбарлах</span>
         </button>
       {/if}
       <a class="edit" href="/agents/{agent.id}">
         <Icon name="pencil" size={16} />
-        <span>{agent.mayChange ? 'Edit' : 'Read'}</span>
+        <span>{agent.mayChange ? 'Засах' : 'Унших'}</span>
       </a>
     </span>
   </div>

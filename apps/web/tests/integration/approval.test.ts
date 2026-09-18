@@ -163,7 +163,7 @@ test('a non-approver cannot decide a gate reserved for the ticket author', async
   } catch (error) {
     refused = error as Error;
   }
-  expect(refused?.message).toBe('this checkpoint is not yours to decide');
+  expect(refused?.message).toBe('энэ хяналтын цэгийг та шийдэхгүй');
   // Nothing was recorded, so the gate is still the author's to decide.
   expect(await db.select().from(approvals).where(eq(approvals.runId, runId))).toHaveLength(0);
   expect((await gateView(db, runId, 1)).decided).toBeNull();
@@ -182,7 +182,7 @@ test('an administrator is not an approver by virtue of being an administrator', 
   } catch (error) {
     refused = error as Error;
   }
-  expect(refused?.message).toBe('this checkpoint is not yours to decide');
+  expect(refused?.message).toBe('энэ хяналтын цэгийг та шийдэхгүй');
 });
 
 test('a named approver list admits only the people on it', async () => {
@@ -205,7 +205,7 @@ test('a named approver list admits only the people on it', async () => {
     refused = error as Error;
   }
   // Even the ticket's author, when the gate names someone else.
-  expect(refused?.message).toBe('this checkpoint is not yours to decide');
+  expect(refused?.message).toBe('энэ хяналтын цэгийг та шийдэхгүй');
 
   await decide(db, { runId, stepIndex: 1, decision: 'approved' }, invited, { resume });
   expect((await gateView(db, runId, 1)).decided?.by).toBe(invited.id);

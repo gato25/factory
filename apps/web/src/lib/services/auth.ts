@@ -54,7 +54,7 @@ export async function signInWithPassword(
         remedy: 'reset the password; the new hash is portable',
       });
     }
-    throw new FactoryError('not_authorised', 'that email address and password do not match');
+    throw new FactoryError('not_authorised', 'тэр и-мэйл хаяг, нууц үг таарахгүй байна');
   }
   // A hash written by `Bun.password`, or at an older cost, is re-made the
   // first time it verifies, so it stops depending on the runtime or the
@@ -155,7 +155,7 @@ export async function registerFirstUser(
     .returning();
 
   const created = inserted[0];
-  if (!created) throw new FactoryError('conflict', 'could not create the account');
+  if (!created) throw new FactoryError('conflict', 'бүртгэлийг үүсгэж чадсангүй');
   return toSessionUser(created);
 }
 
@@ -200,7 +200,7 @@ export async function signInWithProvider(
     .returning();
 
   const created = inserted[0];
-  if (!created) throw new FactoryError('conflict', 'could not create the user');
+  if (!created) throw new FactoryError('conflict', 'хэрэглэгчийг үүсгэж чадсангүй');
   return toSessionUser(created);
 }
 

@@ -87,14 +87,14 @@ export interface RunView {
 
 export async function runView(database: Database, runId: string): Promise<RunView> {
   const [run] = await database.select().from(runs).where(eq(runs.id, runId)).limit(1);
-  if (!run) throw notFound('no such run');
+  if (!run) throw notFound('тийм ажиллагаа алга');
 
   const [ticket] = await database
     .select()
     .from(tickets)
     .where(eq(tickets.id, run.ticketId))
     .limit(1);
-  if (!ticket) throw notFound('that run has no ticket');
+  if (!ticket) throw notFound('тэр ажиллагаанд даалгавар алга');
 
   const [repository] = await database
     .select()
@@ -123,7 +123,7 @@ export async function runView(database: Database, runId: string): Promise<RunVie
       type: step.type,
       label:
         agent?.name ??
-        (step.type === 'shell' ? (step.command ?? 'shell command') : labelFor(step.type)),
+        (step.type === 'shell' ? (step.command ?? 'shell команд') : labelFor(step.type)),
       model: agent?.model,
       conditional: step.condition !== 'always',
       state: result?.status ?? 'pending',
@@ -192,11 +192,11 @@ export async function runView(database: Database, runId: string): Promise<RunVie
 
 function labelFor(type: Step['type']): string {
   return {
-    agent: 'Agent',
-    design: 'Design',
-    checkpoint: 'Human checkpoint',
-    shell: 'Shell command',
-    notify: 'Notify',
+    agent: 'Агент',
+    design: 'Дизайн',
+    checkpoint: 'Хүний хяналтын цэг',
+    shell: 'Shell команд',
+    notify: 'Мэдэгдэх',
   }[type];
 }
 
@@ -235,7 +235,7 @@ export async function artifactContent(database: Database, artifactId: string) {
     .from(artifacts)
     .where(eq(artifacts.id, artifactId))
     .limit(1);
-  if (!row) throw notFound('no such artifact');
+  if (!row) throw notFound('тийм үр дүн алга');
   return row;
 }
 
@@ -453,17 +453,17 @@ export async function board(database: Database): Promise<BoardTicket[]> {
       return null;
     })();
 
-    let strip: BoardTicket['strip'] = { kind: 'none', text: 'Not started' };
+    let strip: BoardTicket['strip'] = { kind: 'none', text: 'Эхлээгүй' };
     if (row.mergeRequestUrl) {
-      strip = { kind: 'merge_request', text: 'Merge request opened' };
+      strip = { kind: 'merge_request', text: 'Нэгтгэх хүсэлт нээгдсэн' };
     } else if (row.runStatus === 'failed') {
-      strip = { kind: 'failure', text: row.failureReason ?? 'The run failed' };
+      strip = { kind: 'failure', text: row.failureReason ?? 'Ажиллагаа амжилтгүй боллоо' };
     } else if (row.runStatus === 'waiting_approval') {
-      strip = { kind: 'gate', text: `${gatedLabel ?? label ?? 'A step'} needs your approval` };
+      strip = { kind: 'gate', text: `${gatedLabel ?? label ?? 'Алхам'} батлуулах шаардлагатай` };
     } else if (row.runStatus === 'running' && label) {
-      strip = { kind: 'step', text: `${label} · step ${index + 1} of ${steps.length}` };
+      strip = { kind: 'step', text: `${label} · ${index + 1} / ${steps.length} алхам` };
     } else if (row.runStatus === 'queued') {
-      strip = { kind: 'none', text: 'Waiting to start' };
+      strip = { kind: 'none', text: 'Эхлэхийг хүлээж буй' };
     }
 
     return {

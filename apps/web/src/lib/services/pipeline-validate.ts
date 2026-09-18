@@ -54,12 +54,11 @@ function checkProducesCode(steps: Step[]): Problem[] {
     {
       index: null,
       message: documentOnly
-        ? 'This pipeline has no step that writes code — every agent step here declares ' +
-          'documents it must produce, so all of them are writing documents. Add an agent ' +
-          'step with no required documents, and put any verification, gate or notification ' +
-          'after it.'
-        : 'This pipeline has no step that writes code, so it cannot produce a merge request. ' +
-          'Add an agent step, and put any verification, gate or notification after it.',
+        ? 'Энэ дамжлагад код бичдэг алхам алга — энд байгаа агент алхам бүр гаргах ёстой ' +
+          'баримтаа зарласан тул бүгд нь баримт бичиж байна. Шаардлагатай баримтгүй агент ' +
+          'алхам нэмээд, шалгалт, хяналтын цэг, мэдэгдлийг түүний ард тавь.'
+        : 'Энэ дамжлагад код бичдэг алхам алга тул нэгтгэх хүсэлт гаргаж чадахгүй. Агент ' +
+          'алхам нэмээд, шалгалт, хяналтын цэг, мэдэгдлийг түүний ард тавь.',
     },
   ];
 }
@@ -83,16 +82,16 @@ function checkGates(steps: Step[]): Problem[] {
       problems.push({
         index,
         message:
-          `Step ${index + 1} is a checkpoint whose approver list is empty, so nobody could ` +
-          'ever decide it. Name someone, or let anyone in the workspace decide.',
+          `${index + 1}-р алхам бол батлагчийн жагсаалт нь хоосон хяналтын цэг тул үүнийг ` +
+          'хэн ч шийдэж чадахгүй. Хэн нэгнийг нэрлэх эсвэл багийн аль ч гишүүнд шийдүүлээрэй.',
       });
     }
     if (step.timeout_hours !== undefined && step.timeout_hours <= 0) {
       problems.push({
         index,
         message:
-          `Step ${index + 1} waits ${step.timeout_hours} hours, which expires before anyone ` +
-          'could look at it. Leave the waiting time empty to wait indefinitely.',
+          `${index + 1}-р алхам ${step.timeout_hours} цаг хүлээх бөгөөд энэ нь хэн нэгний ` +
+          'харахаас өмнө дуусна. Хугацаагүй хүлээхийн тулд хүлээх хугацааг хоосон үлдээ.',
       });
     }
   });
@@ -107,8 +106,8 @@ function checkShell(steps: Step[]): Problem[] {
           {
             index,
             message:
-              `Step ${index + 1} is a shell command with no command, so it would pass without ` +
-              'running anything. Give it the command this repository uses.',
+              `${index + 1}-р алхам бол командгүй shell алхам тул юу ч ажиллуулалгүй ` +
+              'амжилттай болно. Энэ репозиторийн ашигладаг командыг өгөөрэй.',
           },
         ]
       : [],
@@ -122,7 +121,7 @@ function checkAgents(steps: Step[]): Problem[] {
       ? [
           {
             index,
-            message: `Step ${index + 1} has no agent chosen. Pick one, or remove the step.`,
+            message: `${index + 1}-р алхамд агент сонгоогүй байна. Нэгийг сонгох эсвэл алхмыг устга.`,
           },
         ]
       : [],
@@ -134,7 +133,7 @@ export function problemsWith(steps: Step[]): Problem[] {
     return [
       {
         index: null,
-        message: 'A pipeline needs at least one step. Add one from the palette.',
+        message: 'Дамжлагад хамгийн багадаа нэг алхам хэрэгтэй. Палитраас нэгийг нэмээрэй.',
       },
     ];
   }

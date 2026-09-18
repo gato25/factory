@@ -17,9 +17,9 @@ export function isAdmin(user: SessionUser | null): boolean {
 }
 
 export function requireAdmin(user: SessionUser | null): SessionUser {
-  if (!user) throw notAuthorised('you must be signed in');
+  if (!user) throw notAuthorised('та нэвтэрсэн байх ёстой');
   if (user.role !== 'admin') {
-    throw notAuthorised('only an administrator may change workspace settings');
+    throw notAuthorised('ажлын талбарын тохиргоог зөвхөн администратор өөрчилнө');
   }
   return user;
 }
@@ -38,11 +38,11 @@ export function canChangeOwned(user: SessionUser | null, ownerId: string | null)
 export function requireOwnerOrAdmin(
   user: SessionUser | null,
   ownerId: string | null,
-  what = 'this',
+  what = 'Энэ зүйл',
 ): SessionUser {
-  if (!user) throw notAuthorised('you must be signed in');
+  if (!user) throw notAuthorised('та нэвтэрсэн байх ёстой');
   if (!canChangeOwned(user, ownerId)) {
-    throw notAuthorised(`${what} belongs to someone else — you can use it but not change it`);
+    throw notAuthorised(`${what} өөр хүнийх — та ашиглаж болно, өөрчилж болохгүй`);
   }
   return user;
 }
@@ -67,9 +67,9 @@ export function requireApprover(
   approvers: ApproverRule,
   ticketCreatedBy: string,
 ): SessionUser {
-  if (!user) throw notAuthorised('you must be signed in');
+  if (!user) throw notAuthorised('та нэвтэрсэн байх ёстой');
   if (!canDecide(user, approvers, ticketCreatedBy)) {
-    throw notAuthorised('this checkpoint is not yours to decide');
+    throw notAuthorised('энэ хяналтын цэгийг та шийдэхгүй');
   }
   return user;
 }

@@ -54,7 +54,7 @@ export const GET: RequestHandler = async ({ params, url, cookies }) => {
     );
   } catch (error) {
     const problem =
-      error instanceof FactoryError ? error.message : 'Could not sign you in just now.';
+      error instanceof FactoryError ? error.message : 'Одоохондоо нэвтрүүлж чадсангүй.';
     next = `/login?problem=${encodeURIComponent(problem)}`;
   }
   redirect(303, next);

@@ -228,7 +228,7 @@ test.describe('designing the interface before building it', () => {
     // Every screen as an image, the criteria beside them, the reason, and a
     // statement that no code has been written yet (FR-064d).
     await expect(page.getByRole('heading', { name: /Add Google OAuth sign-in/ })).toBeVisible();
-    await expect(page.getByText('Nothing has been implemented yet')).toBeVisible();
+    await expect(page.getByText('Хараахан юу ч хийгдээгүй байна')).toBeVisible();
     await expect(page.getByText('A Google button appears on the sign-in screen.')).toBeVisible();
     await expect(
       page.getByText('A Google button appears on the sign-in screen', { exact: true }),
@@ -260,14 +260,14 @@ test.describe('designing the interface before building it', () => {
     const viewer = page.getByRole('dialog');
     await expect(viewer).toBeVisible();
     await expect(viewer.getByText('1 of 2')).toBeVisible();
-    await viewer.getByRole('button', { name: 'Next screen' }).click();
+    await viewer.getByRole('button', { name: 'Дараагийн дэлгэц' }).click();
     await expect(viewer.getByText('2 of 2')).toBeVisible();
     await expect(viewer.getByText('docs/design/screens/01-callback.png')).toBeVisible();
-    await viewer.getByRole('button', { name: 'Close' }).click();
+    await viewer.getByRole('button', { name: 'Хаах' }).click();
     await expect(viewer).toBeHidden();
 
     // A link that opens the committed design source (FR-064e).
-    const source = page.getByRole('link', { name: 'Open the design source' });
+    const source = page.getByRole('link', { name: 'Дизайны эх файлыг нээх' });
     await expect(source).toHaveAttribute(
       'href',
       `https://gitlab.com/netgroup/shop/-/blob/factory%2F${seeded.tag}-oauth/docs/design/ui.pen`,
@@ -277,7 +277,7 @@ test.describe('designing the interface before building it', () => {
     await page
       .locator('textarea[name="feedback"]')
       .fill('The Google button is below the fold on a phone.');
-    await page.getByRole('button', { name: 'Request changes' }).click();
+    await page.getByRole('button', { name: 'Өөрчлөлт хүсэх' }).click();
     await expect(page.getByText(/Already decided:\s*changes requested/)).toBeVisible({
       timeout: 10_000,
     });
@@ -371,7 +371,7 @@ test.describe('designing the interface before building it', () => {
     // Why, in the classification's own words (FR-100).
     await expect(page.getByText('This only adds a database migration nobody sees.')).toBeVisible();
     // The run did not fail, and a merge request opened (FR-111).
-    await expect(page.getByText('Done').first()).toBeVisible();
+    await expect(page.getByText('Дууссан').first()).toBeVisible();
     await expect(
       page.getByRole('link', { name: /merge_requests\/12|Merge request/ }),
     ).toBeVisible();

@@ -20,7 +20,7 @@ const log = createLogger('web');
 
 function requireUser() {
   const user = getRequestEvent().locals.user;
-  if (!user) throw notAuthorised('you must be signed in');
+  if (!user) throw notAuthorised('та нэвтэрсэн байх ёстой');
   return user;
 }
 
@@ -60,8 +60,8 @@ async function readPicked(picked: File | File[] | undefined) {
     if (file.size === 0 && !file.name) continue;
     if (!ACCEPTED_EXTENSIONS.includes(extensionOf(file.name))) {
       throw invalidInput(
-        `${file.name} is not a kind that can be read as text. ` +
-          `Attach one of: ${ACCEPTED_EXTENSIONS.join(', ')}.`,
+        `${file.name} нь текстээр уншигдах төрөл биш байна. ` +
+          `Дараахаас нэгийг хавсаргана уу: ${ACCEPTED_EXTENSIONS.join(', ')}.`,
       );
     }
     files.push({ name: file.name, content: await file.text() });
@@ -70,8 +70,8 @@ async function readPicked(picked: File | File[] | undefined) {
 }
 
 const CreateSchema = v.object({
-  repositoryId: v.pipe(v.string(), v.uuid('Choose a repository.')),
-  title: v.pipe(v.string(), v.trim(), v.minLength(1, 'Give the ticket a title.')),
+  repositoryId: v.pipe(v.string(), v.uuid('Репозиториео сонгоно уу.')),
+  title: v.pipe(v.string(), v.trim(), v.minLength(1, 'Даалгаварт гарчиг өгнө үү.')),
   description: v.optional(v.string(), ''),
   // One criterion per line, as the form presents it.
   acceptanceCriteria: v.optional(v.string(), ''),

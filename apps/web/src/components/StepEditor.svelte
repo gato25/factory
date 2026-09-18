@@ -26,7 +26,7 @@
   } = $props();
 
   const CONDITIONS: StepCondition[] = ['always', 'ticket_has_ui', 'ticket_has_no_ui'];
-  const conditionLabel = (c: StepCondition) => CONDITION_DESCRIPTION[c] ?? 'always';
+  const conditionLabel = (c: StepCondition) => CONDITION_DESCRIPTION[c] ?? 'үргэлж';
 
   /** Only agents on the matching engine can run this kind of step (FR-036b). */
   const usable = $derived(
@@ -54,9 +54,9 @@
 
 <section class="card editor">
   <header>
-    <h2 class="section">Step {index + 1} — {STEP_KIND_LABEL[step.type]}</h2>
+    <h2 class="section">{index + 1}-р алхам — {STEP_KIND_LABEL[step.type]}</h2>
     {#if onClose}
-      <button type="button" class="close" onclick={onClose} aria-label="Close step {index + 1}">
+      <button type="button" class="close" onclick={onClose} aria-label="{index + 1}-р алхмыг хаах">
         <Icon name="x" size={16} />
       </button>
     {/if}
@@ -64,7 +64,7 @@
 
   <!-- Every step carries a condition, defaulting to always (FR-032a, FR-032b) -->
   <label>
-    <span class="small muted">When does this step run?</span>
+    <span class="small muted">Энэ алхам хэзээ ажиллах вэ?</span>
     <select
       value={step.condition}
       onchange={(e) => patch({ condition: e.currentTarget.value as StepCondition })}
@@ -77,9 +77,9 @@
 
   {#if step.type === 'agent' || step.type === 'design'}
     <label>
-      <span class="small muted">Agent</span>
+      <span class="small muted">Агент</span>
       <select value={step.agent_id ?? ''} onchange={(e) => patch({ agent_id: e.currentTarget.value })}>
-        <option value="">Choose an agent…</option>
+        <option value="">Агент сонгоно уу…</option>
         {#each usable as agent (agent.id)}
           <option value={agent.id}>{agent.name} — {agent.model}</option>
         {/each}
@@ -87,14 +87,14 @@
     </label>
     {#if usable.length === 0}
       <p class="hint small warn-text">
-        No agent runs on the engine this step needs. Create one first.
+        Энэ алхамд хэрэгтэй хөдөлгүүр дээр ажиллах агент алга. Эхлээд нэгийг үүсгэнэ үү.
       </p>
     {/if}
   {/if}
 
   {#if step.type === 'agent'}
     <label>
-      <span class="small muted">Documents this step must produce, one per line</span>
+      <span class="small muted">Энэ алхмын гаргах ёстой баримтууд, мөрд нэг</span>
       <textarea
         rows="3"
         placeholder="docs/spec.md"
@@ -109,14 +109,14 @@
       ></textarea>
     </label>
     <p class="hint small muted">
-      Leave this empty for the step that writes the code. A step with required documents fails if
-      it does not produce them.
+      Код бичдэг алхмын хувьд үүнийг хоосон үлдээнэ үү. Шаардлагатай баримттай алхам тэдгээрийг
+      гаргаагүй бол амжилтгүй болно.
     </p>
   {/if}
 
   {#if step.type === 'design'}
     <label>
-      <span class="small muted">Design source path</span>
+      <span class="small muted">Дизайны эх файлын зам</span>
       <input
         value={step.design?.source_path ?? 'docs/design/ui.pen'}
         oninput={(e) =>
@@ -131,7 +131,7 @@
       />
     </label>
     <label>
-      <span class="small muted">Where the screens are exported</span>
+      <span class="small muted">Дэлгэцүүд хаана экспортлогдох вэ</span>
       <input
         value={step.design?.export_dir ?? 'docs/design/screens'}
         oninput={(e) =>
@@ -150,16 +150,16 @@
   {#if step.type === 'checkpoint'}
     <!-- Who may approve, how long it waits, what expiry does (FR-032) -->
     <label>
-      <span class="small muted">Who may decide this checkpoint?</span>
+      <span class="small muted">Энэ хяналтын цэгийг хэн шийдэх вэ?</span>
       <select value={approverMode} onchange={(e) => setApproverMode(e.currentTarget.value)}>
-        <option value="anyone">Anyone in the workspace</option>
-        <option value="ticket_creator">The ticket's author</option>
-        <option value="named">Only the people I name</option>
+        <option value="anyone">Багийн аль ч гишүүн</option>
+        <option value="ticket_creator">Даалгаврыг үүсгэгч</option>
+        <option value="named">Зөвхөн миний нэрлэсэн хүмүүс</option>
       </select>
     </label>
     {#if approverMode === 'named'}
       <fieldset>
-        <legend class="small muted">Approvers</legend>
+        <legend class="small muted">Батлагчид</legend>
         {#each members as member (member.id)}
           <label class="inline">
             <input
@@ -172,17 +172,17 @@
         {/each}
         {#if Array.isArray(step.approvers) && step.approvers.length === 0}
           <p class="hint small warn-text">
-            Nobody is named, so nobody could ever decide this checkpoint.
+            Хэн ч нэрлэгдээгүй тул энэ хяналтын цэгийг хэн ч шийдэж чадахгүй.
           </p>
         {/if}
       </fieldset>
     {/if}
     <label>
-      <span class="small muted">How long it waits, in hours</span>
+      <span class="small muted">Хэдэн цаг хүлээх вэ</span>
       <input
         type="number"
         min="1"
-        placeholder="indefinitely"
+        placeholder="хугацаагүй"
         value={step.timeout_hours ?? ''}
         oninput={(e) =>
           patch({
@@ -190,18 +190,18 @@
           })}
       />
     </label>
-    <p class="hint small muted">Leave empty to wait until somebody decides.</p>
+    <p class="hint small muted">Хэн нэгэн шийдэх хүртэл хүлээхийн тулд хоосон үлдээнэ үү.</p>
     {#if step.timeout_hours}
       <label>
-        <span class="small muted">When that time expires</span>
+        <span class="small muted">Тэр хугацаа дуусахад</span>
         <select
           value={step.on_timeout ?? 'wait'}
           onchange={(e) =>
             patch({ on_timeout: e.currentTarget.value as 'wait' | 'continue' | 'fail' })}
         >
-          <option value="wait">Keep waiting anyway</option>
-          <option value="continue">Continue as if approved</option>
-          <option value="fail">Fail the run</option>
+          <option value="wait">Тэгсэн ч хүлээсэн хэвээр байх</option>
+          <option value="continue">Батлагдсан мэт үргэлжлүүлэх</option>
+          <option value="fail">Ажиллагааг амжилтгүй болгох</option>
         </select>
       </label>
     {/if}
@@ -209,7 +209,7 @@
 
   {#if step.type === 'shell'}
     <label>
-      <span class="small muted">Command</span>
+      <span class="small muted">Команд</span>
       <input
         placeholder="bun test"
         value={step.command ?? ''}
@@ -217,13 +217,14 @@
       />
     </label>
     <p class="hint small muted">
-      This is the only way a pipeline verifies anything. A non-zero exit fails the run.
+      Дамжлага ямар нэг зүйлийг шалгах цорын ганц арга бол энэ. Тэгээс ялгаатай гаралт ажиллагааг
+      амжилтгүй болгоно.
     </p>
   {/if}
 
   {#if step.type === 'notify'}
     <label>
-      <span class="small muted">Channel</span>
+      <span class="small muted">Суваг</span>
       <input
         placeholder="#code-factory"
         value={step.channel ?? ''}
@@ -231,10 +232,10 @@
       />
     </label>
     <label>
-      <span class="small muted">Message</span>
+      <span class="small muted">Мессеж</span>
       <textarea
         rows="2"
-        placeholder="{'{{ticket.id}}'} reached step {index + 1}"
+        placeholder="{'{{ticket.id}}'} {index + 1}-р алхамд хүрлээ"
         value={step.template ?? ''}
         oninput={(e) => patch({ template: e.currentTarget.value })}
       ></textarea>

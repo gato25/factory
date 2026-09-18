@@ -66,7 +66,7 @@ export async function previewRun(
     .from(pipelineVersions)
     .where(eq(pipelineVersions.pipelineId, pipelineId));
   const pinned = rows.find((row) => row.version === version);
-  if (!pinned) throw notFound(`pipeline version ${version} does not exist`);
+  if (!pinned) throw notFound(`дамжлагын ${version}-р хувилбар байхгүй байна`);
 
   const steps = pinned.steps as Step[];
   const agentIds = [...new Set(steps.map((s) => s.agent_id).filter((id): id is string => !!id))];

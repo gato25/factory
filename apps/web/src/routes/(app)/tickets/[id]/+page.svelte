@@ -104,24 +104,24 @@
   });
 
   const STATUS: Record<string, { label: string; tone: string }> = {
-    queued: { label: 'Queued', tone: '' },
-    running: { label: 'Running', tone: 'live' },
-    waiting_approval: { label: 'Waiting for approval', tone: 'warn' },
-    opening_mr: { label: 'Opening merge request', tone: 'live' },
-    done: { label: 'Done', tone: 'ok' },
-    failed: { label: 'Failed', tone: 'bad' },
-    cancelled: { label: 'Cancelled', tone: '' }
+    queued: { label: 'Дараалалд', tone: '' },
+    running: { label: 'Ажиллаж буй', tone: 'live' },
+    waiting_approval: { label: 'Таны баталгаажуулалт хүлээж буй', tone: 'warn' },
+    opening_mr: { label: 'Нэгтгэх хүсэлт нээж буй', tone: 'live' },
+    done: { label: 'Дууссан', tone: 'ok' },
+    failed: { label: 'Амжилтгүй', tone: 'bad' },
+    cancelled: { label: 'Цуцлагдсан', tone: '' }
   };
 </script>
 
 {#if view.error}
   <p class="card failure" role="alert">{(view.error as Error).message}</p>
 {:else if !view.ready}
-  <p class="card">Loading the run…</p>
+  <p class="card">Ажиллагааг ачааллаж байна…</p>
 {:else}
   {@const loaded = view.current}
   {#if !loaded}
-    <p class="card">This ticket has not been started yet.</p>
+    <p class="card">Энэ даалгавар хараахан эхлээгүй байна.</p>
   {:else}
       {@const status = STATUS[loaded.run.status] ?? { label: loaded.run.status, tone: '' }}
       {@const step = loaded.steps[selected ?? loaded.run.currentStepIndex ?? 0]}
@@ -149,14 +149,14 @@
       >
         {#snippet actions()}
           {#if connection !== 'live' && loaded.run.status === 'running'}
-            <span class="reconnecting" title="Reconnecting to the live stream">
-              {connection === 'retrying' ? 'reconnecting…' : 'connecting…'}
+            <span class="reconnecting" title="Шууд дамжуулалт руу дахин холбогдож байна">
+              {connection === 'retrying' ? 'дахин холбогдож байна…' : 'холбогдож байна…'}
             </span>
           {/if}
           {#if loaded.run.status === 'waiting_approval'}
             <a class="review" href="/tickets/{ticketId}/approve">
               <Icon name="hand" size={16} />
-              <span>Review</span>
+              <span>Хянах</span>
             </a>
           {/if}
 
@@ -171,7 +171,7 @@
                 onclick={() => act(() => unpause(loaded.run.id))}
               >
                 <Icon name="play" size={16} />
-                <span>Continue</span>
+                <span>Үргэлжлүүлэх</span>
               </button>
             {:else}
               <button
@@ -181,7 +181,7 @@
                 onclick={() => act(() => pause(loaded.run.id), { announce: false })}
               >
                 <Icon name="pause" size={16} />
-                <span>Pause</span>
+                <span>Түр зогсоох</span>
               </button>
             {/if}
             <!-- A run nothing is driving any more — the orchestrator's
@@ -193,11 +193,11 @@
                 type="button"
                 class="secondary"
                 disabled={working}
-                title="If nothing has happened for a while, drive the run again from its first unfinished step. Finished steps and their cost are kept. Only for a run that is stuck: a step still running would run twice."
+                title="Хэсэг хугацаанд юу ч болоогүй бол ажиллагааг дуусаагүй эхний алхмаас нь дахин хөдөлгөнө. Дууссан алхмууд болон тэдний зардал хэвээр үлдэнэ. Зөвхөн гацсан ажиллагаанд: ажиллаж байгаа алхам хоёр удаа ажиллана."
                 onclick={() => act(() => continueFrom(loaded.run.id))}
               >
                 <Icon name="rotate-ccw" size={16} />
-                <span>Continue run</span>
+                <span>Ажиллагааг үргэлжлүүлэх</span>
               </button>
             {/if}
             <button
@@ -207,7 +207,7 @@
               onclick={() => act(() => cancel(loaded.run.id))}
             >
               <Icon name="circle-x" size={16} />
-              <span>Cancel run</span>
+              <span>Ажиллагаа цуцлах</span>
             </button>
           {:else if retryable}
             <button
@@ -217,7 +217,7 @@
               onclick={() => act(() => retry(ticketId))}
             >
               <Icon name="rotate-ccw" size={16} />
-              <span>Retry</span>
+              <span>Дахин оролдох</span>
             </button>
             <button
               type="button"
@@ -226,7 +226,7 @@
               onclick={() => startEditing(loaded)}
             >
               <Icon name="pencil" size={16} />
-              <span>Edit &amp; retry</span>
+              <span>Засаад дахин оролдох</span>
             </button>
           {/if}
         {/snippet}
@@ -238,7 +238,7 @@
 
       {#if loaded.run.pauseRequestedAt && inFlight}
         <p class="card notice" role="status">
-          Pausing. The step running now will finish, and nothing further will start.
+          Түр зогсоож байна. Одоо ажиллаж буй алхам дуусах бөгөөд цаашид юу ч эхлэхгүй.
         </p>
       {/if}
 
@@ -251,23 +251,23 @@
         {@const f = failed.current}
         <section class="card failure" role="alert">
           <h2>
-            {#if f.stepLabel}{f.stepLabel} — step {(f.stepIndex ?? 0) + 1}{:else}This run{/if}
-            did not finish
+            {#if f.stepLabel}{f.stepLabel} — {(f.stepIndex ?? 0) + 1}-р алхам{:else}Энэ ажиллагаа{/if}
+            дуусаагүй
           </h2>
           <p>{f.what}</p>
           <p class="next">{f.next}</p>
           {#if f.stoppedByACeiling}
-            <p class="small muted">Spent ${f.spentUsd} of a ${f.ceilingUsd} ceiling.</p>
+            <p class="small muted">${f.ceilingUsd}-ийн хязгаараас ${f.spentUsd} зарцуулсан.</p>
           {/if}
           {#if f.produced.length > 0}
             <p class="small muted">
-              A retry starts again from the ticket, but what this attempt produced is still
-              readable: {f.produced.map((d) => d.path).join(', ')}.
+              Дахин оролдлого даалгавраас эхнээс нь эхэлнэ, гэхдээ энэ оролдлогын гаргасан зүйл
+              уншигдсан хэвээрээ: {f.produced.map((d) => d.path).join(', ')}.
             </p>
           {/if}
           {#if f.detail}
             <details>
-              <summary class="small">What the step itself reported</summary>
+              <summary class="small">Алхам өөрөө юу мэдээлсэн бэ</summary>
               <pre>{f.detail}</pre>
             </details>
           {/if}
@@ -279,21 +279,21 @@
       <!-- Editing and retrying is ONE action, not an edit then a retry (FR-089) -->
       {#if editing}
         <section class="card editor">
-          <h2>Edit and retry</h2>
+          <h2>Засаад дахин оролдох</h2>
           <label>
-            <span class="small muted">Title</span>
+            <span class="small muted">Гарчиг</span>
             <input bind:value={draftTitle} />
           </label>
           <label>
-            <span class="small muted">Description</span>
+            <span class="small muted">Тайлбар</span>
             <textarea bind:value={draftDescription} rows="4"></textarea>
           </label>
           <label>
-            <span class="small muted">Acceptance criteria, one per line</span>
+            <span class="small muted">Хүлээн авах шалгуур, мөрд нэг</span>
             <textarea bind:value={draftCriteria} rows="4"></textarea>
           </label>
           <div class="row">
-            <button type="button" onclick={() => (editing = false)}>Discard</button>
+            <button type="button" onclick={() => (editing = false)}>Болих</button>
             <button
               type="button"
               class="primary"
@@ -310,7 +310,7 @@
                 editing = false;
               }}
             >
-              Save &amp; retry
+              Хадгалаад дахин оролдох
             </button>
           </div>
         </section>

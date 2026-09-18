@@ -37,7 +37,7 @@
       // memory to check whether it is text.
       if (file.size > MAX_FILE_BYTES) {
         found.push(
-          `${file.name} is ${describeBytes(file.size)}, and the limit for one file is ${describeBytes(MAX_FILE_BYTES)}.`
+          `${file.name} нь ${describeBytes(file.size)} байна, нэг файлын хязгаар ${describeBytes(MAX_FILE_BYTES)}.`
         );
         continue;
       }
@@ -45,7 +45,7 @@
       if (problem) found.push(problem.message);
     }
     if (files.length > MAX_FILES) {
-      found.push(`A ticket can carry ${MAX_FILES} files, and you picked ${files.length}.`);
+      found.push(`Нэг даалгавар ${MAX_FILES} файл дийлнэ, та ${files.length}-ыг сонгожээ.`);
     }
     problems = found;
   }
@@ -90,13 +90,13 @@
           <Icon name="file-text" size={14} />
           <span class="n">{file.name}</span>
           <span class="s">{describeBytes(file.size)}</span>
-          <button type="button" onclick={() => drop(index)} aria-label="Remove {file.name}">
+          <button type="button" onclick={() => drop(index)} aria-label="{file.name}-ийг хасах">
             <Icon name="x" size={14} />
           </button>
         </li>
       {/each}
     </ul>
-    <p class="total">{picked.length} file{picked.length === 1 ? '' : 's'}, {describeBytes(total)}</p>
+    <p class="total">{picked.length} файл, {describeBytes(total)}</p>
   {/if}
 
   {#each problems as problem (problem)}

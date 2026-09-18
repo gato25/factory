@@ -19,7 +19,7 @@ import {
 
 function requireUser() {
   const user = getRequestEvent().locals.user;
-  if (!user) throw notAuthorised('you must be signed in');
+  if (!user) throw notAuthorised('та нэвтэрсэн байх ёстой');
   return user;
 }
 
@@ -59,11 +59,11 @@ export const history = query(SkillId, async (id) => {
  * reads to decide whether to reach for the skill (FR-043).
  */
 const Fields = {
-  name: v.pipe(v.string(), v.trim(), v.minLength(1, 'Give the skill a name.')),
+  name: v.pipe(v.string(), v.trim(), v.minLength(1, 'Ур чадварт нэр өгнө үү.')),
   description: v.pipe(
     v.string(),
     v.trim(),
-    v.minLength(1, 'Say when an agent should apply this skill.'),
+    v.minLength(1, 'Агент энэ ур чадварыг хэзээ ашиглахыг бичнэ үү.'),
   ),
   content: v.pipe(v.string(), v.minLength(1, 'A skill needs content to apply.')),
 };
@@ -91,11 +91,11 @@ export const save = form(v.object({ skillId: SkillId, ...Fields }), async (input
     await skills().refresh();
     return {
       message:
-        `Saved as version ${version}. ` +
+        `${version}-р хувилбар болгон хадгаллаа. ` +
         (reaches.length === 0
-          ? 'No agent holds this skill yet.'
-          : `${reaches.map((a) => a.name).join(', ')} will use it on the next run they start; ` +
-            'runs already in flight are unaffected.'),
+          ? 'Хараахан энэ ур чадварыг эзэмшсэн агент алга.'
+          : `${reaches.map((a) => a.name).join(', ')} дараагийн ажиллагаанаасаа эхлэн ` +
+            'үүнийг ашиглана; явж байгаа ажиллагаанууд хэвээрээ.'),
     };
   });
 });
@@ -108,8 +108,8 @@ export const remove = command(SkillId, async (id) => {
     return {
       message:
         detachedFrom.length === 0
-          ? 'Deleted.'
-          : `Deleted, and taken off ${detachedFrom.map((a) => a.name).join(', ')}.`,
+          ? 'Устгагдлаа.'
+          : `Устгагдаж, ${detachedFrom.map((a) => a.name).join(', ')}-аас хасагдлаа.`,
     };
   });
 });

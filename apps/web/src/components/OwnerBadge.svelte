@@ -19,14 +19,17 @@
 </script>
 
 {#if isDefault}
-  <span class="badge small shipped" title="Available to everyone; administrators change it">
-    Shipped
+  <span class="badge small shipped" title="Бүгдэд нээлттэй; администратор өөрчилнө">
+    Үндсэн
   </span>
 {:else if mine}
-  <span class="badge small mine">Yours</span>
+  <span class="badge small mine">Таных</span>
 {:else}
-  <span class="badge small" title={mayChange ? 'You can change this' : 'You can use it, not change it'}>
-    {ownerName ?? 'Someone else'}
+  <span
+    class="badge small"
+    title={mayChange ? 'Та үүнийг өөрчилж болно' : 'Та ашиглаж болно, өөрчилж болохгүй'}
+  >
+    {ownerName ?? 'Өөр хэн нэгэн'}
   </span>
 {/if}
 

@@ -36,7 +36,7 @@
 <a class="ticket" href="/tickets/{ticket.id}">
   <div class="top">
     <span class="id">{ticket.reference}</span>
-    <span class="who" title={ticket.createdByName ?? 'unknown'}>{initials}</span>
+    <span class="who" title={ticket.createdByName ?? 'тодорхойгүй'}>{initials}</span>
   </div>
 
   <h3>{ticket.title}</h3>
@@ -58,7 +58,7 @@
   {/if}
 
   {#if ticket.hasUi === true}
-    <p class="ui small muted">Changes the interface</p>
+    <p class="ui small muted">Интерфейс өөрчилнө</p>
   {/if}
 </a>
 

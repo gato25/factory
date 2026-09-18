@@ -154,46 +154,46 @@ test.describe('composing the pipeline', () => {
     await page.goto(`/pipelines/${seeded.pipelineId}`);
 
     // The two steps it starts with, and the implicit last one (FR-029).
-    await expect(page.getByText('Version 1')).toBeVisible();
-    await expect(page.getByText('Open merge request')).toBeVisible();
+    await expect(page.getByText('Хувилбар 1')).toBeVisible();
+    await expect(page.getByText('Нэгтгэх хүсэлт нээх')).toBeVisible();
     await expect(
-      page.getByText('Every pipeline ends here. It is not a step you can move or remove.'),
+      page.getByText('Дамжлага бүр эндээ дуусна. Үүнийг зөөх ч, устгах ч боломжгүй.'),
     ).toBeVisible();
     // How many repositories use it, before anyone changes it (FR-030).
-    await expect(page.getByText('Used by 1 repo')).toBeVisible();
+    await expect(page.getByText('1 репозитори ашиглаж байна')).toBeVisible();
     // And the run in flight is named, with what saving will not do to it.
-    await expect(page.getByText('1 run in flight')).toBeVisible();
+    await expect(page.getByText('1 ажиллагаа явагдаж байна')).toBeVisible();
 
     // --- add a review gate between the two steps, from the connector's + ---
-    await page.getByLabel('Insert a step at position 2').click();
+    await page.getByLabel('2-р байрлалд алхам оруулах').click();
     // Scoped to the popover just opened: the side panel offers the same
     // palette, so an unscoped match is ambiguous.
     await page
       .locator('.picker')
-      .getByRole('button', { name: 'Human checkpoint', exact: true })
+      .getByRole('button', { name: 'Хүний хяналтын цэг', exact: true })
       .click();
-    await expect(page.getByText('Step 2 — Human checkpoint')).toBeVisible();
+    await expect(page.getByText('2-р алхам — Хүний хяналтын цэг')).toBeVisible();
 
     // Its approvers, waiting time and expiry behaviour (FR-032).
-    await page.getByLabel('Who may decide this checkpoint?').selectOption('ticket_creator');
-    await page.getByLabel('How long it waits, in hours').fill('8');
-    await page.getByLabel('When that time expires').selectOption('fail');
+    await page.getByLabel('Энэ хяналтын цэгийг хэн шийдэх вэ?').selectOption('ticket_creator');
+    await page.getByLabel('Хэдэн цаг хүлээх вэ').fill('8');
+    await page.getByLabel('Тэр хугацаа дуусахад').selectOption('fail');
 
     // --- and a shell step at the end ---
-    await page.getByLabel('Add a step at the end').click();
+    await page.getByLabel('Төгсгөлд алхам нэмэх').click();
     await page
       .locator('.picker')
-      .getByRole('button', { name: 'Shell command', exact: true })
+      .getByRole('button', { name: 'Shell команд', exact: true })
       .click();
-    await page.getByRole('textbox', { name: 'Command' }).fill('bun test');
+    await page.getByRole('textbox', { name: 'Команд' }).fill('bun test');
 
     // SC-010 is stated before the save, not discovered after it.
     await expect(page.getByRole('status')).toContainText(
       'Saving does not affect it: each continues on the version it started with',
     );
 
-    await page.getByRole('button', { name: 'Save as version 2' }).click();
-    await expect(page.getByRole('status').first()).toContainText('Saved as version 2', {
+    await page.getByRole('button', { name: '2-р хувилбар болгон хадгалах' }).click();
+    await expect(page.getByRole('status').first()).toContainText('2-р хувилбар болгон хадгаллаа', {
       timeout: 15_000,
     });
     await expect(page.getByRole('status').first()).toContainText(
@@ -237,36 +237,39 @@ test.describe('composing the pipeline', () => {
     await page.goto(`/pipelines/${seeded.pipelineId}`);
 
     // --- FR-028: remove the code-producing step ---
-    await page.getByRole('button', { name: 'Actions for step 2' }).click();
-    await page.getByRole('button', { name: 'Remove step 2' }).click();
+    await page.getByRole('button', { name: '2-р алхмын үйлдэл' }).click();
+    await page.getByRole('button', { name: '2-р алхмыг устгах' }).click();
     await expect(page.getByText(/This pipeline has no step that writes code/)).toBeVisible();
     await expect(page.getByRole('button', { name: /^Save as version/ })).toBeDisabled();
 
     // Put it back, and the refusal goes away.
-    await page.getByLabel('Add a step at the end').click();
-    await page.locator('.picker').getByRole('button', { name: 'Agent step', exact: true }).click();
+    await page.getByLabel('Төгсгөлд алхам нэмэх').click();
+    await page.locator('.picker').getByRole('button', { name: 'Агент алхам', exact: true }).click();
     await page
-      .getByRole('combobox', { name: 'Agent', exact: true })
+      .getByRole('combobox', { name: 'Агент', exact: true })
       .selectOption({ label: `Implement ${seeded.tag} — claude-opus-5` });
     await expect(page.getByText(/no step that writes code/)).toHaveCount(0);
 
     // --- FR-032e: a design step before the step that classifies ---
-    await page.getByLabel('Insert a step at position 1').click();
-    await page.locator('.picker').getByRole('button', { name: 'Design step', exact: true }).click();
-    await expect(page.getByText(/Step 1 is a design step/)).toBeVisible();
-    await expect(page.getByText(/before the specification step that decides/)).toBeVisible();
-    await page.getByRole('button', { name: 'Actions for step 1' }).click();
-    await page.getByRole('button', { name: 'Remove step 1' }).click();
-
-    // --- FR-032d: a condition before its fact is established ---
-    await page.getByLabel('Insert a step at position 1').click();
+    await page.getByLabel('1-р байрлалд алхам оруулах').click();
     await page
       .locator('.picker')
-      .getByRole('button', { name: 'Human checkpoint', exact: true })
+      .getByRole('button', { name: 'Дизайн алхам', exact: true })
+      .click();
+    await expect(page.getByText(/Step 1 is a design step/)).toBeVisible();
+    await expect(page.getByText(/before the specification step that decides/)).toBeVisible();
+    await page.getByRole('button', { name: '1-р алхмын үйлдэл' }).click();
+    await page.getByRole('button', { name: '1-р алхмыг устгах' }).click();
+
+    // --- FR-032d: a condition before its fact is established ---
+    await page.getByLabel('1-р байрлалд алхам оруулах').click();
+    await page
+      .locator('.picker')
+      .getByRole('button', { name: 'Хүний хяналтын цэг', exact: true })
       .click();
     await page
-      .getByLabel('When does this step run?')
-      .selectOption('only if this ticket changes the interface');
+      .getByLabel('Энэ алхам хэзээ ажиллах вэ?')
+      .selectOption('зөвхөн энэ даалгавар интерфейс өөрчилдөг бол');
     await expect(
       page.getByText(/Step 1 runs only if this ticket changes the interface/),
     ).toBeVisible();
@@ -295,11 +298,11 @@ test.describe('composing the pipeline', () => {
     await page.goto(`/pipelines/${seeded.pipelineId}`);
     await expect(page.getByText(/you can use it, not change it/)).toBeVisible();
     // Readable: the steps are all there.
-    await expect(page.getByText('Open merge request')).toBeVisible();
+    await expect(page.getByText('Нэгтгэх хүсэлт нээх')).toBeVisible();
     // Not changeable: no save, no palette, no remove.
     await expect(page.getByRole('button', { name: /^Save as version/ })).toHaveCount(0);
-    await expect(page.getByLabel('Add a step at the end')).toHaveCount(0);
-    await expect(page.getByRole('button', { name: 'Remove step 1' })).toHaveCount(0);
+    await expect(page.getByLabel('Төгсгөлд алхам нэмэх')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: '1-р алхмыг устгах' })).toHaveCount(0);
   });
 
   test('a pipeline can be duplicated, and the copy is the copier own (FR-031)', async ({
@@ -313,7 +316,7 @@ test.describe('composing the pipeline', () => {
     const [name] = await sql`select name from pipelines where id = ${seeded.pipelineId}`;
     await page
       .locator('li', { hasText: name!.name })
-      .getByRole('button', { name: 'Duplicate' })
+      .getByRole('button', { name: 'Хуулбарлах' })
       .click();
     await expect(page.getByText(/Duplicated as/)).toBeVisible({ timeout: 15_000 });
 

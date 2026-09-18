@@ -67,7 +67,7 @@ export async function createTicket(
 ) {
   const title = input.title.trim();
   if (title.length === 0) {
-    throw invalidInput('Give the ticket a title — it becomes the merge request title.');
+    throw invalidInput('Даалгаварт гарчиг өгнө үү — энэ нь нэгтгэх хүсэлтийн гарчиг болно.');
   }
   // A repository whose credential no longer works cannot start a run (FR-013).
   const repository = input.start
@@ -79,7 +79,7 @@ export async function createTicket(
         .limit(1)
         .then((rows) => {
           const found = rows[0];
-          if (!found) throw notFound('that repository is not connected');
+          if (!found) throw notFound('тэр репозитори холбогдоогүй байна');
           return found;
         });
 
@@ -99,7 +99,7 @@ export async function createTicket(
         .then((rows) => rows[0]?.version)
     : undefined;
   if (input.start && pipelineVersion === undefined) {
-    throw notFound('that pipeline does not exist');
+    throw notFound('тэр дамжлага байхгүй байна');
   }
 
   const reference = await nextReference(database);
@@ -124,13 +124,13 @@ export async function createTicket(
     .returning();
 
   const ticket = inserted[0];
-  if (!ticket) throw new FactoryError('conflict', 'could not create the ticket');
+  if (!ticket) throw new FactoryError('conflict', 'даалгаврыг үүсгэж чадсангүй');
   return ticket;
 }
 
 export async function getTicket(database: Database, id: string) {
   const [ticket] = await database.select().from(tickets).where(eq(tickets.id, id)).limit(1);
-  if (!ticket) throw notFound('no such ticket');
+  if (!ticket) throw notFound('тийм даалгавар алга');
   return ticket;
 }
 

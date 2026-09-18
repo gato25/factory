@@ -49,9 +49,9 @@ export async function resolveSnapshot(
     .from(tickets)
     .where(eq(tickets.id, input.ticketId))
     .limit(1);
-  if (!ticket) throw notFound('no such ticket');
+  if (!ticket) throw notFound('тийм даалгавар алга');
   if (!ticket.pipelineId || ticket.pipelineVersion == null) {
-    throw invalidInput('this ticket has no pinned pipeline version, so it cannot start');
+    throw invalidInput('энэ даалгаварт бэхэлсэн дамжлагын хувилбар алга тул эхэлж чадахгүй');
   }
 
   const [repository] = await database
@@ -59,7 +59,7 @@ export async function resolveSnapshot(
     .from(repositories)
     .where(eq(repositories.id, ticket.repositoryId))
     .limit(1);
-  if (!repository) throw notFound('that repository is not connected');
+  if (!repository) throw notFound('тэр репозитори холбогдоогүй байна');
   if (!repository.credentialId) {
     throw invalidInput(`${repository.fullPath} has no stored credential`);
   }
@@ -120,7 +120,7 @@ export async function resolveSnapshot(
     .from(workspaces)
     .orderBy(workspaces.createdAt)
     .limit(1);
-  if (!workspace) throw invalidInput('the workspace is not configured');
+  if (!workspace) throw invalidInput('ажлын талбар тохируулагдаагүй байна');
 
   // The run's ceiling comes from the workspace (FR-079). An agent's own
   // limits are per-STEP and travel on the agent below, capped in the runner

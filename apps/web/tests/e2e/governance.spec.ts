@@ -169,12 +169,12 @@ test.describe('setting up and governing the workspace', () => {
     await page.goto('/settings');
 
     // The ceilings that make unattended execution financially safe.
-    await page.getByLabel('Most a run may spend, in dollars').fill('2.5000');
-    await page.getByLabel('Longest a run may take, in minutes').fill('30');
-    await page.getByLabel('Runs that may execute at once').fill('3');
-    await page.getByLabel('Lifetime, in minutes').fill('120');
+    await page.getByLabel('Нэг ажиллагааны зарцуулж болох дээд хэмжээ, доллараар').fill('2.5000');
+    await page.getByLabel('Нэг ажиллагааны үргэлжлэх дээд хугацаа, минутаар').fill('30');
+    await page.getByLabel('Зэрэг ажиллаж болох ажиллагааны тоо').fill('3');
+    await page.getByLabel('Ажиллах хугацаа, минутаар').fill('120');
     await page.getByLabel("Keep a failed run's sandbox for, in hours").fill('6');
-    await page.getByRole('button', { name: 'Save', exact: true }).click();
+    await page.getByRole('button', { name: 'Хадгалах', exact: true }).click();
 
     await expect(page.getByRole('main')).toContainText(
       'Runs already in flight keep the ceilings they started with',
@@ -194,16 +194,18 @@ test.describe('setting up and governing the workspace', () => {
     // seed configured none of them, so each must say so rather than "ok" —
     // and none may claim to have had a credential accepted, since none was
     // ever presented.
-    await page.getByRole('button', { name: 'Test connection' }).click();
+    await page.getByRole('button', { name: 'Холболт шалгах' }).click();
     const results = page.locator('.results li');
     await expect(results).toHaveCount(3, { timeout: 20_000 });
     await expect(page.locator('.results')).toContainText('Orchestration service');
-    await expect(page.locator('.results')).toContainText('Container host');
-    await expect(page.locator('.results')).toContainText('Design service');
-    await expect(page.locator('.results')).not.toContainText('Reachable, and it accepted');
-    // "Not configured yet" is a step not taken, and the screen must not
+    await expect(page.locator('.results')).toContainText('Контейнер хост');
+    await expect(page.locator('.results')).toContainText('Дизайны үйлчилгээ');
+    await expect(page.locator('.results')).not.toContainText(
+      'Холбогдож байна, нууц түлхүүрийг маань хүлээн авлаа',
+    );
+    // "Хараахан тохируулаагүй байна" is a step not taken, and the screen must not
     // dress it up as a fault an administrator should go looking for.
-    await expect(results.filter({ hasText: 'Not configured yet.' })).toHaveCount(2);
+    await expect(results.filter({ hasText: 'Хараахан тохируулаагүй байна.' })).toHaveCount(2);
   });
 
   test('a ceiling of zero is refused, because it would stop every run', async ({
@@ -214,8 +216,8 @@ test.describe('setting up and governing the workspace', () => {
     await signIn(context, seeded.adminId);
     await page.goto('/settings');
 
-    await page.getByLabel('Most a run may spend, in dollars').fill('0');
-    await page.getByRole('button', { name: 'Save', exact: true }).click();
+    await page.getByLabel('Нэг ажиллагааны зарцуулж болох дээд хэмжээ, доллараар').fill('0');
+    await page.getByRole('button', { name: 'Хадгалах', exact: true }).click();
     await expect(page.getByRole('main')).toContainText(
       'A cost ceiling of zero would stop every run before it began',
       { timeout: 15_000 },
@@ -240,22 +242,22 @@ test.describe('setting up and governing the workspace', () => {
       'Waiting for a free sandbox — position 3 in the queue',
     );
 
-    // And the third in line sees position 1, not "queued": first come, first
+    // And the third in line sees position 1, not "Дараалалд": first come, first
     // served, so the number follows creation order.
     await page.goto(`/tickets/${seeded.ticketIds[2]}`);
-    await expect(page.locator('.queued')).toContainText('position 1 in the queue');
+    await expect(page.locator('.queued')).toContainText('дараалалд 1-рт');
 
     // A run holding a sandbox shows no position at all.
     await page.goto(`/tickets/${seeded.ticketIds[0]}`);
     await expect(page.locator('.queued')).toHaveCount(0);
 
     // And the dashboard says the same thing, rather than the bare word
-    // "queued" that a reader can do nothing with (FR-082).
+    // "Дараалалд" that a reader can do nothing with (FR-082).
     await page.goto('/');
-    const waiting = page.locator('.card', { hasText: 'Active runs' });
-    await expect(waiting).toContainText('position 3 in the queue');
-    await expect(waiting).toContainText('position 1 in the queue');
-    await expect(waiting).not.toContainText('queued');
+    const waiting = page.locator('.card', { hasText: 'Идэвхтэй ажиллагаа' });
+    await expect(waiting).toContainText('дараалалд 3-рт');
+    await expect(waiting).toContainText('дараалалд 1-рт');
+    await expect(waiting).not.toContainText('Дараалалд');
   });
 
   test('an administrator sees the whole queue, in order', async ({ page, context }) => {
@@ -266,7 +268,7 @@ test.describe('setting up and governing the workspace', () => {
     // Scoped to the queue: the members list on the same screen is also a
     // `.people`, so an unscoped locator would number the wrong rows.
     const queue = page.locator('.queue');
-    await expect(queue).toContainText('executing', { timeout: 15_000 });
+    await expect(queue).toContainText('ажиллаж байна', { timeout: 15_000 });
 
     // An interpolated number is its own text node, so assert on the region.
     await expect(queue).toContainText('2 of 2 executing');
@@ -277,10 +279,10 @@ test.describe('setting up and governing the workspace', () => {
     // Holders first, then waiters numbered from one: what makes the list
     // readable as a queue rather than a set.
     await expect(rows.nth(0)).toContainText(seeded.references[0] as string);
-    await expect(rows.nth(0)).toContainText('executing');
-    await expect(rows.nth(1)).toContainText('executing');
-    await expect(rows.nth(2)).toContainText('position 1');
-    await expect(rows.nth(3)).toContainText('position 2');
+    await expect(rows.nth(0)).toContainText('ажиллаж байна');
+    await expect(rows.nth(1)).toContainText('ажиллаж байна');
+    await expect(rows.nth(2)).toContainText('дараалалд 1-рт');
+    await expect(rows.nth(3)).toContainText('дараалалд 2-рт');
     await expect(rows.nth(3)).toContainText(seeded.references[3] as string);
   });
 
@@ -296,11 +298,13 @@ test.describe('setting up and governing the workspace', () => {
     await expect(page.getByRole('main')).toContainText(
       'Workspace settings — credentials, connections, ceilings and membership — are for',
     );
-    await expect(page.getByRole('main')).toContainText('anyone can make their own');
+    await expect(page.getByRole('main')).toContainText('хэн ч өөрийнхөө агентыг үүсгэж');
 
     // Nothing to change.
-    await expect(page.getByLabel('Most a run may spend, in dollars')).toHaveCount(0);
-    await expect(page.getByRole('button', { name: 'Test connection' })).toHaveCount(0);
+    await expect(
+      page.getByLabel('Нэг ажиллагааны зарцуулж болох дээд хэмжээ, доллараар'),
+    ).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Холболт шалгах' })).toHaveCount(0);
 
     // And the rule is not merely hidden: the remote function refuses too.
     const refused = await page.request.post('http://localhost:5173/settings', {
@@ -319,11 +323,11 @@ test.describe('setting up and governing the workspace', () => {
 
     // Store one through the interface.
     await page.goto('/settings');
-    await page.getByLabel('Model credential').fill('sk-ant-supersecret-abcdefghij');
-    await page.getByRole('button', { name: 'Store', exact: true }).click();
+    await page.getByLabel('Загварын түлхүүр').fill('sk-ant-supersecret-abcdefghij');
+    await page.getByRole('button', { name: 'Хадгалах', exact: true }).click();
     // The success message, not the card's standing copy: a card that always
     // says "never shown again" would make this assertion prove nothing.
-    await expect(page.getByRole('status').last()).toContainText('encrypted at rest', {
+    await expect(page.getByRole('status').last()).toContainText('Шифрлэгдэн хадгалагдах', {
       timeout: 15_000,
     });
 
@@ -338,7 +342,7 @@ test.describe('setting up and governing the workspace', () => {
     expect(body).not.toContain('supersecret');
     expect(body).not.toContain('sk-ant');
     // The screen says one exists, which is the most it may say.
-    await expect(page.getByRole('main')).toContainText('One is stored');
+    await expect(page.getByRole('main')).toContainText('Нэг нь хадгалагдсан');
   });
 
   test("an administrator changes somebody else's role, and the change lands", async ({
@@ -356,7 +360,7 @@ test.describe('setting up and governing the workspace', () => {
     await page.getByLabel(`Role for Member ${seeded.tag}`).selectOption('admin');
     // The select would show 'admin' from the click alone, so the assertion is
     // on the message, which only the server produces.
-    await expect(page.getByRole('status').first()).toContainText('Now an administrator', {
+    await expect(page.getByRole('status').first()).toContainText('Одоо администратор боллоо', {
       timeout: 15_000,
     });
 
@@ -369,9 +373,9 @@ test.describe('setting up and governing the workspace', () => {
     await signIn(context, seeded.adminId);
     await page.goto('/settings');
 
-    await page.locator('form.invite').getByLabel('Name').fill(`Invited ${seeded.tag}`);
-    await page.locator('form.invite').getByLabel('Email').fill(`invited-${seeded.tag}@x.dev`);
-    await page.locator('form.invite').getByRole('button', { name: 'Invite' }).click();
+    await page.locator('form.invite').getByLabel('Нэр').fill(`Invited ${seeded.tag}`);
+    await page.locator('form.invite').getByLabel('И-мэйл').fill(`invited-${seeded.tag}@x.dev`);
+    await page.locator('form.invite').getByRole('button', { name: 'Урих' }).click();
 
     await expect(page.getByRole('main')).toContainText(`invited-${seeded.tag}@x.dev`, {
       timeout: 15_000,

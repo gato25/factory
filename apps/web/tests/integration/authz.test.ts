@@ -38,8 +38,8 @@ test('a member may change what they own', () => {
 
 test("a member may not change someone else's, and the message says they can still use it", () => {
   expect(canChangeOwned(other, member.id)).toBe(false);
-  expect(() => requireOwnerOrAdmin(other, member.id, 'that agent')).toThrow(
-    /use it but not change it/,
+  expect(() => requireOwnerOrAdmin(other, member.id, 'Тэр агент')).toThrow(
+    /ашиглаж болно, өөрчилж болохгүй/,
   );
 });
 
@@ -66,7 +66,7 @@ test('a ticket_creator gate admits only the author', () => {
 test('a named list admits only those named', () => {
   expect(canDecide(other, [other.id], member.id)).toBe(true);
   expect(canDecide(member, [other.id], member.id)).toBe(false);
-  expect(() => requireApprover(member, [other.id], member.id)).toThrow(/not yours to decide/);
+  expect(() => requireApprover(member, [other.id], member.id)).toThrow(/та шийдэхгүй/);
 });
 
 test('an administrator is NOT implicitly an approver — a gate names who decides', () => {

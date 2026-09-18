@@ -30,7 +30,7 @@ import {
 
 function requireUser() {
   const user = getRequestEvent().locals.user;
-  if (!user) throw notAuthorised('you must be signed in');
+  if (!user) throw notAuthorised('та нэвтэрсэн байх ёстой');
   return user;
 }
 
@@ -53,7 +53,7 @@ export const pipeline = query(PipelineId, async (id) => {
  */
 const SaveSchema = v.object({
   pipelineId: PipelineId,
-  name: v.optional(v.pipe(v.string(), v.trim(), v.minLength(1, 'Give the pipeline a name.'))),
+  name: v.optional(v.pipe(v.string(), v.trim(), v.minLength(1, 'Дамжлагад нэр өгнө үү.'))),
   description: v.optional(v.string()),
   steps: v.pipe(
     v.string(),
@@ -64,7 +64,7 @@ const SaveSchema = v.object({
         return null;
       }
     }),
-    v.custom<Step[]>((value) => Array.isArray(value), 'The steps could not be read.'),
+    v.custom<Step[]>((value) => Array.isArray(value), 'Алхмуудыг уншиж чадсангүй.'),
   ),
 });
 
@@ -88,12 +88,9 @@ export const save = form(SaveSchema, async (input) => {
       runsUnaffected,
       message:
         runsUnaffected === 0
-          ? `Saved as version ${version}.`
-          : runsUnaffected === 1
-            ? `Saved as version ${version}. 1 run already in flight continues on the version ` +
-              'it started with.'
-            : `Saved as version ${version}. ${runsUnaffected} runs already in flight continue ` +
-              'on the versions they started with.',
+          ? `${version}-р хувилбар болгон хадгаллаа.`
+          : `${version}-р хувилбар болгон хадгаллаа. Явж байгаа ${runsUnaffected} ажиллагаа ` +
+            'эхэлсэн хувилбар дээрээ үргэлжилнэ.',
     };
   } catch (error) {
     if (error instanceof FactoryError) return { problem: error.message };
@@ -153,7 +150,7 @@ export const preflight = query(PipelineId, async (id) => {
 export const rename = command(
   v.object({
     pipelineId: PipelineId,
-    name: v.pipe(v.string(), v.trim(), v.minLength(1, 'Give the pipeline a name.')),
+    name: v.pipe(v.string(), v.trim(), v.minLength(1, 'Дамжлагад нэр өгнө үү.')),
   }),
   async ({ pipelineId, name }) => {
     const user = requireUser();
@@ -174,7 +171,7 @@ export const duplicate = command(PipelineId, async (id) => {
   try {
     const copy = await duplicatePipeline(db(), id, user);
     await pipelines().refresh();
-    return { ...copy, message: `Duplicated as “${copy.name}”.` };
+    return { ...copy, message: `“${copy.name}” болгон хуулбарлалаа.` };
   } catch (error) {
     if (error instanceof FactoryError) return { problem: error.message };
     throw error;
@@ -182,7 +179,7 @@ export const duplicate = command(PipelineId, async (id) => {
 });
 
 const CreateSchema = v.object({
-  name: v.pipe(v.string(), v.trim(), v.minLength(1, 'Give the pipeline a name.')),
+  name: v.pipe(v.string(), v.trim(), v.minLength(1, 'Дамжлагад нэр өгнө үү.')),
   description: v.optional(v.string(), ''),
 });
 

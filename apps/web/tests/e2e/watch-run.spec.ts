@@ -143,13 +143,13 @@ test.describe('watching a run', () => {
 
     await page.goto(`/tickets/${seeded.ticketId}`);
     await expect(page.getByRole('heading', { name: /Add Google OAuth sign-in/ })).toBeVisible();
-    await expect(page.getByText('Queued')).toBeVisible();
+    await expect(page.getByText('Дараалалд')).toBeVisible();
     // Three steps plus the implicit merge request.
-    await expect(page.getByText('Merge request').first()).toBeVisible();
+    await expect(page.getByText('Нэгтгэх хүсэлт').first()).toBeVisible();
 
     // --- the run starts; the page must follow without a reload ---
     await callback({ step_index: 0, event: 'started', container_id: 'container-e2e' });
-    await expect(page.getByText('Running').first()).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByText('Ажиллаж буй').first()).toBeVisible({ timeout: 5_000 });
 
     await callback({ step_index: 0, event: 'step_started' });
 
@@ -192,11 +192,14 @@ test.describe('watching a run', () => {
     await callback({
       step_index: 2,
       event: 'failed',
-      reason: 'the step produced no document',
+      reason: 'Алхам бичих ёстой байсан баримтаа гаргалгүй дуусчээ.',
     });
-    await expect(page.getByRole('alert')).toContainText('the step produced no document', {
-      timeout: 5_000,
-    });
+    await expect(page.getByRole('alert')).toContainText(
+      'Алхам бичих ёстой байсан баримтаа гаргалгүй дуусчээ.',
+      {
+        timeout: 5_000,
+      },
+    );
   });
 
   test('the dashboard lists the run and its progress (FR-071, FR-072)', async ({
@@ -217,8 +220,8 @@ test.describe('watching a run', () => {
     ]);
 
     await page.goto('/');
-    await expect(page.getByText('tickets running')).toBeVisible();
-    await expect(page.getByText('Active runs')).toBeVisible();
+    await expect(page.getByText('Ажиллаж буй даалгавар')).toBeVisible();
+    await expect(page.getByText('Идэвхтэй ажиллагаа')).toBeVisible();
     await expect(page.getByText(/Add Google OAuth sign-in/).first()).toBeVisible();
   });
 });

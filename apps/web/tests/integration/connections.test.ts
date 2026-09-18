@@ -63,7 +63,7 @@ test('nothing configured reports unconfigured, not a fault', async () => {
   expect(result.state).toBe('unconfigured');
   // An unconfigured connection is a step not yet taken, and saying "failed"
   // would send an administrator looking for a problem that is not there.
-  expect(result.detail).toBe('Not configured yet.');
+  expect(result.detail).toBe('Хараахан тохируулаагүй байна.');
 });
 
 test('the runner probe sends the credential, so a wrong one can be refused', async () => {
@@ -90,7 +90,7 @@ test('a refused credential is unauthorised, not unreachable', async () => {
     const probe = host(() => new Response('unauthorised', { status }));
     const result = await testRunner(db, admin, { fetch: probe.fetch, authToken: 'wrong' });
     expect(result.state).toBe('unauthorised');
-    expect(result.detail).toMatch(/refused our credential\. Replace the credential\./);
+    expect(result.detail).toMatch(/нууц түлхүүрийг маань татгалзлаа\. Түлхүүрээ солино уу\./);
   }
 });
 
@@ -180,7 +180,7 @@ test('a member cannot test connections, because the address is a workspace setti
 test('readiness names what is missing rather than only refusing', async () => {
   const before = await readiness(db);
   expect(before.ready).toBe(false);
-  expect(before.missing).toEqual(['the runner address', 'a model credential']);
+  expect(before.missing).toEqual(['ажиллуулагчийн хаяг', 'загварын түлхүүр']);
   // seed() connects a repository, so that one is not on the list. A run
   // needs one as much as it needs an address, which is why it is checked
   // here rather than only on the screen.
@@ -190,11 +190,11 @@ test('readiness names what is missing rather than only refusing', async () => {
     modelCredentialId: null,
   });
   const after = await readiness(db);
-  expect(after.missing).toEqual(['a model credential']);
+  expect(after.missing).toEqual(['загварын түлхүүр']);
 
   // `credential_expired` is a real status and it blocks new runs (FR-013).
   await raw`update repositories set status = 'credential_expired'`;
-  expect((await readiness(db)).missing).toEqual(['a model credential', 'a connected repository']);
+  expect((await readiness(db)).missing).toEqual(['загварын түлхүүр', 'холбогдсон репозитори']);
 });
 
 test('a fresh deployment can read its settings rather than answering 500', async () => {

@@ -29,23 +29,23 @@
 
 <button class="primary" onclick={() => (open = true)}>
   <Icon name="plus" size={16} />
-  <span>Connect repository</span>
+  <span>Репозитори холбох</span>
 </button>
 
 {#if open}
   <!-- svelte-ignore a11y_click_events_have_key_events -->
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div class="scrim" onclick={() => (open = false)}></div>
-  <div class="modal" role="dialog" aria-modal="true" aria-label="Connect a repository">
+  <div class="modal" role="dialog" aria-modal="true" aria-label="Репозитори холбох">
     <header>
       <div class="tx">
-        <h2>Connect a repository</h2>
+        <h2>Репозитори холбох</h2>
         <p>
-          The factory needs permission to read code, push branches and open
-          {provider === 'gitlab' ? 'merge requests' : 'pull requests'}.
+          Код унших, салбар түлхэх,
+          {provider === 'gitlab' ? 'нэгтгэх хүсэлт' : 'pull request'} нээх эрх шаардлагатай.
         </p>
       </div>
-      <button type="button" class="close" aria-label="Close" onclick={() => (open = false)}>
+      <button type="button" class="close" aria-label="Хаах" onclick={() => (open = false)}>
         <Icon name="x" size={20} />
       </button>
     </header>
@@ -58,7 +58,7 @@
     >
       <div class="body">
         <fieldset>
-          <legend>1. Choose provider</legend>
+          <legend>1. Үйлчилгээгээ сонгоно уу</legend>
           <div class="providers">
             {#each providers as option (option.id)}
               <label class:on={provider === option.id}>
@@ -71,7 +71,7 @@
         </fieldset>
 
         <div class="field">
-          <label for="url">2. Repository URL</label>
+          <label for="url">2. Репозиторийн хаяг</label>
           <div class="input">
             <Icon name="link" size={16} />
             <input
@@ -85,7 +85,7 @@
         </div>
 
         <div class="field">
-          <label for="token">3. Access token</label>
+          <label for="token">3. Хандалтын токен</label>
           <div class="input">
             <Icon name="key-round" size={16} />
             <input id="token" name="token" type="password" required autocomplete="off" />
@@ -93,10 +93,10 @@
           <!-- The permissions, at the point the credential is entered (FR-010) -->
           <p class="hint">
             {#if scopes.ready}
-              Needs scopes: {scopes.current[provider].join(', ')}. Stored encrypted and never shown
-              again — not even to you.
+              Шаардлагатай эрх: {scopes.current[provider].join(', ')}. Шифрлэгдэж хадгалагдах
+              бөгөөд дахин хэзээ ч харагдахгүй — танд ч гэсэн.
             {:else}
-              Loading the required permissions…
+              Шаардлагатай эрхийг ачааллаж байна…
             {/if}
           </p>
           <!--
@@ -107,17 +107,17 @@
           -->
           <p class="hint">
             <a href={tokenPageUrl(provider)} target="_blank" rel="noreferrer noopener">
-              Create one on {provider === 'gitlab' ? 'GitLab' : 'GitHub'} →
+              {provider === 'gitlab' ? 'GitLab' : 'GitHub'} дээр үүсгэх →
             </a>
             {TOKEN_PAGE_NOTE[provider]}
           </p>
         </div>
 
         <div class="field">
-          <label for="defaultPipelineId">4. Default pipeline for new tickets</label>
+          <label for="defaultPipelineId">4. Шинэ даалгаврын үндсэн дамжлага</label>
           <div class="input">
             <select id="defaultPipelineId" name="defaultPipelineId">
-              <option value="">None — each ticket picks one</option>
+              <option value="">Байхгүй — даалгавар бүр өөрөө сонгоно</option>
               {#each available.ready ? available.current : [] as pipeline (pipeline.id)}
                 <option value={pipeline.id}>
                   {pipeline.name}{pipeline.description ? ` (${pipeline.description})` : ''}
@@ -140,11 +140,11 @@
       <footer>
         <button type="button" class="secondary" onclick={() => (open = false)}>
           <Icon name="x" size={16} />
-          <span>Cancel</span>
+          <span>Болих</span>
         </button>
         <button class="primary" type="submit" disabled={connect.pending > 0}>
           <Icon name="plug" size={16} />
-          <span>{connect.pending > 0 ? 'Testing…' : 'Test & connect'}</span>
+          <span>{connect.pending > 0 ? 'Шалгаж байна…' : 'Шалгаад холбох'}</span>
         </button>
       </footer>
     </form>

@@ -35,7 +35,7 @@ test('a tampered ciphertext is refused, not silently decrypted', () => {
   const raw = Buffer.from(sealed.ciphertext, 'base64');
   raw[raw.length - 1] ^= 0xff;
   const tampered = { ...sealed, ciphertext: raw.toString('base64') };
-  expect(() => revealForRun(tampered, ring)).toThrow(/failed authentication/);
+  expect(() => revealForRun(tampered, ring)).toThrow(/баталгаажсангүй/);
 });
 
 test('a credential sealed under a retired key is refused when that key is gone', () => {

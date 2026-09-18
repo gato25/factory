@@ -17,17 +17,17 @@ describe('when Run it is available (FR-003)', () => {
   });
 
   test.each([
-    ['running', 'has finished'],
-    ['queued', 'has finished'],
-    ['waiting_approval', 'checkpoint'],
-    ['failed', 'did not finish'],
-    ['draft', 'has finished'],
+    ['running', 'Ажиллагаа дуусаж'],
+    ['queued', 'Ажиллагаа дуусаж'],
+    ['waiting_approval', 'хяналтын цэгт'],
+    ['failed', 'Ажиллагаа дуусаагүй'],
+    ['draft', 'Ажиллагаа дуусмагц'],
   ])('a %s ticket says why not', (status, phrase) => {
     expect(launchBlocker({ status, branchName: 'factory/1-x' })).toContain(phrase);
   });
 
   test('no branch is the first reason, whatever the status', () => {
-    expect(launchBlocker({ status: 'done', branchName: null })).toContain('no branch');
+    expect(launchBlocker({ status: 'done', branchName: null })).toContain('салбар алга');
   });
 });
 
@@ -49,7 +49,7 @@ describe('the request console', () => {
     expect(normalisePath('/a?b=c')).toBe('/a?b=c');
     // The console sends to the launch and nowhere else: a URL here would turn
     // the application into an open proxy.
-    expect(() => normalisePath('https://example.com/x')).toThrow(/not a full address/);
+    expect(() => normalisePath('https://example.com/x')).toThrow(/Бүтэн хаяг биш/);
     expect(() => normalisePath('//example.com/x')).toThrow();
   });
 });

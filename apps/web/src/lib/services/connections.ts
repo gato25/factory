@@ -42,11 +42,11 @@ export interface ConnectionResult {
 }
 
 const STATE_TEXT: Record<ConnectionState, string> = {
-  unconfigured: 'Not configured yet.',
-  reachable: 'Reachable, and it accepted our credential.',
-  unreachable: 'Nothing answered at that address. Check the address, and that it is running.',
-  unauthorised: 'It answered but refused our credential. Replace the credential.',
-  wrong_shape: 'Something answered, but not this service. Check the address.',
+  unconfigured: 'Хараахан тохируулаагүй байна.',
+  reachable: 'Холбогдож байна, нууц түлхүүрийг маань хүлээн авлаа.',
+  unreachable: 'Тэр хаягт юу ч хариулсангүй. Хаягаа болон ажиллаж байгаа эсэхийг шалгана уу.',
+  unauthorised: 'Хариулсан ч нууц түлхүүрийг маань татгалзлаа. Түлхүүрээ солино уу.',
+  wrong_shape: 'Ямар нэг зүйл хариулсан ч энэ үйлчилгээ биш байна. Хаягаа шалгана уу.',
 };
 
 export interface ProbeDeps {
@@ -225,15 +225,15 @@ export async function testEverything(
 export async function readiness(database: Database) {
   const workspace = await getWorkspace(database);
   const missing: string[] = [];
-  if (!workspace.runnerBaseUrl) missing.push('the runner address');
-  if (!workspace.hasModelCredential) missing.push('a model credential');
+  if (!workspace.runnerBaseUrl) missing.push('ажиллуулагчийн хаяг');
+  if (!workspace.hasModelCredential) missing.push('загварын түлхүүр');
 
   const [repository] = await database
     .select({ id: repositories.id })
     .from(repositories)
     .where(eq(repositories.status, 'connected'))
     .limit(1);
-  if (!repository) missing.push('a connected repository');
+  if (!repository) missing.push('холбогдсон репозитори');
 
   return { ready: missing.length === 0, missing };
 }

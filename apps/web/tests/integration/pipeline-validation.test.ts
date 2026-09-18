@@ -96,7 +96,9 @@ test('the code-producing step is the agent step with no required documents', () 
 });
 
 test('an empty pipeline is refused, and told where to start', () => {
-  expect(messages([])).toEqual(['A pipeline needs at least one step. Add one from the palette.']);
+  expect(messages([])).toEqual([
+    'Дамжлагад хамгийн багадаа нэг алхам хэрэгтэй. Палитраас нэгийг нэмээрэй.',
+  ]);
 });
 
 // --- FR-032e: a design step before the classifying step ---
@@ -105,8 +107,8 @@ test('a design step before the classifying step is refused, naming it', () => {
   const problems = problemsWith([design(), spec(), code()]);
   const about = problems.filter((p) => p.index === 0);
   expect(about.length).toBeGreaterThan(0);
-  expect(about.some((p) => p.message.includes('Step 1 is a design step'))).toBe(true);
-  expect(about.some((p) => p.message.includes('before the specification step that decides'))).toBe(
+  expect(about.some((p) => p.message.includes('1-р алхам бол дизайн алхам'))).toBe(true);
+  expect(about.some((p) => p.message.includes('шийддэг тодорхойлолтын алхмаас өмнө байна'))).toBe(
     true,
   );
 });
@@ -118,7 +120,7 @@ test('a design step after it is fine', () => {
 test('a design step in a pipeline that classifies nowhere is refused', () => {
   // No document-producing step, so nothing ever decides.
   const problems = problemsWith([design('always'), code()]);
-  expect(problems.some((p) => p.message.includes('Step 1 is a design step'))).toBe(true);
+  expect(problems.some((p) => p.message.includes('1-р алхам бол дизайн алхам'))).toBe(true);
   expect(classifyingIndex([design('always'), code()])).toBeNull();
 });
 
@@ -127,16 +129,16 @@ test('a design step in a pipeline that classifies nowhere is refused', () => {
 test('a condition before the fact is established is refused, naming step and fact', () => {
   const problems = problemsWith([gate('ticket_has_ui'), spec(), code()]);
   const first = problems.find((p) => p.index === 0);
-  expect(first?.message).toContain('Step 1 runs only if this ticket changes the interface');
+  expect(first?.message).toContain('1-р алхам зөвхөн энэ даалгавар интерфейс өөрчилдөг бол');
   // The FACT in words, which is what FR-032d asks be stated.
-  expect(first?.message).toContain('whether the ticket changes the interface is not known yet');
-  expect(first?.message).toContain('Move it after the step that writes the specification');
+  expect(first?.message).toContain('даалгавар интерфейс өөрчилдөг эсэх хараахан мэдэгдээгүй');
+  expect(first?.message).toContain('Тодорхойлолт бичдэг алхмын ард нь зөөнө үү');
 });
 
 test('the inverse condition is refused in the same place', () => {
   const problems = problemsWith([gate('ticket_has_no_ui'), spec(), code()]);
   expect(problems[0]?.message).toContain(
-    'Step 1 runs only if this ticket does not change the interface',
+    '1-р алхам зөвхөн энэ даалгавар интерфейс өөрчилдөггүй бол',
   );
 });
 
@@ -212,9 +214,9 @@ test('a save is refused, and reports every problem in one pass', async () => {
 
   const message = refused?.message ?? '';
   // No code step, a condition too early, and a design step too early.
-  expect(message).toContain('no step that writes code');
-  expect(message).toContain('Step 2 runs only if this ticket changes the interface');
-  expect(message).toContain('Step 1 is a design step');
+  expect(message).toContain('код бичдэг алхам алга');
+  expect(message).toContain('2-р алхам зөвхөн энэ даалгавар интерфейс өөрчилдөг бол');
+  expect(message).toContain('1-р алхам бол дизайн алхам');
 
   // And nothing was written: the pipeline is still on version 1.
   const [pipeline] = await db

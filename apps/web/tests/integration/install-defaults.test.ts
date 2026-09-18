@@ -45,7 +45,7 @@ test('an empty database gets every shipped agent and all three pipelines', async
   expect(result.pipelinesCreated.sort()).toEqual(DEFAULT_PIPELINES.map((p) => p.name).sort());
   // Three, differing only in how much oversight they impose (FR-034).
   expect(result.pipelinesCreated).toHaveLength(3);
-  expect(result.pipelinesCreated.sort()).toEqual(['Quick fix', 'Review-heavy', 'Standard']);
+  expect(result.pipelinesCreated.sort()).toEqual(['Стандарт', 'Хурдан засвар', 'Хяналттай']);
 });
 
 test('every step names a real agent, not the slug it was written with', async () => {
@@ -72,12 +72,12 @@ test('the three pipelines differ in their gates and nothing else', async () => {
   const work = async (name: string) =>
     (await steps(name)).filter((s) => s.type === 'agent').map((s) => s.output_files);
 
-  expect(await gates('Quick fix')).toBe(0);
-  expect(await gates('Standard')).toBe(1);
-  expect(await gates('Review-heavy')).toBe(3);
+  expect(await gates('Хурдан засвар')).toBe(0);
+  expect(await gates('Стандарт')).toBe(1);
+  expect(await gates('Хяналттай')).toBe(3);
   // The same work in each; only the oversight changes.
-  expect(await work('Quick fix')).toEqual(await work('Standard'));
-  expect(await work('Standard')).toEqual(await work('Review-heavy'));
+  expect(await work('Хурдан засвар')).toEqual(await work('Стандарт'));
+  expect(await work('Стандарт')).toEqual(await work('Хяналттай'));
 });
 
 test('each shipped agent records what it shipped as, so a reset has a target', async () => {
@@ -114,13 +114,17 @@ test('a re-install does not undo a change somebody made', async () => {
   await db
     .update(agents)
     .set({ systemPrompt: 'somebody rewrote this', model: 'claude-haiku-4-5' })
-    .where(eq(agents.name, 'Spec'));
+    .where(eq(agents.name, 'Тодорхойлолт агент'));
 
   // A re-install is not a reset: that is `resetAgent`, which the person
   // themselves asks for. Overwriting here would discard their work without
   // their asking.
   await installDefaults(db);
-  const [row] = await db.select().from(agents).where(eq(agents.name, 'Spec')).limit(1);
+  const [row] = await db
+    .select()
+    .from(agents)
+    .where(eq(agents.name, 'Тодорхойлолт агент'))
+    .limit(1);
   expect(row?.systemPrompt).toBe('somebody rewrote this');
   expect(row?.model).toBe('claude-haiku-4-5');
 });

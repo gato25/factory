@@ -84,7 +84,7 @@ export async function editArtifact(
   user: SessionUser,
 ): Promise<ArtifactVersion> {
   const previous = await currentVersion(database, runId, path);
-  if (!previous) throw notFound(`this run has no ${path} to edit`);
+  if (!previous) throw notFound(`энэ ажиллагаанд засах ${path} алга`);
 
   const [row] = await database
     .insert(artifacts)

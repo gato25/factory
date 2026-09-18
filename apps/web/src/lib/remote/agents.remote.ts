@@ -24,7 +24,7 @@ import {
 
 function requireUser() {
   const user = getRequestEvent().locals.user;
-  if (!user) throw notAuthorised('you must be signed in');
+  if (!user) throw notAuthorised('та нэвтэрсэн байх ёстой');
   return user;
 }
 
@@ -53,9 +53,15 @@ export const agent = query(AgentId, async (id) => {
 /** The vocabulary the editor offers: the tools, and each engine's models. */
 export const options = query(async () => {
   requireUser();
-  const { TEMPLATE_VARIABLES, TOOL_DESCRIPTION } = await import('$lib/services/agent');
+  const { TEMPLATE_VARIABLES, TOOL_DESCRIPTION, TOOL_LABEL } = await import('$lib/services/agent');
   return {
-    tools: TOOLS.map((tool) => ({ name: tool, what: TOOL_DESCRIPTION[tool] })),
+    // `name` is the identifier the CLI is given; `label` is what a person
+    // reads. Translating the identifier would withhold the tool.
+    tools: TOOLS.map((tool) => ({
+      name: tool,
+      label: TOOL_LABEL[tool],
+      what: TOOL_DESCRIPTION[tool],
+    })),
     models: MODELS,
     variables: TEMPLATE_VARIABLES.map((variable) => ({ ...variable })),
   };
@@ -68,10 +74,10 @@ export const options = query(async () => {
  */
 const SaveSchema = v.object({
   agentId: AgentId,
-  name: v.pipe(v.string(), v.trim(), v.minLength(1, 'Give the agent a name.')),
+  name: v.pipe(v.string(), v.trim(), v.minLength(1, 'Агентад нэр өгнө үү.')),
   description: v.optional(v.string(), ''),
   engine: v.picklist(['claude_cli', 'design_cli'] as const),
-  model: v.pipe(v.string(), v.minLength(1, 'Choose a model.')),
+  model: v.pipe(v.string(), v.minLength(1, 'Загвараа сонгоно уу.')),
   systemPrompt: v.optional(v.string(), ''),
   /** Checkboxes, so the tools arrive as a comma-separated hidden field. */
   allowedTools: v.optional(v.string(), ''),
@@ -111,12 +117,12 @@ export const save = form(SaveSchema, async (input) => {
     );
     await agent(input.agentId).refresh();
     await agents().refresh();
-    return { message: 'Saved. Runs already in flight are unaffected.' };
+    return { message: 'Хадгалагдлаа. Явж байгаа ажиллагаанууд хэвээрээ.' };
   });
 });
 
 const CreateSchema = v.object({
-  name: v.pipe(v.string(), v.trim(), v.minLength(1, 'Give the agent a name.')),
+  name: v.pipe(v.string(), v.trim(), v.minLength(1, 'Агентад нэр өгнө үү.')),
   engine: v.optional(v.picklist(['claude_cli', 'design_cli'] as const), 'claude_cli'),
   description: v.optional(v.string(), ''),
 });
@@ -141,7 +147,7 @@ export const reset = command(AgentId, async (id) => {
     await resetAgent(db(), id, user);
     await agent(id).refresh();
     await agents().refresh();
-    return { message: 'Back to the configuration this agent shipped with.' };
+    return { message: 'Энэ агентын анхны тохиргоонд буцлаа.' };
   });
 });
 
@@ -150,7 +156,7 @@ export const duplicate = command(AgentId, async (id) => {
   return attempt(async () => {
     const copy = await duplicateAgent(db(), id, user);
     await agents().refresh();
-    return { ...copy, message: `Duplicated as “${copy.name}”, and it is yours to change.` };
+    return { ...copy, message: `“${copy.name}” болгон хуулбарлалаа, одоо танайх боллоо.` };
   });
 });
 
@@ -162,9 +168,9 @@ export const remove = command(AgentId, async (id) => {
     return {
       message:
         runsStillUsingIt === 0
-          ? 'Deleted.'
-          : `Deleted. ${runsStillUsingIt} run${runsStillUsingIt === 1 ? '' : 's'} still ` +
-            'running will finish: each read this agent when it started and never looks again.',
+          ? 'Устгагдлаа.'
+          : `Устгагдлаа. Ажиллаж буй ${runsStillUsingIt} ажиллагаа дуусгана: тус бүр нь ` +
+            'эхлэхдээ энэ агентыг уншсан бөгөөд дахин хэзээ ч харахгүй.',
     };
   });
 });

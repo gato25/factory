@@ -19,23 +19,23 @@
     children: Snippet;
   } = $props();
 
-  // The design's own icons, by the design's own names.
+  // The design's own icons and its own labels, by the design's own names.
   const nav = [
-    { href: '/', label: 'Dashboard', icon: 'layout-dashboard' },
-    { href: '/repositories', label: 'Repositories', icon: 'git-branch' },
-    { href: '/tickets', label: 'Tickets', icon: 'ticket' },
-    { href: '/pipelines', label: 'Pipelines', icon: 'workflow' },
-    { href: '/agents', label: 'Agents', icon: 'bot' },
-    { href: '/skills', label: 'Skills', icon: 'sparkles' },
+    { href: '/', label: 'Хяналтын самбар', icon: 'layout-dashboard' },
+    { href: '/repositories', label: 'Репозитори', icon: 'git-branch' },
+    { href: '/tickets', label: 'Даалгавар', icon: 'ticket' },
+    { href: '/pipelines', label: 'Дамжлага', icon: 'workflow' },
+    { href: '/agents', label: 'Агент', icon: 'bot' },
+    { href: '/skills', label: 'Ур чадвар', icon: 'sparkles' },
   ];
-  const settings = { href: '/settings', label: 'Settings', icon: 'settings' };
+  const settings = { href: '/settings', label: 'Тохиргоо', icon: 'settings' };
 
   const isActive = (href: string) =>
     href === '/' ? page.url.pathname === '/' : page.url.pathname.startsWith(href);
 
   const title = $derived(
     [...nav, settings].find((item) => item.href !== '/' && isActive(item.href))?.label ??
-      'Dashboard',
+      'Хяналтын самбар',
   );
 
   /** "Gantogtokh B." → "GB", as the design's avatar shows. */
@@ -80,7 +80,7 @@
       <span class="avatar">{initials}</span>
       <span class="user-text">
         <span class="name">{data.user.name}</span>
-        <span class="workspace">{data.workspace.name} workspace</span>
+        <span class="workspace">{data.workspace.name} ажлын талбар</span>
       </span>
     </div>
   </aside>
@@ -90,26 +90,26 @@
       <h1>{title}</h1>
       <div class="right">
         <form class="search" action="/tickets">
-          <label class="sr" for="global-search">Search tickets and repositories</label>
+          <label class="sr" for="global-search">Даалгавар, репозитори хайх</label>
           <Icon name="search" size={16} />
           <input
             id="global-search"
             name="q"
             type="search"
             bind:value={query}
-            placeholder="Search tickets, repos..."
+            placeholder="Даалгавар, репозитори хайх"
           />
         </form>
         <!--
           The design draws a bell and no destination for it. Approvals are the
           only thing here that waits on a person, so that is where it goes.
         -->
-        <a class="bell" href="/" aria-label="Runs waiting for your approval">
+        <a class="bell" href="/" aria-label="Таны баталгаажуулалт хүлээж буй ажиллагаа">
           <Icon name="bell" size={16} />
         </a>
         <a class="primary" href="/tickets/new">
           <Icon name="plus" size={16} />
-          <span>New ticket</span>
+          <span>Шинэ даалгавар</span>
         </a>
       </div>
     </header>

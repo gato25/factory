@@ -34,15 +34,34 @@ export const TOOLS = [
 
 export type Tool = (typeof TOOLS)[number];
 
+/**
+ * What a person calls each tool.
+ *
+ * Separate from the tool's own name because that name is an identifier: it is
+ * what goes to the CLI as `--allowedTools`, and translating it there would
+ * withhold every tool. `Bash` and `WebFetch` read the same in both languages,
+ * as the design writes them, so they are their own label.
+ */
+export const TOOL_LABEL: Record<Tool, string> = {
+  Read: 'Унших',
+  Write: 'Бичих',
+  Edit: 'Засах',
+  Glob: 'Файл хайх',
+  Grep: 'Агуулга хайх',
+  Bash: 'Bash',
+  WebFetch: 'WebFetch',
+  GitPush: 'Git түлхэлт',
+};
+
 export const TOOL_DESCRIPTION: Record<Tool, string> = {
-  Read: 'Read a file in the repository',
-  Write: 'Create a file',
-  Edit: 'Change an existing file',
-  Glob: 'Find files by name',
-  Grep: 'Search file contents',
-  Bash: 'Run a shell command — including the repository’s tests',
-  WebFetch: 'Fetch a URL',
-  GitPush: 'Push the branch',
+  Read: 'Репозиторийн аль ч файлыг унших',
+  Write: 'Файл үүсгэх',
+  Edit: 'Байгаа файлыг өөрчлөх',
+  Glob: 'Файлыг нэрээр нь олох',
+  Grep: 'Файлын агуулгаас хайх',
+  Bash: 'Shell команд ажиллуулах — репозиторийн тестийг ч оруулаад',
+  WebFetch: 'Гадаад хаягаас татах',
+  GitPush: 'Салбарыг түлхэх',
 };
 
 /**
@@ -102,6 +121,9 @@ export async function listAgents(database: Database, user: SessionUser | null) {
     engine: row.engine,
     model: row.model,
     allowedTools: row.allowedTools,
+    // The identifiers above go to the CLI; these are the same tools in the
+    // words a person reads, so a card does not have to translate them itself.
+    toolLabels: row.allowedTools.map((tool) => TOOL_LABEL[tool as Tool] ?? tool),
     skills: attached.filter((a) => a.agentId === row.id).map((a) => a.name),
     ownerId: row.ownerId,
     ownerName: owners.find((owner) => owner.id === row.ownerId)?.name ?? null,
@@ -117,7 +139,7 @@ export async function getAgent(
   user: SessionUser | null,
 ): Promise<AgentDetail> {
   const [row] = await database.select().from(agents).where(eq(agents.id, agentId)).limit(1);
-  if (!row) throw notFound('no such agent');
+  if (!row) throw notFound('тийм агент алга');
 
   const ownership = await ownershipOf(database, 'agent', agentId, user);
   const held = await database
@@ -191,7 +213,7 @@ export async function createAgent(
       maxTurns: input.maxTurns ?? null,
     })
     .returning();
-  if (!created) throw conflict('could not create the agent');
+  if (!created) throw conflict('агентыг үүсгэж чадсангүй');
 
   await setSkills(database, created.id, input.skillIds ?? []);
   return { id: created.id };
@@ -205,7 +227,7 @@ export async function updateAgent(
 ): Promise<{ changed: true }> {
   await requireChangeable(database, 'agent', agentId, user);
   const [existing] = await database.select().from(agents).where(eq(agents.id, agentId)).limit(1);
-  if (!existing) throw notFound('no such agent');
+  if (!existing) throw notFound('тийм агент алга');
 
   const engine = input.engine ?? existing.engine;
   const fields = validate({ ...input, engine });
@@ -247,16 +269,16 @@ function validate(input: AgentInput & { engine: 'claude_cli' | 'design_cli' }) {
   }
   if (input.allowedTools?.some((tool) => !TOOLS.includes(tool as Tool))) {
     const unknown = input.allowedTools.filter((tool) => !TOOLS.includes(tool as Tool));
-    throw invalidInput(`There is no tool called ${unknown.join(', ')}.`);
+    throw invalidInput(`${unknown.join(', ')} нэртэй хэрэгсэл байхгүй байна.`);
   }
   if (input.maxCostUsd != null && Number(input.maxCostUsd) <= 0) {
-    throw invalidInput('A cost limit of zero would stop the step before it began.');
+    throw invalidInput('Тэг зардлын хязгаар нь алхмыг эхлэхээс нь өмнө зогсооно.');
   }
   if (input.maxMinutes != null && input.maxMinutes <= 0) {
-    throw invalidInput('A time limit of zero would stop the step before it began.');
+    throw invalidInput('Тэг хугацааны хязгаар нь алхмыг эхлэхээс нь өмнө зогсооно.');
   }
   if (input.maxTurns != null && input.maxTurns <= 0) {
-    throw invalidInput('A turn limit of zero would stop the step before it began.');
+    throw invalidInput('Тэг эргэлтийн хязгаар нь алхмыг эхлэхээс нь өмнө зогсооно.');
   }
   return { model: input.model };
 }
@@ -268,7 +290,8 @@ async function setSkills(database: Database, agentId: string, skillIds: string[]
       .select({ id: skills.id })
       .from(skills)
       .where(inArray(skills.id, unique));
-    if (found.length !== unique.length) throw notFound('one of those skills does not exist');
+    if (found.length !== unique.length)
+      throw notFound('тэдгээр ур чадваруудын нэг нь байхгүй байна');
   }
   await database.delete(agentSkills).where(eq(agentSkills.agentId, agentId));
   if (unique.length > 0) {
@@ -291,7 +314,7 @@ export async function resetAgent(
 ): Promise<{ reset: true }> {
   await requireChangeable(database, 'agent', agentId, user);
   const [row] = await database.select().from(agents).where(eq(agents.id, agentId)).limit(1);
-  if (!row) throw notFound('no such agent');
+  if (!row) throw notFound('тийм агент алга');
   if (!row.defaultConfig) {
     throw invalidInput(
       'This agent was created here rather than shipped, so there is no shipped ' +
@@ -360,7 +383,7 @@ export async function duplicateAgent(
   user: SessionUser,
 ): Promise<{ id: string; name: string }> {
   const [source] = await database.select().from(agents).where(eq(agents.id, agentId)).limit(1);
-  if (!source) throw notFound('no such agent');
+  if (!source) throw notFound('тийм агент алга');
 
   const [copy] = await database
     .insert(agents)
@@ -379,7 +402,7 @@ export async function duplicateAgent(
       maxTurns: source.maxTurns,
     })
     .returning();
-  if (!copy) throw conflict('could not duplicate the agent');
+  if (!copy) throw conflict('агентыг хуулбарлаж чадсангүй');
 
   const held = await database
     .select({ skillId: agentSkills.skillId })
@@ -395,17 +418,17 @@ export async function duplicateAgent(
 
 /** The variables an agent's instructions may reference (FR-037, spec §8.3). */
 export const TEMPLATE_VARIABLES = [
-  { name: 'ticket.id', what: 'The ticket reference, like #142' },
-  { name: 'ticket.title', what: 'Its title' },
-  { name: 'ticket.description', what: 'Its description' },
-  { name: 'ticket.acceptance', what: 'Its acceptance criteria, one per line' },
-  { name: 'ticket.has_ui', what: 'Whether it changes the interface, once decided' },
-  { name: 'repo.name', what: 'The repository name' },
-  { name: 'repo.branch', what: "The run's branch" },
-  { name: 'repo.default_branch', what: 'The branch it will merge into' },
-  { name: 'run.attempt', what: 'Which attempt this is' },
-  { name: 'feedback', what: 'A reviewer’s requested changes, when there are any' },
-  { name: 'design.screens', what: 'Paths of the designed screens, when a design step ran' },
+  { name: 'ticket.id', what: 'Даалгаврын дугаар, жишээ нь #142' },
+  { name: 'ticket.title', what: 'Түүний гарчиг' },
+  { name: 'ticket.description', what: 'Түүний тайлбар' },
+  { name: 'ticket.acceptance', what: 'Түүний хүлээн авах шалгуур, мөрд нэг' },
+  { name: 'ticket.has_ui', what: 'Интерфейс өөрчилдөг эсэх, шийдэгдсэн бол' },
+  { name: 'repo.name', what: 'Репозиторийн нэр' },
+  { name: 'repo.branch', what: 'Ажиллагааны салбар' },
+  { name: 'repo.default_branch', what: 'Нэгтгэгдэх салбар' },
+  { name: 'run.attempt', what: 'Хэд дэх оролдлого болох' },
+  { name: 'feedback', what: 'Хянагчийн хүссэн өөрчлөлт, байгаа бол' },
+  { name: 'design.screens', what: 'Зурсан дэлгэцүүдийн зам, дизайн алхам ажилласан бол' },
 ] as const;
 
 /** Whether an agent still matches what shipped, for the editor's Reset. */

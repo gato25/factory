@@ -180,7 +180,7 @@ test.describe('recovering from a failed run', () => {
     // Which step, and why — without opening anything (FR-087, SC-008).
     await expect(page.getByText('Builder — step 2 did not finish')).toBeVisible();
     await expect(
-      page.getByText('The step finished without producing the document it was supposed to write.'),
+      page.getByText('Алхам бичих ёстой байсан баримтаа гаргалгүй дуусчээ.'),
     ).toBeVisible();
     await expect(
       page.getByText(/Add detail to the description or the acceptance criteria/),
@@ -191,15 +191,15 @@ test.describe('recovering from a failed run', () => {
     // The raw output is available but not in the way: it is behind a summary.
     const raw = page.getByText('Traceback: AssertionError at line 41 of the harness');
     await expect(raw).toBeHidden();
-    await page.getByText('What the step itself reported').click();
+    await page.getByText('Алхам өөрөө юу мэдээлсэн бэ').click();
     await expect(raw).toBeVisible();
 
     // The failed step is the one highlighted, with the retry beside it.
-    await expect(page.getByRole('button', { name: 'Retry from here' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Эндээс дахин оролдох' })).toBeVisible();
 
     // SC-009 — one interaction. No orchestrator is running here, so what
     // comes back is FR-094's message: the attempt exists and has not begun.
-    await page.getByRole('button', { name: 'Retry', exact: true }).click();
+    await page.getByRole('button', { name: 'Дахин оролдох', exact: true }).click();
     await expect(page.getByText(/Attempt 2 is queued but has not begun/)).toBeVisible({
       timeout: 60_000,
     });
@@ -249,9 +249,9 @@ test.describe('recovering from a failed run', () => {
 
     await page.goto(`/tickets/${seeded.ticketId}`);
 
-    await expect(page.getByText('The run reached the most it was allowed to spend.')).toBeVisible();
+    await expect(page.getByText('Ажиллагаа зарцуулж болох дээд хэмжээндээ хүрлээ.')).toBeVisible();
     // What was consumed, against what was allowed.
-    await expect(page.getByText('Spent $0.3400 of a $0.2000 ceiling.')).toBeVisible();
+    await expect(page.getByText('$0.2000-ийн хязгаараас $0.3400 зарцуулсан.')).toBeVisible();
     await expect(page.getByText(/Split it, or raise the ceiling on the pipeline/)).toBeVisible();
     // And the reason is not a stack trace or an exit code.
     await expect(page.getByText(/Traceback|exit code|exited [0-9]/)).toHaveCount(0);
@@ -270,13 +270,13 @@ test.describe('recovering from a failed run', () => {
     await page.goto(`/tickets/${seeded.ticketId}`);
 
     // SC-009 — two interactions: open the editor, then save and retry.
-    await page.getByRole('button', { name: 'Edit & retry' }).click();
+    await page.getByRole('button', { name: 'Засаад дахин оролдох' }).click();
     await page
       .locator('textarea')
       .first()
       .fill('Make the ticket list load in under 300ms on a cold cache.');
     await page.locator('textarea').last().fill('The ticket list loads in under 300ms');
-    await page.getByRole('button', { name: 'Save & retry' }).click();
+    await page.getByRole('button', { name: 'Хадгалаад дахин оролдох' }).click();
 
     await expect(
       page.getByText(/Ticket updated\. Attempt 2 is queued but has not begun/),
@@ -307,10 +307,12 @@ test.describe('recovering from a failed run', () => {
     await post({ step_index: 0, event: 'step_started' });
 
     await page.goto(`/tickets/${seeded.ticketId}`);
-    await page.getByRole('button', { name: 'Pause' }).click();
+    await page.getByRole('button', { name: 'Түр зогсоох' }).click();
 
     await expect(
-      page.getByText('Pausing. The step running now will finish, and nothing further will start.'),
+      page.getByText(
+        'Түр зогсож байна. Одоо ажиллаж буй алхам дуусах бөгөөд цаашид юу ч эхлэхгүй.',
+      ),
     ).toBeVisible({ timeout: 15_000 });
 
     // The run keeps its status: it is still running the step it was running.
@@ -333,7 +335,7 @@ test.describe('recovering from a failed run', () => {
     expect(await reply.json()).toMatchObject({ applied: true, paused: true, continue: false });
 
     // Continuing withdraws the request.
-    await page.getByRole('button', { name: 'Continue' }).click();
+    await page.getByRole('button', { name: 'Үргэлжлүүлэх' }).click();
     await expect(page.getByText(/Continuing from where it stopped/)).toBeVisible({
       timeout: 15_000,
     });
@@ -350,7 +352,7 @@ test.describe('recovering from a failed run', () => {
     await sql`update runs set container_id = 'container-e2e' where id = ${seeded.runId}`;
 
     await page.goto(`/tickets/${seeded.ticketId}`);
-    await page.getByRole('button', { name: 'Cancel run' }).click();
+    await page.getByRole('button', { name: 'Ажиллагаа цуцлах' }).click();
 
     await expect(page.getByText(/the branch pushed so far is untouched/)).toBeVisible({
       timeout: 15_000,
@@ -364,7 +366,7 @@ test.describe('recovering from a failed run', () => {
     expect(ticket!.branch_name).toContain('-faster');
 
     // A cancelled run is retryable, and says so rather than offering a pause.
-    await expect(page.getByRole('button', { name: 'Retry', exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Pause' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Дахин оролдох', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Түр зогсоох' })).toHaveCount(0);
   });
 });

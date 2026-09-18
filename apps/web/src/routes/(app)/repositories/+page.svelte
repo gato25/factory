@@ -42,8 +42,11 @@
 
 <div class="head">
   <div class="page-head">
-    <h2>Connected repositories</h2>
-    <p>Each ticket belongs to one repository. Connect a repo to start creating tickets for it.</p>
+    <h2>Холбогдсон репозитори</h2>
+    <p>
+      Даалгавар бүр нэг репозиторид харьяалагдана. Даалгавар үүсгэхийн тулд эхлээд репозиториео
+      холбоно уу.
+    </p>
   </div>
   <ConnectRepository />
 </div>
@@ -51,19 +54,21 @@
 {#if repos.error}
   <p class="card error" role="alert">{(repos.error as Error).message}</p>
 {:else if !repos.ready}
-  <p class="card">Loading repositories…</p>
+  <p class="card">Репозиториудыг ачааллаж байна…</p>
 {:else if repos.current.length === 0}
-  <p class="card empty">No repositories connected yet. Connect one to create your first ticket.</p>
+  <p class="card empty">
+    Хараахан репозитори холбогдоогүй байна. Эхний даалгавраа үүсгэхийн тулд нэгийг холбоно уу.
+  </p>
 {:else}
   <div class="table">
     <div class="row header">
-      <span class="c repo">Repository</span>
-      <span class="c provider">Provider</span>
-      <span class="c branch">Default branch</span>
-      <span class="c pipeline">Default pipeline</span>
-      <span class="c tickets">Tickets</span>
-      <span class="c status">Status</span>
-      <span class="c more"><span class="sr">Actions</span></span>
+      <span class="c repo">Репозитори</span>
+      <span class="c provider">Үйлчилгээ</span>
+      <span class="c branch">Үндсэн салбар</span>
+      <span class="c pipeline">Үндсэн дамжлага</span>
+      <span class="c tickets">Даалгавар</span>
+      <span class="c status">Төлөв</span>
+      <span class="c more"><span class="sr">Үйлдэл</span></span>
     </div>
 
     {#each repos.current as repo (repo.id)}
@@ -87,12 +92,12 @@
           {#if repo.defaultPipelineName}
             {repo.defaultPipelineName}
           {:else}
-            <span class="muted">None — a ticket picks one</span>
+            <span class="muted">Байхгүй — даалгавар өөрөө сонгоно</span>
           {/if}
         </span>
 
         <span class="c tickets small">
-          {repo.ticketsRunning} running &middot; {repo.ticketsDone} done
+          {repo.ticketsRunning} идэвхтэй &middot; {repo.ticketsDone} дууссан
         </span>
 
         <span class="c status">
@@ -100,17 +105,17 @@
           <span class="badge {repo.status === 'connected' ? 'ok' : 'bad'}">
             <span class="dot"></span>
             {repo.status === 'connected'
-              ? 'Connected'
+              ? 'Холбогдсон'
               : repo.status === 'credential_expired'
-                ? 'Token expired'
-                : 'Error'}
+                ? 'Токен хугацаа дууссан'
+                : 'Алдаа'}
           </span>
         </span>
 
         <span class="c more">
           <button
             type="button"
-            aria-label="Actions for {repo.name}"
+            aria-label="{repo.name}-ийн үйлдэл"
             aria-expanded={openMenu === repo.id}
             onclick={(event) => {
               event.stopPropagation();
@@ -132,7 +137,7 @@
                   choosing = choosing === repo.id ? null : repo.id;
                   replacing = null;
                   starting = null;
-                }}>Change the default pipeline</button
+                }}>Үндсэн дамжлага солих</button
               >
               <button
                 type="button"
@@ -140,7 +145,7 @@
                   replacing = replacing === repo.id ? null : repo.id;
                   choosing = null;
                   starting = null;
-                }}>Replace the access token</button
+                }}>Хандалтын токен солих</button
               >
               <button
                 type="button"
@@ -148,7 +153,7 @@
                   starting = starting === repo.id ? null : repo.id;
                   replacing = null;
                   choosing = null;
-                }}>Set how it starts</button
+                }}>Хэрхэн эхлэхийг тохируулах</button
               >
               <button
                 type="button"
@@ -156,12 +161,12 @@
                 onclick={() => {
                   void disconnect(repo.id);
                   close();
-                }}>Disconnect</button
+                }}>Холболт салгах</button
               >
 
               {#if choosing === repo.id}
                 <label class="field">
-                  <span class="small muted">Pipeline for new tickets</span>
+                  <span class="small muted">Шинэ даалгаврын дамжлага</span>
                   <select
                     value={repo.defaultPipelineId ?? ''}
                     onchange={async (event) => {
@@ -172,7 +177,7 @@
                       close();
                     }}
                   >
-                    <option value="">None — a ticket picks one</option>
+                    <option value="">Байхгүй — даалгавар өөрөө сонгоно</option>
                     {#each available.current ?? [] as pipeline (pipeline.id)}
                       <option value={pipeline.id}>{pipeline.name}</option>
                     {/each}
@@ -186,7 +191,7 @@
                 <form {...changeRunSettings} class="field" onsubmit={close}>
                   <input type="hidden" name="repositoryId" value={repo.id} />
                   <label>
-                    <span class="small muted">Start command</span>
+                    <span class="small muted">Эхлүүлэх команд</span>
                     <input
                       name="command"
                       value={repo.runCommand ?? ''}
@@ -195,18 +200,19 @@
                     />
                   </label>
                   <label>
-                    <span class="small muted">Port it listens on</span>
+                    <span class="small muted">Сонсох порт</span>
                     <input name="port" type="number" min="1" max="65535" value={repo.runPort ?? ''} placeholder="5173" />
                   </label>
                   <p class="small muted">
-                    Leave both empty to detect from package.json. The command runs inside the
-                    sandbox with PORT and HOST set; the server has to listen on 0.0.0.0.
+                    package.json-оос тодорхойлуулахын тулд хоёуланг нь хоосон үлдээнэ үү. Команд
+                    нь PORT, HOST тохируулагдсан sandbox дотор ажиллана; сервер 0.0.0.0 дээр сонсох
+                    ёстой.
                   </p>
                   {#each changeRunSettings.fields.allIssues() ?? [] as issue (issue.message)}
                     <p class="small error" role="alert">{issue.message}</p>
                   {/each}
                   <button type="submit" disabled={changeRunSettings.pending > 0}>
-                    {changeRunSettings.pending > 0 ? 'Saving…' : 'Save'}
+                    {changeRunSettings.pending > 0 ? 'Хадгалж байна…' : 'Хадгалах'}
                   </button>
                 </form>
               {/if}
@@ -215,20 +221,21 @@
                 <form {...replaceToken} class="field" onsubmit={close}>
                   <input type="hidden" name="repositoryId" value={repo.id} />
                   <label>
-                    <span class="small muted">New access token</span>
+                    <span class="small muted">Шинэ хандалтын токен</span>
                     <input name="token" type="password" autocomplete="off" required />
                   </label>
                   <!-- The permissions, at the point the credential is entered (FR-010) -->
                   <p class="small muted">
-                    It needs to read the repository, push branches and open
-                    {repo.provider === 'gitlab' ? 'merge requests' : 'pull requests'}. Stored
-                    encrypted and never shown again — not even to you.
+                    Код унших, салбар түлхэх,
+                    {repo.provider === 'gitlab' ? 'нэгтгэх хүсэлт' : 'pull request'} нээх эрх
+                    шаардлагатай. Шифрлэгдэж хадгалагдах бөгөөд дахин хэзээ ч харагдахгүй — танд ч
+                    гэсэн.
                   </p>
                   {#each replaceToken.fields.allIssues() ?? [] as issue (issue.message)}
                     <p class="small error" role="alert">{issue.message}</p>
                   {/each}
                   <button type="submit" disabled={replaceToken.pending > 0}>
-                    {replaceToken.pending > 0 ? 'Storing…' : 'Store the new token'}
+                    {replaceToken.pending > 0 ? 'Хадгалж байна…' : 'Шинэ токен хадгалах'}
                   </button>
                 </form>
               {/if}

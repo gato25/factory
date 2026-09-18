@@ -96,7 +96,7 @@ export function keyRingFromEnv(env: NodeJS.ProcessEnv = process.env): KeyRing {
 
 export function seal(plaintext: string, ring: KeyRing): SealedCredential {
   if (plaintext.length === 0) {
-    throw new FactoryError('invalid_input', 'a credential cannot be empty');
+    throw new FactoryError('invalid_input', 'нууц түлхүүр хоосон байж болохгүй');
   }
   const iv = randomBytes(IV_BYTES);
   const cipher = createCipheriv(ALGORITHM, ring.current.key, iv);
@@ -134,7 +134,7 @@ export function revealForRun(sealed: SealedCredential, ring: KeyRing): string {
   try {
     return Buffer.concat([decipher.update(body), decipher.final()]).toString('utf8');
   } catch {
-    throw new FactoryError('credential_invalid', 'stored credential failed authentication');
+    throw new FactoryError('credential_invalid', 'хадгалагдсан нууц түлхүүр баталгаажсангүй');
   }
 }
 

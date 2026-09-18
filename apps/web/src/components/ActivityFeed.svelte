@@ -10,14 +10,20 @@
    */
   const feed = $derived(activity());
 
-  // Derived from the rows that already record what happened, rather than
-  // duplicated into a table of its own (FR-073).
+  /**
+   * Derived from the rows that already record what happened, rather than
+   * duplicated into a table of its own (FR-073).
+   *
+   * The phrase FOLLOWS the ticket rather than leading it, because that is the
+   * order Mongolian puts it in and the order the design writes: "#136 CSV
+   * тайлан гаргах — !88 нэгтгэгдлээ", not "нэгтгэгдлээ #136".
+   */
   const TEXT: Record<string, string> = {
-    mr_opened: 'Merge request opened for',
-    run_failed: 'Run failed for',
-    gate_reached: 'Checkpoint reached for',
-    run_cancelled: 'Run cancelled for',
-    ticket_created: 'Ticket created:'
+    mr_opened: '— нэгтгэх хүсэлт нээгдлээ',
+    run_failed: '— ажиллагаа амжилтгүй боллоо',
+    gate_reached: '— хяналтын цэгт хүрлээ',
+    run_cancelled: '— ажиллагаа цуцлагдлаа',
+    ticket_created: '— даалгавар үүслээ'
   };
   const TONE: Record<string, string> = {
     mr_opened: 'ok',
@@ -28,30 +34,30 @@
   };
 
   /**
-   * "12 min ago" rather than a full timestamp, as the design reads. A feed is
+   * "12 мин өмнө" rather than a full timestamp, as the design reads. A feed is
    * skimmed for recency; the exact moment is a hover away in the title.
    */
   function ago(at: string | number | Date, now = Date.now()): string {
     const seconds = Math.max(0, Math.round((now - new Date(at).getTime()) / 1000));
-    if (seconds < 60) return 'just now';
+    if (seconds < 60) return 'дөнгөж сая';
     const minutes = Math.round(seconds / 60);
-    if (minutes < 60) return `${minutes} min ago`;
+    if (minutes < 60) return `${minutes} мин өмнө`;
     const hours = Math.round(minutes / 60);
-    if (hours < 24) return `${hours} h ago`;
+    if (hours < 24) return `${hours} цагийн өмнө`;
     const days = Math.round(hours / 24);
-    if (days < 7) return `${days} d ago`;
-    return new Date(at).toLocaleDateString();
+    if (days < 7) return `${days} хоногийн өмнө`;
+    return new Date(at).toLocaleDateString('mn-MN');
   }
 </script>
 
 <section class="feed">
-  <header><h2>Recent activity</h2></header>
+  <header><h2>Сүүлийн үйл ажиллагаа</h2></header>
   {#if !feed.ready}
-    <p class="empty">Loading…</p>
+    <p class="empty">Ачааллаж байна…</p>
   {:else}
     {@const rows = feed.current}
     {#if rows.length === 0}
-      <p class="empty">Nothing has happened yet.</p>
+      <p class="empty">Одоохондоо юу ч болоогүй байна.</p>
     {:else}
       <ul>
         {#each rows as row (row.runId)}
@@ -59,14 +65,14 @@
             <span class="dot {TONE[row.kind]}"></span>
             <span class="text">
               <span class="msg">
-                {TEXT[row.kind] ?? row.kind}
                 <a href="/tickets/{row.ticketId}">{row.reference} {row.title}</a>
-                {#if row.attempt > 1}<span class="attempt">attempt {row.attempt}</span>{/if}
+                {TEXT[row.kind] ?? row.kind}
+                {#if row.attempt > 1}<span class="attempt">{row.attempt}-р оролдлого</span>{/if}
               </span>
               {#if row.kind === 'run_failed' && row.detail}
                 <span class="detail">{row.detail}</span>
               {/if}
-              <time class="when" datetime={new Date(row.at).toISOString()} title={new Date(row.at).toLocaleString()}>
+              <time class="when" datetime={new Date(row.at).toISOString()} title={new Date(row.at).toLocaleString('mn-MN')}>
                 {ago(row.at)}
               </time>
             </span>

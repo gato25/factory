@@ -18,7 +18,7 @@ import { getWorkspace, storeCredential, updateWorkspace } from '$lib/services/wo
 
 function requireUser() {
   const user = getRequestEvent().locals.user;
-  if (!user) throw notAuthorised('you must be signed in');
+  if (!user) throw notAuthorised('та нэвтэрсэн байх ёстой');
   return user;
 }
 
@@ -71,17 +71,21 @@ export const connections = command(async () => {
 });
 
 const WorkspaceSchema = v.object({
-  name: v.pipe(v.string(), v.trim(), v.minLength(1, 'Give the workspace a name.')),
+  name: v.pipe(v.string(), v.trim(), v.minLength(1, 'Ажлын талбарт нэр өгнө үү.')),
   runnerBaseUrl: v.optional(v.string(), ''),
-  defaultCostCeilingUsd: v.pipe(v.string(), v.trim(), v.minLength(1, 'Set a cost ceiling.')),
-  defaultTimeCeilingMinutes: formInteger('Set a time ceiling in whole minutes.'),
-  maxConcurrentRuns: formInteger('Set how many runs may execute at once.'),
-  sandboxImage: v.pipe(v.string(), v.trim(), v.minLength(1, 'Name the sandbox image.')),
-  sandboxCpu: formInteger('Set the processors as a whole number.'),
-  sandboxMemoryMb: formInteger('Set the memory in whole megabytes.'),
-  sandboxWallClockMinutes: formInteger('Set the sandbox lifetime in whole minutes.'),
+  defaultCostCeilingUsd: v.pipe(
+    v.string(),
+    v.trim(),
+    v.minLength(1, 'Зардлын хязгаараа тогтооно уу.'),
+  ),
+  defaultTimeCeilingMinutes: formInteger('Хугацааны хязгаарыг бүхэл минутаар тогтооно уу.'),
+  maxConcurrentRuns: formInteger('Зэрэг хэдэн ажиллагаа явахыг тогтооно уу.'),
+  sandboxImage: v.pipe(v.string(), v.trim(), v.minLength(1, 'Sandbox образын нэрийг бичнэ үү.')),
+  sandboxCpu: formInteger('Цөмийн тоог бүхэл тоогоор тогтооно уу.'),
+  sandboxMemoryMb: formInteger('Санах ойг бүхэл мегабайтаар тогтооно уу.'),
+  sandboxWallClockMinutes: formInteger('Орчны ажиллах хугацааг бүхэл минутаар тогтооно уу.'),
   sandboxNetworkDuringImplement: formBoolean(),
-  retainFailedSandboxesHours: formInteger('Set the retention in whole hours.'),
+  retainFailedSandboxesHours: formInteger('Хадгалах хугацааг бүхэл цагаар тогтооно уу.'),
 });
 
 export const saveWorkspace = form(WorkspaceSchema, async (input) => {
@@ -96,7 +100,7 @@ export const saveWorkspace = form(WorkspaceSchema, async (input) => {
       user,
     );
     await settings().refresh();
-    return { message: 'Saved. Runs already in flight keep the ceilings they started with.' };
+    return { message: 'Хадгалагдлаа. Явж байгаа ажиллагаанууд эхэлсэн хязгаараа хадгална.' };
   });
 });
 
@@ -107,7 +111,7 @@ export const saveWorkspace = form(WorkspaceSchema, async (input) => {
  */
 const CredentialSchema = v.object({
   kind: v.picklist(['model', 'design'] as const),
-  token: v.pipe(v.string(), v.trim(), v.minLength(1, 'Paste the credential.')),
+  token: v.pipe(v.string(), v.trim(), v.minLength(1, 'Нууц түлхүүрээ буулгана уу.')),
 });
 
 export const saveCredential = form(CredentialSchema, async (input) => {
@@ -115,13 +119,13 @@ export const saveCredential = form(CredentialSchema, async (input) => {
   return attempt(async () => {
     await storeCredential(db(), input, user, keyRingFromEnv());
     await settings().refresh();
-    return { message: 'Stored. It is encrypted at rest and never shown again.' };
+    return { message: 'Хадгалагдлаа. Шифрлэгдэн хадгалагдах бөгөөд дахин харагдахгүй.' };
   });
 });
 
 const InviteSchema = v.object({
-  name: v.pipe(v.string(), v.trim(), v.minLength(1, 'Give them a name.')),
-  email: v.pipe(v.string(), v.trim(), v.email('That does not look like an email address.')),
+  name: v.pipe(v.string(), v.trim(), v.minLength(1, 'Тэдэнд нэр өгнө үү.')),
+  email: v.pipe(v.string(), v.trim(), v.email('Энэ и-мэйл хаяг шиг харагдахгүй байна.')),
   role: v.optional(v.picklist(['admin', 'member'] as const), 'member'),
 });
 
@@ -144,7 +148,7 @@ export const changeRole = command(
     return attempt(async () => {
       await setRole(db(), userId, role, user);
       await members().refresh();
-      return { role, message: `Now ${role === 'admin' ? 'an administrator' : 'a member'}.` };
+      return { role, message: `Одоо ${role === 'admin' ? 'администратор' : 'гишүүн'} боллоо.` };
     });
   },
 );
@@ -154,19 +158,15 @@ export const removeMember = command(v.pipe(v.string(), v.uuid()), async (userId)
   return attempt(async () => {
     const { ticketsKept, ownedTransferred } = await remove(db(), userId, user);
     await members().refresh();
-    const parts = ['Access revoked.'];
+    const parts = ['Хандах эрхийг хураалаа.'];
     if (ticketsKept > 0) {
       parts.push(
-        `${ticketsKept} ticket${ticketsKept === 1 ? '' : 's'} they created stay${
-          ticketsKept === 1 ? 's' : ''
-        }: that is the record of what happened.`,
+        `Тэдний үүсгэсэн ${ticketsKept} даалгавар хэвээр үлдэнэ: энэ бол юу болсны бүртгэл юм.`,
       );
     }
     if (ownedTransferred > 0) {
       parts.push(
-        `${ownedTransferred} pipeline${ownedTransferred === 1 ? '' : 's'}, agent${
-          ownedTransferred === 1 ? '' : 's'
-        } or skill${ownedTransferred === 1 ? '' : 's'} they owned are now yours.`,
+        `Тэдний эзэмшиж байсан ${ownedTransferred} дамжлага, агент эсвэл ур чадвар танайх боллоо.`,
       );
     }
     return { message: parts.join(' ') };

@@ -51,9 +51,9 @@ test.describe('the parts that need no external service', () => {
     page,
   }) => {
     await page.goto('/login');
-    await page.getByLabel('Email').fill('nobody@example.com');
-    await page.getByLabel('Password').fill('definitely-not-right');
-    await page.getByRole('button', { name: 'Sign in' }).click();
+    await page.getByLabel('И-мэйл').fill('nobody@example.com');
+    await page.getByLabel('Нууц үг').fill('definitely-not-right');
+    await page.getByRole('button', { name: 'Нэвтрэх' }).click();
     await expect(page.getByRole('alert')).toContainText(/do not match/);
     // No session was created.
     expect(await page.context().cookies()).not.toContainEqual(
@@ -117,17 +117,19 @@ test.describe('the ticket form', () => {
 
     await page.goto('/tickets/new');
     await page
-      .getByLabel('Repository')
+      .getByLabel('Репозитори')
       .selectOption({ label: `shop-${tag} · netgroup/shop-${tag}` });
-    await page.getByLabel('Title').fill(`Paginate the list ${tag}`);
-    await page.getByLabel('Acceptance criteria').fill('The list pages\nTests still pass');
+    await page.getByLabel('Гарчиг').fill(`Paginate the list ${tag}`);
+    await page.getByLabel('Хүлээн авах шалгуур').fill('The list pages\nTests still pass');
     // Choosing the pipeline shows what would happen before anything does.
     await page.getByText(`Standard ${tag}`, { exact: true }).click();
     await expect(page.getByText(`Builder ${tag}`)).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByText('Open merge request')).toBeVisible();
+    await expect(page.getByText('Нэгтгэх хүсэлт нээх')).toBeVisible();
 
-    await page.getByRole('button', { name: 'Save as draft' }).click();
-    await expect(page.getByRole('status')).toContainText('saved as a draft', { timeout: 15_000 });
+    await page.getByRole('button', { name: 'Ноороглох' }).click();
+    await expect(page.getByRole('status')).toContainText('ноороглон хадгалагдлаа', {
+      timeout: 15_000,
+    });
 
     const [saved] = await sql`
       select status, current_run_id, acceptance_criteria, pipeline_id from tickets
@@ -150,11 +152,11 @@ test.describe('the whole journey', () => {
 
   test('a ticket becomes an open merge request', async ({ page }) => {
     await page.goto('/repositories');
-    await page.getByRole('button', { name: 'Connect repository' }).click();
+    await page.getByRole('button', { name: 'Репозитори холбох' }).click();
     await page.getByLabel(/Repository URL/).fill(E2E_REPO_URL as string);
     await page.getByLabel(/Access token/).fill(E2E_REPO_TOKEN as string);
-    await page.getByRole('button', { name: 'Test & connect' }).click();
-    await expect(page.getByText('Connected')).toBeVisible({ timeout: 30_000 });
+    await page.getByRole('button', { name: 'Шалгаад холбох' }).click();
+    await expect(page.getByText('Холбогдсон')).toBeVisible({ timeout: 30_000 });
 
     await page.goto('/tickets/new');
     await page.getByLabel(/Repository/).selectOption({ index: 1 });
@@ -171,10 +173,10 @@ test.describe('the whole journey', () => {
   test('a token missing a permission is refused, naming which one (FR-009)', async ({ page }) => {
     test.skip(!process.env.E2E_READONLY_TOKEN, 'Needs E2E_READONLY_TOKEN — a read-only token.');
     await page.goto('/repositories');
-    await page.getByRole('button', { name: 'Connect repository' }).click();
+    await page.getByRole('button', { name: 'Репозитори холбох' }).click();
     await page.getByLabel(/Repository URL/).fill(E2E_REPO_URL as string);
     await page.getByLabel(/Access token/).fill(process.env.E2E_READONLY_TOKEN as string);
-    await page.getByRole('button', { name: 'Test & connect' }).click();
+    await page.getByRole('button', { name: 'Шалгаад холбох' }).click();
     await expect(page.getByRole('alert')).toContainText(/missing (write_repository|Contents)/);
   });
 });
@@ -186,10 +188,10 @@ test.describe('the refusals', () => {
     page,
   }) => {
     await page.goto('/repositories');
-    await page.getByRole('button', { name: 'Connect repository' }).click();
+    await page.getByRole('button', { name: 'Репозитори холбох' }).click();
     await page.getByLabel(/Repository URL/).fill('https://git.internal.example/team/thing');
     await page.getByLabel(/Access token/).fill('irrelevant');
-    await page.getByRole('button', { name: 'Test & connect' }).click();
+    await page.getByRole('button', { name: 'Шалгаад холбох' }).click();
     await expect(page.getByRole('alert')).toContainText(/git\.internal\.example is not supported/);
   });
 });

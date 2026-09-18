@@ -44,7 +44,7 @@ async function pinPipelineVersion(
     .from(pipelines)
     .where(eq(pipelines.id, ticket.pipelineId))
     .limit(1);
-  if (!pipeline) throw notFound('that pipeline does not exist');
+  if (!pipeline) throw notFound('тэр дамжлага байхгүй байна');
 
   await database
     .update(tickets)
@@ -59,7 +59,7 @@ export async function startRun(database: Database, input: StartRunInput) {
     .from(tickets)
     .where(eq(tickets.id, input.ticketId))
     .limit(1);
-  if (!ticket) throw notFound('no such ticket');
+  if (!ticket) throw notFound('тийм даалгавар алга');
 
   const [previous] = await database
     .select({ attempt: runs.attempt })
@@ -95,7 +95,7 @@ export async function startRun(database: Database, input: StartRunInput) {
       })
       .returning();
     const run = inserted[0];
-    if (!run) throw conflict('could not create the run');
+    if (!run) throw conflict('ажиллагааг үүсгэж чадсангүй');
 
     await database
       .update(tickets)
@@ -111,7 +111,7 @@ export async function startRun(database: Database, input: StartRunInput) {
       );
     }
     if (message.includes('runs_ticket_attempt_key')) {
-      throw conflict(`attempt ${attempt} of ${ticket.reference} already exists`);
+      throw conflict(`${ticket.reference}-ийн ${attempt}-р оролдлого аль хэдийн байна`);
     }
     throw error;
   }
@@ -119,7 +119,7 @@ export async function startRun(database: Database, input: StartRunInput) {
 
 export async function getRun(database: Database, runId: string) {
   const [run] = await database.select().from(runs).where(eq(runs.id, runId)).limit(1);
-  if (!run) throw notFound('no such run');
+  if (!run) throw notFound('тийм ажиллагаа алга');
   return run;
 }
 
@@ -177,7 +177,7 @@ export async function retryRun(
     .from(tickets)
     .where(eq(tickets.id, input.ticketId))
     .limit(1);
-  if (!ticket) throw notFound('no such ticket');
+  if (!ticket) throw notFound('тийм даалгавар алга');
 
   const [latest] = await database
     .select({ id: runs.id, attempt: runs.attempt, status: runs.status })
@@ -186,12 +186,14 @@ export async function retryRun(
     .orderBy(desc(runs.attempt))
     .limit(1);
   if (!latest) {
-    throw conflict(`${ticket.reference} has not run yet — start it rather than retrying it.`);
+    throw conflict(
+      `${ticket.reference} хараахан ажиллаагүй байна — дахин оролдохын оронд эхлүүлнэ үү.`,
+    );
   }
   if (!isRetryable(latest.status)) {
     throw conflict(
-      `attempt ${latest.attempt} of ${ticket.reference} is ${describeStatus(latest.status)}. ` +
-        'Only a failed or cancelled attempt can be retried.',
+      `${ticket.reference}-ийн ${latest.attempt}-р оролдлого ${describeStatus(latest.status)}. ` +
+        'Зөвхөн амжилтгүй болсон эсвэл цуцлагдсан оролдлогыг дахин оролдож болно.',
     );
   }
 
@@ -240,13 +242,13 @@ function isRetryable(status: RunStatus): boolean {
 function describeStatus(status: RunStatus): string {
   switch (status) {
     case 'done':
-      return 'already finished';
+      return 'аль хэдийн дууссан';
     case 'waiting_approval':
-      return 'waiting for someone to decide a checkpoint';
+      return 'хяналтын цэгийг хэн нэгэн шийдэхийг хүлээж байна';
     case 'opening_mr':
-      return 'opening its merge request';
+      return 'нэгтгэх хүсэлтээ нээж байна';
     default:
-      return `still ${status}`;
+      return `${status} хэвээр байна`;
   }
 }
 
@@ -259,7 +261,7 @@ function describeStatus(status: RunStatus): string {
 export async function pauseRun(database: Database, runId: string, userId: string) {
   const run = await getRun(database, runId);
   if (!isActive(run.status)) {
-    throw conflict(`this attempt is ${describeStatus(run.status)} — there is nothing to pause.`);
+    throw conflict(`энэ оролдлого ${describeStatus(run.status)} — зогсоох зүйл алга.`);
   }
   if (run.pauseRequestedAt) return { pausedAt: run.pauseRequestedAt, alreadyRequested: true };
 

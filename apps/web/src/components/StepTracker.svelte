@@ -46,9 +46,9 @@
 
   /** Enough to recognise the failure, not enough to bury the list. */
   function firstLine(detail: string | null | undefined): string {
-    if (!detail) return 'failed';
+    if (!detail) return 'амжилтгүй';
     const line = detail.split('\n')[0]?.trim() ?? '';
-    if (!line) return 'failed';
+    if (!line) return 'амжилтгүй';
     return line.length > 100 ? `${line.slice(0, 100)}…` : line;
   }
 
@@ -60,16 +60,16 @@
     pending: 'timer',
   };
 
-  /** "2m 10s · $0.14", as the artboard writes it. */
+  /** "2м 10с · $0.14", as the artboard writes it. */
   function took(step: RunView['steps'][number]): string {
     const parts: string[] = [];
-    if (step.state === 'running') parts.push('Running');
-    else if (step.state === 'pending') parts.push('waiting');
-    else if (step.state === 'skipped') parts.push('skipped');
+    if (step.state === 'running') parts.push('Ажиллаж буй');
+    else if (step.state === 'pending') parts.push('хүлээгдэж буй');
+    else if (step.state === 'skipped') parts.push('алгассан');
     else if (step.durationS) {
       const minutes = Math.floor(step.durationS / 60);
       const seconds = step.durationS % 60;
-      parts.push(minutes > 0 ? `${minutes}m ${String(seconds).padStart(2, '0')}s` : `${seconds}s`);
+      parts.push(minutes > 0 ? `${minutes}м ${String(seconds).padStart(2, '0')}с` : `${seconds}с`);
     }
     if (step.costUsd && step.costUsd !== '0.0000') parts.push(`$${step.costUsd}`);
     return parts.join(' · ') || '—';
@@ -83,7 +83,7 @@
         <button
           type="button"
           class:on={selected === step.index}
-          aria-label="Step {step.index + 1} — {step.label}"
+          aria-label="{step.index + 1}-р алхам — {step.label}"
           onclick={() => onSelect?.(step.index)}
         >
           <span class="circle"><Icon name={MARK[step.state]} size={16} /></span>
@@ -101,8 +101,8 @@
       <span class="static">
         <span class="circle"><Icon name="git-pull-request" size={16} /></span>
         <span class="tx">
-          <span class="n">Merge request</span>
-          <span class="s">{run.status === 'done' ? 'opened' : 'waiting'}</span>
+          <span class="n">Нэгтгэх хүсэлт</span>
+          <span class="s">{run.status === 'done' ? 'нээгдсэн' : 'хүлээгдэж буй'}</span>
         </span>
       </span>
     </li>
@@ -114,7 +114,7 @@
     the step is the one selected.
   -->
   {#each skipped as step (step.index)}
-    <p class="note">{step.label} skipped — {step.conditionNotMet}.</p>
+    <p class="note">{step.label} алгассан — {step.conditionNotMet}.</p>
   {/each}
   {#if chosen?.summary && chosen.state === 'done'}
     <p class="note">{chosen.label} — {chosen.summary}</p>
@@ -133,9 +133,11 @@
       {#if onRetry}
         <div class="retry">
           <button type="button" class="action" onclick={onRetry} disabled={retrying}>
-            {retrying ? 'Retrying…' : 'Retry from here'}
+            {retrying ? 'Дахин оролдож байна…' : 'Эндээс дахин оролдох'}
           </button>
-          <span class="small muted">A new attempt on this ticket. This one stays readable.</span>
+          <span class="small muted">
+            Энэ даалгавар дээрх шинэ оролдлого. Энэ нэг нь уншигдсан хэвээрээ үлдэнэ.
+          </span>
         </div>
       {/if}
     </div>
@@ -144,7 +146,8 @@
   <div class="spend">
     <div class="bar"><div class="fill" style="width: {spentPercent}%"></div></div>
     <p class="small muted">
-      ${run.costUsd} of ${run.costCeilingUsd} ceiling &middot; {run.timeCeilingMinutes} min limit
+      ${run.costCeilingUsd}-ийн хязгаараас ${run.costUsd} &middot; {run.timeCeilingMinutes} мин
+      хугацааны хязгаар
     </p>
   </div>
 </section>

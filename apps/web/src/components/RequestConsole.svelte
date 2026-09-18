@@ -57,26 +57,28 @@
 <div class="console">
   <form class="request" onsubmit={go}>
     <div class="line">
-      <select bind:value={method} aria-label="Method">
+      <select bind:value={method} aria-label="Арга">
         {#each METHODS as m (m)}<option value={m}>{m}</option>{/each}
       </select>
       <input
         bind:value={path}
         placeholder="/api/health"
-        aria-label="Path, sent to {baseUrl}"
-        title="Sent to {baseUrl}"
+        aria-label="Зам, {baseUrl} руу илгээнэ"
+        title="{baseUrl} руу илгээнэ"
         spellcheck="false"
       />
-      <button type="submit" class="primary" disabled={sending}>{sending ? 'Sending…' : 'Send'}</button>
+      <button type="submit" class="primary" disabled={sending}>
+        {sending ? 'Илгээж байна…' : 'Илгээх'}
+      </button>
     </div>
     <details class="more">
-      <summary>Headers{hasBody ? ' and body' : ''}</summary>
+      <summary>Толгой{hasBody ? ' ба бие' : ''}</summary>
       <textarea
         bind:value={headers}
         rows="2"
         placeholder={'Accept: application/json\nX-Debug: 1'}
         spellcheck="false"
-        aria-label="Headers, one per line"
+        aria-label="Толгойнууд, мөрд нэг"
       ></textarea>
       {#if hasBody}
         <textarea
@@ -84,7 +86,7 @@
           rows="5"
           placeholder={'{ "name": "example" }'}
           spellcheck="false"
-          aria-label="Body"
+          aria-label="Бие"
         ></textarea>
       {/if}
     </details>
@@ -100,7 +102,7 @@
         <span class="badge {tone}">{response.status} {response.statusText}</span>
         <span class="ms">{response.ms} ms</span>
         <button type="button" class="link" onclick={() => (showHeaders = !showHeaders)}>
-          {showHeaders ? 'Hide' : 'Show'} {response.headers.length} response headers
+          Хариуны {response.headers.length} толгойг {showHeaders ? 'нуух' : 'харах'}
         </button>
       </div>
       {#if showHeaders}
@@ -113,7 +115,7 @@
       {/if}
       <pre class="body">{response.json ?? response.body}</pre>
       {#if response.truncated}
-        <p class="small muted">Showing the first 256 KB.</p>
+        <p class="small muted">Эхний 256 KB-ийг харуулж байна.</p>
       {/if}
     </div>
   {/if}

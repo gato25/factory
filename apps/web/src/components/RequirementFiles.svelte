@@ -32,7 +32,7 @@
     removing = id;
     try {
       const { removed } = await detach({ ticketId, fileId: id });
-      notice = removed ? `${name} removed.` : `${name} was already gone.`;
+      notice = removed ? `${name} хасагдлаа.` : `${name} аль хэдийн байхгүй байсан.`;
     } finally {
       removing = null;
     }
@@ -42,7 +42,7 @@
 <section class="card">
   <header>
     <Icon name="book-open" size={15} />
-    <h2>Requirements</h2>
+    <h2>Шаардлага</h2>
     {#if files.ready && files.current.length > 0}
       <span class="count">{files.current.length} · {describeBytes(total)}</span>
     {/if}
@@ -59,7 +59,7 @@
             type="button"
             disabled={removing === file.id}
             onclick={() => remove(file.id, file.name)}
-            aria-label="Remove {file.name}"
+            aria-label="{file.name}-ийг хасах"
           >
             <Icon name="x" size={14} />
           </button>
@@ -67,7 +67,7 @@
       {/each}
     </ul>
   {:else if files.ready}
-    <p class="empty">Nothing attached. Agents work from the ticket text alone.</p>
+    <p class="empty">Хавсаргасан зүйл алга. Агентууд зөвхөн даалгаврын бичвэрээр ажиллана.</p>
   {/if}
 
   <!-- Same reason as the new-ticket form: a file input needs this to submit files. -->
@@ -76,7 +76,7 @@
     <FilePicker />
     <button class="add" type="submit">
       <Icon name="plus" size={14} />
-      Attach
+      Хавсаргах
     </button>
   </form>
 
@@ -84,8 +84,8 @@
 
   {#if hasRun}
     <p class="note">
-      A run reads these once, when its sandbox is built. Changing them here affects the next
-      attempt, not one already going.
+      Ажиллагаа эдгээрийг sandbox-оо байгуулах үедээ нэг л удаа уншина. Эндээс өөрчилсөн нь дараагийн
+      оролдлогод нөлөөлөх бөгөөд явж байгаа нэгэнд нь биш.
     </p>
   {/if}
 </section>

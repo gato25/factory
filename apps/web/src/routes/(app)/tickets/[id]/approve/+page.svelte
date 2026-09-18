@@ -48,6 +48,13 @@
   /** "docs/plan.md" → "plan", which is what the artboard's Edit button says. */
   const shortName = (path: string) => path.split('/').pop()?.replace(/\.\w+$/, '') ?? path;
 
+  /** A decision is stored as a code; a person reads a word. */
+  const DECISION: Record<string, string> = {
+    approved: 'батлагдсан',
+    changes_requested: 'өөрчлөлт хүссэн',
+    cancelled: 'цуцлагдсан',
+  };
+
   /** The first readable document, so the screen opens on something. */
   $effect(() => {
     if (!detail?.ready || openPath !== null) return;
@@ -72,11 +79,11 @@
 </script>
 
 {#if !view.ready}
-  <p class="card">Loading…</p>
+  <p class="card">Ачааллаж байна…</p>
 {:else if !view.current}
-  <p class="card">This ticket has not been started.</p>
+  <p class="card">Энэ даалгавар эхлээгүй байна.</p>
 {:else if !detail?.ready}
-  <p class="card">Loading the checkpoint…</p>
+  <p class="card">Хяналтын цэгийг ачааллаж байна…</p>
 {:else}
   {@const d = detail.current}
   {@const loaded = view.current}
@@ -94,8 +101,8 @@
     startedAt={loaded.run.startedAt}
     costUsd={loaded.run.costUsd}
     status={paused
-      ? { label: 'Waiting for your approval', tone: 'warn' }
-      : { label: 'Decided', tone: 'ok' }}
+      ? { label: 'Таны баталгаажуулалт хүлээж буй', tone: 'warn' }
+      : { label: 'Шийдэгдсэн', tone: 'ok' }}
   >
     {#snippet actions()}
       {#if paused && d.mayDecide}
@@ -104,13 +111,13 @@
           <input type="hidden" name="stepIndex" value={d.gate.stepIndex} />
           <button class="secondary" type="submit" disabled={cancelRun.pending > 0}>
             <Icon name="circle-x" size={16} />
-            <span>Cancel run</span>
+            <span>Ажиллагаа цуцлах</span>
           </button>
         </form>
       {/if}
       <a class="secondary" href="/tickets/{ticketId}">
         <Icon name="undo-2" size={16} />
-        <span>Back to the run</span>
+        <span>Ажиллагаа руу буцах</span>
       </a>
     {/snippet}
   </TicketHead>
@@ -135,24 +142,27 @@
     <div class="tx">
       {#if paused}
         <p class="t">
-          Checkpoint: review
-          {d.gate.precedingLabel ? `the ${shortName(d.gate.precedingLabel).toLowerCase()}` : 'this'}
-          {d.gate.precedingIsDesign ? 'before any code is written' : 'before the pipeline continues'}
+          Хяналтын цэг:
+          {d.gate.precedingIsDesign ? 'код бичихээс өмнө' : 'дамжлага үргэлжлэхээс өмнө'}
+          {d.gate.precedingLabel ? `${shortName(d.gate.precedingLabel)}-ийн үр дүнг` : 'үүнийг'}
+          хянана уу
         </p>
         <p class="s">
-          {d.gate.precedingLabel ?? 'The previous step'} finished. The pipeline is
-          {`paused at step ${d.gate.stepIndex + 1}`} (held by the execution service) until you approve, ask for
-          changes, or edit the document yourself. Cancelling instead releases the sandbox and
-          leaves the branch alone.
+          {d.gate.precedingLabel ?? 'Өмнөх алхам'} ажлаа дуусгалаа. Та батлах, өөрчлөлт хүсэх, эсвэл
+          баримтыг өөрөө засах хүртэл дамжлага {d.gate.stepIndex + 1}-р алхам дээр түр зогсоно
+          (гүйцэтгэх үйлчилгээ барьж байна). Харин цуцлах нь орчныг суллаж, салбарыг хэвээр нь
+          үлдээнэ.
         </p>
       {:else if d.gate.decided}
         <p class="t">
-          Already decided: {d.gate.decided.decision.replace('_', ' ')}
+          Аль хэдийн шийдэгдсэн: {DECISION[d.gate.decided.decision] ?? d.gate.decided.decision}
         </p>
-        <p class="s">On {new Date(d.gate.decided.at).toLocaleString()}. Nothing is waiting here.</p>
+        <p class="s">
+          {new Date(d.gate.decided.at).toLocaleString('mn-MN')}-нд. Энд хүлээгдэж буй зүйл алга.
+        </p>
       {:else}
-        <p class="t">This run is not waiting at a checkpoint</p>
-        <p class="s">Nothing here needs deciding.</p>
+        <p class="t">Энэ ажиллагаа хяналтын цэгт хүлээгээгүй байна</p>
+        <p class="s">Энд шийдэх зүйл алга.</p>
       {/if}
     </div>
 
@@ -160,7 +170,7 @@
       <div class="btns">
         {#if !d.mayDecide}
           <!-- Readable by anyone; decidable only by the gate's approvers (FR-064) -->
-          <p class="s">This checkpoint is not yours to decide. You can read everything here.</p>
+          <p class="s">Энэ хяналтын цэгийг та шийдэхгүй. Гэхдээ бүгдийг нь эндээс уншиж болно.</p>
         {:else}
           <!-- Submits the feedback box in the side column: one form, two
                places to press it. An empty note is refused by the server,
@@ -172,14 +182,14 @@
             disabled={requestChanges.pending > 0}
           >
             <Icon name="message-square" size={16} />
-            <span>Request changes</span>
+            <span>Өөрчлөлт хүсэх</span>
           </button>
           <form {...approve} class="inline">
             <input type="hidden" name="runId" value={d.gate.runId} />
             <input type="hidden" name="stepIndex" value={d.gate.stepIndex} />
             <button class="go" type="submit" disabled={approve.pending > 0}>
               <Icon name="check" size={16} />
-              <span>Approve &amp; continue</span>
+              <span>Батлаад үргэлжлүүлэх</span>
             </button>
           </form>
         {/if}
@@ -197,8 +207,9 @@
   -->
   {#if d.gate.precedingIsDesign}
     <p class="card notice">
-      This checkpoint follows a design step.
-      <a href="/tickets/{ticketId}/design">Review the screens</a> to see them at full size.
+      Энэ хяналтын цэг дизайн алхмын дараа ирлээ.
+      Дэлгэцүүдийг бүтэн хэмжээгээр нь харахын тулд
+      <a href="/tickets/{ticketId}/design">дэлгэцүүдийг хянана уу</a>.
     </p>
   {/if}
 
@@ -217,7 +228,7 @@
               }}
             >
               {item.path.split('/').pop()}
-              {#if item.editedByHuman}<span class="edited">edited</span>{/if}
+              {#if item.editedByHuman}<span class="edited">засварласан</span>{/if}
             </button>
           {/each}
         </div>
@@ -225,7 +236,7 @@
         {#if openPath && openDoc?.ready && !editing}
           <div class="head-actions">
             <button type="button" class="link" onclick={() => (source = !source)}>
-              {source ? 'Rendered' : 'Source'}
+              {source ? 'Эмхэтгэсэн' : 'Эх бичвэр'}
             </button>
             {#if d.mayDecide && paused}
               <button
@@ -237,7 +248,7 @@
                 }}
               >
                 <Icon name="pencil" size={16} />
-                <span>Edit {shortName(openPath)}</span>
+                <span>{shortName(openPath)} засах</span>
               </button>
             {/if}
           </div>
@@ -246,11 +257,11 @@
 
       <div class="doc-body">
         {#if screens.length > 0}
-          <div class="screens"><ScreenGallery {screens} heading="Screens" /></div>
+          <div class="screens"><ScreenGallery {screens} heading="Дэлгэцүүд" /></div>
         {/if}
 
         {#if readable.length === 0}
-          <p class="quiet">No documents yet — the screens above are what exists so far.</p>
+          <p class="quiet">Хараахан баримт алга — одоогоор дээрх дэлгэцүүд л байна.</p>
         {:else if openPath && openDoc?.ready}
           {#if editing}
             <form {...editAndApprove} class="edit">
@@ -267,28 +278,28 @@
               {/if}
               <div class="row">
                 <button type="button" class="secondary" onclick={() => (editing = false)}>
-                  Discard changes
+                  Өөрчлөлтийг болих
                 </button>
                 <button class="go" type="submit" disabled={!d.mayDecide}>
                   <Icon name="check" size={16} />
-                  <span>Save &amp; continue</span>
+                  <span>Хадгалаад үргэлжлүүлэх</span>
                 </button>
               </div>
               <p class="quiet">
-                Saving writes a new version. The previous one is kept, and every step after this
-                reads the version you saved.
+                Хадгалахад шинэ хувилбар үүснэ. Өмнөх нь хадгалагдах бөгөөд үүний дараах алхам бүр
+                таны хадгалсан хувилбарыг уншина.
               </p>
             </form>
           {:else if source}
-            <pre>{openDoc.current.content ?? '(empty)'}</pre>
+            <pre>{openDoc.current.content ?? '(хоосон)'}</pre>
           {:else}
             <Markdown source={openDoc.current.content ?? ''} />
           {/if}
-          <p class="quiet">Version {openDoc.current.version}</p>
+          <p class="quiet">Хувилбар {openDoc.current.version}</p>
         {:else if openPath}
-          <p class="quiet">Loading…</p>
+          <p class="quiet">Ачааллаж байна…</p>
         {:else}
-          <p class="quiet">Choose a document to read it.</p>
+          <p class="quiet">Уншихын тулд баримтаа сонгоно уу.</p>
         {/if}
       </div>
     </section>
@@ -296,10 +307,10 @@
     <aside class="side">
       {#if paused && d.mayDecide}
         <section class="card">
-          <h2>Request changes</h2>
+          <h2>Өөрчлөлт хүсэх</h2>
           <p class="quiet">
-            Your note is sent back to {d.gate.precedingLabel ?? 'the previous step'}, which revises
-            what it wrote and pauses here again.
+            Таны тэмдэглэл {d.gate.precedingLabel ?? 'өмнөх алхам'} руу буцаж, бичсэнээ засаад дахин
+            энд зогсоно.
           </p>
           <form {...requestChanges} id="request-changes" class="stack">
             <input type="hidden" name="runId" value={d.gate.runId} />
@@ -308,21 +319,21 @@
               name="feedback"
               rows="5"
               bind:value={draft}
-              aria-label="Request changes — this text is sent to the agent"
-              placeholder="What should change, and why?"
+              aria-label="Өөрчлөлт хүсэх — энэ бичвэр агент руу илгээгдэнэ"
+              placeholder="Юу өөрчлөгдөх ёстой вэ, яагаад?"
             ></textarea>
             <button class="secondary wide" type="submit" disabled={requestChanges.pending > 0}>
               <Icon name="undo-2" size={16} />
-              <span>Send back to {d.gate.precedingLabel ?? 'the agent'}</span>
+              <span>{d.gate.precedingLabel ?? 'Агент'} руу буцаах</span>
             </button>
           </form>
         </section>
       {/if}
 
       <section class="card">
-        <h2>Acceptance criteria</h2>
+        <h2>Хүлээн авах шалгуур</h2>
         {#if d.ticket.acceptanceCriteria.length === 0}
-          <p class="quiet">None were given. That is the biggest quality lever there is.</p>
+          <p class="quiet">Нэг ч өгөгдөөгүй. Энэ бол чанарын хамгийн хүчтэй хөшүүрэг юм.</p>
         {:else}
           <ul class="criteria">
             {#each d.ticket.acceptanceCriteria as criterion (criterion)}
@@ -332,14 +343,14 @@
         {/if}
         {#if d.ticket.uiRationale}
           <p class="quiet">
-            Classified as {d.ticket.hasUi ? 'interface work' : 'not interface work'} —
+            {d.ticket.hasUi ? 'Интерфейсийн ажил' : 'Интерфейсийн ажил биш'} гэж ангилсан —
             {d.ticket.uiRationale}
           </p>
         {/if}
       </section>
 
       <section class="card">
-        <h2>Timeline</h2>
+        <h2>Явц</h2>
         <ol class="timeline">
           {#each d.timeline as entry (entry.at.toString() + entry.label)}
             <li class={entry.kind}>
@@ -360,7 +371,7 @@
           {#if paused}
             <li class="now">
               <Icon name="hand" size={15} />
-              <span class="what">Waiting for approval{d.mayDecide ? ' (you)' : ''}</span>
+              <span class="what">Баталгаажуулалт хүлээж буй{d.mayDecide ? ' (та)' : ''}</span>
               <time></time>
             </li>
           {/if}

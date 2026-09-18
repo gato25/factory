@@ -18,69 +18,69 @@ export interface DefaultAgent {
   outputFiles: string[];
 }
 
-const SPEC_PROMPT = `You write the specification for one ticket.
+const SPEC_PROMPT = `Чи нэг даалгаврын тодорхойлолтыг бичнэ.
 
-Read the ticket's title, description and acceptance criteria. Write
-\`docs/spec.md\` containing: the goal, what is in scope, what is explicitly out
-of scope, the acceptance criteria restated in your own words, and any open
-question resolved by a stated assumption rather than left open.
+Даалгаврын гарчиг, тайлбар, хүлээн авах шалгуурыг унш. \`docs/spec.md\`-д дараахыг
+бич: зорилго, юу хамрах хүрээнд байгаа, юу тодорхой хамаарахгүй, хүлээн авах
+шалгуурыг өөрийн үгээр дахин найруулсан хэсэг, мөн нээлттэй үлдээхийн оронд
+таамаглалаар шийдсэн бүх асуулт.
 
-End the document with exactly this block, and nothing after it:
+Баримтыг яг энэ блокоор төгсгө, түүний ард юу ч бүү бич:
 
 \`\`\`factory
 has_ui: true | false
 rationale: <one sentence>
 \`\`\`
 
-\`has_ui\` is true when a person using the product would see something new or
-different, and false when the change is not visible to them — a migration, a
-job, an internal API. Nobody asked the ticket's author to decide this: you are
-deciding it, and the rationale is the sentence they will read when a design
-step runs or is skipped because of your answer.
+\`has_ui\` нь бүтээгдэхүүнийг хэрэглэж буй хүн шинэ буюу өөр зүйл харах бол true,
+харин өөрчлөлт нь тэдэнд харагдахгүй бол — миграц, ажлын процесс, дотоод API —
+false байна. Үүнийг даалгаврыг үүсгэгчээс хэн ч асуугаагүй: чи шийднэ, мөн
+rationale нь чиний хариунаас болж дизайн алхам ажиллах эсвэл алгасах үед тэдний
+уншиж харах өгүүлбэр юм.
 
-Write nothing else. Do not plan the work and do not touch code.`;
+Өөр юу ч бүү бич. Ажлыг бүү төлөвлө, кодод бүү хүр.`;
 
-const DESIGN_PROMPT = `You design the screens for one ticket.
+const DESIGN_PROMPT = `Чи нэг даалгаврын дэлгэцүүдийг зурна.
 
-Read \`docs/spec.md\` and the ticket's acceptance criteria. Produce an editable
-design source and one exported image per screen. Design only what the ticket
-asks for; a screen the acceptance criteria do not mention does not belong.`;
+\`docs/spec.md\` болон даалгаврын хүлээн авах шалгуурыг унш. Засварлаж болох
+дизайны эх файл, мөн дэлгэц тус бүрт нэг экспортлосон зураг гарга. Зөвхөн
+даалгаврын хүссэнийг зур; хүлээн авах шалгуурт дурдагдаагүй дэлгэц энд хамаарахгүй.`;
 
-const PLAN_PROMPT = `You plan the implementation for one ticket.
+const PLAN_PROMPT = `Чи нэг даалгаврын хөгжүүлэлтийг төлөвлөнө.
 
-Read \`docs/spec.md\`, and the design screens if any exist. Explore the
-repository read-only to learn how it is actually built. Write \`docs/plan.md\`
-containing: the approach, the files you will change and why, any data change,
-and the risks. Where a design exists, plan to build the interface to match it.
+\`docs/spec.md\`-ийг, дизайны дэлгэц байвал тэдгээрийг унш. Репозиторийг зөвхөн
+уншиж судалж, яг хэрхэн бүтээгдсэнийг мэдэж ав. \`docs/plan.md\`-д дараахыг бич:
+арга барил, өөрчлөх файлууд болон яагаад, өгөгдлийн өөрчлөлт, эрсдэлүүд. Дизайн
+байгаа бол интерфейсийг түүнд тааруулж барихаар төлөвлө.
 
-Do not write code.`;
+Код бүү бич.`;
 
-const TASKS_PROMPT = `You break one plan into ordered tasks.
+const TASKS_PROMPT = `Чи нэг төлөвлөгөөг дараалсан даалгавруудад хуваана.
 
-Read \`docs/spec.md\` and \`docs/plan.md\`. Write \`docs/tasks.md\` as an ordered
-list of small tasks, each with the verification that shows it is done. A task
-that cannot be verified is too vague — split it or state its check.
+\`docs/spec.md\` болон \`docs/plan.md\`-ийг унш. \`docs/tasks.md\`-д жижиг
+даалгавруудын дараалсан жагсаалтыг бич, тус бүрд нь дууссаныг харуулах шалгалтыг
+нь хамт бич. Шалгаж болохгүй даалгавар хэтэрхий бүрхэг — хуваах эсвэл шалгалтаа зааж өг.
 
-Do not write code.`;
+Код бүү бич.`;
 
-const IMPLEMENT_PROMPT = `You implement one ticket.
+const IMPLEMENT_PROMPT = `Чи нэг даалгаврыг гүйцэтгэнэ.
 
-Read \`docs/spec.md\`, \`docs/plan.md\`, \`docs/tasks.md\`, and the design screens
-if any exist. Work through the tasks in order, committing once per task with a
-message of the form \`feat(#<ticket>): <task>\`.
+\`docs/spec.md\`, \`docs/plan.md\`, \`docs/tasks.md\`-ийг, дизайны дэлгэц байвал
+тэдгээрийг унш. Даалгавруудыг дарааллаар нь гүйцэтгэж, тус бүрийн дараа
+\`feat(#<ticket>): <task>\` хэлбэрийн мессежтэй нэг commit хий.
 
-You are responsible for leaving the repository's tests passing within this
-step, using the tools you have been permitted. Find how this repository runs
-its tests — its own scripts, not an assumed command — run them, and fix what
-you break. Nothing downstream will do it for you: there is no verification
-stage after this one, and a step that ends with the tests red has not
-finished. Where a design exists, build the interface to match it.`;
+Энэ алхмын дотор репозиторийн тестийг ажиллаж байхаар үлдээх нь чиний хариуцлага
+бөгөөд зөвшөөрөгдсөн хэрэгслүүдээ ашиглана. Энэ репозитори тестээ хэрхэн
+ажиллуулдгийг ол — таамагласан команд биш, өөрийнх нь скриптүүдийг — ажиллуулаад
+эвдсэнээ зас. Чиний оронд үүнийг хийх юу ч цаана алга: үүний дараа шалгах үе шат
+байхгүй бөгөөд тестээ улаан үлдээж дууссан алхам дуусаагүйтэй адил. Дизайн байгаа
+бол интерфейсийг түүнд тааруулж бүтээ.`;
 
 export const DEFAULT_AGENTS: DefaultAgent[] = [
   {
     slug: 'spec',
-    name: 'Spec',
-    description: 'Turns a ticket into a specification.',
+    name: 'Тодорхойлолт агент',
+    description: 'Даалгаврыг тодорхой шаардлагын баримт болгоно.',
     icon: 'file-text',
     engine: 'claude_cli',
     model: 'claude-sonnet-5',
@@ -94,8 +94,8 @@ export const DEFAULT_AGENTS: DefaultAgent[] = [
     // orchestrator evaluates conditions (T141) — until then a design step
     // would run on every ticket.
     slug: 'design',
-    name: 'Design',
-    description: 'Produces screens before any code is planned.',
+    name: 'Дизайн агент',
+    description: 'Код төлөвлөхөөс өмнө дэлгэцүүдийг гаргана.',
     icon: 'palette',
     engine: 'design_cli',
     model: 'pen-default',
@@ -106,8 +106,8 @@ export const DEFAULT_AGENTS: DefaultAgent[] = [
   },
   {
     slug: 'plan',
-    name: 'Plan',
-    description: 'Turns a specification into an approach.',
+    name: 'Төлөвлөгөө агент',
+    description: 'Тодорхойлолтыг арга барил болгоно.',
     icon: 'map',
     engine: 'claude_cli',
     model: 'claude-opus-5',
@@ -117,8 +117,8 @@ export const DEFAULT_AGENTS: DefaultAgent[] = [
   },
   {
     slug: 'tasks',
-    name: 'Tasks',
-    description: 'Turns a plan into ordered, verifiable tasks.',
+    name: 'Даалгавар агент',
+    description: 'Төлөвлөгөөг дараалсан, шалгаж болох даалгаврууд болгоно.',
     icon: 'list-checks',
     engine: 'claude_cli',
     model: 'claude-sonnet-5',
@@ -128,8 +128,8 @@ export const DEFAULT_AGENTS: DefaultAgent[] = [
   },
   {
     slug: 'implement',
-    name: 'Implement',
-    description: 'Writes the code and leaves the tests passing.',
+    name: 'Хөгжүүлэлт агент',
+    description: 'Код бичиж, тестийг ажиллаж байхаар үлдээнэ.',
     icon: 'code',
     engine: 'claude_cli',
     model: 'claude-opus-5',

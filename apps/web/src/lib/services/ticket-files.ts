@@ -85,7 +85,7 @@ export async function attachFiles(
     .from(tickets)
     .where(eq(tickets.id, ticketId))
     .limit(1);
-  if (!ticket) throw notFound('no such ticket');
+  if (!ticket) throw notFound('тийм даалгавар алга');
 
   for (const file of incoming) {
     const problem = checkFile(file);

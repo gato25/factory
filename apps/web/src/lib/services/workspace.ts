@@ -178,28 +178,30 @@ export async function updateWorkspace(
 
 function validate(input: WorkspaceInput) {
   if (input.name !== undefined && !input.name.trim()) {
-    throw invalidInput('Give the workspace a name.');
+    throw invalidInput('Ажлын талбарт нэр өгнө үү.');
   }
   if (input.defaultCostCeilingUsd !== undefined && Number(input.defaultCostCeilingUsd) <= 0) {
-    throw invalidInput('A cost ceiling of zero would stop every run before it began.');
+    throw invalidInput('Тэг зардлын хязгаар нь ажиллагаа бүрийг эхлэхээс нь өмнө зогсооно.');
   }
   if (input.defaultTimeCeilingMinutes !== undefined && input.defaultTimeCeilingMinutes <= 0) {
-    throw invalidInput('A time ceiling of zero would stop every run before it began.');
+    throw invalidInput('Тэг хугацааны хязгаар нь ажиллагаа бүрийг эхлэхээс нь өмнө зогсооно.');
   }
   if (input.maxConcurrentRuns !== undefined && input.maxConcurrentRuns < 1) {
-    throw invalidInput('At least one run has to be able to execute.');
+    throw invalidInput('Хамгийн багадаа нэг ажиллагаа явах боломжтой байх ёстой.');
   }
   if (input.sandboxCpu !== undefined && input.sandboxCpu < 1) {
-    throw invalidInput('A sandbox needs at least one processor.');
+    throw invalidInput('Орчинд хамгийн багадаа нэг цөм хэрэгтэй.');
   }
   if (input.sandboxMemoryMb !== undefined && input.sandboxMemoryMb < 512) {
-    throw invalidInput('A sandbox with under 512 MB cannot hold a toolchain.');
+    throw invalidInput('512 MB-аас бага орчин хэрэгслүүдийг багтаахгүй.');
   }
   if (input.sandboxWallClockMinutes !== undefined && input.sandboxWallClockMinutes < 1) {
-    throw invalidInput('A sandbox lifetime of zero would kill every run at the start.');
+    throw invalidInput('Орчны ажиллах хугацаа тэг байвал ажиллагаа бүр эхлэхдээ л устна.');
   }
   if (input.retainFailedSandboxesHours !== undefined && input.retainFailedSandboxesHours < 0) {
-    throw invalidInput('A retention period cannot be negative. Zero means release immediately.');
+    throw invalidInput(
+      'Хадгалах хугацаа сөрөг байж болохгүй. Тэг гэдэг нь шууд чөлөөлнө гэсэн үг.',
+    );
   }
 }
 
@@ -267,7 +269,7 @@ export async function storeCredential(
 ): Promise<{ stored: true }> {
   requireAdmin(user);
   const token = input.token.trim();
-  if (!token) throw invalidInput('Paste the credential.');
+  if (!token) throw invalidInput('Нууц түлхүүрээ буулгана уу.');
 
   const workspace = await ensureWorkspace(database);
   await attachCredential(database, workspace.id, input.kind, token, ring, user?.id ?? null);
@@ -303,7 +305,7 @@ async function attachCredential(
       createdBy: createdBy ?? undefined,
     })
     .returning();
-  if (!row) throw new Error('could not store the credential');
+  if (!row) throw new Error('нууц түлхүүрийг хадгалж чадсангүй');
 
   const column = kind === 'model' ? workspaces.modelCredentialId : workspaces.designCredentialId;
   const linked = await database

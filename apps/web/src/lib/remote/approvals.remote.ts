@@ -17,7 +17,7 @@ import { artifactContent } from '$lib/services/run-view';
 
 function requireUser() {
   const user = getRequestEvent().locals.user;
-  if (!user) throw notAuthorised('you must be signed in');
+  if (!user) throw notAuthorised('та нэвтэрсэн байх ёстой');
   return user;
 }
 
@@ -45,7 +45,7 @@ async function attempt(work: () => Promise<Outcome>): Promise<Outcome> {
 const GateArgs = v.object({
   runId: v.pipe(v.string(), v.uuid()),
   // A hidden input sends this as a string; the schema has to accept one.
-  stepIndex: formIndex('That is not a step of this run.'),
+  stepIndex: formIndex('Энэ бол уг ажиллагааны алхам биш байна.'),
 });
 
 export const gate = query(GateArgs, async ({ runId, stepIndex }) => {
@@ -94,7 +94,7 @@ export const requestChanges = form(
     feedback: v.pipe(
       v.string(),
       v.trim(),
-      v.minLength(1, 'Say what should change — the feedback is what the agent reads.'),
+      v.minLength(1, 'Юу өөрчлөгдөхийг бичнэ үү — агент энэ тэмдэглэлийг уншина.'),
     ),
   }),
   async ({ runId, stepIndex, feedback }) => {
@@ -112,7 +112,7 @@ export const editAndApprove = form(
   v.object({
     ...GateArgs.entries,
     path: v.pipe(v.string(), v.minLength(1)),
-    content: v.pipe(v.string(), v.minLength(1, 'The document cannot be emptied.')),
+    content: v.pipe(v.string(), v.minLength(1, 'Баримтыг хоосолж болохгүй.')),
   }),
   async ({ runId, stepIndex, path, content }) => {
     const user = requireUser();

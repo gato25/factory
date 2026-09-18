@@ -15,7 +15,7 @@ import {
 /** Anyone in the workspace may watch; deciding is what is restricted (FR-064). */
 function requireUser() {
   const user = getRequestEvent().locals.user;
-  if (!user) throw notAuthorised('you must be signed in');
+  if (!user) throw notAuthorised('та нэвтэрсэн байх ёстой');
   return user;
 }
 

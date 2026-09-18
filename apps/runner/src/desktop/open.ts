@@ -82,21 +82,21 @@ export async function openDesignFile(
   if (!root) {
     throw new FactoryError(
       'invalid_input',
-      'This runner executes in containers, so a design file is not on this machine to be ' +
-        'opened. Download it from the ticket instead.',
+      'Энэ ажиллуулагч контейнер дотор ажилладаг тул дизайны файл энэ машин дээр нээгдэх ' +
+        'газаргүй байна. Оронд нь даалгавраас татаж авна уу.',
     );
   }
 
   if (!OPENABLE.test(path)) {
-    throw new FactoryError('invalid_input', 'only a .pen design source can be opened this way');
+    throw new FactoryError('invalid_input', 'ийм замаар зөвхөн .pen дизайны эх файлыг нээж болно');
   }
   if (isAbsolute(path) || path.includes('\0')) {
-    throw new FactoryError('invalid_input', 'a design is named by its path within the run');
+    throw new FactoryError('invalid_input', 'дизайныг ажиллагаан доторх замаар нь нэрлэдэг');
   }
 
   const containerId = await deps.containerIdFor(runId);
   if (!containerId) {
-    throw new FactoryError('not_found', 'that run has no workspace on this machine');
+    throw new FactoryError('not_found', 'тэр ажиллагаанд энэ машин дээр ажлын талбар алга');
   }
 
   const workspace = resolve(join(root, containerId));
@@ -104,15 +104,15 @@ export async function openDesignFile(
   // After resolution, not before: `docs/../../../etc/passwd` looks harmless
   // until it has been applied.
   if (target !== workspace && !target.startsWith(workspace + sep)) {
-    throw new FactoryError('invalid_input', 'that path is outside the run’s workspace');
+    throw new FactoryError('invalid_input', 'тэр зам ажиллагааны ажлын талбараас гадуур байна');
   }
 
   const found = await stat(target).catch(() => null);
   if (!found?.isFile()) {
     throw new FactoryError(
       'not_found',
-      'that design is no longer on this machine. A workspace is removed when its run ends; ' +
-        'the file is still on the run’s branch.',
+      'тэр дизайн энэ машин дээр байхаа больсон. Ажлын талбар нь ажиллагаа дуусахад устдаг; ' +
+        'файл нь ажиллагааны салбар дээр хэвээрээ байгаа.',
     );
   }
 

@@ -44,6 +44,13 @@
     notify: 'bell',
   };
 
+  /** A decision is stored as a code; a person reads a word. */
+  const DECISION: Record<string, string> = {
+    approved: 'батлагдсан',
+    changes_requested: 'өөрчлөлт хүссэн',
+    cancelled: 'цуцлагдсан',
+  };
+
   onMount(() => {
     let stop = () => {};
     void runForTicket(ticketId).then((loaded) => {
@@ -61,13 +68,13 @@
 </script>
 
 {#if !view.ready}
-  <p class="card">Loading…</p>
+  <p class="card">Ачааллаж байна…</p>
 {:else if !view.current}
-  <p class="card">This ticket has not been started.</p>
+  <p class="card">Энэ даалгавар эхлээгүй байна.</p>
 {:else if review?.error}
   <p class="card failure" role="alert">{(review.error as Error).message}</p>
 {:else if !review?.ready}
-  <p class="card">Loading the design…</p>
+  <p class="card">Дизайныг ачааллаж байна…</p>
 {:else}
   {@const d = review.current}
   {@const loaded = view.current}
@@ -84,8 +91,8 @@
     startedAt={loaded.run.startedAt}
     costUsd={loaded.run.costUsd}
     status={paused
-      ? { label: 'Waiting for design approval', tone: 'warn' }
-      : { label: 'Decided', tone: 'ok' }}
+      ? { label: 'Дизайн батлахыг хүлээж буй', tone: 'warn' }
+      : { label: 'Шийдэгдсэн', tone: 'ok' }}
   >
     {#snippet actions()}
       {#if paused && d.mayDecide}
@@ -94,13 +101,13 @@
           <input type="hidden" name="stepIndex" value={d.gate.stepIndex} />
           <button class="secondary" type="submit">
             <Icon name="circle-x" size={16} />
-            <span>Cancel run</span>
+            <span>Ажиллагаа цуцлах</span>
           </button>
         </form>
       {/if}
       <a class="secondary" href="/tickets/{ticketId}">
         <Icon name="undo-2" size={16} />
-        <span>Back to the run</span>
+        <span>Ажиллагаа руу буцах</span>
       </a>
     {/snippet}
   </TicketHead>
@@ -115,19 +122,22 @@
     <span class="mark"><Icon name="palette" size={22} /></span>
     <div class="tx">
       {#if paused}
-        <p class="t">Checkpoint: review the screens before any code is written</p>
+        <p class="t">Хяналтын цэг: код бичихээс өмнө дэлгэцүүдийг хянана уу</p>
         <p class="s">
-          The design step produced {d.screens.length} screen{d.screens.length === 1 ? '' : 's'}
-          with the pen.dev CLI.
-          {#if d.noCodeYet}Nothing has been implemented yet.{/if}
-          {#if next[0]}{`Approve to continue to ${next[0].label}.`}{/if}
+          Дизайн алхам pen.dev CLI-аар {d.screens.length} дэлгэц гаргалаа.
+          {#if d.noCodeYet}Хараахан юу ч хийгдээгүй байна.{/if}
+          {#if next[0]}{`${next[0].label} руу үргэлжлүүлэхийн тулд батлана уу.`}{/if}
         </p>
       {:else if d.gate.decided}
-        <p class="t">Already decided: {d.gate.decided.decision.replace('_', ' ')}</p>
-        <p class="s">On {new Date(d.gate.decided.at).toLocaleString()}. Nothing is waiting here.</p>
+        <p class="t">
+          Аль хэдийн шийдэгдсэн: {DECISION[d.gate.decided.decision] ?? d.gate.decided.decision}
+        </p>
+        <p class="s">
+          {new Date(d.gate.decided.at).toLocaleString('mn-MN')}-нд. Энд хүлээгдэж буй зүйл алга.
+        </p>
       {:else}
-        <p class="t">This run is not waiting at a design checkpoint</p>
-        <p class="s">Nothing here needs deciding.</p>
+        <p class="t">Энэ ажиллагаа дизайны хяналтын цэгт хүлээгээгүй байна</p>
+        <p class="s">Энд шийдэх зүйл алга.</p>
       {/if}
     </div>
 
@@ -135,7 +145,7 @@
       <div class="btns">
         {#if !d.mayDecide}
           <!-- Readable by anyone; decidable only by the gate's approvers (FR-064) -->
-          <p class="s">This checkpoint is not yours to decide. You can read everything here.</p>
+          <p class="s">Энэ хяналтын цэгийг та шийдэхгүй. Гэхдээ бүгдийг нь эндээс уншиж болно.</p>
         {:else}
           <button
             class="secondary"
@@ -144,14 +154,14 @@
             disabled={requestChanges.pending > 0}
           >
             <Icon name="message-square" size={16} />
-            <span>Request changes</span>
+            <span>Өөрчлөлт хүсэх</span>
           </button>
           <form {...approve}>
             <input type="hidden" name="runId" value={d.gate.runId} />
             <input type="hidden" name="stepIndex" value={d.gate.stepIndex} />
             <button class="go" type="submit" disabled={approve.pending > 0}>
               <Icon name="check" size={16} />
-              <span>Approve &amp; continue</span>
+              <span>Батлаад үргэлжлүүлэх</span>
             </button>
           </form>
         {/if}
@@ -167,10 +177,10 @@
     <section class="card gallery">
       <header class="gh">
         <div class="l">
-          <h2>Screens</h2>
+          <h2>Дэлгэцүүд</h2>
           <span class="badge pink">
             <span class="dot"></span>
-            {d.screens.length} exported
+            {d.screens.length} экспортлосон
           </span>
         </div>
         {#if d.designSource}
@@ -185,12 +195,12 @@
                 rel="noreferrer noopener"
               >
                 <Icon name="external-link" size={16} />
-                <span>Open the design source</span>
+                <span>Дизайны эх файлыг нээх</span>
               </a>
             {:else}
               <span class="quiet">
-                {d.designSource.path} is committed to the branch; this repository's address is not
-                one we can build a file link for.
+                {d.designSource.path} нь салбарт хадгалагдсан; энэ репозиторийн хаягаас файлын
+                холбоос үүсгэх боломжгүй байна.
               </span>
             {/if}
           </div>
@@ -199,8 +209,8 @@
 
       <ScreenGallery
         screens={d.screens}
-        heading="Designed screens"
-        note="Each one opens at full size. Use the arrow keys to move between them."
+        heading="Зурсан дэлгэцүүд"
+        note="Дэлгэц бүр бүтэн хэмжээгээр нээгдэнэ. Сум товчоор хооронд нь шилжинэ."
       />
     </section>
 
@@ -209,29 +219,29 @@
       <section class="card">
         <div class="sh">
           <Icon name="palette" size={16} />
-          <h3>Why this ticket was designed</h3>
+          <h3>Яагаад энэ даалгаврыг зурсан бэ</h3>
         </div>
         {#if d.ticket.uiRationale}
           <p class="quote">“{d.ticket.uiRationale}”</p>
           <p class="by">
-            Decided by the specification step · classified as
-            {d.ticket.hasUi ? 'interface work' : 'not interface work'}
+            Тодорхойлолтын алхам шийдсэн ·
+            {d.ticket.hasUi ? 'интерфейсийн ажил' : 'интерфейсийн ажил биш'} гэж ангилсан
           </p>
         {:else if d.ticket.classificationMissing}
           <p class="quiet warn-text">
-            The specification step produced no usable decision about whether this ticket changes
-            the interface, so it was treated as not changing it.
+            Тодорхойлолтын алхам энэ даалгавар интерфейс өөрчилдөг эсэх талаар ашиглах боломжтой
+            шийдвэр гаргаагүй тул өөрчлөхгүй гэж үзсэн.
           </p>
         {:else}
-          <p class="quiet">No reason was recorded.</p>
+          <p class="quiet">Шалтгаан тэмдэглэгдээгүй.</p>
         {/if}
       </section>
 
       <!-- The criteria beside the screens, so they are read together (FR-064d) -->
       <section class="card">
-        <h3>Check the screens against</h3>
+        <h3>Дэлгэцүүдийг юутай тулгах вэ</h3>
         {#if d.ticket.acceptanceCriteria.length === 0}
-          <p class="quiet">None were given. That is the biggest quality lever there is.</p>
+          <p class="quiet">Нэг ч өгөгдөөгүй. Энэ бол чанарын хамгийн хүчтэй хөшүүрэг юм.</p>
         {:else}
           <ul class="criteria">
             {#each d.ticket.acceptanceCriteria as criterion (criterion)}
@@ -243,22 +253,20 @@
 
       {#if paused && d.mayDecide}
         <section class="card">
-          <h3>Request changes</h3>
-          <p class="quiet">
-            The design is revised rather than redrawn, and comes back here.
-          </p>
+          <h3>Өөрчлөлт хүсэх</h3>
+          <p class="quiet">Дизайн шинээр зурагдахгүй, засагдаад эргэж энд ирнэ.</p>
           <form {...requestChanges} id="request-changes" class="stack">
             <input type="hidden" name="runId" value={d.gate.runId} />
             <input type="hidden" name="stepIndex" value={d.gate.stepIndex} />
             <textarea
               name="feedback"
               rows="4"
-              aria-label="Request changes — this text is sent to the design tool"
-              placeholder="What should change, and why?"
+              aria-label="Өөрчлөлт хүсэх — энэ бичвэр дизайны хэрэгсэл рүү илгээгдэнэ"
+              placeholder="Юу өөрчлөгдөх ёстой вэ, яагаад?"
             ></textarea>
             <button class="secondary wide" type="submit" disabled={requestChanges.pending > 0}>
               <Icon name="undo-2" size={16} />
-              <span>Send back to the design step</span>
+              <span>Дизайн алхам руу буцаах</span>
             </button>
           </form>
         </section>
@@ -266,7 +274,7 @@
 
       {#if next.length > 0}
         <section class="card">
-          <h3>After you approve</h3>
+          <h3>Батласны дараа</h3>
           {#each next as row (row.index)}
             <div class="n">
               <span class="ic"><Icon name={KIND_ICON[row.type] ?? 'bot'} size={13} /></span>
@@ -279,8 +287,8 @@
           <div class="n">
             <span class="ic ok"><Icon name="git-pull-request" size={13} /></span>
             <span class="tx">
-              <span class="t">Open merge request</span>
-              <span class="s">Branch pushed, merge request created, ticket closed</span>
+              <span class="t">Нэгтгэх хүсэлт нээх</span>
+              <span class="s">Салбар түлхэгдэж, хүсэлт нээгдэж, даалгавар хаагдана</span>
             </span>
           </div>
         </section>
@@ -288,7 +296,7 @@
 
       {#if step}
         <p class="quiet foot">
-          The design step took {step.durationS ?? 0}s and cost ${step.costUsd}.
+          Дизайн алхам {step.durationS ?? 0}с үргэлжилж ${step.costUsd} зарцуулсан.
         </p>
       {/if}
     </aside>

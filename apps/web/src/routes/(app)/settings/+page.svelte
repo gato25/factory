@@ -45,13 +45,13 @@
   let testing = $state(false);
 
   const SECTIONS = [
-    { id: 'workspace', label: 'Workspace' },
+    { id: 'workspace', label: 'Ажлын талбар' },
     { id: 'sandbox', label: 'Sandbox (Docker)' },
-    { id: 'keys', label: 'Claude CLI & keys' },
-    { id: 'design', label: 'Design (pen.dev)' },
-    { id: 'limits', label: 'Cost limits' },
-    { id: 'members', label: 'Members' },
-    { id: 'notifications', label: 'Notifications' },
+    { id: 'keys', label: 'Claude CLI ба түлхүүр' },
+    { id: 'design', label: 'Дизайн (pen.dev)' },
+    { id: 'limits', label: 'Зардлын хязгаар' },
+    { id: 'members', label: 'Гишүүд' },
+    { id: 'notifications', label: 'Мэдэгдэл' },
   ];
 
   const STATE_TONE: Record<string, string> = {
@@ -62,18 +62,32 @@
     wrong_shape: 'warn',
   };
   const WHAT: Record<string, string> = {
-    runner: 'Container host',
-    design: 'Design service',
+    runner: 'Контейнер хост',
+    design: 'Дизайны үйлчилгээ',
+  };
+
+  /** What a connection test found, in words rather than in its own code. */
+  const STATE_LABEL: Record<string, string> = {
+    reachable: 'холбогдож байна',
+    unconfigured: 'тохируулаагүй',
+    unreachable: 'холбогдохгүй байна',
+    unauthorised: 'эрх хүрэхгүй байна',
+    wrong_shape: 'хүлээгээгүй хариу',
   };
 
   /** What a card's badge says: the last test if there was one, else whether
    *  it is configured at all. */
   function stateOf(what: string, configured: boolean) {
     const result = tested?.find((row) => row.what === what);
-    if (result) return { label: result.state.replace('_', ' '), tone: STATE_TONE[result.state] ?? '' };
+    if (result) {
+      return {
+        label: STATE_LABEL[result.state] ?? result.state,
+        tone: STATE_TONE[result.state] ?? '',
+      };
+    }
     return configured
-      ? { label: 'Configured', tone: '' }
-      : { label: 'Not set up', tone: 'warn' };
+      ? { label: 'Тохируулсан', tone: '' }
+      : { label: 'Тохируулаагүй', tone: 'warn' };
   }
 
   async function test() {
@@ -90,20 +104,20 @@
 
 {#if data.user.role !== 'admin'}
   <p class="card notice">
-    Workspace settings — credentials, connections, ceilings and membership — are for
-    administrators. Everything else in Code Factory is not: pipelines, agents and skills go by who
-    owns them, and anyone can make their own.
+    Ажлын талбарын тохиргоо — нууц түлхүүр, холболт, хязгаар, гишүүдийг администратор хариуцна.
+    Code Factory-ийн бусад бүхэн тийм биш: дамжлага, агент, ур чадвар нь эзэмшигчээрээ явах бөгөөд
+    хэн ч өөрийнхийг үүсгэж болно.
   </p>
 {:else if config.error}
   <p class="card failure" role="alert">{(config.error as Error).message}</p>
 {:else if !config.ready}
-  <p class="card">Loading settings…</p>
+  <p class="card">Тохиргоог ачааллаж байна…</p>
 {:else}
   {@const w = config.current.workspace}
   {@const r = config.current.readiness}
 
   <div class="wrap">
-    <nav class="sections" aria-label="Settings sections">
+    <nav class="sections" aria-label="Тохиргооны хэсгүүд">
       {#each SECTIONS as section (section.id)}
         <a href="#{section.id}">{section.label}</a>
       {/each}
@@ -123,17 +137,17 @@
           <header>
             <span class="ic"><Icon name="settings" size={18} /></span>
             <div class="tx">
-              <h2>Workspace</h2>
-              <p>One deployment, one workspace. Its name is what members see in the sidebar.</p>
+              <h2>Ажлын талбар</h2>
+              <p>Нэг байршуулалт, нэг ажлын талбар. Гишүүд хажуугийн самбарт түүний нэрийг харна.</p>
             </div>
             <span class="badge {r.ready ? 'ok' : 'warn'}">
               <span class="dot"></span>
-              {r.ready ? 'Ready to run' : 'Not ready'}
+              {r.ready ? 'Ажиллахад бэлэн' : 'Бэлэн биш'}
             </span>
           </header>
           <div class="grid">
             <label class="f">
-              <span>Name</span>
+              <span>Нэр</span>
               <input name="name" value={w.name} required />
             </label>
           </div>
@@ -144,7 +158,9 @@
             <span class="ic"><Icon name="container" size={18} /></span>
             <div class="tx">
               <h2>Sandbox · Docker</h2>
-              <p>Each run gets one fresh container with the repo, Claude CLI and your toolchain.</p>
+              <p>
+                Ажиллагаа бүр репозитори, Claude CLI, хэрэгслүүдээ агуулсан шинэ контейнер авна.
+              </p>
             </div>
             {#await Promise.resolve(stateOf('runner', Boolean(w.runnerBaseUrl))) then s}
               <span class="badge {s.tone}"><span class="dot"></span>{s.label}</span>
@@ -152,7 +168,7 @@
           </header>
           <div class="grid">
             <label class="f">
-              <span>Container host address</span>
+              <span>Контейнер хостын хаяг</span>
               <input
                 name="runnerBaseUrl"
                 value={w.runnerBaseUrl ?? ''}
@@ -160,17 +176,17 @@
               />
             </label>
             <label class="f">
-              <span>Image</span>
+              <span>Образ</span>
               <input name="sandboxImage" value={w.sandboxImage} required />
             </label>
           </div>
           <div class="grid four">
             <label class="f">
-              <span>Processors</span>
+              <span>Цөм</span>
               <input name="sandboxCpu" type="number" min="1" value={w.sandboxCpu} required />
             </label>
             <label class="f">
-              <span>Memory, in megabytes</span>
+              <span>Санах ой, мегабайтаар</span>
               <input
                 name="sandboxMemoryMb"
                 type="number"
@@ -181,7 +197,7 @@
               />
             </label>
             <label class="f">
-              <span>Lifetime, in minutes</span>
+              <span>Ажиллах хугацаа, минутаар</span>
               <input
                 name="sandboxWallClockMinutes"
                 type="number"
@@ -191,7 +207,7 @@
               />
             </label>
             <label class="f">
-              <span>Keep a failed run's sandbox for, in hours</span>
+              <span>Амжилтгүй ажиллагааны орчныг хадгалах хугацаа, цагаар</span>
               <input
                 name="retainFailedSandboxesHours"
                 type="number"
@@ -203,12 +219,12 @@
           </div>
           <label class="opt">
             <span class="tx">
-              <span class="t">Let a sandbox reach the network while code is being written</span>
+              <span class="t">Код бичих үед орчин сүлжээнд нэвтрэхийг зөвшөөрөх</span>
               <span class="d">
-                Needed by every agent and design step: the agent runs inside the sandbox and
-                reaches the model over the network, so a run that has one of those steps is
-                refused while this is off. Turn it off only for pipelines of shell steps,
-                where a sandbox that cannot reach the network cannot send anything out.
+                Агент болон дизайны алхам бүрт шаардлагатай: агент орчин дотор ажиллаж, загвар руу
+                сүлжээгээр хандана. Тиймээс энэ унтарсан үед тийм алхамтай ажиллагаа зөвшөөрөгдөхгүй.
+                Зөвхөн shell алхмуудаас бүрдсэн дамжлагад унтраана уу — сүлжээнд хүрэхгүй орчин
+                гадагш юу ч илгээж чадахгүй.
               </span>
             </span>
             <input
@@ -225,20 +241,20 @@
           <header>
             <span class="ic"><Icon name="coins" size={18} /></span>
             <div class="tx">
-              <h2>Cost limits</h2>
+              <h2>Зардлын хязгаар</h2>
               <p>
-                The ceilings a member's own limits cannot exceed. A limit somebody sets on their
-                agent is capped at these, so it can only ever lower what a run may consume.
+                Гишүүний өөрийн хязгаар давж чадахгүй тааз. Хэн нэгний агентдаа тавьсан хязгаар
+                эдгээрээр таслагдана, тиймээс зөвхөн ажиллагааны зарцуулалтыг бууруулж чадна.
               </p>
             </div>
           </header>
           <div class="grid">
             <label class="f">
-              <span>Most a run may spend, in dollars</span>
+              <span>Нэг ажиллагааны зарцуулж болох дээд хэмжээ, доллараар</span>
               <input name="defaultCostCeilingUsd" value={w.defaultCostCeilingUsd} required />
             </label>
             <label class="f">
-              <span>Longest a run may take, in minutes</span>
+              <span>Нэг ажиллагааны үргэлжлэх дээд хугацаа, минутаар</span>
               <input
                 name="defaultTimeCeilingMinutes"
                 type="number"
@@ -248,7 +264,7 @@
               />
             </label>
             <label class="f">
-              <span>Runs that may execute at once</span>
+              <span>Зэрэг ажиллаж болох ажиллагааны тоо</span>
               <input
                 name="maxConcurrentRuns"
                 type="number"
@@ -274,13 +290,13 @@
             </ul>
           {:else}
             <span class="t">
-              A test tells reachable-and-authorised apart from unreachable and from refused,
-              because those three need different fixes.
+              Шалгалт нь холбогдож эрх нь хүрч байгааг, холбогдохгүй байгаагаас, татгалзсанаас нь
+              ялгаж хэлнэ — учир нь энэ гурав өөр өөр засварыг шаарддаг.
             </span>
           {/if}
           <button type="button" class="secondary" disabled={testing} onclick={test}>
             <Icon name="plug" size={16} />
-            <span>{testing ? 'Testing…' : 'Test connection'}</span>
+            <span>{testing ? 'Шалгаж байна…' : 'Холболт шалгах'}</span>
           </button>
         </div>
 
@@ -299,7 +315,7 @@
         <div class="end">
           <button class="primary" type="submit" disabled={saveWorkspace.pending > 0}>
             <Icon name="save" size={16} />
-            <span>Save</span>
+            <span>Хадгалах</span>
           </button>
         </div>
       </form>
@@ -309,22 +325,22 @@
         <header>
           <span class="ic"><Icon name="key-round" size={18} /></span>
           <div class="tx">
-            <h2>Claude CLI &amp; keys</h2>
+            <h2>Claude CLI ба түлхүүр</h2>
             <p>
-              Stored encrypted, supplied to a run as environment, and never shown again — not even
-              to you. Replacing one is the only way to change it.
+              Шифрлэгдэж хадгалагдаж, ажиллагаанд орчны хувьсагч болон дамжих бөгөөд дахин хэзээ ч
+              харагдахгүй — танд ч гэсэн. Өөрчлөх цорын ганц арга бол солих юм.
             </p>
           </div>
           <span class="badge {w.hasModelCredential ? 'ok' : 'warn'}">
             <span class="dot"></span>
-            {w.hasModelCredential ? 'One is stored' : 'None yet'}
+            {w.hasModelCredential ? 'Нэг нь хадгалагдсан' : 'Хараахан алга'}
           </span>
         </header>
         <form {...modelKey} class="grid">
           <input type="hidden" name="kind" value="model" />
           <label class="f">
-            <span>Model credential</span>
-            <input name="token" type="password" placeholder="paste it here" autocomplete="off" />
+            <span>Загварын түлхүүр</span>
+            <input name="token" type="password" placeholder="энд буулгана уу" autocomplete="off" />
             <!--
               Either kind is accepted, and which one this is decides how the
               work is paid for. The runner tells them apart by prefix and hands
@@ -333,16 +349,16 @@
               no code change, no rebuild.
             -->
             <span class="hint">
-              An API key, billed per use to an Anthropic Console account — or a Claude subscription
-              token from <code>claude setup-token</code>, which draws on that subscription's own
-              allowance instead. A subscription's limits are shaped around one person working, so
-              watch them if several runs execute at once.
+              Anthropic Console бүртгэлд ашиглалтаар нь тооцох API түлхүүр — эсвэл
+              <code>claude setup-token</code>-оос гарах Claude захиалгын токен, энэ нь тухайн
+              захиалгын өөрийнх нь эрхээс зарцуулна. Захиалгын хязгаар нь нэг хүн ажиллахаар
+              хийгдсэн тул хэд хэдэн ажиллагаа зэрэг явж байвал анхаарна уу.
             </span>
           </label>
           <div class="f end-field">
             <button type="submit" class="secondary" disabled={modelKey.pending > 0}>
               <Icon name="key-round" size={16} />
-              <span>Store</span>
+              <span>Хадгалах</span>
             </button>
           </div>
         </form>
@@ -364,27 +380,27 @@
         <header>
           <span class="ic pink"><Icon name="palette" size={18} /></span>
           <div class="tx">
-            <h2>Design · pen.dev</h2>
+            <h2>Дизайн · pen.dev</h2>
             <p>
-              Used only by design steps. Screens are exported as images and the .pen file is
-              committed with the code.
+              Зөвхөн дизайн алхамд ашиглана. Дэлгэцүүд зураг болон гарч, .pen файл кодтойгоо хамт
+              хадгалагдана.
             </p>
           </div>
           <span class="badge {w.hasDesignCredential ? 'ok' : ''}">
             <span class="dot"></span>
-            {w.hasDesignCredential ? 'Signed in' : 'Not set up'}
+            {w.hasDesignCredential ? 'Нэвтэрсэн' : 'Тохируулаагүй'}
           </span>
         </header>
         <form {...designKey} class="grid">
           <input type="hidden" name="kind" value="design" />
           <label class="f">
-            <span>Design credential</span>
-            <input name="token" type="password" placeholder="paste it here" autocomplete="off" />
+            <span>Дизайны түлхүүр</span>
+            <input name="token" type="password" placeholder="энд буулгана уу" autocomplete="off" />
           </label>
           <div class="f end-field">
             <button type="submit" class="secondary" disabled={designKey.pending > 0}>
               <Icon name="key-round" size={16} />
-              <span>Store design credential</span>
+              <span>Дизайны түлхүүр хадгалах</span>
             </button>
           </div>
         </form>
@@ -401,8 +417,8 @@
           <p class="banner good" role="status">{designKey.result.message}</p>
         {/if}
         <p class="quiet">
-          A design step's model and export settings belong to the step, not here — set them on the
-          step in the pipeline builder.
+          Дизайн алхмын загвар, экспортын тохиргоо нь энд биш, алхам дээрээ байдаг — дамжлага
+          зохиомжлогч дээр алхам дээр нь тохируулна уу.
         </p>
       </section>
 
@@ -410,16 +426,16 @@
         <header>
           <span class="ic"><Icon name="user" size={18} /></span>
           <div class="tx">
-            <h2>Members</h2>
+            <h2>Гишүүд</h2>
             <p>
-              An administrator configures the workspace. Everything else — pipelines, agents,
-              skills — goes by who owns it.
+              Ажлын талбарыг администратор тохируулна. Бусад бүхэн — дамжлага, агент, ур чадвар —
+              эзэмшигчээрээ явна.
             </p>
           </div>
         </header>
 
         {#if !people.ready}
-          <p class="quiet">Loading…</p>
+          <p class="quiet">Ачааллаж байна…</p>
         {:else}
           <ul class="people">
             {#each people.current as person (person.id)}
@@ -429,11 +445,11 @@
                   <span class="quiet">{person.email}</span>
                 </span>
                 <span class="quiet">
-                  {person.ticketsCreated} ticket{person.ticketsCreated === 1 ? '' : 's'}
+                  {person.ticketsCreated} даалгавар
                 </span>
                 <select
                   value={person.role}
-                  aria-label="Role for {person.name}"
+                  aria-label="{person.name}-ийн үүрэг"
                   onchange={async (event) => {
                     const result = await changeRole({
                       userId: person.id,
@@ -442,8 +458,8 @@
                     notice = ('problem' in result ? result.problem : result.message) ?? null;
                   }}
                 >
-                  <option value="member">Member</option>
-                  <option value="admin">Administrator</option>
+                  <option value="member">Гишүүн</option>
+                  <option value="admin">Администратор</option>
                 </select>
                 {#if person.id !== data.user.id}
                   <button
@@ -452,10 +468,10 @@
                     onclick={async () => {
                       const result = await removeMember(person.id);
                       notice = ('problem' in result ? result.problem : result.message) ?? null;
-                    }}>Remove</button
+                    }}>Хасах</button
                   >
                 {:else}
-                  <span class="quiet">you</span>
+                  <span class="quiet">та</span>
                 {/if}
               </li>
             {/each}
@@ -464,23 +480,23 @@
 
         <form {...inviteMember} class="invite">
           <label class="f">
-            <span>Name</span>
+            <span>Нэр</span>
             <input name="name" required />
           </label>
           <label class="f">
-            <span>Email</span>
+            <span>И-мэйл</span>
             <input name="email" type="email" required />
           </label>
           <label class="f">
-            <span>Role</span>
+            <span>Үүрэг</span>
             <select name="role">
-              <option value="member">Member</option>
-              <option value="admin">Administrator</option>
+              <option value="member">Гишүүн</option>
+              <option value="admin">Администратор</option>
             </select>
           </label>
           <button type="submit" class="secondary" disabled={inviteMember.pending > 0}>
             <Icon name="plus" size={16} />
-            <span>Invite</span>
+            <span>Урих</span>
           </button>
         </form>
         {#if inviteMember.fields.allIssues()?.length}
@@ -499,10 +515,10 @@
         <header>
           <span class="ic"><Icon name="bell" size={18} /></span>
           <div class="tx">
-            <h2>Notifications</h2>
-            <p>Who is told when a run needs a person, and how.</p>
+            <h2>Мэдэгдэл</h2>
+            <p>Ажиллагаанд хүн хэрэгтэй болоход хэнд, хэрхэн мэдэгдэхийг заана.</p>
           </div>
-          <span class="badge"><span class="dot"></span>Nothing to configure</span>
+          <span class="badge"><span class="dot"></span>Тохируулах зүйл алга</span>
         </header>
         <!--
           Stated rather than offered. A checkpoint resolves its own approvers
@@ -511,14 +527,14 @@
           otherwise would be worse than the truth.
         -->
         <p class="quiet">
-          A checkpoint decides who may approve it — anyone in the workspace, the ticket's author,
-          or named people — on the step itself, in the pipeline builder. When a run reaches one,
-          those people are resolved and recorded, and the notice is written to the application
-          log.
+          Хяналтын цэг өөрийг нь хэн батлахыг — багийн аль ч гишүүн, даалгаврыг үүсгэгч, эсвэл
+          нэрлэсэн хүмүүсийг — дамжлага зохиомжлогч дээрх алхам дээрээ шийднэ. Ажиллагаа түүнд
+          хүрэхэд тэдгээр хүмүүс тодорхойлогдож тэмдэглэгдэн, мэдэгдэл нь аппликэйшний бүртгэлд
+          бичигдэнэ.
         </p>
         <p class="quiet">
-          To send it somewhere a person will see, add a Notify step to the pipeline: it goes out
-          through n8n, which is where this deployment's Slack, email and webhook connections live.
+          Хүн харах газар руу илгээхийн тулд дамжлагадаа Мэдэгдэх алхам нэмнэ үү: энэ нь n8n-ээр
+          дамжина, тэнд л энэ байршуулалтын Slack, и-мэйл, webhook холболтууд байдаг.
         </p>
       </section>
 
@@ -528,10 +544,10 @@
           <header>
             <span class="ic"><Icon name="timer" size={18} /></span>
             <div class="tx">
-              <h2>Runs now</h2>
+              <h2>Одоо ажиллаж буй</h2>
               <p>
-                {waiting.current.executing} of {waiting.current.cap} executing
-                {#if waiting.current.waiting > 0}&middot; {waiting.current.waiting} waiting{/if}
+                {waiting.current.cap}-аас {waiting.current.executing} нь ажиллаж байна
+                {#if waiting.current.waiting > 0}&middot; {waiting.current.waiting} хүлээж буй{/if}
               </p>
             </div>
           </header>
@@ -543,11 +559,11 @@
                     <strong>{entry.reference}</strong>
                     {entry.title}
                   </a>
-                  <span class="quiet">{entry.authorName ?? 'unknown'}</span>
+                  <span class="quiet">{entry.authorName ?? 'тодорхойгүй'}</span>
                 </span>
                 <span class="badge {entry.position === null ? 'live' : 'warn'}">
                   <span class="dot"></span>
-                  {entry.position === null ? 'executing' : `position ${entry.position}`}
+                  {entry.position === null ? 'ажиллаж байна' : `дараалалд ${entry.position}-рт`}
                 </span>
               </li>
             {/each}

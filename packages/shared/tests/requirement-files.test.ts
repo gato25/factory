@@ -184,8 +184,8 @@ describe('what a whole ticket may carry', () => {
 
 describe('sizes as a person reads them', () => {
   test.each([
-    [0, '0 bytes'],
-    [512, '512 bytes'],
+    [0, '0 байт'],
+    [512, '512 байт'],
     [2048, '2 KB'],
     [1024 * 1024 * 3, '3.0 MB'],
   ])('%i reads as %s', (bytes, expected) => {

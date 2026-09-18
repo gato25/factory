@@ -103,9 +103,7 @@ test('both attempts are listed, newest first, each with its own reason', async (
   expect(history.map((a) => a.attempt)).toEqual([2, 1]);
   expect(history[0]?.status).toBe('queued');
   expect(history[1]?.status).toBe('failed');
-  expect(history[1]?.what).toBe(
-    'The step finished without producing the document it was supposed to write.',
-  );
+  expect(history[1]?.what).toBe('Алхам бичих ёстой байсан баримтаа гаргалгүй дуусчээ.');
   expect(history[1]?.costUsd).toBe('0.4200');
 });
 
@@ -183,7 +181,8 @@ test('a run still in flight cannot be retried, and is told why', async () => {
     refused = error as Error;
   }
   expect(refused?.message).toBe(
-    'attempt 1 of #142 is still running. Only a failed or cancelled attempt can be retried.',
+    '#142-ийн 1-р оролдлого running хэвээр байна. Зөвхөн амжилтгүй болсон эсвэл ' +
+      'цуцлагдсан оролдлогыг дахин оролдож болно.',
   );
   // Nothing was created.
   expect(await db.select().from(runs).where(eq(runs.ticketId, scenario.ticketId))).toHaveLength(1);
@@ -200,7 +199,7 @@ test('a finished run cannot be retried', async () => {
   } catch (error) {
     refused = error as Error;
   }
-  expect(refused?.message).toContain('already finished');
+  expect(refused?.message).toContain('аль хэдийн дууссан');
 });
 
 test('a ticket that never ran is told to start rather than retry', async () => {
@@ -232,10 +231,8 @@ test('a third attempt keeps both earlier ones', async () => {
 
   const history = await attemptsOf(db, scenario.ticketId);
   expect(history.map((a) => a.attempt)).toEqual([3, 2, 1]);
-  expect(history[1]?.what).toBe('The model could not be reached.');
-  expect(history[2]?.what).toBe(
-    'The step finished without producing the document it was supposed to write.',
-  );
+  expect(history[1]?.what).toBe('Загвар руу холбогдож чадсангүй.');
+  expect(history[2]?.what).toBe('Алхам бичих ёстой байсан баримтаа гаргалгүй дуусчээ.');
 });
 
 test('a decision recorded on an earlier attempt is not carried into a new one', async () => {

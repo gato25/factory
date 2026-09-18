@@ -20,11 +20,11 @@ export const STEP_KINDS = ['agent', 'design', 'checkpoint', 'shell', 'notify'] a
 
 /** The words `design.pen`'s palette uses, so the screen and the code agree. */
 export const STEP_KIND_LABEL: Record<(typeof STEP_KINDS)[number], string> = {
-  agent: 'Agent step',
-  design: 'Design step',
-  checkpoint: 'Human checkpoint',
-  shell: 'Shell command',
-  notify: 'Notify',
+  agent: 'Агент алхам',
+  design: 'Дизайн алхам',
+  checkpoint: 'Хүний хяналтын цэг',
+  shell: 'Shell команд',
+  notify: 'Мэдэгдэх',
 };
 
 /** What each kind is for, and the icon the design gives it. */
@@ -32,11 +32,11 @@ export const STEP_KIND_DETAIL: Record<
   (typeof STEP_KINDS)[number],
   { description: string; icon: string }
 > = {
-  checkpoint: { description: 'Pause until someone approves', icon: 'hand' },
-  design: { description: 'Draw screens with the pen.dev CLI', icon: 'palette' },
-  agent: { description: 'Run one of your agents via Claude CLI', icon: 'bot' },
-  shell: { description: 'Run a script in the sandbox (lint, build)', icon: 'terminal' },
-  notify: { description: 'Slack / email / webhook', icon: 'bell' },
+  checkpoint: { description: 'Хэн нэгэн батлах хүртэл зогсоно', icon: 'hand' },
+  design: { description: 'pen.dev CLI-аар дэлгэц зурна', icon: 'palette' },
+  agent: { description: 'Claude CLI-аар агентаа ажиллуулна', icon: 'bot' },
+  shell: { description: 'Тусгаарлагдсан орчинд скрипт ажиллуулна (lint, build)', icon: 'terminal' },
+  notify: { description: 'Slack / и-мэйл / webhook', icon: 'bell' },
 };
 
 /** The order the design's palette lists them in. */
@@ -44,8 +44,8 @@ export const PALETTE_ORDER = ['checkpoint', 'design', 'agent', 'shell', 'notify'
 
 /** The implicit final step, shown but never editable (FR-029). */
 export const IMPLICIT_LAST_STEP = {
-  label: 'Open merge request',
-  why: 'Every pipeline ends here. It is not a step you can move or remove.',
+  label: 'Нэгтгэх хүсэлт нээх',
+  why: 'Дамжлага бүр эндээ дуусна. Үүнийг зөөх ч, устгах ч боломжгүй.',
 } as const;
 
 export interface PipelineDetail {
@@ -75,7 +75,7 @@ export async function getPipeline(
     .from(pipelines)
     .where(eq(pipelines.id, pipelineId))
     .limit(1);
-  if (!pipeline) throw notFound('no such pipeline');
+  if (!pipeline) throw notFound('тийм дамжлага алга');
 
   const versions = await database
     .select()
@@ -156,8 +156,8 @@ export async function savePipeline(
     .from(pipelines)
     .where(eq(pipelines.id, input.pipelineId))
     .limit(1);
-  if (!pipeline) throw notFound('no such pipeline');
-  requireOwnerOrAdmin(user, pipeline.ownerId, 'this pipeline');
+  if (!pipeline) throw notFound('тийм дамжлага алга');
+  requireOwnerOrAdmin(user, pipeline.ownerId, 'Энэ дамжлага');
 
   assertSavable(input.steps);
 
@@ -222,15 +222,15 @@ export async function renamePipeline(
   user: SessionUser,
 ): Promise<{ name: string }> {
   const trimmed = name.trim();
-  if (!trimmed) throw invalidInput('Give the pipeline a name.');
+  if (!trimmed) throw invalidInput('Дамжлагад нэр өгнө үү.');
 
   const [pipeline] = await database
     .select()
     .from(pipelines)
     .where(eq(pipelines.id, pipelineId))
     .limit(1);
-  if (!pipeline) throw notFound('no such pipeline');
-  requireOwnerOrAdmin(user, pipeline.ownerId, 'this pipeline');
+  if (!pipeline) throw notFound('тийм дамжлага алга');
+  requireOwnerOrAdmin(user, pipeline.ownerId, 'Энэ дамжлага');
 
   await database
     .update(pipelines)
@@ -251,11 +251,11 @@ function normalise(steps: Step[]): Step[] {
  */
 
 export function moveStep(steps: Step[], from: number, to: number): Step[] {
-  if (from < 0 || from >= steps.length) throw invalidInput('there is no such step to move');
+  if (from < 0 || from >= steps.length) throw invalidInput('зөөх тийм алхам алга');
   const target = Math.max(0, Math.min(steps.length - 1, to));
   const next = [...steps];
   const [moved] = next.splice(from, 1);
-  if (!moved) throw invalidInput('there is no such step to move');
+  if (!moved) throw invalidInput('зөөх тийм алхам алга');
   next.splice(target, 0, moved);
   return next;
 }
@@ -270,7 +270,7 @@ export function insertStep(steps: Step[], at: number, step: Step): Step[] {
 }
 
 export function removeStep(steps: Step[], at: number): Step[] {
-  if (at < 0 || at >= steps.length) throw invalidInput('there is no such step to remove');
+  if (at < 0 || at >= steps.length) throw invalidInput('устгах тийм алхам алга');
   return steps.filter((_, index) => index !== at);
 }
 
@@ -305,7 +305,7 @@ export async function duplicatePipeline(
     .from(pipelines)
     .where(eq(pipelines.id, pipelineId))
     .limit(1);
-  if (!source) throw notFound('no such pipeline');
+  if (!source) throw notFound('тийм дамжлага алга');
 
   const versions = await database
     .select()
@@ -323,7 +323,7 @@ export async function duplicatePipeline(
       currentVersion: 1,
     })
     .returning();
-  if (!copy) throw conflict('could not duplicate the pipeline');
+  if (!copy) throw conflict('дамжлагыг хуулбарлаж чадсангүй');
 
   await database.insert(pipelineVersions).values({
     pipelineId: copy.id,
@@ -360,7 +360,7 @@ export async function createPipeline(
   user: SessionUser,
 ): Promise<{ id: string }> {
   const name = input.name.trim();
-  if (!name) throw invalidInput('Give the pipeline a name.');
+  if (!name) throw invalidInput('Дамжлагад нэр өгнө үү.');
 
   const [created] = await database
     .insert(pipelines)
@@ -371,7 +371,7 @@ export async function createPipeline(
       currentVersion: 1,
     })
     .returning();
-  if (!created) throw conflict('could not create the pipeline');
+  if (!created) throw conflict('дамжлагыг үүсгэж чадсангүй');
 
   // Version 1 is empty on purpose: a save is what validates, and refusing to
   // create an empty pipeline would leave nowhere to build one.
