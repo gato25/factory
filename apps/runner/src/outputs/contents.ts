@@ -1,5 +1,6 @@
 import type { ArtifactRef } from '@factory/shared';
 import type { ContainerHost } from '../container/host';
+import { quoteOne } from '../container/shell';
 import { log } from '../errors';
 
 /**
@@ -16,14 +17,17 @@ import { log } from '../errors';
  * can reach the workspace, and the file is on its disk already — the same
  * reason the credentials exchange runs the other way.
  *
- * **Documents only.** A screen is a PNG and a design source is a binary file,
- * and neither survives being read as text; they are the same gap and need a
- * way to read bytes out of a sandbox, which is a separate piece of work. The
- * kinds that are not files at all — a commit list, a merge request — have no
- * content by definition.
+ * **Text here, bytes below.** A screen is a PNG and does not survive being
+ * read as text, so `readOutputBytes` carries those instead. A design source
+ * is binary too and is carried by neither: nothing renders it, and it is on
+ * the branch for whoever wants it. The kinds that are not files at all — a
+ * commit list, a merge request — have no content by definition.
  */
 
 const TEXT_KINDS = new Set<ArtifactRef['kind']>(['document']);
+
+/** Kinds the application shows as a picture, so it needs the picture. */
+const IMAGE_KINDS = new Set<ArtifactRef['kind']>(['screen']);
 
 /**
  * How much of one document travels. A specification or a plan is a few tens
@@ -67,6 +71,75 @@ export async function readOutputContents(
     contents[output.path] = redact(cap(text, output.path));
   }
   return contents;
+}
+
+/**
+ * How large a screen may be and still travel.
+ *
+ * A full page exported at twice scale is megabytes, so this has to be roomy
+ * or it refuses the ordinary case — the first one produced here was 6.5 MB.
+ * It is a ceiling rather than a target: base64 adds a third on top, and the
+ * whole lot rides in one callback.
+ */
+export const MAX_SCREEN_BYTES = 12 * 1024 * 1024;
+
+/**
+ * The images a step exported, base64, by path.
+ *
+ * Read with `base64` in the sandbox rather than through `readFile`, which
+ * decodes as text and would return something that is no longer a PNG. An
+ * image that cannot be read, or is past the ceiling, is simply absent: the
+ * artifact row is still written from the manifest, and a missing picture is
+ * better than a corrupt one.
+ *
+ * Nothing is redacted here, and nothing needs to be. Redaction is defined
+ * over text (FR-084); a credential cannot be pattern-matched out of a PNG,
+ * and an image of a screen is not where one would be.
+ */
+export async function readOutputBytes(
+  host: ContainerHost,
+  containerId: string,
+  workdir: string,
+  outputs: ArtifactRef[],
+): Promise<Record<string, string>> {
+  const images: Record<string, string> = {};
+  for (const output of outputs) {
+    if (!IMAGE_KINDS.has(output.kind)) continue;
+    const path = `${workdir}/${output.path}`;
+    try {
+      // Asked before it is read: pulling something enormous through a pipe to
+      // then discard it is the one outcome worth avoiding.
+      const info = await host.stat(containerId, path);
+      if (!info) continue;
+      if (info.size > MAX_SCREEN_BYTES) {
+        log.warn('an exported screen was too large to carry', {
+          path: output.path,
+          bytes: info.size,
+          ceiling: MAX_SCREEN_BYTES,
+        });
+        continue;
+      }
+      const read = await host.exec(containerId, ['sh', '-c', `base64 ${quoteOne(path)}`]);
+      if (read.exitCode !== 0) {
+        log.warn('an exported screen could not be read back', {
+          path: output.path,
+          detail: read.stderr.trim().slice(0, 400),
+        });
+        continue;
+      }
+      // `base64` wraps at 76 columns on most systems and not on others, so
+      // the line breaks come out rather than being depended on either way.
+      const encoded = read.stdout.replace(/\s+/g, '');
+      if (encoded.length > 0) images[output.path] = encoded;
+    } catch (error) {
+      // A sandbox that went away between the step finishing and this read.
+      log.warn('an exported screen could not be read back', {
+        path: output.path,
+        detail: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+  return images;
 }
 
 /**

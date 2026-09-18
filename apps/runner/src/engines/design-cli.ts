@@ -88,6 +88,17 @@ export function buildDesignArgv(input: DesignStepInput, revising: boolean): stri
   const config = designConfig(input.step);
   return [
     'pen',
+    // The repository the design is for.
+    //
+    // The tool runs an agent of its own, and that agent refuses to read
+    // anything outside the folder it was given — "Path is outside allowed
+    // working directories". Without this it was given none, so every read of
+    // the project was denied and the first design drawn here was drawn from
+    // the brief alone, against a home page it had never seen. It said so
+    // itself in its closing note. A design step exists to change an interface
+    // that already exists; it has to be able to look at it.
+    '--repo',
+    WORKDIR,
     // Revising reads the accepted design and writes it back to the same path,
     // which is FR-106: a step that runs again revises rather than replaces.
     // A first run has nothing to read and starts from an empty canvas.

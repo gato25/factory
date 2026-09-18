@@ -1,7 +1,7 @@
 import { afterAll, beforeEach, expect, test } from 'bun:test';
-import { logChunks, runs, stepResults, tickets } from '@factory/db/schema';
+import { artifacts, logChunks, runs, stepResults, tickets } from '@factory/db/schema';
 import { type Callback, FactoryError } from '@factory/shared';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { applyCallback, authenticateCallback } from '../../src/lib/services/callbacks';
 import { startRun } from '../../src/lib/services/run';
 import { connect, type Scenario, seed } from '../fixtures';
@@ -294,4 +294,50 @@ test('a callback with no contents stores the row, so an older run still records 
   const stored = await currentVersion(db, runId, 'docs/plan.md');
   expect(stored?.path).toBe('docs/plan.md');
   expect(stored?.content).toBeNull();
+});
+
+// --- what a screen holds: the picture itself (FR-054, FR-077) ---
+
+test('a step_finished stores the bytes of the screens it carries', async () => {
+  // A design step's entire output is a picture. Before this the row named the
+  // file and held nothing, so the gallery asked the application for an image
+  // it did not have and the reviewer saw a broken one.
+  const { screenBytes } = await import('../../src/lib/services/run-view');
+  const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0xff]);
+
+  await applyCallback(db, {
+    ...envelope('step_finished'),
+    status: 'done',
+    duration_s: 30,
+    cost_usd: '0.9000',
+    artifacts: [{ kind: 'screen', path: 'docs/design/screens/ui.png', version: 1 }],
+    artifact_bytes: { 'docs/design/screens/ui.png': png.toString('base64') },
+  } as Callback);
+
+  const [row] = await db
+    .select({ id: artifacts.id })
+    .from(artifacts)
+    .where(
+      sql`${artifacts.runId} = ${runId}::uuid and ${artifacts.path} = 'docs/design/screens/ui.png'`,
+    );
+  const served = await screenBytes(db, row?.id as string);
+  // Byte for byte what the execution service read, and served as an image.
+  expect(Buffer.from(served?.bytes as Uint8Array)).toEqual(png);
+  expect(served?.contentType).toBe('image/png');
+});
+
+test('a screen whose picture did not travel still gets its row', async () => {
+  // Too large to carry, or unreadable. The artifact existing is true whether
+  // or not its bytes made the journey, and the run must not fail over it.
+  const { currentVersion } = await import('../../src/lib/services/artifact');
+  await applyCallback(db, {
+    ...envelope('step_finished'),
+    status: 'done',
+    duration_s: 30,
+    cost_usd: '0.9000',
+    artifacts: [{ kind: 'screen', path: 'docs/design/screens/huge.png', version: 1 }],
+  } as Callback);
+
+  const stored = await currentVersion(db, runId, 'docs/design/screens/huge.png');
+  expect(stored?.path).toBe('docs/design/screens/huge.png');
 });

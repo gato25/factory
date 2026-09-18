@@ -145,6 +145,10 @@ export async function applyCallback(
           stepIndex,
           callback.artifacts,
           callback.artifact_contents ?? {},
+          // And the screens' bytes. A design step's output IS the picture,
+          // and without these the gallery asked for an image the application
+          // did not have and showed a broken one (FR-054, FR-077).
+          callback.artifact_bytes ?? {},
         );
         // The step that was expected to classify has now finished. If no
         // usable decision arrived, that absence becomes a field rather than

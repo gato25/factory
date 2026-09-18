@@ -94,6 +94,16 @@ export async function captureArtifacts(
   stepIndex: number,
   refs: ArtifactRef[],
   contents: Record<string, string> = {},
+  /**
+   * The screens' bytes, base64, by path, as the execution service read them.
+   *
+   * Decoded here rather than stored encoded: `screenBytes` hands the column
+   * straight to an `<img>`, so what goes in is a PNG or the picture does not
+   * load. An image absent from this map — too large to carry, or unreadable —
+   * still gets its row, because the artifact existing is true whether or not
+   * its bytes made the journey.
+   */
+  images: Record<string, string> = {},
 ) {
   for (const ref of refs) {
     const existing = await database
@@ -111,9 +121,29 @@ export async function captureArtifacts(
         version: nextVersion,
         screenName: ref.screen_name,
         content: contents[ref.path],
+        bytes: decodeImage(images[ref.path], ref.path),
       })
       .onConflictDoNothing({
         target: [artifacts.runId, artifacts.path, artifacts.version],
       });
+  }
+}
+
+/**
+ * A base64 image as bytes, or undefined when there is nothing to store.
+ *
+ * Tolerant on purpose. What arrives here came over the wire from another
+ * service, and a malformed string is a reason to keep the row without a
+ * picture, not a reason to fail the callback that also carries the step's
+ * cost and outcome.
+ */
+function decodeImage(encoded: string | undefined, path: string): Buffer | undefined {
+  if (!encoded) return undefined;
+  try {
+    const bytes = Buffer.from(encoded, 'base64');
+    return bytes.byteLength > 0 ? bytes : undefined;
+  } catch {
+    console.warn(`artifact ${path}: its image could not be decoded, so the row has no picture`);
+    return undefined;
   }
 }

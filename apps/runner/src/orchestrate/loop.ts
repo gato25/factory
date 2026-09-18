@@ -13,7 +13,7 @@ import type { ContainerHost } from '../container/host';
 import { buildEnvironment, secretValues } from '../container/secrets';
 import { type SandboxLimits, WORKDIR } from '../container/start';
 import { log } from '../errors';
-import { readOutputContents } from '../outputs/contents';
+import { readOutputBytes, readOutputContents } from '../outputs/contents';
 import {
   callbackSender,
   destroyRun,
@@ -411,6 +411,12 @@ export class Orchestrator {
               )
             : {};
 
+        // And the screens it exported, for the same reason: a design step's
+        // whole output is a picture, and a row naming one is not a picture.
+        const images = record?.containerId
+          ? await readOutputBytes(this.deps.host, record.containerId, WORKDIR, outcome.outputs)
+          : {};
+
         const reply = await this.post(state, {
           event: 'step_finished',
           step_index: decision.index,
@@ -421,6 +427,7 @@ export class Orchestrator {
           summary: outcome.summary ?? outcome.error?.detail,
           artifacts: outcome.outputs,
           artifact_contents: contents,
+          artifact_bytes: images,
         });
 
         state.facts = applyStepResult(state.facts, outcome);

@@ -438,6 +438,11 @@ test('the design step writes its source and screens where the config says (FR-10
   expect(argv[argv.indexOf('--out') + 1]).toBe('docs/design/ui.pen');
   expect(argv[argv.indexOf('--export') + 1]).toBe('docs/design/screens/ui.png');
   expect(argv[argv.indexOf('--export-scale') + 1]).toBe('2');
+  // The tool runs an agent of its own, and that agent reads nothing outside
+  // the folder it is given. Without this every read of the project was
+  // refused as "outside allowed working directories", and the first design
+  // run here was drawn from the brief against a page it had never seen.
+  expect(argv[argv.indexOf('--repo') + 1]).toBe('/work');
 
   expect(outcome.status).toBe('done');
   expect(outcome.outputs).toEqual([

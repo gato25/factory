@@ -71,6 +71,22 @@ export type CallbackPayload =
        * and from a run started before this field existed.
        */
       artifact_contents?: Record<string, string>;
+      /**
+       * The bytes of the images named in `artifacts`, by path, base64.
+       *
+       * Same gap as `artifact_contents` and the other half of it. A screen is
+       * binary, so it cannot travel as text, and it was left out — which was
+       * survivable while nothing produced one. The first design step to
+       * actually run produced one, the application stored a row naming it
+       * with nothing in it, and the person who asked for the design saw a
+       * broken image where their screens should be.
+       *
+       * Images only, and only up to `MAX_SCREEN_BYTES`. A design source is
+       * not here: nothing renders it, and it is on the branch for anyone who
+       * wants it. Absent from a step that exported nothing, and from a run
+       * started before this field existed.
+       */
+      artifact_bytes?: Record<string, string>;
     }
   | { event: 'step_skipped'; condition_not_met: string }
   | { event: 'ticket_classified'; has_ui: boolean; rationale: string }
