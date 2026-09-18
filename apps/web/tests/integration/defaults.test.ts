@@ -18,13 +18,13 @@ test('the implementing agent ships as a default', () => {
 
 test('its prompt makes it responsible for the repository tests', () => {
   const prompt = implement?.systemPrompt ?? '';
-  expect(prompt).toContain("responsible for leaving the repository's tests passing");
+  expect(prompt).toContain('репозиторийн тестийг ажиллаж байхаар үлдээх нь чиний хариуцлага');
   // Within its own step, not at some later point.
-  expect(prompt).toMatch(/within this\s+step/);
+  expect(prompt).toMatch(/Энэ алхмын\s+дотор/);
   // Using what it was permitted, rather than assuming a command.
-  expect(prompt).toContain('tools you have been permitted');
+  expect(prompt).toContain('зөвшөөрөгдсөн хэрэгслүүдээ ашиглана');
   // And it is told nothing downstream will do it.
-  expect(prompt).toMatch(/no verification\s+stage after this one/);
+  expect(prompt).toMatch(/үүний дараа шалгах үе шат\s+байхгүй/);
 });
 
 test('it has the tools that responsibility requires', () => {

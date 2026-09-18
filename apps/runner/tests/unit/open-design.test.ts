@@ -142,7 +142,7 @@ describe('what it refuses', () => {
       openDesignFile(deps(undefined, 'ws-abc123', opened), 'run-1', 'docs/design/ui.pen'),
     );
     expect(error?.reason).toBe('invalid_input');
-    expect(error?.message).toContain('containers');
+    expect(error?.message).toContain('контейнер');
     expect(opened).toHaveLength(0);
   });
 
@@ -169,7 +169,7 @@ describe('what it refuses', () => {
         openDesignFile(deps(ws.root, ws.id, opened), 'run-1', 'docs/design/ui.pen'),
       );
       expect(error?.reason).toBe('not_found');
-      expect(error?.message).toContain('branch');
+      expect(error?.message).toContain('салбар');
       expect(opened).toHaveLength(0);
     } finally {
       await ws.clean();
