@@ -61,6 +61,8 @@
       <span class="brand">Code Factory</span>
     </a>
 
+    <p class="section">Main</p>
+
     <nav>
       {#each nav as item (item.href)}
         <a href={item.href} class="nav-item" class:active={isActive(item.href)}>
@@ -71,6 +73,7 @@
     </nav>
 
     <!-- Settings sits apart at the foot, as the design's Spacer puts it. -->
+    <div class="rule"></div>
     <a href={settings.href} class="nav-item settings" class:active={isActive(settings.href)}>
       <Icon name={settings.icon} size={18} />
       <span>{settings.label}</span>
@@ -82,6 +85,7 @@
         <span class="name">{data.user.name}</span>
         <span class="workspace">{data.workspace.name} workspace</span>
       </span>
+      <Icon name="chevron-down" size={14} />
     </div>
   </aside>
 
@@ -144,24 +148,41 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 4px 12px 28px;
+    padding: 2px 10px 22px;
     text-decoration: none;
   }
   .logo-mark {
     display: grid;
     place-items: center;
-    width: 32px;
-    height: 32px;
-    border-radius: var(--r-sm);
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
     background: var(--accent);
     color: var(--text-inv);
     flex: none;
   }
   .brand {
     font-family: var(--font-head);
-    font-size: 16px;
+    font-size: 15.5px;
     font-weight: 700;
+    letter-spacing: -0.35px;
     color: var(--text);
+  }
+
+  /* The nav is one group, not six loose rows: a caption over it and a rule
+     under it give the list edges the design asks for. */
+  .section {
+    margin: 0 0 7px;
+    padding: 0 11px;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.9px;
+    color: var(--text-3);
+  }
+  .rule {
+    height: 1px;
+    margin: auto 0 6px;
+    background: var(--border);
   }
 
   nav {
@@ -172,11 +193,11 @@
   .nav-item {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 9px 12px;
-    border-radius: var(--r-sm);
+    gap: 11px;
+    padding: 8px 11px;
+    border-radius: 9px;
     text-decoration: none;
-    font-size: 14px;
+    font-size: 13.5px;
     font-weight: 500;
     color: var(--nav-text);
   }
@@ -188,22 +209,23 @@
     color: var(--nav-text-active);
     font-weight: 600;
   }
-  /* The design's Spacer: Settings and the user fall to the foot. */
+  /* The design's Spacer: the rule above Settings carries the auto margin, so
+     Settings and the user row fall to the foot together. */
   .nav-item.settings {
-    margin-top: auto;
+    margin-top: 0;
   }
 
   .user-row {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 12px 8px 0;
+    padding: 11px 8px 0;
   }
   .avatar {
     display: grid;
     place-items: center;
-    width: 32px;
-    height: 32px;
+    width: 30px;
+    height: 30px;
     border-radius: 999px;
     background: var(--purple-soft);
     color: var(--purple);
@@ -217,13 +239,16 @@
     gap: 2px;
     min-width: 0;
   }
+  .user-text {
+    flex: 1;
+  }
   .user-text .name {
-    font-size: 13px;
+    font-size: 12.5px;
     font-weight: 600;
     color: var(--text);
   }
   .user-text .workspace {
-    font-size: 11px;
+    font-size: 10.5px;
     color: var(--text-3);
   }
   .user-text span {
@@ -335,8 +360,11 @@
     .user-row {
       padding: 0;
     }
-    .nav-item.settings {
-      margin-top: 0;
+    .rule {
+      display: none;
+    }
+    .section {
+      display: none;
     }
     header {
       padding: 0 16px;

@@ -103,9 +103,11 @@ test('every omission says why', () => {
 });
 
 test('every artboard that is a screen is covered', () => {
-  // 13 System Architecture is a diagram of how the parts fit together, not
-  // a screen anybody navigates to.
-  const notScreens = ['13 System Architecture'];
+  // Neither of these is a screen anybody navigates to. 13 is a diagram of
+  // how the parts fit together; 15 is the reference board for what each
+  // agent produces and what its output looks like while it runs — drawn for
+  // whoever builds those views, not rendered anywhere.
+  const notScreens = ['13 System Architecture', '15 Агентын гаралт — лавлах'];
   const uncovered = [...BOARDS.keys()]
     .filter((name) => !notScreens.includes(name))
     .filter((name) => !SCREENS.some((screen) => screen.artboard === name));

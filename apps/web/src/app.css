@@ -311,10 +311,6 @@
   --code-line: #475569;
   --code-accent: #93c5fd;
   --code-edge: #1e293b;
-  --code-ok: #4ade80;
-  --code-run: #60a5fa;
-  /* The translucent green behind a LIVE pill on the dark ground. */
-  --live-pill: #15803d33;
 
   /* Radii */
   --r-sm: 8px;

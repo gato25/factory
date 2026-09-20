@@ -3,9 +3,16 @@
   import type { RunView } from '$lib/services/run-view';
 
   /**
-   * `design.pen`'s horizontal tracker: a 34px circle per step joined by a
-   * 2px connector, with the step's name and what it took under it. Green
-   * behind, blue at the running one, an empty ring ahead.
+   * `design.pen`'s tracker: one bar per step on a shared time axis, so a
+   * bar's WIDTH is how long that step actually took. Equal-width circles
+   * said only "four of six done"; this says where the ten minutes went,
+   * which is the question a person watching a run is actually asking.
+   *
+   * Width comes from `flex-grow: durationS`, not from a computed pixel, so
+   * the row balances itself for a pipeline of three steps or ten. A
+   * `min-width` keeps the shortest step's label readable — which means a
+   * very short step is drawn wider than its true share. That is a deliberate
+   * floor, not a rounding error: a bar nobody can read carries nothing.
    *
    * What the artboard has no room for is under it rather than dropped: why a
    * step was skipped (FR-075a), why the run failed and in whose words
@@ -52,13 +59,33 @@
     return line.length > 100 ? `${line.slice(0, 100)}…` : line;
   }
 
-  const MARK: Record<RunView['steps'][number]['state'], string> = {
-    done: 'check',
-    running: 'code',
-    failed: 'circle-x',
-    skipped: 'chevron-right',
-    pending: 'timer',
+  /**
+   * An emoji per step kind, keyed on `type` rather than on the agent, because
+   * an agent is whatever a workspace made it — "Security review" and "Docs
+   * writer" are as valid as the five shipped defaults, and a map keyed on
+   * agent names would be wrong for them the day somebody adds one.
+   */
+  const GLYPH: Record<string, string> = {
+    agent: '\u{1F9FE}',
+    design: '\u{1F3A8}',
+    shell: '\u26A1',
+    checkpoint: '\u270B',
+    notify: '\u{1F514}',
   };
+  const glyph = (type: string) => GLYPH[type] ?? '\u{1F916}';
+
+  /**
+   * What a bar is worth on the time axis. A step that has not run has no
+   * duration to plot, so it takes a fixed slot rather than collapsing.
+   */
+  function weight(step: RunView['steps'][number]): number {
+    return step.durationS && step.durationS > 0 ? step.durationS : 0;
+  }
+  /**
+   * Before anything has run there is no axis to plot against, so the bars
+   * share the row evenly rather than all collapsing to their floor.
+   */
+  const anyDuration = $derived(steps.some((step) => weight(step) > 0));
 
   /** "2m 10s · $0.14", as the artboard writes it. */
   function took(step: RunView['steps'][number]): string {
@@ -79,31 +106,28 @@
 <section class="card">
   <ol class="track">
     {#each steps as step (step.index)}
-      <li class={step.state} class:culprit={step.index === failedIndex}>
+      <li
+        class={step.state}
+        class:culprit={step.index === failedIndex}
+        style="flex-grow: {anyDuration ? weight(step) : 1}"
+      >
         <button
           type="button"
           class:on={selected === step.index}
-          aria-label="Step {step.index + 1} — {step.label}"
+          aria-label="Step {step.index + 1} — {step.label}, {took(step)}"
           onclick={() => onSelect?.(step.index)}
         >
-          <span class="circle"><Icon name={MARK[step.state]} size={16} /></span>
-          <span class="tx">
-            <span class="n">{step.label}</span>
-            <span class="s">{took(step)}</span>
-          </span>
+          <span class="n"><span class="glyph" aria-hidden="true">{glyph(step.type)}</span>{step.label}</span>
+          <span class="s">{took(step)}</span>
         </button>
-        <span class="connector"></span>
       </li>
     {/each}
 
     <!-- Implicit and always last (FR-029) -->
     <li class="pending implicit">
       <span class="static">
-        <span class="circle"><Icon name="git-pull-request" size={16} /></span>
-        <span class="tx">
-          <span class="n">Merge request</span>
-          <span class="s">{run.status === 'done' ? 'opened' : 'waiting'}</span>
-        </span>
+        <span class="n"><span class="glyph" aria-hidden="true">&#x1F680;</span>Merge request</span>
+        <span class="s">{run.status === 'done' ? 'opened' : 'waiting'}</span>
       </span>
     </li>
   </ol>
@@ -158,35 +182,40 @@
     box-shadow: 0 1px 2px #0f172a0a;
   }
 
+  /* One shared axis. `flex-grow` is the step's seconds, so the bars divide
+     the row in proportion to the time they took. */
   .track {
     list-style: none;
     margin: 0;
     padding: 0;
     display: flex;
-    align-items: center;
+    align-items: stretch;
+    gap: 4px;
   }
   .track > li {
     display: flex;
-    align-items: center;
-    gap: 9px;
-    flex: 1;
-    min-width: 0;
+    flex-basis: 0;
+    min-width: 98px;
   }
-  .track > li:last-child {
+  /* The merge request has no duration of its own — a fixed slot at the end. */
+  .track > li.implicit {
     flex: none;
+    width: 108px;
   }
 
   button,
   .static {
     display: flex;
-    align-items: center;
-    gap: 9px;
-    flex: none;
-    padding: 4px 6px;
-    margin: -4px -6px;
+    flex-direction: column;
+    justify-content: center;
+    gap: 1px;
+    flex: 1;
+    min-width: 0;
+    padding: 6px 9px;
+    height: 40px;
     border: 0;
     border-radius: var(--r-sm);
-    background: none;
+    background: var(--surface-2);
     font: inherit;
     text-align: left;
     cursor: pointer;
@@ -196,81 +225,81 @@
   }
   button:hover,
   button.on {
-    background: var(--surface-2);
+    outline: 2px solid var(--accent-soft);
   }
 
-  .circle {
-    display: grid;
-    place-items: center;
-    width: 34px;
-    height: 34px;
-    border-radius: 999px;
-    flex: none;
-    /* Ahead of the run: an empty ring, as the artboard draws it. */
-    background: var(--surface);
-    border: 2px solid var(--border);
-    color: var(--text-3);
+  .glyph {
+    margin-right: 5px;
   }
-  li.done .circle {
-    background: var(--success);
-    border-color: var(--success);
-    color: var(--text-inv);
-  }
-  li.running .circle {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: var(--text-inv);
-  }
-  li.failed .circle,
-  li.culprit .circle {
-    background: var(--danger);
-    border-color: var(--danger);
-    color: var(--text-inv);
-  }
-  li.skipped .circle {
-    background: var(--surface-2);
-    border-color: var(--surface-2);
-    color: var(--text-3);
-  }
-
-  .tx {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 0;
+  .n,
+  .s {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .n {
-    font-size: 13px;
+    font-size: 10.5px;
     font-weight: 600;
-    color: var(--text);
+    color: var(--text-2);
   }
   .s {
-    font-size: 11px;
+    font-size: 9.5px;
+    font-family: var(--font-mono);
     color: var(--text-3);
   }
-  li.running .s {
+
+  /* Behind the run: the step's own colour, held back so the running step is
+     the only saturated block on the row. */
+  li.done button {
+    background: var(--accent-soft);
+  }
+  li.done .n {
     color: var(--accent-text);
   }
+  li.done .s {
+    color: var(--accent-text);
+    opacity: 0.75;
+  }
+
+  li.running button {
+    background: var(--accent);
+  }
+  li.running .n {
+    color: var(--text-inv);
+  }
+  li.running .s {
+    color: var(--text-inv);
+    opacity: 0.8;
+  }
+
+  /* Ahead of the run: an empty slot, as the artboard draws it. */
+  li.pending button,
+  li.pending .static {
+    background: var(--surface);
+    box-shadow: inset 0 0 0 1px var(--border);
+  }
   li.pending .n,
-  li.skipped .n {
+  li.pending .s {
     color: var(--text-3);
   }
+
+  li.skipped button {
+    background: var(--surface-2);
+  }
   li.skipped .n {
+    color: var(--text-3);
     text-decoration: line-through;
   }
 
-  .connector {
-    flex: 1;
-    min-width: 12px;
-    height: 2px;
-    background: var(--border);
-  }
-  li.done .connector {
-    background: var(--success);
-  }
-  li.failed .connector,
-  li.culprit .connector {
+  li.failed button,
+  li.culprit button {
     background: var(--danger);
+  }
+  li.failed .n,
+  li.culprit .n,
+  li.failed .s,
+  li.culprit .s {
+    color: var(--text-inv);
   }
 
   .note {
@@ -332,17 +361,24 @@
     margin: 6px 0 0;
   }
 
-  /* Narrow: the row becomes a column rather than shrinking into nothing. */
+  /* Narrow: the row becomes a column rather than shrinking into nothing.
+     The time axis cannot survive the fold, so every step takes one row. */
   @media (max-width: 1100px) {
     .track {
       flex-direction: column;
-      align-items: stretch;
     }
-    .track > li {
+    .track > li,
+    .track > li.implicit {
+      width: auto;
+      flex: none;
+    }
+    button,
+    .static {
       flex-direction: row;
-    }
-    .connector {
-      display: none;
+      align-items: center;
+      justify-content: space-between;
+      height: auto;
+      padding: 9px 12px;
     }
   }
 </style>
