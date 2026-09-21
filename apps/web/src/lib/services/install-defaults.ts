@@ -1,9 +1,10 @@
 import type { Database } from '@factory/db';
-import { agents, pipelines, pipelineVersions } from '@factory/db/schema';
+import { agentSkills, agents, pipelines, pipelineVersions, skills } from '@factory/db/schema';
 import type { Step } from '@factory/shared';
 import { eq } from 'drizzle-orm';
 import { DEFAULT_AGENTS } from './agent-defaults';
 import { DEFAULT_PIPELINES } from './pipeline-defaults';
+import { DEFAULT_SKILLS } from './skill-defaults';
 
 /**
  * Putting the shipped agents and the three shipped pipelines into the
@@ -28,17 +29,21 @@ import { DEFAULT_PIPELINES } from './pipeline-defaults';
  */
 export interface Installed {
   agentsCreated: string[];
+  skillsCreated: string[];
   pipelinesCreated: string[];
   /** Already there, so left exactly as they are. */
   agentsKept: string[];
+  skillsKept: string[];
   pipelinesKept: string[];
 }
 
 export async function installDefaults(database: Database): Promise<Installed> {
   const result: Installed = {
     agentsCreated: [],
+    skillsCreated: [],
     pipelinesCreated: [],
     agentsKept: [],
+    skillsKept: [],
     pipelinesKept: [],
   };
 
@@ -80,6 +85,52 @@ export async function installDefaults(database: Database): Promise<Installed> {
     if (!created) throw new Error(`could not install the ${shipped.name} agent`);
     idBySlug.set(shipped.slug, created.id);
     result.agentsCreated.push(shipped.name);
+  }
+
+  /**
+   * The shipped skills, and the agents that read them (FR-043).
+   *
+   * A skill is loaded by the CLI only when its description matches what the
+   * agent is about to do, so this costs nothing on a step that never needs
+   * one. Attaching is separate from creating, and idempotent on its own: a
+   * deployment that already had the skills still gets the links, which is
+   * what makes adding a skill to an existing install work.
+   */
+  for (const shipped of DEFAULT_SKILLS) {
+    const [existing] = await database
+      .select({ id: skills.id })
+      .from(skills)
+      .where(eq(skills.name, shipped.name))
+      .limit(1);
+    let skillId = existing?.id;
+    if (skillId) {
+      result.skillsKept.push(shipped.name);
+    } else {
+      const [created] = await database
+        .insert(skills)
+        // No owner, for the same reason a shipped pipeline has none: these
+        // belong to the workspace rather than to one person (FR-006).
+        .values({
+          name: shipped.name,
+          description: shipped.description,
+          content: shipped.content,
+        })
+        .returning({ id: skills.id });
+      if (!created) throw new Error(`could not install the ${shipped.name} skill`);
+      skillId = created.id;
+      result.skillsCreated.push(shipped.name);
+    }
+
+    for (const slug of shipped.agents) {
+      const agentId = idBySlug.get(slug);
+      // A skill naming an agent that is not shipped is a mistake in the
+      // definition, not a reason to fail an install.
+      if (!agentId) continue;
+      await database
+        .insert(agentSkills)
+        .values({ agentId, skillId })
+        .onConflictDoNothing({ target: [agentSkills.agentId, agentSkills.skillId] });
+    }
   }
 
   /** Replaces each step's slug with the installed agent's id. */

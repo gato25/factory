@@ -143,3 +143,54 @@ test('a second first-use does not install a second set', async () => {
   await ensureWorkspace(db);
   expect(await db.select().from(pipelines)).toHaveLength(3);
 });
+
+/**
+ * FR-043 — the shipped skills, and the agents that read them. A skill is
+ * loaded by the CLI only when its description matches the work in hand, so
+ * it costs nothing on a step that never needs it.
+ */
+test('every shipped skill is installed and attached to the agents that name it', async () => {
+  const { agentSkills, skills } = await import('@factory/db/schema');
+  const { DEFAULT_SKILLS } = await import('../../src/lib/services/skill-defaults');
+  const result = await installDefaults(db);
+  expect(result.skillsCreated.sort()).toEqual(DEFAULT_SKILLS.map((s) => s.name).sort());
+
+  const rows = await db
+    .select({ agent: agents.name, skill: skills.name })
+    .from(agentSkills)
+    .innerJoin(agents, eq(agents.id, agentSkills.agentId))
+    .innerJoin(skills, eq(skills.id, agentSkills.skillId));
+
+  for (const shipped of DEFAULT_SKILLS) {
+    for (const slug of shipped.agents) {
+      const agent = DEFAULT_AGENTS.find((a) => a.slug === slug);
+      if (!agent) throw new Error(`the ${shipped.name} skill names no shipped agent ${slug}`);
+      expect(rows).toContainEqual({ agent: agent.name, skill: shipped.name });
+    }
+  }
+});
+
+test('every shipped skill says when to read it, which is all the model sees first', async () => {
+  const { DEFAULT_SKILLS } = await import('../../src/lib/services/skill-defaults');
+  for (const skill of DEFAULT_SKILLS) {
+    // The description is the trigger. One that does not say when to reach
+    // for the skill means the skill is never loaded.
+    expect(skill.description.length).toBeGreaterThan(60);
+    expect(skill.content.length).toBeGreaterThan(200);
+    // A skill names no agent that is not shipped, or it silently attaches
+    // to nothing.
+    for (const slug of skill.agents) {
+      expect(DEFAULT_AGENTS.map((a) => a.slug)).toContain(slug);
+    }
+  }
+});
+
+test('installing twice does not attach a skill twice', async () => {
+  const { agentSkills } = await import('@factory/db/schema');
+  await installDefaults(db);
+  const before = await db.select().from(agentSkills);
+  const again = await installDefaults(db);
+  const after = await db.select().from(agentSkills);
+  expect(again.skillsCreated).toEqual([]);
+  expect(after.length).toBe(before.length);
+});

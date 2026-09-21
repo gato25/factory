@@ -23,8 +23,12 @@ const say = (what: string, created: string[], kept: string[]) => {
   if (kept.length > 0) console.log(`already there, left as they are: ${kept.join(', ')}`);
 };
 say('agents', result.agentsCreated, result.agentsKept);
+say('skills', result.skillsCreated, result.skillsKept);
 say('pipelines', result.pipelinesCreated, result.pipelinesKept);
-if (result.agentsCreated.length + result.pipelinesCreated.length === 0) {
+if (
+  result.agentsCreated.length + result.skillsCreated.length + result.pipelinesCreated.length ===
+  0
+) {
   console.log('nothing to install');
 }
 
