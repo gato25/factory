@@ -1,5 +1,6 @@
 <script lang="ts">
   import Icon from '$components/Icon.svelte';
+  import { m } from '$lib/i18n';
   import type { BoardTicket } from '$lib/services/run-view';
 
   /**
@@ -36,7 +37,7 @@
 <a class="ticket" href="/tickets/{ticket.id}">
   <div class="top">
     <span class="id">{ticket.reference}</span>
-    <span class="who" title={ticket.createdByName ?? 'unknown'}>{initials}</span>
+    <span class="who" title={ticket.createdByName ?? m.ticketCard.unknown}>{initials}</span>
   </div>
 
   <h3>{ticket.title}</h3>
@@ -58,7 +59,7 @@
   {/if}
 
   {#if ticket.hasUi === true}
-    <p class="ui small muted">Changes the interface</p>
+    <p class="ui small muted">{m.ticketCard.changesInterface}</p>
   {/if}
 </a>
 

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { m } from '$lib/i18n';
   import { active } from '$lib/remote/runs.remote';
 
   /**
@@ -18,16 +19,16 @@
 <section class="runs">
   <header>
     <span class="title-row">
-      <h2>Active runs</h2>
+      <h2>{m.activeRuns.heading}</h2>
       {#if runs.ready && runs.current.length > 0}
         <span class="count">{runs.current.length}</span>
       {/if}
     </span>
-    <a href="/tickets">View all tickets →</a>
+    <a href="/tickets">{m.activeRuns.viewAll}</a>
   </header>
 
   {#if !runs.ready}
-    <p class="empty">Loading…</p>
+    <p class="empty">{m.activeRuns.loading}</p>
   {:else if runs.current.length === 0}
     <!--
       No advice here about creating a ticket: whether that would work depends
@@ -35,7 +36,7 @@
       list answers. Telling somebody to do a thing that cannot work is worse
       than saying nothing.
     -->
-    <p class="empty">Nothing running.</p>
+    <p class="empty">{m.activeRuns.nothingRunning}</p>
   {:else}
     {#each runs.current as row (row.runId)}
       <a class="run" href="/tickets/{row.ticketId}">
@@ -48,7 +49,7 @@
         </span>
 
         <!-- Progress through the pipeline, coloured by state (FR-072) -->
-        <span class="progress" aria-label="progress">
+        <span class="progress" aria-label={m.activeRuns.progress}>
           {#each row.stepLabels as label, i (label + i)}
             <span
               class="seg"
@@ -71,9 +72,9 @@
         >
           <span class="dot"></span>
           {#if row.queuePosition !== null}
-            position {row.queuePosition} in the queue
+            {m.activeRuns.queuePosition(row.queuePosition)}
           {:else if row.status === 'waiting_approval'}
-            needs approval
+            {m.activeRuns.needsApproval}
           {:else}
             {row.stepLabels[row.currentStepIndex ?? 0] ?? row.status}
           {/if}

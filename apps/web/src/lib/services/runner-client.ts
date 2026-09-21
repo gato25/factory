@@ -1,6 +1,7 @@
 import type { Database } from '@factory/db';
 import { FactoryError } from '@factory/shared';
 import { theWorkspace } from './workspace';
+import { m } from '$lib/i18n';
 
 /**
  * The application calling the execution service directly.
@@ -26,7 +27,7 @@ export async function runnerClient(
   const workspace = await theWorkspace(database);
   const base = workspace?.runnerBaseUrl?.replace(/\/+$/, '');
   if (!base) {
-    throw new FactoryError('invalid_input', 'The runner address is not set in Settings.');
+    throw new FactoryError('invalid_input', m.error.runnerAddressMissing);
   }
   const token = deps.authToken ?? process.env.RUNNER_AUTH_TOKEN ?? '';
   const doFetch = deps.fetch ?? fetch;

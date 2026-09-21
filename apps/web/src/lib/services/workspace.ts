@@ -3,6 +3,7 @@ import { credentials, workspaces } from '@factory/db/schema';
 import { createLogger, invalidInput } from '@factory/shared';
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import { type KeyRing, seal } from '$lib/secrets/store';
+import { m } from '$lib/i18n';
 
 const log = createLogger('web');
 
@@ -178,28 +179,28 @@ export async function updateWorkspace(
 
 function validate(input: WorkspaceInput) {
   if (input.name !== undefined && !input.name.trim()) {
-    throw invalidInput('Give the workspace a name.');
+    throw invalidInput(m.form.workspaceName);
   }
   if (input.defaultCostCeilingUsd !== undefined && Number(input.defaultCostCeilingUsd) <= 0) {
-    throw invalidInput('A cost ceiling of zero would stop every run before it began.');
+    throw invalidInput(m.form.zeroCostCeiling);
   }
   if (input.defaultTimeCeilingMinutes !== undefined && input.defaultTimeCeilingMinutes <= 0) {
-    throw invalidInput('A time ceiling of zero would stop every run before it began.');
+    throw invalidInput(m.form.zeroTimeCeiling);
   }
   if (input.maxConcurrentRuns !== undefined && input.maxConcurrentRuns < 1) {
-    throw invalidInput('At least one run has to be able to execute.');
+    throw invalidInput(m.form.atLeastOneRun);
   }
   if (input.sandboxCpu !== undefined && input.sandboxCpu < 1) {
-    throw invalidInput('A sandbox needs at least one processor.');
+    throw invalidInput(m.form.atLeastOneProcessor);
   }
   if (input.sandboxMemoryMb !== undefined && input.sandboxMemoryMb < 512) {
-    throw invalidInput('A sandbox with under 512 MB cannot hold a toolchain.');
+    throw invalidInput(m.form.memoryTooSmall);
   }
   if (input.sandboxWallClockMinutes !== undefined && input.sandboxWallClockMinutes < 1) {
-    throw invalidInput('A sandbox lifetime of zero would kill every run at the start.');
+    throw invalidInput(m.form.zeroLifetime);
   }
   if (input.retainFailedSandboxesHours !== undefined && input.retainFailedSandboxesHours < 0) {
-    throw invalidInput('A retention period cannot be negative. Zero means release immediately.');
+    throw invalidInput(m.form.negativeRetention);
   }
 }
 
@@ -267,7 +268,7 @@ export async function storeCredential(
 ): Promise<{ stored: true }> {
   requireAdmin(user);
   const token = input.token.trim();
-  if (!token) throw invalidInput('Paste the credential.');
+  if (!token) throw invalidInput(m.form.credential);
 
   const workspace = await ensureWorkspace(database);
   await attachCredential(database, workspace.id, input.kind, token, ring, user?.id ?? null);

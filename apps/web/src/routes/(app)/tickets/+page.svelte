@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { page } from '$app/state';
   import Icon from '$components/Icon.svelte';
+  import { m } from '$lib/i18n';
   import TicketCard from '$components/TicketCard.svelte';
   import { subscribeToRun } from '$lib/events/subscribe';
   import { repositories } from '$lib/remote/repositories.remote';
@@ -23,18 +24,18 @@
   // The design gives each column a dot in the colour of what that state
   // means, so the board can be read at a glance rather than by heading.
   const COLUMNS = [
-    { id: 'draft', label: 'Backlog', tone: 'idle' },
-    { id: 'queued,running', label: 'Running', tone: 'live' },
-    { id: 'waiting_approval', label: 'Waiting approval', tone: 'warn' },
-    { id: 'done', label: 'Done', tone: 'ok' },
-    { id: 'failed', label: 'Failed', tone: 'bad' },
+    { id: 'draft', label: m.board.backlog, tone: 'idle' },
+    { id: 'queued,running', label: m.board.running, tone: 'live' },
+    { id: 'waiting_approval', label: m.board.waitingApproval, tone: 'warn' },
+    { id: 'done', label: m.board.done, tone: 'ok' },
+    { id: 'failed', label: m.board.failed, tone: 'bad' },
   ];
 </script>
 
 {#if board.error}
   <p class="card" role="alert">{(board.error as Error).message}</p>
 {:else if !board.ready}
-  <p class="card">Loading tickets…</p>
+  <p class="card">{m.board.loading}</p>
 {:else}
   {@const rows = board.current}
   {@const filtered = rows.filter(
@@ -57,8 +58,8 @@
     {#if search}
       <!-- An empty board after a search should say why it is empty. -->
       <p class="searching card">
-        Showing tickets matching <strong>{search}</strong>.
-        <a href="/tickets">Clear the search</a>
+        {m.board.searchingBefore}<strong>{search}</strong>{m.board.searchingAfter}
+        <a href="/tickets">{m.board.clearSearch}</a>
       </p>
     {/if}
 
@@ -70,9 +71,9 @@
       <div class="pills">
         <label class="pill">
           <Icon name="git-branch" size={14} />
-          <span class="sr">Repository</span>
+          <span class="sr">{m.board.repository}</span>
           <select bind:value={repositoryId}>
-            <option value="">All repositories</option>
+            <option value="">{m.board.allRepositories}</option>
             {#each repos.ready ? repos.current : [] as repo (repo.id)}
               <option value={repo.id}>{repo.fullPath}</option>
             {/each}
@@ -81,9 +82,9 @@
         </label>
         <label class="pill">
           <Icon name="workflow" size={14} />
-          <span class="sr">Pipeline</span>
+          <span class="sr">{m.board.pipeline}</span>
           <select bind:value={pipelineId}>
-            <option value="">Any pipeline</option>
+            <option value="">{m.board.anyPipeline}</option>
             {#each [...new Set(rows.map((t) => t.pipelineId).filter(Boolean))] as id (id)}
               <option value={id}>{rows.find((t) => t.pipelineId === id)?.pipeline}</option>
             {/each}
@@ -92,9 +93,9 @@
         </label>
         <label class="pill">
           <Icon name="user" size={14} />
-          <span class="sr">Creator</span>
+          <span class="sr">{m.board.creator}</span>
           <select bind:value={createdBy}>
-            <option value="">Created by anyone</option>
+            <option value="">{m.board.createdByAnyone}</option>
             {#each [...new Set(rows.map((t) => t.createdBy))] as id (id)}
               <option value={id}>{rows.find((t) => t.createdBy === id)?.createdByName}</option>
             {/each}
@@ -107,14 +108,14 @@
         <button
           type="button"
           class:on={view === 'board'}
-          aria-label="Board view"
+          aria-label={m.board.boardView}
           aria-pressed={view === 'board'}
           onclick={() => (view = 'board')}><Icon name="kanban" size={16} /></button
         >
         <button
           type="button"
           class:on={view === 'list'}
-          aria-label="List view"
+          aria-label={m.board.listView}
           aria-pressed={view === 'list'}
           onclick={() => (view = 'list')}><Icon name="list" size={16} /></button
         >
@@ -122,7 +123,7 @@
     </div>
 
     {#if filtered.length === 0}
-      <p class="card">No tickets match. <a href="/tickets/new">Create one</a>.</p>
+      <p class="card">{m.board.noMatch} <a href="/tickets/new">{m.board.createOne}</a>.</p>
     {:else if view === 'board'}
       <div class="board">
         {#each COLUMNS as column (column.id)}
@@ -141,7 +142,7 @@
                 <!-- The design puts the way in at the foot of Backlog. -->
                 <a class="add" href="/tickets/new">
                   <Icon name="plus" size={14} />
-                  <span>New ticket</span>
+                  <span>{m.board.newTicket}</span>
                 </a>
               {/if}
             </div>
@@ -151,7 +152,11 @@
     {:else}
       <table class="card">
         <thead>
-          <tr><th>Ticket</th><th>Repository</th><th>Pipeline</th><th>Status</th></tr>
+          <tr
+            ><th>{m.board.colTicket}</th><th>{m.board.colRepository}</th><th
+              >{m.board.colPipeline}</th
+            ><th>{m.board.colStatus}</th></tr
+          >
         </thead>
         <tbody>
           {#each filtered as ticket (ticket.id)}

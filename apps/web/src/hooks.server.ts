@@ -3,6 +3,7 @@ import { createLogger } from '@factory/shared';
 import type { Handle, ServerInit } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import { bootstrapFromEnv, loadWebConfig } from '$lib/config';
+import { DEFAULT_LOCALE } from '$lib/i18n';
 import { db } from '$lib/db';
 import { keyRingFromEnv } from '$lib/secrets/store';
 import { readSessionToken, SESSION_COOKIE } from '$lib/services/auth';
@@ -10,7 +11,15 @@ import { bootstrapWorkspace } from '$lib/services/workspace';
 
 const log = createLogger('web');
 
-/** Resolves the session cookie into locals.user once per request. */
+/**
+ * Resolves the session cookie into locals.user once per request, and stamps
+ * the document's language.
+ *
+ * The language is the deployment's, not the request's ($lib/i18n), so this
+ * only has to put what the catalogue already decided where a screen reader
+ * and a spell-checker will look for it. It was hard-coded `en` in `app.html`
+ * while every word on the page was Mongolian.
+ */
 export const handle: Handle = async ({ event, resolve }) => {
   event.locals.user = null;
   const token = event.cookies.get(SESSION_COOKIE);
@@ -28,7 +37,9 @@ export const handle: Handle = async ({ event, resolve }) => {
       }
     }
   }
-  return resolve(event);
+  return resolve(event, {
+    transformPageChunk: ({ html }) => html.replace('%factory.lang%', DEFAULT_LOCALE),
+  });
 };
 
 /**

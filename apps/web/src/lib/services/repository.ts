@@ -10,6 +10,7 @@ import {
   type ProviderClient,
   parseRepositoryUrl,
 } from './providers';
+import { m } from '$lib/i18n';
 
 /**
  * Connecting a repository. The verification in FR-008 happens before anything
@@ -34,7 +35,7 @@ export interface ConnectDeps {
 export async function connectRepository(input: ConnectInput, deps: ConnectDeps) {
   const parsed = parseRepositoryUrl(input.url); // T051 refuses other hosts
   if (input.token.trim().length === 0) {
-    throw new FactoryError('credential_missing', 'Paste an access token for this repository.');
+    throw new FactoryError('credential_missing', m.form.accessTokenFor);
   }
 
   const client = (deps.clientFor ?? clientFor)(parsed.provider);
@@ -116,7 +117,7 @@ export async function assertRepositoryUsable(database: Database, repositoryId: s
     .from(repositories)
     .where(eq(repositories.id, repositoryId))
     .limit(1);
-  if (!repository) throw notFound('that repository is not connected');
+  if (!repository) throw notFound(m.error.repositoryNotConnected);
   if (repository.status !== 'connected') {
     throw new FactoryError(
       repository.status === 'credential_expired' ? 'credential_invalid' : 'credential_missing',
@@ -148,7 +149,7 @@ export async function replaceCredential(repositoryId: string, token: string, dep
     .where(eq(repositories.id, repositoryId))
     .limit(1)
     .then((rows) => rows[0]);
-  if (!repository) throw notFound('that repository is not connected');
+  if (!repository) throw notFound(m.error.repositoryNotConnected);
 
   const parsed = parseRepositoryUrl(repository.cloneUrl);
   const client = (deps.clientFor ?? clientFor)(parsed.provider);
@@ -229,14 +230,14 @@ export async function setDefaultPipeline(
       .from(pipelines)
       .where(eq(pipelines.id, pipelineId))
       .limit(1);
-    if (!pipeline) throw notFound('no such pipeline');
+    if (!pipeline) throw notFound(m.error.noSuchPipeline);
   }
   const updated = await database
     .update(repositories)
     .set({ defaultPipelineId: pipelineId, updatedAt: new Date() })
     .where(eq(repositories.id, repositoryId))
     .returning({ defaultPipelineId: repositories.defaultPipelineId });
-  if (updated.length === 0) throw notFound('no such repository');
+  if (updated.length === 0) throw notFound(m.error.noSuchRepository);
   return { defaultPipelineId: updated[0]?.defaultPipelineId ?? null };
 }
 
@@ -254,12 +255,12 @@ export async function setRunSettings(
 ): Promise<{ runCommand: string | null; runPort: number | null }> {
   const command = input.command?.trim() || null;
   if (command && command.length > 500)
-    throw invalidInput('Keep the start command under 500 characters.');
+    throw invalidInput(m.form.startCommandLength);
   if (
     input.port !== null &&
     !(Number.isInteger(input.port) && input.port > 0 && input.port < 65536)
   ) {
-    throw invalidInput('The port has to be a whole number between 1 and 65535.');
+    throw invalidInput(m.form.portRange);
   }
   const updated = await database
     .update(repositories)
@@ -267,6 +268,6 @@ export async function setRunSettings(
     .where(eq(repositories.id, repositoryId))
     .returning({ runCommand: repositories.runCommand, runPort: repositories.runPort });
   const row = updated[0];
-  if (!row) throw notFound('no such repository');
+  if (!row) throw notFound(m.error.noSuchRepository);
   return row;
 }

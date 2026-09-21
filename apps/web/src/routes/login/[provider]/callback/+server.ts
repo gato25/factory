@@ -10,6 +10,7 @@ import {
 } from '$lib/services/auth';
 import { exchange, providerCredentials, readState } from '$lib/services/oauth';
 import type { RequestHandler } from './$types';
+import { m } from '$lib/i18n';
 
 /**
  * Where the provider sends the person back. Every failure lands on the login
@@ -54,7 +55,7 @@ export const GET: RequestHandler = async ({ params, url, cookies }) => {
     );
   } catch (error) {
     const problem =
-      error instanceof FactoryError ? error.message : 'Could not sign you in just now.';
+      error instanceof FactoryError ? error.message : m.error.couldNotSignIn;
     next = `/login?problem=${encodeURIComponent(problem)}`;
   }
   redirect(303, next);

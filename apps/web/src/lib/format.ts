@@ -8,7 +8,14 @@
  * somebody is actually comparing two events.
  */
 
-const RELATIVE = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
+import { DEFAULT_LOCALE, m } from './i18n';
+
+/**
+ * `Intl` already speaks the language, so a distance needs no catalogue entry:
+ * `mn` gives "1 цагийн өмнө", which is the phrase the artboard draws. Only the
+ * two ends of the scale it has no unit for are words of ours.
+ */
+const RELATIVE = new Intl.RelativeTimeFormat(DEFAULT_LOCALE, { numeric: 'auto' });
 
 const STEPS: [Intl.RelativeTimeFormatUnit, number][] = [
   ['year', 365 * 24 * 60 * 60 * 1000],
@@ -22,17 +29,17 @@ const STEPS: [Intl.RelativeTimeFormatUnit, number][] = [
 export function ago(when: Date | string, now: Date = new Date()): string {
   const then = typeof when === 'string' ? new Date(when) : when;
   const elapsed = now.getTime() - then.getTime();
-  if (!Number.isFinite(elapsed)) return 'at an unknown time';
+  if (!Number.isFinite(elapsed)) return m.time.unknown;
 
   for (const [unit, size] of STEPS) {
     const n = Math.round(elapsed / size);
     // Rounding, so 36 hours reads "2 days ago" rather than "1 day ago".
     if (Math.abs(n) >= 1) return RELATIVE.format(-n, unit);
   }
-  return 'just now';
+  return m.time.justNow;
 }
 
 export function exact(when: Date | string): string {
   const then = typeof when === 'string' ? new Date(when) : when;
-  return Number.isNaN(then.getTime()) ? '' : then.toLocaleString();
+  return Number.isNaN(then.getTime()) ? '' : then.toLocaleString(DEFAULT_LOCALE);
 }

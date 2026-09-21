@@ -5,6 +5,7 @@ import {
   parseHeaderLines,
   readUpTo,
 } from '../../src/lib/services/launch';
+import { m } from '../../src/lib/i18n';
 
 /**
  * The parts of a launch the application decides on its own (003 FR-003,
@@ -16,18 +17,20 @@ describe('when Run it is available (FR-003)', () => {
     expect(launchBlocker({ status: 'done', branchName: 'factory/142-x' })).toBeNull();
   });
 
+  // The reasons come from the catalogue, so this asserts which reason each
+  // status gets rather than restating the interface's language.
   test.each([
-    ['running', 'has finished'],
-    ['queued', 'has finished'],
-    ['waiting_approval', 'checkpoint'],
-    ['failed', 'did not finish'],
-    ['draft', 'has finished'],
+    ['running', m.launch.afterPush],
+    ['queued', m.launch.afterPush],
+    ['waiting_approval', m.launch.atCheckpoint],
+    ['failed', m.launch.didNotFinish],
+    ['draft', m.launch.afterAnyRun],
   ])('a %s ticket says why not', (status, phrase) => {
-    expect(launchBlocker({ status, branchName: 'factory/1-x' })).toContain(phrase);
+    expect(launchBlocker({ status, branchName: 'factory/1-x' })).toBe(phrase);
   });
 
   test('no branch is the first reason, whatever the status', () => {
-    expect(launchBlocker({ status: 'done', branchName: null })).toContain('no branch');
+    expect(launchBlocker({ status: 'done', branchName: null })).toBe(m.launch.noBranchYet);
   });
 });
 
@@ -49,7 +52,7 @@ describe('the request console', () => {
     expect(normalisePath('/a?b=c')).toBe('/a?b=c');
     // The console sends to the launch and nowhere else: a URL here would turn
     // the application into an open proxy.
-    expect(() => normalisePath('https://example.com/x')).toThrow(/not a full address/);
+    expect(() => normalisePath('https://example.com/x')).toThrow(m.form.pathNotAddress);
     expect(() => normalisePath('//example.com/x')).toThrow();
   });
 });

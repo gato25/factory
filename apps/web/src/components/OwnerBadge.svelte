@@ -16,17 +16,22 @@
     mine?: boolean;
     mayChange?: boolean;
   } = $props();
+
+  import { m } from '$lib/i18n';
 </script>
 
 {#if isDefault}
-  <span class="badge small shipped" title="Available to everyone; administrators change it">
-    Shipped
+  <span class="badge small shipped" title={m.owner.sharedTitle}>
+    {m.owner.shipped}
   </span>
 {:else if mine}
-  <span class="badge small mine">Yours</span>
+  <span class="badge small mine">{m.owner.yours}</span>
 {:else}
-  <span class="badge small" title={mayChange ? 'You can change this' : 'You can use it, not change it'}>
-    {ownerName ?? 'Someone else'}
+  <span
+    class="badge small"
+    title={mayChange ? m.owner.youCanChange : m.owner.youCannotChange}
+  >
+    {ownerName ?? m.owner.someoneElse}
   </span>
 {/if}
 

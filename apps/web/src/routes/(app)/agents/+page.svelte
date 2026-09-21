@@ -1,5 +1,6 @@
 <script lang="ts">
   import AgentCard from '$components/AgentCard.svelte';
+  import { m } from '$lib/i18n';
   import { agents, create, duplicate } from '$lib/remote/agents.remote';
 
   /**
@@ -27,14 +28,10 @@
 
 <header class="head">
   <div class="page-head">
-    <h2>Agents</h2>
-    <p>
-      Each agent runs with its own instructions, model, tools and skills. The Design agent runs on
-      the pen.dev CLI; the rest run on the Claude CLI. Anyone can make their own; anyone can use
-      anyone else's.
-    </p>
+    <h2>{m.agents.heading}</h2>
+    <p>{m.agents.lede}</p>
   </div>
-  <input placeholder="Search agents" bind:value={filter} aria-label="Search agents" />
+  <input placeholder={m.agents.search} bind:value={filter} aria-label={m.agents.search} />
 </header>
 
 {#if notice}<p class="card notice" role="status">{notice}</p>{/if}
@@ -42,10 +39,10 @@
 {#if list.error}
   <p class="card failure" role="alert">{(list.error as Error).message}</p>
 {:else if !list.ready}
-  <p class="card">Loading agents…</p>
+  <p class="card">{m.agents.loading}</p>
 {:else}
   {#if shown.length === 0}
-    <p class="card">No agent matches. Create one below.</p>
+    <p class="card">{m.agents.noMatch}</p>
   {:else}
     <div class="grid">
       {#each shown as agent (agent.id)}
@@ -69,21 +66,21 @@
   {/if}
 
   <form {...create} class="card new">
-    <h2 class="section">New agent</h2>
+    <h2 class="section">{m.agents.newAgent}</h2>
     <label>
-      <span class="small muted">Name</span>
-      <input name="name" placeholder="Reviewer" required />
+      <span class="small muted">{m.agents.name}</span>
+      <input name="name" placeholder={m.agents.namePlaceholder} required />
     </label>
     <label>
-      <span class="small muted">Engine</span>
+      <span class="small muted">{m.agents.engine}</span>
       <select name="engine">
-        <option value="claude_cli">Coding agent</option>
-        <option value="design_cli">Design service</option>
+        <option value="claude_cli">{m.agents.codingAgent}</option>
+        <option value="design_cli">{m.agents.designService}</option>
       </select>
     </label>
     <label>
-      <span class="small muted">What it is for</span>
-      <input name="description" placeholder="Reads a diff and objects" />
+      <span class="small muted">{m.agents.whatItIsFor}</span>
+      <input name="description" placeholder={m.agents.descriptionPlaceholder} />
     </label>
     {#if create.fields.allIssues()?.length}
       <ul class="errors" role="alert">
@@ -96,7 +93,7 @@
       <p class="errors" role="alert">{create.result.problem}</p>
     {/if}
     <div class="row end">
-      <button class="primary" type="submit" disabled={create.pending > 0}>Create</button>
+      <button class="primary" type="submit" disabled={create.pending > 0}>{m.agents.create}</button>
     </div>
   </form>
 {/if}

@@ -6,6 +6,7 @@ import type { KeyRing } from '$lib/secrets/store';
 import type { SessionUser } from './auth';
 import { revealCredential } from './run-credentials';
 import type { RunnerClient } from './runner-client';
+import { m } from '$lib/i18n';
 
 /**
  * A ticket's branch, running on a real port (003 FR-001).
@@ -63,18 +64,18 @@ export function launchBlocker(ticket: {
   status: string;
   branchName: string | null;
 }): string | null {
-  if (!ticket.branchName) return 'This ticket has no branch yet.';
+  if (!ticket.branchName) return m.launch.noBranchYet;
   if (ticket.status === 'done') return null;
   if (ticket.status === 'running' || ticket.status === 'queued') {
-    return 'Available once the run has finished and pushed its branch.';
+    return m.launch.afterPush;
   }
   if (ticket.status === 'waiting_approval') {
-    return 'Available once the run has finished; it is waiting at a checkpoint.';
+    return m.launch.atCheckpoint;
   }
   if (ticket.status === 'failed') {
-    return 'The run did not finish, so the branch may not hold a working project.';
+    return m.launch.didNotFinish;
   }
-  return 'Available once a run has finished.';
+  return m.launch.afterAnyRun;
 }
 
 /** Presses Run it (FR-001, FR-003, FR-015). */
@@ -85,12 +86,12 @@ export async function startLaunch(
 ): Promise<LaunchRow> {
   const { database } = deps;
   const [ticket] = await database.select().from(tickets).where(eq(tickets.id, ticketId)).limit(1);
-  if (!ticket) throw notFound('no such ticket');
+  if (!ticket) throw notFound(m.error.noSuchTicket);
   const blocker = launchBlocker(ticket);
   if (blocker) throw invalidInput(blocker);
 
   if (await liveLaunchFor(database, ticketId)) {
-    throw new FactoryError('conflict', 'This ticket is already running. Stop it first.');
+    throw new FactoryError('conflict', m.error.launchAlreadyRunning);
   }
 
   const [repository] = await database
@@ -98,7 +99,7 @@ export async function startLaunch(
     .from(repositories)
     .where(eq(repositories.id, ticket.repositoryId))
     .limit(1);
-  if (!repository) throw notFound('that repository is not connected');
+  if (!repository) throw notFound(m.error.repositoryNotConnected);
 
   const gitToken = await revealCredential(
     database,
@@ -170,7 +171,7 @@ export interface LaunchView {
 export async function refreshLaunch(deps: LaunchDeps, launchId: string): Promise<LaunchView> {
   const { database } = deps;
   const [row] = await database.select().from(launches).where(eq(launches.id, launchId)).limit(1);
-  if (!row) throw notFound('no such launch');
+  if (!row) throw notFound(m.error.noSuchLaunch);
   if (row.stoppedAt) return { launch: row, log: [], from: null, notes: [] };
 
   const response = await deps.runner.request(`/launches/${row.runnerLaunchId}`);
@@ -181,7 +182,7 @@ export async function refreshLaunch(deps: LaunchDeps, launchId: string): Promise
       .update(launches)
       .set({
         status: 'stopped',
-        detail: 'The execution service restarted, and the launch went with it.',
+        detail: m.error.launchLostWithRestart,
         url: null,
         stoppedAt: new Date(),
         updatedAt: new Date(),
@@ -229,7 +230,7 @@ export async function refreshLaunch(deps: LaunchDeps, launchId: string): Promise
 export async function stopLaunch(deps: LaunchDeps, launchId: string): Promise<LaunchRow> {
   const { database } = deps;
   const [row] = await database.select().from(launches).where(eq(launches.id, launchId)).limit(1);
-  if (!row) throw notFound('no such launch');
+  if (!row) throw notFound(m.error.noSuchLaunch);
   if (row.stoppedAt) return row;
 
   // Best effort against the execution service; the row is marked stopped
@@ -357,7 +358,7 @@ export function parseHeaderLines(text: string): Record<string, string> {
 export function normalisePath(path: string): string {
   const trimmed = path.trim() || '/';
   if (/^[a-z]+:\/\//i.test(trimmed) || trimmed.startsWith('//')) {
-    throw invalidInput('Type a path such as /api/items, not a full address.');
+    throw invalidInput(m.form.pathNotAddress);
   }
   return trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
 }

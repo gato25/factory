@@ -1,4 +1,5 @@
 import { type FailureReason, invalidInput } from '@factory/shared';
+import { m } from '$lib/i18n';
 
 /**
  * Exactly two providers exist in this version (FR-014a). A third value is
@@ -144,13 +145,8 @@ export function tokenPageUrl(provider: Provider, host?: string): string {
   return `${origin}/settings/tokens/new?description=Code+Factory&scopes=repo`;
 }
 
-/** What each provider's token page says about itself, in its own words. */
-export const TOKEN_PAGE_NOTE: Record<Provider, string> = {
-  gitlab: 'Opens with the name and scopes already filled in — set an expiry and create it.',
-  github:
-    'Opens a classic token with `repo` ticked, which covers all three permissions above. ' +
-    'A fine-grained token works too, but GitHub cannot pre-select its permissions from a link.',
-};
+// What each provider's token page says about itself is copy, so it lives with
+// the rest of the copy: `m.provider.tokenPageNote` in `$lib/i18n`.
 
 const DEFAULT_HOSTS: Record<Provider, string> = {
   gitlab: 'https://gitlab.com',
@@ -191,7 +187,7 @@ function refusal(provider: Provider, status: number, fullPath: string): string {
         (provider === 'github'
           ? 'A fine-grained token needs the organisation to approve it, and single ' +
             'sign-on needs authorising for the token separately.'
-          : 'The token may be expired or the project may be outside its scope.')
+          : m.conflicts.tokenExpiredOrScope)
       );
     case 404:
       return (

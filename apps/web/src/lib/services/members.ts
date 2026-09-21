@@ -4,6 +4,7 @@ import { conflict, invalidInput, notFound } from '@factory/shared';
 import { eq, sql } from 'drizzle-orm';
 import type { SessionUser } from './auth';
 import { requireAdmin } from './authz';
+import { m } from '$lib/i18n';
 
 /**
  * Membership: administrators invite people and change roles (FR-005). Two
@@ -53,7 +54,7 @@ export async function invite(
   requireAdmin(user);
   const name = input.name.trim();
   const email = input.email.trim().toLowerCase();
-  if (!name) throw invalidInput('Give them a name.');
+  if (!name) throw invalidInput(m.form.personName);
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
     throw invalidInput(`${input.email} does not look like an email address.`);
   }
@@ -63,7 +64,7 @@ export async function invite(
       .insert(users)
       .values({ name, email, role: input.role ?? 'member' })
       .returning();
-    if (!created) throw conflict('could not invite them');
+    if (!created) throw conflict(m.error.couldNotInvite);
     return { id: created.id };
   } catch (error) {
     if (flatten(error).includes('users_email_unique')) {
@@ -86,7 +87,7 @@ export async function setRole(
 ): Promise<{ role: 'admin' | 'member' }> {
   requireAdmin(user);
   const [target] = await database.select().from(users).where(eq(users.id, userId)).limit(1);
-  if (!target) throw notFound('no such person');
+  if (!target) throw notFound(m.error.noSuchPerson);
 
   if (target.role === 'admin' && role === 'member') {
     const [remaining] = await database
@@ -124,11 +125,11 @@ export async function remove(
 ): Promise<{ removed: true; ticketsKept: number; ownedTransferred: number }> {
   const admin = requireAdmin(user);
   if (userId === admin.id) {
-    throw conflict('You cannot remove yourself. Ask another administrator.');
+    throw conflict(m.error.cannotRemoveYourself);
   }
 
   const [target] = await database.select().from(users).where(eq(users.id, userId)).limit(1);
-  if (!target) throw notFound('no such person');
+  if (!target) throw notFound(m.error.noSuchPerson);
 
   const { agents, pipelines, skills } = await import('@factory/db/schema');
   let ownedTransferred = 0;

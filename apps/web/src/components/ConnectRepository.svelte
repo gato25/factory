@@ -2,7 +2,8 @@
   import Icon from '$components/Icon.svelte';
   import { pipelines } from '$lib/remote/pipelines.remote';
   import { connect, requiredScopes } from '$lib/remote/repositories.remote';
-  import { TOKEN_PAGE_NOTE, tokenPageUrl } from '$lib/services/providers';
+  import { m } from '$lib/i18n';
+  import { tokenPageUrl } from '$lib/services/providers';
 
   /**
    * `design.pen`'s 03 Connect Repository: a 560px modal over a half-weight
@@ -29,23 +30,24 @@
 
 <button class="primary" onclick={() => (open = true)}>
   <Icon name="plus" size={16} />
-  <span>Connect repository</span>
+  <span>{m.connect.open}</span>
 </button>
 
 {#if open}
   <!-- svelte-ignore a11y_click_events_have_key_events -->
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div class="scrim" onclick={() => (open = false)}></div>
-  <div class="modal" role="dialog" aria-modal="true" aria-label="Connect a repository">
+  <div class="modal" role="dialog" aria-modal="true" aria-label={m.connect.heading}>
     <header>
       <div class="tx">
-        <h2>Connect a repository</h2>
+        <h2>{m.connect.heading}</h2>
         <p>
-          The factory needs permission to read code, push branches and open
-          {provider === 'gitlab' ? 'merge requests' : 'pull requests'}.
+          {m.connect.lede(
+            provider === 'gitlab' ? m.provider.mergeRequests : m.provider.pullRequests,
+          )}
         </p>
       </div>
-      <button type="button" class="close" aria-label="Close" onclick={() => (open = false)}>
+      <button type="button" class="close" aria-label={m.connect.close} onclick={() => (open = false)}>
         <Icon name="x" size={20} />
       </button>
     </header>
@@ -58,7 +60,7 @@
     >
       <div class="body">
         <fieldset>
-          <legend>1. Choose provider</legend>
+          <legend>{m.connect.stepProvider}</legend>
           <div class="providers">
             {#each providers as option (option.id)}
               <label class:on={provider === option.id}>
@@ -71,7 +73,7 @@
         </fieldset>
 
         <div class="field">
-          <label for="url">2. Repository URL</label>
+          <label for="url">{m.connect.stepUrl}</label>
           <div class="input">
             <Icon name="link" size={16} />
             <input
@@ -85,7 +87,7 @@
         </div>
 
         <div class="field">
-          <label for="token">3. Access token</label>
+          <label for="token">{m.connect.stepToken}</label>
           <div class="input">
             <Icon name="key-round" size={16} />
             <input id="token" name="token" type="password" required autocomplete="off" />
@@ -93,10 +95,9 @@
           <!-- The permissions, at the point the credential is entered (FR-010) -->
           <p class="hint">
             {#if scopes.ready}
-              Needs scopes: {scopes.current[provider].join(', ')}. Stored encrypted and never shown
-              again — not even to you.
+              {m.connect.scopes(scopes.current[provider].join(', '))}
             {:else}
-              Loading the required permissions…
+              {m.connect.scopesLoading}
             {/if}
           </p>
           <!--
@@ -107,17 +108,17 @@
           -->
           <p class="hint">
             <a href={tokenPageUrl(provider)} target="_blank" rel="noreferrer noopener">
-              Create one on {provider === 'gitlab' ? 'GitLab' : 'GitHub'} →
+              {m.connect.createOne(provider === 'gitlab' ? 'GitLab' : 'GitHub')}
             </a>
-            {TOKEN_PAGE_NOTE[provider]}
+            {m.provider.tokenPageNote[provider]}
           </p>
         </div>
 
         <div class="field">
-          <label for="defaultPipelineId">4. Default pipeline for new tickets</label>
+          <label for="defaultPipelineId">{m.connect.stepPipeline}</label>
           <div class="input">
             <select id="defaultPipelineId" name="defaultPipelineId">
-              <option value="">None — each ticket picks one</option>
+              <option value="">{m.connect.noPipeline}</option>
               {#each available.ready ? available.current : [] as pipeline (pipeline.id)}
                 <option value={pipeline.id}>
                   {pipeline.name}{pipeline.description ? ` (${pipeline.description})` : ''}
@@ -140,11 +141,11 @@
       <footer>
         <button type="button" class="secondary" onclick={() => (open = false)}>
           <Icon name="x" size={16} />
-          <span>Cancel</span>
+          <span>{m.connect.cancel}</span>
         </button>
         <button class="primary" type="submit" disabled={connect.pending > 0}>
           <Icon name="plug" size={16} />
-          <span>{connect.pending > 0 ? 'Testing…' : 'Test & connect'}</span>
+          <span>{connect.pending > 0 ? m.connect.testing : m.connect.testAndConnect}</span>
         </button>
       </footer>
     </form>

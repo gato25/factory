@@ -1,6 +1,7 @@
 <script lang="ts">
   import Icon from '$components/Icon.svelte';
   import Markdown from '$components/Markdown.svelte';
+  import { m } from '$lib/i18n';
   import { toRows } from '$lib/log-lines';
   import { log } from '$lib/remote/runs.remote';
   import type { RunView } from '$lib/services/run-view';
@@ -153,20 +154,20 @@
    * corner of an otherwise empty panel.
    */
   const empty = $derived.by(() => {
-    if (chunks.error) return { glyph: '⚠️', text: 'Could not load the output.' };
+    if (chunks.error) return { glyph: '⚠️', text: m.liveLog.couldNotLoad };
     if (!chunks.ready) {
       // The one state the artboard does not draw: it has no loading to show.
-      return { glyph: '⏳', text: 'Loading output…' };
+      return { glyph: '⏳', text: m.liveLog.loadingOutput };
     }
-    if (step.state === 'pending') return { glyph: '\u{1F552}', text: 'This step has not started.' };
+    if (step.state === 'pending') return { glyph: '\u{1F552}', text: m.liveLog.stepNotStarted };
     if (step.state === 'skipped') {
-      return { glyph: '⏭️', text: `Skipped — ${step.conditionNotMet}.` };
+      return { glyph: '⏭️', text: m.liveLog.skipped(step.conditionNotMet ?? '') };
     }
-    return { glyph: '\u{1F4ED}', text: 'No output yet.' };
+    return { glyph: '\u{1F4ED}', text: m.liveLog.noOutput };
   });
 </script>
 
-<section class="log {tone}" aria-label="{step.label} live output">
+<section class="log {tone}" aria-label={m.liveLog.liveOutput(step.label)}>
   <header>
     <span class="badge" aria-hidden="true">{glyphFor(step.type)}</span>
     <span class="titles">
@@ -176,7 +177,7 @@
     <span class="right">
       {#if meta}<span class="meta">{meta}</span>{/if}
       {#if live}
-        <span class="live"><span class="d"></span>LIVE</span>
+        <span class="live"><span class="d"></span>{m.liveLog.live}</span>
       {/if}
     </span>
   </header>
@@ -236,7 +237,7 @@
   {#if !following && rows.length > 0}
     <button type="button" class="jump" onclick={toBottom}>
       <Icon name="chevron-down" size={13} />
-      {behind > 0 ? `${behind} new line${behind === 1 ? '' : 's'}` : 'Jump to latest'}
+      {behind > 0 ? m.liveLog.newLines(behind) : m.liveLog.jumpToLatest}
     </button>
   {/if}
 </section>

@@ -3,6 +3,7 @@ import { pipelines, repositories, tickets } from '@factory/db/schema';
 import { FactoryError, invalidInput, notFound, type Step } from '@factory/shared';
 import { desc, eq, sql } from 'drizzle-orm';
 import { assertRepositoryUsable } from './repository';
+import { m } from '$lib/i18n';
 
 /**
  * A ticket names one repository and carries a title, a free-text description
@@ -67,7 +68,7 @@ export async function createTicket(
 ) {
   const title = input.title.trim();
   if (title.length === 0) {
-    throw invalidInput('Give the ticket a title — it becomes the merge request title.');
+    throw invalidInput(m.form.ticketTitleLong);
   }
   // A repository whose credential no longer works cannot start a run (FR-013).
   const repository = input.start
@@ -79,7 +80,7 @@ export async function createTicket(
         .limit(1)
         .then((rows) => {
           const found = rows[0];
-          if (!found) throw notFound('that repository is not connected');
+          if (!found) throw notFound(m.error.repositoryNotConnected);
           return found;
         });
 
@@ -99,7 +100,7 @@ export async function createTicket(
         .then((rows) => rows[0]?.version)
     : undefined;
   if (input.start && pipelineVersion === undefined) {
-    throw notFound('that pipeline does not exist');
+    throw notFound(m.error.pipelineDoesNotExist);
   }
 
   const reference = await nextReference(database);
@@ -130,7 +131,7 @@ export async function createTicket(
 
 export async function getTicket(database: Database, id: string) {
   const [ticket] = await database.select().from(tickets).where(eq(tickets.id, id)).limit(1);
-  if (!ticket) throw notFound('no such ticket');
+  if (!ticket) throw notFound(m.error.noSuchTicket);
   return ticket;
 }
 

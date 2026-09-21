@@ -1,6 +1,7 @@
 <script lang="ts">
   import ConnectRepository from '$components/ConnectRepository.svelte';
   import Icon from '$components/Icon.svelte';
+  import { m } from '$lib/i18n';
   import { pipelines } from '$lib/remote/pipelines.remote';
   import {
     changeDefaultPipeline,
@@ -42,8 +43,8 @@
 
 <div class="head">
   <div class="page-head">
-    <h2>Connected repositories</h2>
-    <p>Each ticket belongs to one repository. Connect a repo to start creating tickets for it.</p>
+    <h2>{m.repositories.heading}</h2>
+    <p>{m.repositories.lede}</p>
   </div>
   <ConnectRepository />
 </div>
@@ -51,19 +52,19 @@
 {#if repos.error}
   <p class="card error" role="alert">{(repos.error as Error).message}</p>
 {:else if !repos.ready}
-  <p class="card">Loading repositories…</p>
+  <p class="card">{m.repositories.loading}</p>
 {:else if repos.current.length === 0}
-  <p class="card empty">No repositories connected yet. Connect one to create your first ticket.</p>
+  <p class="card empty">{m.repositories.empty}</p>
 {:else}
   <div class="table">
     <div class="row header">
-      <span class="c repo">Repository</span>
-      <span class="c provider">Provider</span>
-      <span class="c branch">Default branch</span>
-      <span class="c pipeline">Default pipeline</span>
-      <span class="c tickets">Tickets</span>
-      <span class="c status">Status</span>
-      <span class="c more"><span class="sr">Actions</span></span>
+      <span class="c repo">{m.repositories.colRepository}</span>
+      <span class="c provider">{m.repositories.colProvider}</span>
+      <span class="c branch">{m.repositories.colBranch}</span>
+      <span class="c pipeline">{m.repositories.colPipeline}</span>
+      <span class="c tickets">{m.repositories.colTickets}</span>
+      <span class="c status">{m.repositories.colStatus}</span>
+      <span class="c more"><span class="sr">{m.repositories.actions}</span></span>
     </div>
 
     {#each repos.current as repo (repo.id)}
@@ -87,12 +88,12 @@
           {#if repo.defaultPipelineName}
             {repo.defaultPipelineName}
           {:else}
-            <span class="muted">None — a ticket picks one</span>
+            <span class="muted">{m.repositories.noPipeline}</span>
           {/if}
         </span>
 
         <span class="c tickets small">
-          {repo.ticketsRunning} running &middot; {repo.ticketsDone} done
+          {m.repositories.ticketCounts(repo.ticketsRunning, repo.ticketsDone)}
         </span>
 
         <span class="c status">
@@ -100,17 +101,17 @@
           <span class="badge {repo.status === 'connected' ? 'ok' : 'bad'}">
             <span class="dot"></span>
             {repo.status === 'connected'
-              ? 'Connected'
+              ? m.repositories.connected
               : repo.status === 'credential_expired'
-                ? 'Token expired'
-                : 'Error'}
+                ? m.repositories.tokenExpired
+                : m.repositories.error}
           </span>
         </span>
 
         <span class="c more">
           <button
             type="button"
-            aria-label="Actions for {repo.name}"
+            aria-label={m.repositories.actionsFor(repo.name)}
             aria-expanded={openMenu === repo.id}
             onclick={(event) => {
               event.stopPropagation();
@@ -132,7 +133,7 @@
                   choosing = choosing === repo.id ? null : repo.id;
                   replacing = null;
                   starting = null;
-                }}>Change the default pipeline</button
+                }}>{m.repositories.changePipeline}</button
               >
               <button
                 type="button"
@@ -140,7 +141,7 @@
                   replacing = replacing === repo.id ? null : repo.id;
                   choosing = null;
                   starting = null;
-                }}>Replace the access token</button
+                }}>{m.repositories.replaceToken}</button
               >
               <button
                 type="button"
@@ -148,7 +149,7 @@
                   starting = starting === repo.id ? null : repo.id;
                   replacing = null;
                   choosing = null;
-                }}>Set how it starts</button
+                }}>{m.repositories.setHowItStarts}</button
               >
               <button
                 type="button"
@@ -156,12 +157,12 @@
                 onclick={() => {
                   void disconnect(repo.id);
                   close();
-                }}>Disconnect</button
+                }}>{m.repositories.disconnect}</button
               >
 
               {#if choosing === repo.id}
                 <label class="field">
-                  <span class="small muted">Pipeline for new tickets</span>
+                  <span class="small muted">{m.repositories.pipelineForNew}</span>
                   <select
                     value={repo.defaultPipelineId ?? ''}
                     onchange={async (event) => {
@@ -172,7 +173,7 @@
                       close();
                     }}
                   >
-                    <option value="">None — a ticket picks one</option>
+                    <option value="">{m.repositories.noPipeline}</option>
                     {#each available.current ?? [] as pipeline (pipeline.id)}
                       <option value={pipeline.id}>{pipeline.name}</option>
                     {/each}
@@ -186,7 +187,7 @@
                 <form {...changeRunSettings} class="field" onsubmit={close}>
                   <input type="hidden" name="repositoryId" value={repo.id} />
                   <label>
-                    <span class="small muted">Start command</span>
+                    <span class="small muted">{m.repositories.startCommand}</span>
                     <input
                       name="command"
                       value={repo.runCommand ?? ''}
@@ -195,18 +196,15 @@
                     />
                   </label>
                   <label>
-                    <span class="small muted">Port it listens on</span>
+                    <span class="small muted">{m.repositories.startPort}</span>
                     <input name="port" type="number" min="1" max="65535" value={repo.runPort ?? ''} placeholder="5173" />
                   </label>
-                  <p class="small muted">
-                    Leave both empty to detect from package.json. The command runs inside the
-                    sandbox with PORT and HOST set; the server has to listen on 0.0.0.0.
-                  </p>
+                  <p class="small muted">{m.repositories.startHint}</p>
                   {#each changeRunSettings.fields.allIssues() ?? [] as issue (issue.message)}
                     <p class="small error" role="alert">{issue.message}</p>
                   {/each}
                   <button type="submit" disabled={changeRunSettings.pending > 0}>
-                    {changeRunSettings.pending > 0 ? 'Saving…' : 'Save'}
+                    {changeRunSettings.pending > 0 ? m.repositories.saving : m.repositories.save}
                   </button>
                 </form>
               {/if}
@@ -215,20 +213,20 @@
                 <form {...replaceToken} class="field" onsubmit={close}>
                   <input type="hidden" name="repositoryId" value={repo.id} />
                   <label>
-                    <span class="small muted">New access token</span>
+                    <span class="small muted">{m.repositories.newToken}</span>
                     <input name="token" type="password" autocomplete="off" required />
                   </label>
                   <!-- The permissions, at the point the credential is entered (FR-010) -->
                   <p class="small muted">
-                    It needs to read the repository, push branches and open
-                    {repo.provider === 'gitlab' ? 'merge requests' : 'pull requests'}. Stored
-                    encrypted and never shown again — not even to you.
+                    {m.repositories.tokenHint(
+                      repo.provider === 'gitlab' ? m.provider.mergeRequests : m.provider.pullRequests,
+                    )}
                   </p>
                   {#each replaceToken.fields.allIssues() ?? [] as issue (issue.message)}
                     <p class="small error" role="alert">{issue.message}</p>
                   {/each}
                   <button type="submit" disabled={replaceToken.pending > 0}>
-                    {replaceToken.pending > 0 ? 'Storing…' : 'Store the new token'}
+                    {replaceToken.pending > 0 ? m.repositories.storing : m.repositories.storeNewToken}
                   </button>
                 </form>
               {/if}

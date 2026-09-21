@@ -10,6 +10,7 @@ import {
   skillHistory,
   updateSkill,
 } from '$lib/services/skill';
+import { m } from '$lib/i18n';
 
 /**
  * Skills — named instruction documents attachable to any number of agents
@@ -19,7 +20,7 @@ import {
 
 function requireUser() {
   const user = getRequestEvent().locals.user;
-  if (!user) throw notAuthorised('you must be signed in');
+  if (!user) throw notAuthorised(m.form.signInRequired);
   return user;
 }
 
@@ -59,11 +60,11 @@ export const history = query(SkillId, async (id) => {
  * reads to decide whether to reach for the skill (FR-043).
  */
 const Fields = {
-  name: v.pipe(v.string(), v.trim(), v.minLength(1, 'Give the skill a name.')),
+  name: v.pipe(v.string(), v.trim(), v.minLength(1, m.form.skillName)),
   description: v.pipe(
     v.string(),
     v.trim(),
-    v.minLength(1, 'Say when an agent should apply this skill.'),
+    v.minLength(1, m.form.skillDescription),
   ),
   content: v.pipe(v.string(), v.minLength(1, 'A skill needs content to apply.')),
 };
@@ -93,7 +94,7 @@ export const save = form(v.object({ skillId: SkillId, ...Fields }), async (input
       message:
         `Saved as version ${version}. ` +
         (reaches.length === 0
-          ? 'No agent holds this skill yet.'
+          ? m.notice.noAgentHoldsSkill
           : `${reaches.map((a) => a.name).join(', ')} will use it on the next run they start; ` +
             'runs already in flight are unaffected.'),
     };

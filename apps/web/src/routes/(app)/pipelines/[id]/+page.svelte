@@ -2,6 +2,7 @@
   import type { Step } from '@factory/shared';
   import { page } from '$app/state';
   import Icon from '$components/Icon.svelte';
+  import { m } from '$lib/i18n';
   import PipelineBuilder from '$components/PipelineBuilder.svelte';
   import { agents } from '$lib/remote/agents.remote';
   import { duplicate, pipeline, preflight, rename, save } from '$lib/remote/pipelines.remote';
@@ -61,7 +62,7 @@
   <header class="head">
     <div class="l">
       <p class="crumb">
-        <a href="/pipelines">Pipelines</a>
+        <a href="/pipelines">{m.pipeline.breadcrumb}</a>
         <Icon name="chevron-right" size={14} />
         <span>{p.name}</span>
       </p>
@@ -70,7 +71,7 @@
         {#if renaming}
           <input
             class="rename"
-            aria-label="Pipeline name"
+            aria-label={m.pipeline.nameLabel}
             bind:value={newName}
             onkeydown={async (event) => {
               if (event.key === 'Escape') renaming = false;
@@ -87,7 +88,7 @@
             <button
               type="button"
               class="icon"
-              aria-label="Rename this pipeline"
+              aria-label={m.pipeline.rename}
               onclick={() => {
                 newName = p.name;
                 renaming = true;
@@ -101,9 +102,9 @@
         <!-- How many repositories use it, before anyone changes it (FR-030) -->
         <span class="badge">
           <span class="dot"></span>
-          Used by {p.repositoriesUsing} repo{p.repositoriesUsing === 1 ? '' : 's'}
+          {m.pipeline.usedBy(p.repositoriesUsing)}
         </span>
-        <span class="badge quiet"><span class="dot"></span>Version {p.currentVersion}</span>
+        <span class="badge quiet"><span class="dot"></span>{m.pipeline.version(p.currentVersion)}</span>
         {#if p.runsInFlight > 0}
           <span class="badge quiet">
             <span class="dot"></span>
@@ -114,12 +115,11 @@
 
       <p class="sub">
         {#if p.mayChange}
-          Drag steps into the order you want. Add a checkpoint anywhere a human should look before
-          the pipeline continues.
+          {m.pipeline.dragHint}
         {:else if p.ownerId}
-          Someone else owns this pipeline — you can use it, not change it.
+          {m.pipeline.someoneElseOwns}
         {:else}
-          This is a shipped default — you can use it, not change it.
+          {m.pipeline.shippedDefault}
         {/if}
       </p>
     </div>
@@ -134,7 +134,7 @@
         }}
       >
         <Icon name="copy" size={16} />
-        <span>Duplicate</span>
+        <span>{m.pipeline.duplicate}</span>
       </button>
       <button
         type="button"
@@ -143,7 +143,7 @@
         onclick={() => (showPreflight = !showPreflight)}
       >
         <Icon name="play" size={16} />
-        <span>Test run</span>
+        <span>{m.pipeline.testRun}</span>
       </button>
     </div>
   </header>
@@ -153,13 +153,13 @@
          do, and what comparable runs cost. It starts nothing (FR-019). -->
     <section class="card dry">
       <header>
-        <h2>If a ticket started on this pipeline now</h2>
-        <span class="small muted">Version {p.currentVersion}, as saved. Nothing is started.</span>
+        <h2>{m.pipeline.preflightHeading}</h2>
+        <span class="small muted">{m.pipeline.preflightNote(p.currentVersion)}</span>
       </header>
       {#if dry?.error}
         <p class="failure" role="alert">{(dry.error as Error).message}</p>
       {:else if !dryRun}
-        <p class="small muted">Working it out…</p>
+        <p class="small muted">{m.pipeline.workingItOut}</p>
       {:else}
         <ol class="dry-steps">
           {#each dryRun.steps as preview (preview.index)}
@@ -177,18 +177,21 @@
         </ol>
         <p class="small muted">
           {#if dryRun.estimate.kind === 'measured'}
-            Comparable runs took about {dryRun.estimate.minutes} minutes and cost about ${dryRun
-              .estimate.costUsd} across {dryRun.estimate.samples} run{dryRun.estimate.samples === 1
-              ? ''
-              : 's'}. An estimate, not a commitment.
+            {m.pipeline.estimateMeasured(
+              dryRun.estimate.minutes,
+              dryRun.estimate.costUsd,
+              dryRun.estimate.samples,
+            )}
           {:else}
-            No comparable run yet, so there is nothing to estimate from. The ceilings are ${dryRun
-              .estimate.ceilingUsd} and {dryRun.estimate.ceilingMinutes} minutes.
+            {m.pipeline.estimateNone(
+              dryRun.estimate.ceilingUsd,
+              dryRun.estimate.ceilingMinutes,
+            )}
           {/if}
         </p>
         {#if !dryRun.verifies}
           <p class="small warn-text">
-            Nothing in this pipeline checks the result (FR-034a).
+            {m.pipeline.nothingVerifies}
           </p>
         {/if}
       {/if}

@@ -12,6 +12,7 @@ import {
   stopLaunch,
 } from '$lib/services/launch';
 import { runnerClient } from '$lib/services/runner-client';
+import { m } from '$lib/i18n';
 
 /**
  * Run it, look at it, send to it, stop it (003). Thin, like every remote
@@ -20,7 +21,7 @@ import { runnerClient } from '$lib/services/runner-client';
 
 function requireUser() {
   const user = getRequestEvent().locals.user;
-  if (!user) throw notAuthorised('you must be signed in');
+  if (!user) throw notAuthorised(m.form.signInRequired);
   return user;
 }
 

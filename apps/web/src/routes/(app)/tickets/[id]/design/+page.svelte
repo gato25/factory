@@ -2,6 +2,8 @@
   import { onMount } from 'svelte';
   import { page } from '$app/state';
   import Icon from '$components/Icon.svelte';
+  import { exact } from '$lib/format';
+  import { m } from '$lib/i18n';
   import ScreenGallery from '$components/ScreenGallery.svelte';
   import TicketHead from '$components/TicketHead.svelte';
   import { subscribeToRun } from '$lib/events/subscribe';
@@ -63,7 +65,7 @@
 {#if !view.ready}
   <p class="card">Loading…</p>
 {:else if !view.current}
-  <p class="card">This ticket has not been started.</p>
+  <p class="card">{m.designReview.notStarted}</p>
 {:else if review?.error}
   <p class="card failure" role="alert">{(review.error as Error).message}</p>
 {:else if !review?.ready}
@@ -84,8 +86,8 @@
     startedAt={loaded.run.startedAt}
     costUsd={loaded.run.costUsd}
     status={paused
-      ? { label: 'Waiting for design approval', tone: 'warn' }
-      : { label: 'Decided', tone: 'ok' }}
+      ? { label: m.designReview.waitingForDesignApproval, tone: 'warn' }
+      : { label: m.designReview.decided, tone: 'ok' }}
   >
     {#snippet actions()}
       {#if paused && d.mayDecide}
@@ -94,13 +96,13 @@
           <input type="hidden" name="stepIndex" value={d.gate.stepIndex} />
           <button class="secondary" type="submit">
             <Icon name="circle-x" size={16} />
-            <span>Cancel run</span>
+            <span>{m.designReview.cancelRun}</span>
           </button>
         </form>
       {/if}
       <a class="secondary" href="/tickets/{ticketId}">
         <Icon name="undo-2" size={16} />
-        <span>Back to the run</span>
+        <span>{m.designReview.backToTheRun}</span>
       </a>
     {/snippet}
   </TicketHead>
@@ -117,17 +119,16 @@
       {#if paused}
         <p class="t">Checkpoint: review the screens before any code is written</p>
         <p class="s">
-          The design step produced {d.screens.length} screen{d.screens.length === 1 ? '' : 's'}
-          with the pen.dev CLI.
-          {#if d.noCodeYet}Nothing has been implemented yet.{/if}
-          {#if next[0]}{`Approve to continue to ${next[0].label}.`}{/if}
+          {m.designReview.producedScreens(d.screens.length)}
+          {#if d.noCodeYet}{m.designReview.nothingImplemented}{/if}
+          {#if next[0]}{m.designReview.approveToContinue(next[0].label)}{/if}
         </p>
       {:else if d.gate.decided}
-        <p class="t">Already decided: {d.gate.decided.decision.replace('_', ' ')}</p>
-        <p class="s">On {new Date(d.gate.decided.at).toLocaleString()}. Nothing is waiting here.</p>
+        <p class="t">{m.designReview.alreadyDecided(d.gate.decided.decision.replace('_', ' '))}</p>
+        <p class="s">{m.designReview.decidedAt(exact(d.gate.decided.at))}</p>
       {:else}
-        <p class="t">This run is not waiting at a design checkpoint</p>
-        <p class="s">Nothing here needs deciding.</p>
+        <p class="t">{m.designReview.notAtCheckpoint}</p>
+        <p class="s">{m.designReview.nothingToDecide}</p>
       {/if}
     </div>
 
@@ -135,7 +136,7 @@
       <div class="btns">
         {#if !d.mayDecide}
           <!-- Readable by anyone; decidable only by the gate's approvers (FR-064) -->
-          <p class="s">This checkpoint is not yours to decide. You can read everything here.</p>
+          <p class="s">{m.designReview.notYoursToDecide}</p>
         {:else}
           <button
             class="secondary"
@@ -144,14 +145,14 @@
             disabled={requestChanges.pending > 0}
           >
             <Icon name="message-square" size={16} />
-            <span>Request changes</span>
+            <span>{m.designReview.requestChanges}</span>
           </button>
           <form {...approve}>
             <input type="hidden" name="runId" value={d.gate.runId} />
             <input type="hidden" name="stepIndex" value={d.gate.stepIndex} />
             <button class="go" type="submit" disabled={approve.pending > 0}>
               <Icon name="check" size={16} />
-              <span>Approve &amp; continue</span>
+              <span>{m.designReview.approveAndContinue}</span>
             </button>
           </form>
         {/if}
@@ -167,10 +168,10 @@
     <section class="card gallery">
       <header class="gh">
         <div class="l">
-          <h2>Screens</h2>
+          <h2>{m.designReview.screens}</h2>
           <span class="badge pink">
             <span class="dot"></span>
-            {d.screens.length} exported
+            {m.designReview.exported(d.screens.length)}
           </span>
         </div>
         {#if d.designSource}
@@ -185,12 +186,11 @@
                 rel="noreferrer noopener"
               >
                 <Icon name="external-link" size={16} />
-                <span>Open the design source</span>
+                <span>{m.designReview.openDesignSource}</span>
               </a>
             {:else}
               <span class="quiet">
-                {d.designSource.path} is committed to the branch; this repository's address is not
-                one we can build a file link for.
+                {m.designReview.sourceNotLinkable(d.designSource.path)}
               </span>
             {/if}
           </div>
@@ -199,7 +199,7 @@
 
       <ScreenGallery
         screens={d.screens}
-        heading="Designed screens"
+        heading={m.designReview.designedScreens}
         note="Each one opens at full size. Use the arrow keys to move between them."
       />
     </section>
@@ -209,29 +209,29 @@
       <section class="card">
         <div class="sh">
           <Icon name="palette" size={16} />
-          <h3>Why this ticket was designed</h3>
+          <h3>{m.designReview.whyDesigned}</h3>
         </div>
         {#if d.ticket.uiRationale}
           <p class="quote">“{d.ticket.uiRationale}”</p>
           <p class="by">
-            Decided by the specification step · classified as
-            {d.ticket.hasUi ? 'interface work' : 'not interface work'}
+            {m.designReview.decidedBySpec(
+              d.ticket.hasUi ? m.designReview.interfaceWork : m.designReview.notInterfaceWork,
+            )}
           </p>
         {:else if d.ticket.classificationMissing}
           <p class="quiet warn-text">
-            The specification step produced no usable decision about whether this ticket changes
-            the interface, so it was treated as not changing it.
+            {m.designReview.classificationMissing}
           </p>
         {:else}
-          <p class="quiet">No reason was recorded.</p>
+          <p class="quiet">{m.designReview.noReason}</p>
         {/if}
       </section>
 
       <!-- The criteria beside the screens, so they are read together (FR-064d) -->
       <section class="card">
-        <h3>Check the screens against</h3>
+        <h3>{m.designReview.checkAgainst}</h3>
         {#if d.ticket.acceptanceCriteria.length === 0}
-          <p class="quiet">None were given. That is the biggest quality lever there is.</p>
+          <p class="quiet">{m.designReview.noAcceptance}</p>
         {:else}
           <ul class="criteria">
             {#each d.ticket.acceptanceCriteria as criterion (criterion)}
@@ -243,9 +243,9 @@
 
       {#if paused && d.mayDecide}
         <section class="card">
-          <h3>Request changes</h3>
+          <h3>{m.designReview.requestChanges}</h3>
           <p class="quiet">
-            The design is revised rather than redrawn, and comes back here.
+            {m.designReview.revisedNotRedrawn}
           </p>
           <form {...requestChanges} id="request-changes" class="stack">
             <input type="hidden" name="runId" value={d.gate.runId} />
@@ -253,12 +253,12 @@
             <textarea
               name="feedback"
               rows="4"
-              aria-label="Request changes — this text is sent to the design tool"
-              placeholder="What should change, and why?"
+              aria-label={m.designReview.feedbackLabel}
+              placeholder={m.designReview.feedbackPlaceholder}
             ></textarea>
             <button class="secondary wide" type="submit" disabled={requestChanges.pending > 0}>
               <Icon name="undo-2" size={16} />
-              <span>Send back to the design step</span>
+              <span>{m.designReview.sendBackToDesign}</span>
             </button>
           </form>
         </section>
@@ -266,7 +266,7 @@
 
       {#if next.length > 0}
         <section class="card">
-          <h3>After you approve</h3>
+          <h3>{m.designReview.afterYouApprove}</h3>
           {#each next as row (row.index)}
             <div class="n">
               <span class="ic"><Icon name={KIND_ICON[row.type] ?? 'bot'} size={13} /></span>
@@ -279,8 +279,8 @@
           <div class="n">
             <span class="ic ok"><Icon name="git-pull-request" size={13} /></span>
             <span class="tx">
-              <span class="t">Open merge request</span>
-              <span class="s">Branch pushed, merge request created, ticket closed</span>
+              <span class="t">{m.designReview.openMergeRequest}</span>
+              <span class="s">{m.designReview.openMergeRequestNote}</span>
             </span>
           </div>
         </section>
@@ -288,7 +288,7 @@
 
       {#if step}
         <p class="quiet foot">
-          The design step took {step.durationS ?? 0}s and cost ${step.costUsd}.
+          {m.designReview.stepCost(step.durationS ?? 0, step.costUsd ?? 0)}
         </p>
       {/if}
     </aside>

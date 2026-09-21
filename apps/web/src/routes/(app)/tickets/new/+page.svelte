@@ -1,6 +1,7 @@
 <script lang="ts">
   import FilePicker from '$components/FilePicker.svelte';
   import Icon from '$components/Icon.svelte';
+  import { m } from '$lib/i18n';
   import { pipelines } from '$lib/remote/pipelines.remote';
   import { repositories } from '$lib/remote/repositories.remote';
   import { create, preview } from '$lib/remote/tickets.remote';
@@ -55,12 +56,12 @@
     overwritten by it.
   -->
   <form {...create} enctype="multipart/form-data" class="card form">
-    <h1>Describe what you want built</h1>
+    <h1>{m.newTicket.heading}</h1>
 
     <div class="field">
       <div class="label-row">
-        <label for="repositoryId">Repository</label>
-        <span class="hint">Required</span>
+        <label for="repositoryId">{m.newTicket.repository}</label>
+        <span class="hint">{m.newTicket.required}</span>
       </div>
       <div class="select">
         {#if repo}<Icon name={repo.provider} size={16} />{:else}<Icon
@@ -68,12 +69,14 @@
             size={16}
           />{/if}
         <select id="repositoryId" name="repositoryId" bind:value={repositoryId} required>
-          <option value="" disabled>Choose a repository…</option>
+          <option value="" disabled>{m.newTicket.chooseRepository}</option>
           {#each repos.ready ? repos.current : [] as row (row.id)}
             <!-- A repository whose credential no longer works cannot start a
                  run, so it cannot be chosen here (FR-013). -->
             <option value={row.id} disabled={row.status !== 'connected'}>
-              {row.name} · {row.fullPath}{row.status !== 'connected' ? ' — token expired' : ''}
+              {row.name} · {row.fullPath}{row.status !== 'connected'
+                ? m.newTicket.tokenExpiredSuffix
+                : ''}
             </option>
           {/each}
         </select>
@@ -83,54 +86,50 @@
 
     <div class="field">
       <div class="label-row">
-        <label for="title">Title</label>
-        <span class="hint">Required</span>
+        <label for="title">{m.newTicket.title}</label>
+        <span class="hint">{m.newTicket.required}</span>
       </div>
-      <input id="title" name="title" required placeholder="Add Apple Sign-In next to Google login" />
+      <input id="title" name="title" required placeholder={m.newTicket.titlePlaceholder} />
     </div>
 
     <div class="field">
       <div class="label-row">
-        <label for="description">Description</label>
-        <span class="hint">
-          Plain language is fine. The Spec agent will ask itself the clarifying questions.
-        </span>
+        <label for="description">{m.newTicket.description}</label>
+        <span class="hint">{m.newTicket.descriptionHint}</span>
       </div>
       <textarea
         id="description"
         name="description"
         rows="6"
-        placeholder="What should change, and why?"
+        placeholder={m.newTicket.descriptionPlaceholder}
       ></textarea>
     </div>
 
     <div class="field">
       <div class="label-row">
-        <label for="acceptanceCriteria">Acceptance criteria</label>
-        <span class="hint">One per line. The Implement agent must make all of these pass.</span>
+        <label for="acceptanceCriteria">{m.newTicket.acceptance}</label>
+        <span class="hint">{m.newTicket.acceptanceHint}</span>
       </div>
       <textarea
         id="acceptanceCriteria"
         name="acceptanceCriteria"
         rows="4"
-        placeholder={'Apple button visible on /login for all users\nSuccessful sign-in creates or links a user record'}
+        placeholder={m.newTicket.acceptancePlaceholder}
       ></textarea>
     </div>
 
     <div class="field">
       <div class="label-row">
-        <label for="files">Requirement documents</label>
-        <span class="hint">
-          Optional. Text, Markdown or CSV — every agent step reads them as the brief.
-        </span>
+        <label for="files">{m.newTicket.files}</label>
+        <span class="hint">{m.newTicket.filesHint}</span>
       </div>
       <FilePicker />
     </div>
 
     <div class="field">
       <div class="label-row">
-        <span class="as-label">Pipeline</span>
-        <span class="hint">You can change its steps for this ticket only, in the builder.</span>
+        <span class="as-label">{m.newTicket.pipeline}</span>
+        <span class="hint">{m.newTicket.pipelineHint}</span>
       </div>
       <div class="picks">
         {#each pipes.ready ? pipes.current : [] as row (row.id)}
@@ -143,11 +142,11 @@
             <input type="radio" name="pipelineId" {value} bind:group={pipelineId} />
             <span class="t">
               <span class="n">{row.name}</span>
-              {#if isDefault}<span class="tag">{repo?.name}'s default</span>{/if}
+              {#if isDefault}<span class="tag">{m.newTicket.defaultFor(repo?.name ?? '')}</span>{/if}
               <span class="grow"></span>
               {#if pipelineId === value}<Icon name="circle-check" size={16} />{/if}
             </span>
-            <span class="d">{row.description ?? `Version ${row.currentVersion}`}</span>
+            <span class="d">{row.description ?? m.newTicket.version(row.currentVersion)}</span>
           </label>
         {/each}
       </div>
@@ -163,24 +162,27 @@
 
     {#if create.result?.queuedNotStarted}
       <p class="banner bad" role="alert">
-        {create.result.reference} was created and is queued, but has <strong>not started</strong>:
-        the orchestrator could not be reached ({create.result.detail}). It will be retried.
+        {m.newTicket.queuedNotStartedBefore(create.result.reference)}<strong
+          >{m.newTicket.notStarted}</strong
+        >{m.newTicket.queuedNotStartedAfter(create.result.detail ?? '')}
       </p>
     {:else if create.result?.started}
-      <p class="banner good" role="status">{create.result.reference} started.</p>
+      <p class="banner good" role="status">{m.newTicket.started(create.result.reference)}</p>
     {:else if create.result}
-      <p class="banner good" role="status">{create.result.reference} saved as a draft.</p>
+      <p class="banner good" role="status">{m.newTicket.savedAsDraft(create.result.reference)}</p>
     {/if}
 
     <footer>
       <span class="note">
         {#if shown?.estimate.kind === 'measured'}
-          Estimated cost ≈ ${shown.estimate.costUsd} · usually about {shown.estimate.minutes} min
+          {m.newTicket.estimateMeasured(shown.estimate.costUsd, shown.estimate.minutes)}
         {:else if shown}
-          No comparable run yet · up to ${shown.estimate.ceilingUsd} and
-          {shown.estimate.ceilingMinutes} min
+          {m.newTicket.estimateCeiling(
+            shown.estimate.ceilingUsd,
+            shown.estimate.ceilingMinutes,
+          )}
         {:else}
-          Choose a repository and a pipeline to see what it will cost.
+          {m.newTicket.estimateUnknown}
         {/if}
       </span>
       <span class="btns">
@@ -188,13 +190,13 @@
           disabled={create.pending > 0}
         >
           <Icon name="file-text" size={16} />
-          <span>Save as draft</span>
+          <span>{m.newTicket.saveAsDraft}</span>
         </button>
         <button class="primary" type="submit" name="start" value="true"
           disabled={create.pending > 0}
         >
           <Icon name="rocket" size={16} />
-          <span>{create.pending > 0 ? 'Creating…' : 'Create & start pipeline'}</span>
+          <span>{create.pending > 0 ? m.newTicket.creating : m.newTicket.createAndStart}</span>
         </button>
       </span>
     </footer>
@@ -202,11 +204,11 @@
 
   <aside class="side">
     <section class="card">
-      <h2>What will happen</h2>
+      <h2>{m.newTicket.whatWillHappen}</h2>
       {#if !chosen}
-        <p class="quiet">Choose a repository and a pipeline to see the steps that will run.</p>
+        <p class="quiet">{m.newTicket.chooseToSeeSteps}</p>
       {:else if !shown}
-        <p class="quiet">Working out the steps…</p>
+        <p class="quiet">{m.newTicket.workingOutSteps}</p>
       {:else}
         <ol class="steps">
           {#each shown.steps as step (step.index)}
@@ -236,8 +238,8 @@
             <span class="line"><span class="ic ok"><Icon name="git-pull-request" size={15} /></span
               ></span>
             <span class="tx">
-              <span class="tr"><span class="n">Open merge request</span></span>
-              <span class="m">Branch pushed, merge request created, ticket closed</span>
+              <span class="tr"><span class="n">{m.newTicket.openMergeRequest}</span></span>
+              <span class="m">{m.newTicket.openMergeRequestNote}</span>
             </span>
           </li>
         </ol>
@@ -246,17 +248,14 @@
         {#if shown.warning}
           <p class="banner warn">{shown.warning}</p>
         {:else}
-          <p class="quiet">This pipeline runs your tests before opening the merge request.</p>
+          <p class="quiet">{m.newTicket.testsBeforeMr}</p>
         {/if}
       {/if}
     </section>
 
     <p class="tip">
       <Icon name="lightbulb" size={16} />
-      <span>
-        The Spec agent decides whether this ticket touches the interface. If it does, the Design
-        step runs and you review the screens before any code is written.
-      </span>
+      <span>{m.newTicket.tip}</span>
     </p>
   </aside>
 </div>

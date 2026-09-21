@@ -15,6 +15,7 @@ import {
   retryRun,
 } from '$lib/services/run';
 import { runForTicket } from './runs.remote';
+import { m } from '$lib/i18n';
 
 /**
  * Retry, edit-and-retry, pause and cancel are `command`s rather than `form`s:
@@ -25,7 +26,7 @@ import { runForTicket } from './runs.remote';
 
 function requireUser() {
   const user = getRequestEvent().locals.user;
-  if (!user) throw notAuthorised('you must be signed in');
+  if (!user) throw notAuthorised(m.form.signInRequired);
   return user;
 }
 
@@ -93,7 +94,7 @@ export const retry = command(TicketId, async (ticketId) => {
 
 const EditAndRetry = v.object({
   ticketId: TicketId,
-  title: v.optional(v.pipe(v.string(), v.trim(), v.minLength(1, 'Give the ticket a title.'))),
+  title: v.optional(v.pipe(v.string(), v.trim(), v.minLength(1, m.form.ticketTitle))),
   description: v.optional(v.string()),
   /** One criterion per line, as the screen presents it. */
   acceptanceCriteria: v.optional(v.string()),
@@ -140,8 +141,8 @@ export const pause = command(RunId, async (runId) => {
       ok: true,
       runId,
       message: alreadyRequested
-        ? 'This run is already pausing.'
-        : 'Pausing. The step running now will finish, and nothing further will start.',
+        ? m.notice.alreadyPausing
+        : m.notice.pausing,
     };
   });
 });
@@ -155,7 +156,7 @@ export const unpause = command(RunId, async (runId) => {
     return {
       ok: true,
       runId,
-      message: resumed ? 'Continuing from where it stopped.' : 'This run was not paused.',
+      message: resumed ? m.notice.continuing : m.notice.wasNotPaused,
     };
   });
 });
@@ -171,8 +172,8 @@ export const cancel = command(RunId, async (runId) => {
       ok: cancelled,
       runId,
       message: cancelled
-        ? 'Cancelled. The sandbox is released and the branch pushed so far is untouched.'
-        : 'This run had already finished.',
+        ? m.notice.cancelled
+        : m.notice.alreadyFinished,
     };
   });
 });
@@ -231,7 +232,7 @@ export const openDesign = command(
         body: JSON.stringify({ path }),
         signal: AbortSignal.timeout(10_000),
       });
-      if (response.ok) return { ok: true, message: 'Opening it in pen.dev.' };
+      if (response.ok) return { ok: true, message: m.notice.openingInPen };
       // The execution service says why — not on this machine, workspace gone,
       // not a design — and that sentence is worth more than a status code.
       const said = (await response.json().catch(() => null)) as { message?: string } | null;
@@ -242,7 +243,7 @@ export const openDesign = command(
     } catch {
       return {
         ok: false,
-        message: 'The execution service did not answer, so nothing was opened.',
+        message: m.notice.designToolSilent,
       };
     }
   },

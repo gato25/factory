@@ -2,6 +2,7 @@
   import type { Snippet } from 'svelte';
   import Icon from '$components/Icon.svelte';
   import { ago, exact } from '$lib/format';
+  import { m } from '$lib/i18n';
   import { duration } from '$lib/step-kind';
 
   /**
@@ -56,7 +57,7 @@
 <header class="head" class:rail>
   <div class="l">
     <p class="crumb">
-      <a href="/tickets">Tickets</a>
+      <a href="/tickets">{m.ticketHead.tickets}</a>
       <Icon name="chevron-right" size={14} />
       <span>{repositoryName}</span>
       <Icon name="chevron-right" size={14} />

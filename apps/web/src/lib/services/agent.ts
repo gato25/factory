@@ -6,6 +6,7 @@ import { DEFAULT_AGENTS } from './agent-defaults';
 import type { SessionUser } from './auth';
 import { ownershipOf, requireChangeable } from './ownership';
 import { agentUsage, pipelinesUsingAgent, runsInFlightWithAgent } from './usage';
+import { m } from '$lib/i18n';
 
 /**
  * An agent's instructions, model, permitted tools, attached skills, and its
@@ -35,14 +36,14 @@ export const TOOLS = [
 export type Tool = (typeof TOOLS)[number];
 
 export const TOOL_DESCRIPTION: Record<Tool, string> = {
-  Read: 'Read a file in the repository',
-  Write: 'Create a file',
-  Edit: 'Change an existing file',
-  Glob: 'Find files by name',
-  Grep: 'Search file contents',
+  Read: m.tools.Read,
+  Write: m.tools.Write,
+  Edit: m.tools.Edit,
+  Glob: m.tools.Glob,
+  Grep: m.tools.Grep,
   Bash: 'Run a shell command — including the repository’s tests',
-  WebFetch: 'Fetch a URL',
-  GitPush: 'Push the branch',
+  WebFetch: m.tools.WebFetch,
+  GitPush: m.tools.GitPush,
 };
 
 /**
@@ -117,7 +118,7 @@ export async function getAgent(
   user: SessionUser | null,
 ): Promise<AgentDetail> {
   const [row] = await database.select().from(agents).where(eq(agents.id, agentId)).limit(1);
-  if (!row) throw notFound('no such agent');
+  if (!row) throw notFound(m.error.noSuchAgent);
 
   const ownership = await ownershipOf(database, 'agent', agentId, user);
   const held = await database
@@ -191,7 +192,7 @@ export async function createAgent(
       maxTurns: input.maxTurns ?? null,
     })
     .returning();
-  if (!created) throw conflict('could not create the agent');
+  if (!created) throw conflict(m.error.couldNotCreateAgent);
 
   await setSkills(database, created.id, input.skillIds ?? []);
   return { id: created.id };
@@ -205,7 +206,7 @@ export async function updateAgent(
 ): Promise<{ changed: true }> {
   await requireChangeable(database, 'agent', agentId, user);
   const [existing] = await database.select().from(agents).where(eq(agents.id, agentId)).limit(1);
-  if (!existing) throw notFound('no such agent');
+  if (!existing) throw notFound(m.error.noSuchAgent);
 
   const engine = input.engine ?? existing.engine;
   const fields = validate({ ...input, engine });
@@ -250,13 +251,13 @@ function validate(input: AgentInput & { engine: 'claude_cli' | 'design_cli' }) {
     throw invalidInput(`There is no tool called ${unknown.join(', ')}.`);
   }
   if (input.maxCostUsd != null && Number(input.maxCostUsd) <= 0) {
-    throw invalidInput('A cost limit of zero would stop the step before it began.');
+    throw invalidInput(m.form.zeroCost);
   }
   if (input.maxMinutes != null && input.maxMinutes <= 0) {
-    throw invalidInput('A time limit of zero would stop the step before it began.');
+    throw invalidInput(m.form.zeroTime);
   }
   if (input.maxTurns != null && input.maxTurns <= 0) {
-    throw invalidInput('A turn limit of zero would stop the step before it began.');
+    throw invalidInput(m.form.zeroTurns);
   }
   return { model: input.model };
 }
@@ -268,7 +269,7 @@ async function setSkills(database: Database, agentId: string, skillIds: string[]
       .select({ id: skills.id })
       .from(skills)
       .where(inArray(skills.id, unique));
-    if (found.length !== unique.length) throw notFound('one of those skills does not exist');
+    if (found.length !== unique.length) throw notFound(m.conflicts.skillDoesNotExist);
   }
   await database.delete(agentSkills).where(eq(agentSkills.agentId, agentId));
   if (unique.length > 0) {
@@ -291,7 +292,7 @@ export async function resetAgent(
 ): Promise<{ reset: true }> {
   await requireChangeable(database, 'agent', agentId, user);
   const [row] = await database.select().from(agents).where(eq(agents.id, agentId)).limit(1);
-  if (!row) throw notFound('no such agent');
+  if (!row) throw notFound(m.error.noSuchAgent);
   if (!row.defaultConfig) {
     throw invalidInput(
       'This agent was created here rather than shipped, so there is no shipped ' +
@@ -360,7 +361,7 @@ export async function duplicateAgent(
   user: SessionUser,
 ): Promise<{ id: string; name: string }> {
   const [source] = await database.select().from(agents).where(eq(agents.id, agentId)).limit(1);
-  if (!source) throw notFound('no such agent');
+  if (!source) throw notFound(m.error.noSuchAgent);
 
   const [copy] = await database
     .insert(agents)
@@ -379,7 +380,7 @@ export async function duplicateAgent(
       maxTurns: source.maxTurns,
     })
     .returning();
-  if (!copy) throw conflict('could not duplicate the agent');
+  if (!copy) throw conflict(m.conflicts.couldNotDuplicateAgent);
 
   const held = await database
     .select({ skillId: agentSkills.skillId })
@@ -395,17 +396,17 @@ export async function duplicateAgent(
 
 /** The variables an agent's instructions may reference (FR-037, spec §8.3). */
 export const TEMPLATE_VARIABLES = [
-  { name: 'ticket.id', what: 'The ticket reference, like #142' },
+  { name: 'ticket.id', what: m.vocabulary.reference },
   { name: 'ticket.title', what: 'Its title' },
   { name: 'ticket.description', what: 'Its description' },
-  { name: 'ticket.acceptance', what: 'Its acceptance criteria, one per line' },
-  { name: 'ticket.has_ui', what: 'Whether it changes the interface, once decided' },
-  { name: 'repo.name', what: 'The repository name' },
+  { name: 'ticket.acceptance', what: m.vocabulary.acceptance },
+  { name: 'ticket.has_ui', what: m.vocabulary.hasUi },
+  { name: 'repo.name', what: m.vocabulary.repository },
   { name: 'repo.branch', what: "The run's branch" },
-  { name: 'repo.default_branch', what: 'The branch it will merge into' },
-  { name: 'run.attempt', what: 'Which attempt this is' },
+  { name: 'repo.default_branch', what: m.vocabulary.defaultBranch },
+  { name: 'run.attempt', what: m.vocabulary.attempt },
   { name: 'feedback', what: 'A reviewer’s requested changes, when there are any' },
-  { name: 'design.screens', what: 'Paths of the designed screens, when a design step ran' },
+  { name: 'design.screens', what: m.vocabulary.screens },
 ] as const;
 
 /** Whether an agent still matches what shipped, for the editor's Reset. */

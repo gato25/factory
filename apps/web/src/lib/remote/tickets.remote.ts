@@ -15,12 +15,13 @@ import { handOver, orchestratorAccess } from '$lib/services/orchestrator';
 import { startRun } from '$lib/services/run';
 import { createTicket, getTicket, listTickets } from '$lib/services/ticket';
 import { attachFiles, listFiles, removeFile } from '$lib/services/ticket-files';
+import { m } from '$lib/i18n';
 
 const log = createLogger('web');
 
 function requireUser() {
   const user = getRequestEvent().locals.user;
-  if (!user) throw notAuthorised('you must be signed in');
+  if (!user) throw notAuthorised(m.form.signInRequired);
   return user;
 }
 
@@ -70,8 +71,8 @@ async function readPicked(picked: File | File[] | undefined) {
 }
 
 const CreateSchema = v.object({
-  repositoryId: v.pipe(v.string(), v.uuid('Choose a repository.')),
-  title: v.pipe(v.string(), v.trim(), v.minLength(1, 'Give the ticket a title.')),
+  repositoryId: v.pipe(v.string(), v.uuid(m.form.chooseRepository)),
+  title: v.pipe(v.string(), v.trim(), v.minLength(1, m.form.ticketTitle)),
   description: v.optional(v.string(), ''),
   // One criterion per line, as the form presents it.
   acceptanceCriteria: v.optional(v.string(), ''),

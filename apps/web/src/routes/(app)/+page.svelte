@@ -7,6 +7,7 @@
   import { subscribeToRun } from '$lib/events/subscribe';
   import { active, activity, tiles } from '$lib/remote/runs.remote';
   import { setup } from '$lib/remote/settings.remote';
+  import { m } from '$lib/i18n';
   import { ticketBoard } from '$lib/remote/tickets.remote';
 
   /**
@@ -24,10 +25,10 @@
   const t = $derived(tiles());
   const s = $derived(setup());
 
-  /** "and" rather than a bare comma list, because a person reads this. */
+  /** A list as a person reads one, not a bare comma list. */
   function listed(items: string[]): string {
     if (items.length <= 1) return items[0] ?? '';
-    return `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
+    return `${items.slice(0, -1).join(m.dashboard.listJoin)}${m.dashboard.listLast}${items[items.length - 1]}`;
   }
 
   /** The dashboard watches one workspace-wide channel (FR-074). */
@@ -44,35 +45,37 @@
   );
 </script>
 
-<section class="strip" aria-label="Workspace at a glance">
+<section class="strip" aria-label={m.dashboard.glance}>
   {#if !t.ready}
-    <p class="loading">Loading…</p>
+    <p class="loading">{m.dashboard.loading}</p>
   {:else}
     {@const d = t.current}
     <StatTile
-      label="Connected repos"
+      label={m.dashboard.connectedRepos}
       value={d.repositoriesConnected}
-      caption="{d.repositoriesByProvider.gitlab} GitLab &middot; {d.repositoriesByProvider
-        .github} GitHub"
+      caption={m.dashboard.reposByProvider(
+        d.repositoriesByProvider.gitlab,
+        d.repositoriesByProvider.github,
+      )}
     />
     <StatTile
-      label="Tickets running"
+      label={m.dashboard.ticketsRunning}
       value={d.ticketsRunning}
-      caption="across {d.ticketsRunningAcrossRepositories} {d.ticketsRunningAcrossRepositories === 1
-        ? 'repo'
-        : 'repos'}"
+      caption={m.dashboard.acrossRepos(d.ticketsRunningAcrossRepositories)}
     />
     <StatTile
-      label="Waiting for approval"
+      label={m.dashboard.waitingForApproval}
       value={d.awaitingApproval}
-      caption={d.awaitingApproval === 0 ? 'nothing to review' : 'needs your review'}
+      caption={d.awaitingApproval === 0 ? m.dashboard.nothingToReview : m.dashboard.needsYourReview}
       tone="warning"
     />
     <StatTile
-      label="Merge requests this week"
+      label={m.dashboard.mergeRequestsThisWeek}
       value={d.mergeRequestsThisWeek}
-      caption="{d.mergeRequestsOpened} opened &middot; {d.mergeRequestsThisWeek -
-        d.mergeRequestsOpened} without an address"
+      caption={m.dashboard.mergeRequests(
+        d.mergeRequestsOpened,
+        d.mergeRequestsThisWeek - d.mergeRequestsOpened,
+      )}
     />
   {/if}
 </section>
@@ -84,16 +87,17 @@
 -->
 {#if s.ready && !s.current.ready}
   <p class="card warning" role="status">
-    Nothing can run yet: this workspace still needs {listed(s.current.missing)}.
+    {m.dashboard.notReady(listed(s.current.missing))}
     {#if s.current.canFix}
       {@const needsRepository = s.current.missing.includes('a connected repository')}
       {@const needsSettings = s.current.missing.length > (needsRepository ? 1 : 0)}
-      Set that up in
-      {#if needsSettings}<a href="/settings">Settings</a>{/if}{#if
+      {m.dashboard.setUpBefore}{#if needsSettings}<a href="/settings">{m.nav.settings}</a>{/if}{#if
         needsSettings && needsRepository
-      }{' '}and {/if}{#if needsRepository}<a href="/repositories">Repositories</a>{/if}.
+      }{m.dashboard.listLast}{/if}{#if needsRepository}<a href="/repositories"
+          >{m.nav.repositories}</a
+        >{/if}{m.dashboard.setUpAfter}
     {:else}
-      Ask an administrator — workspace connections and credentials are theirs to set (FR-004).
+      {m.dashboard.askAdministrator}
     {/if}
   </p>
 {/if}

@@ -19,6 +19,7 @@ import {
 import { and, eq, inArray } from 'drizzle-orm';
 import { fileManifest } from '../services/ticket-files';
 import { type Ceilings, resolveCeilings } from './ceilings';
+import { m } from '$lib/i18n';
 
 /**
  * Flatten the pipeline version, every agent, every skill and every ceiling
@@ -49,9 +50,9 @@ export async function resolveSnapshot(
     .from(tickets)
     .where(eq(tickets.id, input.ticketId))
     .limit(1);
-  if (!ticket) throw notFound('no such ticket');
+  if (!ticket) throw notFound(m.error.noSuchTicket);
   if (!ticket.pipelineId || ticket.pipelineVersion == null) {
-    throw invalidInput('this ticket has no pinned pipeline version, so it cannot start');
+    throw invalidInput(m.conflicts.noPinnedVersion);
   }
 
   const [repository] = await database
@@ -59,7 +60,7 @@ export async function resolveSnapshot(
     .from(repositories)
     .where(eq(repositories.id, ticket.repositoryId))
     .limit(1);
-  if (!repository) throw notFound('that repository is not connected');
+  if (!repository) throw notFound(m.error.repositoryNotConnected);
   if (!repository.credentialId) {
     throw invalidInput(`${repository.fullPath} has no stored credential`);
   }
@@ -120,7 +121,7 @@ export async function resolveSnapshot(
     .from(workspaces)
     .orderBy(workspaces.createdAt)
     .limit(1);
-  if (!workspace) throw invalidInput('the workspace is not configured');
+  if (!workspace) throw invalidInput(m.conflicts.workspaceNotConfigured);
 
   // The run's ceiling comes from the workspace (FR-079). An agent's own
   // limits are per-STEP and travel on the agent below, capped in the runner

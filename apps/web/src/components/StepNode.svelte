@@ -1,6 +1,7 @@
 <script lang="ts">
   import { CONDITION_DESCRIPTION, type Step } from '@factory/shared';
   import Icon from '$components/Icon.svelte';
+  import { m } from '$lib/i18n';
   import { STEP_KIND_LABEL } from '$lib/services/pipeline';
 
   /**
@@ -98,32 +99,31 @@
         return (
           agent?.description ??
           (step.output_files?.length
-            ? `Produces ${step.output_files.join(', ')}`
-            : 'Writes the code')
+            ? m.stepNode.produces(step.output_files.join(', '))
+            : m.stepNode.writesTheCode)
         );
       case 'checkpoint':
         return [
           step.approvers === 'anyone'
-            ? 'Anyone in the workspace decides'
+            ? m.stepNode.anyoneDecides
             : step.approvers === 'ticket_creator'
-              ? "The ticket's author decides"
-              : `${(step.approvers ?? []).length} named approver${
-                  (step.approvers ?? []).length === 1 ? '' : 's'
-                }`,
+              ? m.stepNode.authorDecides
+              : m.stepNode.namedApprovers((step.approvers ?? []).length),
           step.timeout_hours
-            ? `${step.timeout_hours} h timeout, then ${
+            ? m.stepNode.timeout(
+                step.timeout_hours,
                 step.on_timeout === 'continue'
-                  ? 'auto-continue'
+                  ? m.stepNode.autoContinue
                   : step.on_timeout === 'fail'
-                    ? 'the run fails'
-                    : 'it keeps waiting'
-              }`
-            : 'waits indefinitely',
+                    ? m.stepNode.runFails
+                    : m.stepNode.keepsWaiting,
+              )
+            : m.stepNode.waitsIndefinitely,
         ].join(' · ');
       case 'shell':
-        return step.command || 'no command yet';
+        return step.command || m.stepNode.noCommandYet;
       case 'notify':
-        return step.channel || 'no channel yet';
+        return step.channel || m.stepNode.noChannelYet;
       default:
         return undefined;
     }
@@ -167,7 +167,7 @@
   <button
     type="button"
     class="open"
-    aria-label="Step {index + 1} — {title}"
+    aria-label={m.stepNode.stepLabel(index + 1, title)}
     onclick={onSelect}
     disabled={!onSelect}
   >
@@ -180,7 +180,7 @@
           <span class="badge conditional"><span class="dot"></span>{condition}</span>
         {/if}
         {#if custom}
-          <span class="badge custom"><span class="dot"></span>Custom</span>
+          <span class="badge custom"><span class="dot"></span>{m.stepNode.custom}</span>
         {/if}
       </span>
       {#if description}<span class="d">{description}</span>{/if}
@@ -195,7 +195,7 @@
     <span class="more">
       <button
         type="button"
-        aria-label="Actions for step {index + 1}"
+        aria-label={m.stepNode.actionsFor(index + 1)}
         aria-expanded={menu}
         onclick={(event) => {
           event.stopPropagation();

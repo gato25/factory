@@ -5,6 +5,7 @@ import { conflict, FactoryError, notFound } from '@factory/shared';
 import { desc, eq, sql } from 'drizzle-orm';
 import { resolveSnapshot } from '$lib/snapshot/resolve';
 import type { ReleaseSandbox } from './sandbox';
+import { m } from '$lib/i18n';
 
 /**
  * One run per attempt, numbered in sequence on its ticket (FR-045), and at
@@ -44,7 +45,7 @@ async function pinPipelineVersion(
     .from(pipelines)
     .where(eq(pipelines.id, ticket.pipelineId))
     .limit(1);
-  if (!pipeline) throw notFound('that pipeline does not exist');
+  if (!pipeline) throw notFound(m.error.pipelineDoesNotExist);
 
   await database
     .update(tickets)
@@ -59,7 +60,7 @@ export async function startRun(database: Database, input: StartRunInput) {
     .from(tickets)
     .where(eq(tickets.id, input.ticketId))
     .limit(1);
-  if (!ticket) throw notFound('no such ticket');
+  if (!ticket) throw notFound(m.error.noSuchTicket);
 
   const [previous] = await database
     .select({ attempt: runs.attempt })
@@ -95,7 +96,7 @@ export async function startRun(database: Database, input: StartRunInput) {
       })
       .returning();
     const run = inserted[0];
-    if (!run) throw conflict('could not create the run');
+    if (!run) throw conflict(m.error.couldNotCreateRun);
 
     await database
       .update(tickets)
@@ -119,7 +120,7 @@ export async function startRun(database: Database, input: StartRunInput) {
 
 export async function getRun(database: Database, runId: string) {
   const [run] = await database.select().from(runs).where(eq(runs.id, runId)).limit(1);
-  if (!run) throw notFound('no such run');
+  if (!run) throw notFound(m.error.noSuchRun);
   return run;
 }
 
@@ -177,7 +178,7 @@ export async function retryRun(
     .from(tickets)
     .where(eq(tickets.id, input.ticketId))
     .limit(1);
-  if (!ticket) throw notFound('no such ticket');
+  if (!ticket) throw notFound(m.error.noSuchTicket);
 
   const [latest] = await database
     .select({ id: runs.id, attempt: runs.attempt, status: runs.status })
@@ -191,7 +192,7 @@ export async function retryRun(
   if (!isRetryable(latest.status)) {
     throw conflict(
       `attempt ${latest.attempt} of ${ticket.reference} is ${describeStatus(latest.status)}. ` +
-        'Only a failed or cancelled attempt can be retried.',
+        m.notice.onlyFailedRetryable,
     );
   }
 

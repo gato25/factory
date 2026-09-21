@@ -4,6 +4,7 @@
   // `node:crypto` for the session cookie, and importing it here pulled
   // `node:crypto` into the browser bundle and killed this page at runtime.
   import { MIN_PASSWORD_LENGTH } from '@factory/shared';
+  import { m } from '$lib/i18n';
   import type { ActionData, PageData } from './$types';
 
   let { form, data }: { form: ActionData; data: PageData } = $props();
@@ -12,13 +13,13 @@
 
   // The pipeline as main describes it: design is conditional on the ticket
   // changing the interface (FR-099, FR-032b).
-  const flow = ['Ticket', 'Spec', 'Design?', 'Plan', 'Tasks', 'Implement', 'MR'];
+  const flow = m.login.flow;
 </script>
 
 <div class="split">
   <section class="pitch">
-    <h1>Code Factory</h1>
-    <p class="one-liner">Turn a ticket into a reviewable merge request.</p>
+    <h1>{m.app.name}</h1>
+    <p class="one-liner">{m.login.oneLiner}</p>
     <ol class="flow">
       {#each flow as step, i (step)}
         <li class:conditional={step.endsWith('?')}>
@@ -27,7 +28,7 @@
         </li>
       {/each}
     </ol>
-    <p class="note">Design runs only when a ticket changes the interface.</p>
+    <p class="note">{m.login.flowNote}</p>
   </section>
 
   <!--
@@ -37,27 +38,24 @@
     SQL against the database.
   -->
   <section class="signin">
-    <h2>{data.needsFirstAccount ? 'Create the first account' : 'Sign in'}</h2>
+    <h2>{data.needsFirstAccount ? m.login.createFirstAccount : m.login.signIn}</h2>
     {#if data.problem}
       <p class="error" role="alert">{data.problem}</p>
     {/if}
 
     {#if data.needsFirstAccount}
-      <p class="lede">
-        Nobody has an account here yet. This first one is the administrator — it can set the
-        connections, store credentials and invite everybody else.
-      </p>
+      <p class="lede">{m.login.firstAccountLede}</p>
       <form method="POST" action="?/register" use:enhance>
         <label>
-          Your name
-          <input name="name" type="text" autocomplete="name" placeholder="Optional" />
+          {m.login.yourName}
+          <input name="name" type="text" autocomplete="name" placeholder={m.login.optional} />
         </label>
         <label>
-          Email
+          {m.login.email}
           <input name="email" type="email" autocomplete="email" required value={form?.email ?? ''} />
         </label>
         <label>
-          Password
+          {m.login.password}
           <input
             name="password"
             type="password"
@@ -65,41 +63,37 @@
             minlength={MIN_PASSWORD_LENGTH}
             required
           />
-          <span class="hint">
-            At least {MIN_PASSWORD_LENGTH} characters — this account can read every stored credential.
-          </span>
+          <span class="hint">{m.login.passwordHint(MIN_PASSWORD_LENGTH)}</span>
         </label>
         {#if form?.message}
           <p class="error" role="alert">{form.message}</p>
         {/if}
-        <button type="submit">Create account and sign in</button>
+        <button type="submit">{m.login.createAccountAndSignIn}</button>
       </form>
     {:else}
       {#if data.providers.length > 0}
         <div class="providers">
           {#each data.providers as provider (provider)}
-            <a class="provider" href="/login/{provider}">Continue with {NAMES[provider]}</a>
+            <a class="provider" href="/login/{provider}">{m.login.continueWith(NAMES[provider])}</a>
           {/each}
         </div>
-        <div class="or"><span>or</span></div>
+        <div class="or"><span>{m.login.or}</span></div>
       {/if}
       <form method="POST" action="?/password" use:enhance>
         <label>
-          Email
+          {m.login.email}
           <input name="email" type="email" autocomplete="email" required value={form?.email ?? ''} />
         </label>
         <label>
-          Password
+          {m.login.password}
           <input name="password" type="password" autocomplete="current-password" required />
         </label>
         {#if form?.message}
           <p class="error" role="alert">{form.message}</p>
         {/if}
-        <button type="submit">Sign in</button>
+        <button type="submit">{m.login.signIn}</button>
       </form>
-      <p class="note">
-        No account? An administrator invites you, or sign in with a connected provider.
-      </p>
+      <p class="note">{m.login.noAccount}</p>
     {/if}
   </section>
 </div>

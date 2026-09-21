@@ -2,6 +2,7 @@
   import { describeBytes } from '@factory/shared';
   import FilePicker from '$components/FilePicker.svelte';
   import Icon from '$components/Icon.svelte';
+  import { m } from '$lib/i18n';
   import { attach, detach, ticketFiles } from '$lib/remote/tickets.remote';
 
   /**
@@ -42,7 +43,7 @@
 <section class="card">
   <header>
     <Icon name="book-open" size={15} />
-    <h2>Requirements</h2>
+    <h2>{m.files.heading}</h2>
     {#if files.ready && files.current.length > 0}
       <span class="count">{files.current.length} · {describeBytes(total)}</span>
     {/if}
@@ -59,7 +60,7 @@
             type="button"
             disabled={removing === file.id}
             onclick={() => remove(file.id, file.name)}
-            aria-label="Remove {file.name}"
+            aria-label={m.files.remove(file.name)}
           >
             <Icon name="x" size={14} />
           </button>
@@ -67,7 +68,7 @@
       {/each}
     </ul>
   {:else if files.ready}
-    <p class="empty">Nothing attached. Agents work from the ticket text alone.</p>
+    <p class="empty">{m.files.empty}</p>
   {/if}
 
   <!-- Same reason as the new-ticket form: a file input needs this to submit files. -->

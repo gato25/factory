@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { exact, ago } from '$lib/format';
+  import { m } from '$lib/i18n';
   import { activity } from '$lib/remote/runs.remote';
 
   /**
@@ -12,12 +14,14 @@
 
   // Derived from the rows that already record what happened, rather than
   // duplicated into a table of its own (FR-073).
+  // The verb follows the ticket it happened to — the order the artboard
+  // draws, and the order Mongolian reads in.
   const TEXT: Record<string, string> = {
-    mr_opened: 'Merge request opened for',
-    run_failed: 'Run failed for',
-    gate_reached: 'Checkpoint reached for',
-    run_cancelled: 'Run cancelled for',
-    ticket_created: 'Ticket created:'
+    mr_opened: m.activity.mrOpened,
+    run_failed: m.activity.runFailed,
+    gate_reached: m.activity.gateReached,
+    run_cancelled: m.activity.runCancelled,
+    ticket_created: m.activity.ticketCreated
   };
   const TONE: Record<string, string> = {
     mr_opened: 'ok',
@@ -31,27 +35,19 @@
    * "12 min ago" rather than a full timestamp, as the design reads. A feed is
    * skimmed for recency; the exact moment is a hover away in the title.
    */
-  function ago(at: string | number | Date, now = Date.now()): string {
-    const seconds = Math.max(0, Math.round((now - new Date(at).getTime()) / 1000));
-    if (seconds < 60) return 'just now';
-    const minutes = Math.round(seconds / 60);
-    if (minutes < 60) return `${minutes} min ago`;
-    const hours = Math.round(minutes / 60);
-    if (hours < 24) return `${hours} h ago`;
-    const days = Math.round(hours / 24);
-    if (days < 7) return `${days} d ago`;
-    return new Date(at).toLocaleDateString();
-  }
+  // This had its own copy of "12 min ago", in English and with its own
+  // thresholds. `$lib/format` says the same thing in the interface's language
+  // (`Intl` knows how), and says it the same way on every screen.
 </script>
 
 <section class="feed">
-  <header><h2>Recent activity</h2></header>
+  <header><h2>{m.activity.heading}</h2></header>
   {#if !feed.ready}
-    <p class="empty">Loading…</p>
+    <p class="empty">{m.activity.loading}</p>
   {:else}
     {@const rows = feed.current}
     {#if rows.length === 0}
-      <p class="empty">Nothing has happened yet.</p>
+      <p class="empty">{m.activity.empty}</p>
     {:else}
       <ul>
         {#each rows as row (row.runId)}
@@ -59,14 +55,14 @@
             <span class="dot {TONE[row.kind]}"></span>
             <span class="text">
               <span class="msg">
-                {TEXT[row.kind] ?? row.kind}
                 <a href="/tickets/{row.ticketId}">{row.reference} {row.title}</a>
-                {#if row.attempt > 1}<span class="attempt">attempt {row.attempt}</span>{/if}
+                {TEXT[row.kind] ?? row.kind}
+                {#if row.attempt > 1}<span class="attempt">{m.activity.attempt(row.attempt)}</span>{/if}
               </span>
               {#if row.kind === 'run_failed' && row.detail}
                 <span class="detail">{row.detail}</span>
               {/if}
-              <time class="when" datetime={new Date(row.at).toISOString()} title={new Date(row.at).toLocaleString()}>
+              <time class="when" datetime={new Date(row.at).toISOString()} title={exact(row.at)}>
                 {ago(row.at)}
               </time>
             </span>

@@ -15,6 +15,7 @@ import {
   toggleSkill,
   updateAgent,
 } from '$lib/services/agent';
+import { m } from '$lib/i18n';
 
 /**
  * Agents. Readable and usable by anyone; changeable only by the owner or an
@@ -24,7 +25,7 @@ import {
 
 function requireUser() {
   const user = getRequestEvent().locals.user;
-  if (!user) throw notAuthorised('you must be signed in');
+  if (!user) throw notAuthorised(m.form.signInRequired);
   return user;
 }
 
@@ -68,7 +69,7 @@ export const options = query(async () => {
  */
 const SaveSchema = v.object({
   agentId: AgentId,
-  name: v.pipe(v.string(), v.trim(), v.minLength(1, 'Give the agent a name.')),
+  name: v.pipe(v.string(), v.trim(), v.minLength(1, m.form.agentName)),
   description: v.optional(v.string(), ''),
   engine: v.picklist(['claude_cli', 'design_cli'] as const),
   model: v.pipe(v.string(), v.minLength(1, 'Choose a model.')),
@@ -111,12 +112,12 @@ export const save = form(SaveSchema, async (input) => {
     );
     await agent(input.agentId).refresh();
     await agents().refresh();
-    return { message: 'Saved. Runs already in flight are unaffected.' };
+    return { message: m.notice.agentSaved };
   });
 });
 
 const CreateSchema = v.object({
-  name: v.pipe(v.string(), v.trim(), v.minLength(1, 'Give the agent a name.')),
+  name: v.pipe(v.string(), v.trim(), v.minLength(1, m.form.agentName)),
   engine: v.optional(v.picklist(['claude_cli', 'design_cli'] as const), 'claude_cli'),
   description: v.optional(v.string(), ''),
 });
@@ -141,7 +142,7 @@ export const reset = command(AgentId, async (id) => {
     await resetAgent(db(), id, user);
     await agent(id).refresh();
     await agents().refresh();
-    return { message: 'Back to the configuration this agent shipped with.' };
+    return { message: m.notice.agentReset };
   });
 });
 

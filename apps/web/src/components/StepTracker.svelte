@@ -1,5 +1,6 @@
 <script lang="ts">
   import Icon from '$components/Icon.svelte';
+  import { m } from '$lib/i18n';
   import type { RunView } from '$lib/services/run-view';
   import { duration, iconFor } from '$lib/step-kind';
 
@@ -94,9 +95,9 @@
     const opened = run.status === 'done';
     out.push({
       index: null,
-      label: 'Merge request',
+      label: m.stepTracker.mergeRequest,
       state: opened ? 'done' : 'pending',
-      detail: opened ? 'opened' : 'waiting',
+      detail: opened ? m.stepTracker.opened : m.stepTracker.waiting,
       icon: opened ? 'check' : 'git-pull-request',
     });
     return out;

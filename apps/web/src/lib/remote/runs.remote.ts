@@ -11,11 +11,12 @@ import {
   runView,
   stepLog,
 } from '$lib/services/run-view';
+import { m } from '$lib/i18n';
 
 /** Anyone in the workspace may watch; deciding is what is restricted (FR-064). */
 function requireUser() {
   const user = getRequestEvent().locals.user;
-  if (!user) throw notAuthorised('you must be signed in');
+  if (!user) throw notAuthorised(m.form.signInRequired);
   return user;
 }
 

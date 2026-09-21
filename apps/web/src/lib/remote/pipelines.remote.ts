@@ -16,6 +16,7 @@ import {
   STEP_KINDS,
   savePipeline,
 } from '$lib/services/pipeline';
+import { m } from '$lib/i18n';
 
 /**
  * The builder's data. A `query` for one pipeline, a `form` for the save
@@ -30,7 +31,7 @@ import {
 
 function requireUser() {
   const user = getRequestEvent().locals.user;
-  if (!user) throw notAuthorised('you must be signed in');
+  if (!user) throw notAuthorised(m.form.signInRequired);
   return user;
 }
 
@@ -53,7 +54,7 @@ export const pipeline = query(PipelineId, async (id) => {
  */
 const SaveSchema = v.object({
   pipelineId: PipelineId,
-  name: v.optional(v.pipe(v.string(), v.trim(), v.minLength(1, 'Give the pipeline a name.'))),
+  name: v.optional(v.pipe(v.string(), v.trim(), v.minLength(1, m.form.pipelineName))),
   description: v.optional(v.string()),
   steps: v.pipe(
     v.string(),
@@ -64,7 +65,7 @@ const SaveSchema = v.object({
         return null;
       }
     }),
-    v.custom<Step[]>((value) => Array.isArray(value), 'The steps could not be read.'),
+    v.custom<Step[]>((value) => Array.isArray(value), m.form.stepsUnreadable),
   ),
 });
 
@@ -153,7 +154,7 @@ export const preflight = query(PipelineId, async (id) => {
 export const rename = command(
   v.object({
     pipelineId: PipelineId,
-    name: v.pipe(v.string(), v.trim(), v.minLength(1, 'Give the pipeline a name.')),
+    name: v.pipe(v.string(), v.trim(), v.minLength(1, m.form.pipelineName)),
   }),
   async ({ pipelineId, name }) => {
     const user = requireUser();
@@ -182,7 +183,7 @@ export const duplicate = command(PipelineId, async (id) => {
 });
 
 const CreateSchema = v.object({
-  name: v.pipe(v.string(), v.trim(), v.minLength(1, 'Give the pipeline a name.')),
+  name: v.pipe(v.string(), v.trim(), v.minLength(1, m.form.pipelineName)),
   description: v.optional(v.string(), ''),
 });
 

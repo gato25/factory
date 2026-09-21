@@ -5,6 +5,7 @@ import { desc, eq } from 'drizzle-orm';
 import type { SessionUser } from './auth';
 import { ownershipOf, requireChangeable } from './ownership';
 import { agentsHolding, skillUsage } from './usage';
+import { m } from '$lib/i18n';
 
 /**
  * A skill is a named instruction document attachable to any number of agents
@@ -56,7 +57,7 @@ export async function getSkill(
   user: SessionUser | null,
 ): Promise<SkillDetail> {
   const [row] = await database.select().from(skills).where(eq(skills.id, skillId)).limit(1);
-  if (!row) throw notFound('no such skill');
+  if (!row) throw notFound(m.error.noSuchSkill);
 
   const ownership = await ownershipOf(database, 'skill', skillId, user);
   const usage = await skillUsage(database);
@@ -101,7 +102,7 @@ export async function createSkill(
           updatedBy: user.id,
         })
         .returning();
-      if (!row) throw conflict('could not create the skill');
+      if (!row) throw conflict(m.error.couldNotCreateSkill);
       // Version 1 is the skill as it was written, so the history has a
       // beginning rather than starting at the first edit.
       await tx.insert(skillVersions).values({
@@ -149,7 +150,7 @@ export async function updateSkill(
         })
         .where(eq(skills.id, skillId))
         .returning();
-      if (!saved) throw notFound('no such skill');
+      if (!saved) throw notFound(m.error.noSuchSkill);
       // The saved state, not the replaced one: the newest version and the
       // skill row then say the same thing, and restoring a version is
       // saving its content again.
@@ -181,7 +182,7 @@ function validate(input: SkillInput) {
   const description = input.description?.trim();
   const content = input.content;
 
-  if (input.name !== undefined && !name) throw invalidInput('Give the skill a name.');
+  if (input.name !== undefined && !name) throw invalidInput(m.form.skillName);
   if (input.description !== undefined && !description) {
     throw invalidInput(
       'Say when an agent should apply this skill. That sentence is what an agent reads to ' +
@@ -189,7 +190,7 @@ function validate(input: SkillInput) {
     );
   }
   if (input.content !== undefined && !content?.trim()) {
-    throw invalidInput('A skill with no content gives an agent nothing to apply.');
+    throw invalidInput(m.form.skillEmpty);
   }
   return { name, description, content };
 }

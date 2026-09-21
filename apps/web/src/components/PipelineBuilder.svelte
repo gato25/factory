@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Step } from '@factory/shared';
   import Icon from '$components/Icon.svelte';
+  import { m } from '$lib/i18n';
   import StepEditor from '$components/StepEditor.svelte';
   import StepNode, { type BuilderAgent } from '$components/StepNode.svelte';
   import {
@@ -208,7 +209,7 @@
         </li>
       {/each}
 
-      {@render connector(steps.length, 'Add a step at the end')}
+      {@render connector(steps.length, m.builder.addAtEnd)}
 
       <!-- Implicit and always last: not a step anyone can move (FR-029) -->
       <li class="finish" title={IMPLICIT_LAST_STEP.why}>
@@ -222,8 +223,8 @@
   <aside class="palette">
     {#if editable}
       <section class="card">
-        <h3>Add a step</h3>
-        <p>Drag onto the canvas or click a + on a connector.</p>
+        <h3>{m.builder.addSequence}</h3>
+        <p>{m.builder.addHint}</p>
         {#each PALETTE_ORDER as kind (kind)}
           <button
             type="button"
@@ -248,9 +249,9 @@
     {/if}
 
     <section class="card">
-      <h3>Your agents</h3>
+      <h3>{m.builder.yourAgents}</h3>
       {#if agents.length === 0}
-        <p>None yet.</p>
+        <p>{m.builder.noAgents}</p>
       {:else}
         {#each agents as agent (agent.id)}
           <a class="ag" href="/agents/{agent.id}">

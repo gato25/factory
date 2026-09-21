@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { ago } from '../../src/lib/format';
+import { DEFAULT_LOCALE, m } from '../../src/lib/i18n';
 import { blocks, inline } from '../../src/lib/markdown';
 
 /**
@@ -60,12 +61,16 @@ test('HTML in a skill stays text', () => {
 
 test('the design writes a distance, not a date', () => {
   const now = new Date('2026-09-11T12:00:00Z');
-  expect(ago(new Date('2026-09-09T12:00:00Z'), now)).toBe('2 days ago');
+  // `Intl` supplies the words, so what is asserted here is the rounding and
+  // the unit chosen — the part this module actually decides. Asserting the
+  // English sentence would only re-state the interface's language.
+  const rel = new Intl.RelativeTimeFormat(DEFAULT_LOCALE, { numeric: 'auto' });
+  expect(ago(new Date('2026-09-09T12:00:00Z'), now)).toBe(rel.format(-2, 'day'));
   // 36 hours is nearer two days than one, and reads that way.
-  expect(ago(new Date('2026-09-10T00:00:00Z'), now)).toBe('2 days ago');
-  expect(ago(new Date('2026-09-11T11:40:00Z'), now)).toBe('20 minutes ago');
-  expect(ago(new Date('2026-09-11T11:59:50Z'), now)).toBe('just now');
-  expect(ago('not a date', now)).toBe('at an unknown time');
+  expect(ago(new Date('2026-09-10T00:00:00Z'), now)).toBe(rel.format(-2, 'day'));
+  expect(ago(new Date('2026-09-11T11:40:00Z'), now)).toBe(rel.format(-20, 'minute'));
+  expect(ago(new Date('2026-09-11T11:59:50Z'), now)).toBe(m.time.justNow);
+  expect(ago('not a date', now)).toBe(m.time.unknown);
 });
 
 /**

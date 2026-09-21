@@ -12,6 +12,7 @@ import {
   safeFileName,
 } from '@factory/shared';
 import { and, asc, eq, inArray } from 'drizzle-orm';
+import { m } from '$lib/i18n';
 
 /**
  * Requirement documents a person attached to a ticket.
@@ -85,7 +86,7 @@ export async function attachFiles(
     .from(tickets)
     .where(eq(tickets.id, ticketId))
     .limit(1);
-  if (!ticket) throw notFound('no such ticket');
+  if (!ticket) throw notFound(m.error.noSuchTicket);
 
   for (const file of incoming) {
     const problem = checkFile(file);

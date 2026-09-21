@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { page } from '$app/state';
   import ArtifactViewer from '$components/ArtifactViewer.svelte';
+  import { m } from '$lib/i18n';
   import Icon from '$components/Icon.svelte';
   import LaunchPanel from '$components/LaunchPanel.svelte';
   import LiveLog from '$components/LiveLog.svelte';
@@ -34,11 +35,11 @@
    * details are reference — worth a click, not worth a third of the width.
    */
   const TABS = [
-    { id: 'output', label: 'Output' },
-    { id: 'artifacts', label: 'Artifacts' },
-    { id: 'launch', label: 'Run it' },
-    { id: 'requirements', label: 'Requirements' },
-    { id: 'details', label: 'Run details' },
+    { id: 'output', label: m.run.tabOutput },
+    { id: 'artifacts', label: m.run.tabArtifacts },
+    { id: 'launch', label: m.run.tabLaunch },
+    { id: 'requirements', label: m.run.tabRequirements },
+    { id: 'details', label: m.run.tabDetails },
   ] as const;
   let tab = $state<(typeof TABS)[number]['id']>('output');
 
@@ -118,24 +119,24 @@
   });
 
   const STATUS: Record<string, { label: string; tone: string }> = {
-    queued: { label: 'Queued', tone: '' },
-    running: { label: 'Running', tone: 'live' },
-    waiting_approval: { label: 'Waiting for approval', tone: 'warn' },
-    opening_mr: { label: 'Opening merge request', tone: 'live' },
-    done: { label: 'Done', tone: 'ok' },
-    failed: { label: 'Failed', tone: 'bad' },
-    cancelled: { label: 'Cancelled', tone: '' }
+    queued: { label: m.run.statusQueued, tone: '' },
+    running: { label: m.run.statusRunning, tone: 'live' },
+    waiting_approval: { label: m.run.statusWaitingApproval, tone: 'warn' },
+    opening_mr: { label: m.run.statusOpeningMr, tone: 'live' },
+    done: { label: m.run.statusDone, tone: 'ok' },
+    failed: { label: m.run.statusFailed, tone: 'bad' },
+    cancelled: { label: m.run.statusCancelled, tone: '' }
   };
 </script>
 
 {#if view.error}
   <p class="card failure" role="alert">{(view.error as Error).message}</p>
 {:else if !view.ready}
-  <p class="card">Loading the run…</p>
+  <p class="card">{m.run.loading}</p>
 {:else}
   {@const loaded = view.current}
   {#if !loaded}
-    <p class="card">This ticket has not been started yet.</p>
+    <p class="card">{m.run.notStarted}</p>
   {:else}
       {@const status = STATUS[loaded.run.status] ?? { label: loaded.run.status, tone: '' }}
       {@const step = loaded.steps[selected ?? loaded.run.currentStepIndex ?? 0]}
@@ -181,7 +182,7 @@
               {/if}
               {#if f.detail}
                 <details>
-                  <summary class="small">What the step itself reported</summary>
+                  <summary class="small">{m.run.whatTheStepReported}</summary>
                   <pre>{f.detail}</pre>
                 </details>
               {/if}
@@ -193,21 +194,21 @@
           <!-- Editing and retrying is ONE action, not an edit then a retry (FR-089) -->
           {#if editing}
             <section class="card editor">
-              <h2>Edit and retry</h2>
+              <h2>{m.run.editAndRetry}</h2>
               <label>
-                <span class="small muted">Title</span>
+                <span class="small muted">{m.run.title}</span>
                 <input bind:value={draftTitle} />
               </label>
               <label>
-                <span class="small muted">Description</span>
+                <span class="small muted">{m.run.description}</span>
                 <textarea bind:value={draftDescription} rows="4"></textarea>
               </label>
               <label>
-                <span class="small muted">Acceptance criteria, one per line</span>
+                <span class="small muted">{m.run.acceptanceOnePerLine}</span>
                 <textarea bind:value={draftCriteria} rows="4"></textarea>
               </label>
               <div class="row">
-                <button type="button" onclick={() => (editing = false)}>Discard</button>
+                <button type="button" onclick={() => (editing = false)}>{m.run.discard}</button>
                 <button
                   type="button"
                   class="primary"
@@ -224,13 +225,13 @@
                     editing = false;
                   }}
                 >
-                  Save &amp; retry
+                  {m.run.saveAndRetry}
                 </button>
               </div>
             </section>
           {/if}
 
-          <nav class="tabs" aria-label="Run view">
+          <nav class="tabs" aria-label={m.run.runView}>
             <div class="seg">
               {#each TABS as t (t.id)}
                 {@const n = t.id === 'artifacts' ? loaded.artifacts.length : 0}
@@ -293,21 +294,21 @@
             status={{
               label:
                 loaded.run.status === 'running' && step
-                  ? `${status.label} · ${step.label}`
+                  ? m.run.statusAtStep(status.label, step.label)
                   : status.label,
               tone: status.tone,
             }}
           >
             {#snippet actions()}
               {#if connection !== 'live' && loaded.run.status === 'running'}
-                <span class="reconnecting" title="Reconnecting to the live stream">
-                  {connection === 'retrying' ? 'reconnecting…' : 'connecting…'}
+                <span class="reconnecting" title={m.run.reconnectingTitle}>
+                  {connection === 'retrying' ? m.run.reconnecting : m.run.connecting}
                 </span>
               {/if}
               {#if loaded.run.status === 'waiting_approval'}
                 <a class="review" href="/tickets/{ticketId}/approve">
                   <Icon name="hand" size={16} />
-                  <span>Review</span>
+                  <span>{m.run.review}</span>
                 </a>
               {/if}
 
@@ -322,7 +323,7 @@
                     onclick={() => act(() => unpause(loaded.run.id))}
                   >
                     <Icon name="play" size={16} />
-                    <span>Continue</span>
+                    <span>{m.run.continue}</span>
                   </button>
                 {:else}
                   <button
@@ -332,7 +333,7 @@
                     onclick={() => act(() => pause(loaded.run.id), { announce: false })}
                   >
                     <Icon name="pause" size={16} />
-                    <span>Pause</span>
+                    <span>{m.run.pause}</span>
                   </button>
                 {/if}
                 <!-- A run nothing is driving any more — the orchestrator's
@@ -344,11 +345,11 @@
                     type="button"
                     class="secondary"
                     disabled={working}
-                    title="If nothing has happened for a while, drive the run again from its first unfinished step. Finished steps and their cost are kept. Only for a run that is stuck: a step still running would run twice."
+                    title={m.run.continueRunTitle}
                     onclick={() => act(() => continueFrom(loaded.run.id))}
                   >
                     <Icon name="rotate-ccw" size={16} />
-                    <span>Continue run</span>
+                    <span>{m.run.continueRun}</span>
                   </button>
                 {/if}
                 <button
@@ -358,7 +359,7 @@
                   onclick={() => act(() => cancel(loaded.run.id))}
                 >
                   <Icon name="circle-x" size={16} />
-                  <span>Cancel run</span>
+                  <span>{m.run.cancelRun}</span>
                 </button>
               {:else if retryable}
                 <!--
@@ -374,11 +375,11 @@
                     type="button"
                     class="primary"
                     disabled={working}
-                    title="Run again from the step that failed. Finished steps and their cost are kept."
+                    title={m.run.continueFromFailedTitle}
                     onclick={() => act(() => continueFrom(loaded.run.id))}
                   >
                     <Icon name="play" size={16} />
-                    <span>Continue from the failed step</span>
+                    <span>{m.run.continueFromFailed}</span>
                   </button>
                 {/if}
                 <button
@@ -388,7 +389,7 @@
                   onclick={() => act(() => retry(ticketId))}
                 >
                   <Icon name="rotate-ccw" size={16} />
-                  <span>Retry</span>
+                  <span>{m.run.retry}</span>
                 </button>
                 <button
                   type="button"
@@ -397,7 +398,7 @@
                   onclick={() => startEditing(loaded)}
                 >
                   <Icon name="pencil" size={16} />
-                  <span>Edit &amp; retry</span>
+                  <span>{m.run.editAndRetry}</span>
                 </button>
               {/if}
             {/snippet}

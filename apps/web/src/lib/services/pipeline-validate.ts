@@ -5,6 +5,7 @@ import {
   type Step,
   validateStepOrder,
 } from '@factory/shared';
+import { m } from '$lib/i18n';
 
 /**
  * The three refusals a save can meet (FR-028, FR-032d, FR-032e). Each names
@@ -59,7 +60,7 @@ function checkProducesCode(steps: Step[]): Problem[] {
           'step with no required documents, and put any verification, gate or notification ' +
           'after it.'
         : 'This pipeline has no step that writes code, so it cannot produce a merge request. ' +
-          'Add an agent step, and put any verification, gate or notification after it.',
+          m.validate.addAgentStep,
     },
   ];
 }

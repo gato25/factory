@@ -3,6 +3,7 @@ import { credentials, repositories, workspaces } from '@factory/db/schema';
 import { FactoryError, type PipelineSnapshot } from '@factory/shared';
 import { eq } from 'drizzle-orm';
 import { type KeyRing, revealForRun } from '$lib/secrets/store';
+import { m } from '$lib/i18n';
 
 /**
  * The one place a stored credential becomes a value again (FR-011,
@@ -74,7 +75,7 @@ export async function resolveRunCredentials(
     .from(workspaces)
     .orderBy(workspaces.createdAt)
     .limit(1);
-  if (!workspace) throw new FactoryError('invalid_input', 'the workspace is not configured');
+  if (!workspace) throw new FactoryError('invalid_input', m.conflicts.workspaceNotConfigured);
 
   const gitToken = await revealCredential(
     database,

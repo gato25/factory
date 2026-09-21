@@ -2,6 +2,7 @@
   import type { Step, StepCondition } from '@factory/shared';
   import { CONDITION_DESCRIPTION } from '@factory/shared';
   import Icon from '$components/Icon.svelte';
+  import { m } from '$lib/i18n';
   import { STEP_KIND_LABEL } from '$lib/services/pipeline';
 
   /**
@@ -54,9 +55,9 @@
 
 <section class="card editor">
   <header>
-    <h2 class="section">Step {index + 1} — {STEP_KIND_LABEL[step.type]}</h2>
+    <h2 class="section">{m.stepEditor.heading(index + 1, STEP_KIND_LABEL[step.type])}</h2>
     {#if onClose}
-      <button type="button" class="close" onclick={onClose} aria-label="Close step {index + 1}">
+      <button type="button" class="close" onclick={onClose} aria-label={m.stepEditor.close(index + 1)}>
         <Icon name="x" size={16} />
       </button>
     {/if}
@@ -77,9 +78,9 @@
 
   {#if step.type === 'agent' || step.type === 'design'}
     <label>
-      <span class="small muted">Agent</span>
+      <span class="small muted">{m.stepEditor.agent}</span>
       <select value={step.agent_id ?? ''} onchange={(e) => patch({ agent_id: e.currentTarget.value })}>
-        <option value="">Choose an agent…</option>
+        <option value="">{m.stepEditor.chooseAgent}</option>
         {#each usable as agent (agent.id)}
           <option value={agent.id}>{agent.name} — {agent.model}</option>
         {/each}
@@ -94,7 +95,7 @@
 
   {#if step.type === 'agent'}
     <label>
-      <span class="small muted">Documents this step must produce, one per line</span>
+      <span class="small muted">{m.stepEditor.outputFiles}</span>
       <textarea
         rows="3"
         placeholder="docs/spec.md"
@@ -116,7 +117,7 @@
 
   {#if step.type === 'design'}
     <label>
-      <span class="small muted">Design source path</span>
+      <span class="small muted">{m.stepEditor.designSourcePath}</span>
       <input
         value={step.design?.source_path ?? 'docs/design/ui.pen'}
         oninput={(e) =>
@@ -131,7 +132,7 @@
       />
     </label>
     <label>
-      <span class="small muted">Where the screens are exported</span>
+      <span class="small muted">{m.stepEditor.screensExportedTo}</span>
       <input
         value={step.design?.export_dir ?? 'docs/design/screens'}
         oninput={(e) =>
@@ -150,16 +151,16 @@
   {#if step.type === 'checkpoint'}
     <!-- Who may approve, how long it waits, what expiry does (FR-032) -->
     <label>
-      <span class="small muted">Who may decide this checkpoint?</span>
+      <span class="small muted">{m.stepEditor.whoMayDecide}</span>
       <select value={approverMode} onchange={(e) => setApproverMode(e.currentTarget.value)}>
-        <option value="anyone">Anyone in the workspace</option>
-        <option value="ticket_creator">The ticket's author</option>
-        <option value="named">Only the people I name</option>
+        <option value="anyone">{m.stepEditor.anyone}</option>
+        <option value="ticket_creator">{m.stepEditor.ticketAuthor}</option>
+        <option value="named">{m.stepEditor.onlyNamed}</option>
       </select>
     </label>
     {#if approverMode === 'named'}
       <fieldset>
-        <legend class="small muted">Approvers</legend>
+        <legend class="small muted">{m.stepEditor.approvers}</legend>
         {#each members as member (member.id)}
           <label class="inline">
             <input
@@ -178,11 +179,11 @@
       </fieldset>
     {/if}
     <label>
-      <span class="small muted">How long it waits, in hours</span>
+      <span class="small muted">{m.stepEditor.timeoutHours}</span>
       <input
         type="number"
         min="1"
-        placeholder="indefinitely"
+        placeholder={m.stepEditor.indefinitely}
         value={step.timeout_hours ?? ''}
         oninput={(e) =>
           patch({
@@ -190,18 +191,18 @@
           })}
       />
     </label>
-    <p class="hint small muted">Leave empty to wait until somebody decides.</p>
+    <p class="hint small muted">{m.stepEditor.timeoutHint}</p>
     {#if step.timeout_hours}
       <label>
-        <span class="small muted">When that time expires</span>
+        <span class="small muted">{m.stepEditor.whenExpires}</span>
         <select
           value={step.on_timeout ?? 'wait'}
           onchange={(e) =>
             patch({ on_timeout: e.currentTarget.value as 'wait' | 'continue' | 'fail' })}
         >
-          <option value="wait">Keep waiting anyway</option>
-          <option value="continue">Continue as if approved</option>
-          <option value="fail">Fail the run</option>
+          <option value="wait">{m.stepEditor.keepWaiting}</option>
+          <option value="continue">{m.stepEditor.continueAsApproved}</option>
+          <option value="fail">{m.stepEditor.failTheRun}</option>
         </select>
       </label>
     {/if}
@@ -209,7 +210,7 @@
 
   {#if step.type === 'shell'}
     <label>
-      <span class="small muted">Command</span>
+      <span class="small muted">{m.stepEditor.command}</span>
       <input
         placeholder="bun test"
         value={step.command ?? ''}
@@ -223,7 +224,7 @@
 
   {#if step.type === 'notify'}
     <label>
-      <span class="small muted">Channel</span>
+      <span class="small muted">{m.stepEditor.channel}</span>
       <input
         placeholder="#code-factory"
         value={step.channel ?? ''}
@@ -231,7 +232,7 @@
       />
     </label>
     <label>
-      <span class="small muted">Message</span>
+      <span class="small muted">{m.stepEditor.message}</span>
       <textarea
         rows="2"
         placeholder="{'{{ticket.id}}'} reached step {index + 1}"

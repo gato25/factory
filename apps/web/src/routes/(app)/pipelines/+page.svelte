@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { m } from '$lib/i18n';
   import { create, duplicate, pipelines } from '$lib/remote/pipelines.remote';
 
   const list = $derived(pipelines());
@@ -6,7 +7,7 @@
 </script>
 
 <header class="head">
-  <p class="muted small">A pipeline is the order of steps a ticket goes through.</p>
+  <p class="muted small">{m.pipelines.lede}</p>
 </header>
 
 {#if notice}<p class="card notice" role="status">{notice}</p>{/if}
@@ -14,12 +15,12 @@
 {#if list.error}
   <p class="card failure" role="alert">{(list.error as Error).message}</p>
 {:else if !list.ready}
-  <p class="card">Loading pipelines…</p>
+  <p class="card">{m.pipelines.loading}</p>
 {:else}
   <section class="card">
-    <h2 class="section">Pipelines</h2>
+    <h2 class="section">{m.pipelines.heading}</h2>
     {#if list.current.length === 0}
-      <p class="muted small">None yet. Create one below.</p>
+      <p class="muted small">{m.pipelines.empty}</p>
     {:else}
       <ul>
         {#each list.current as item (item.id)}
@@ -33,16 +34,14 @@
             <span class="meta muted small">
               v{item.currentVersion}
               <!-- How many repositories use it, before anyone changes it (FR-030) -->
-              &middot; {item.repositoriesUsing} repositor{item.repositoriesUsing === 1
-                ? 'y'
-                : 'ies'}
+              {m.pipelines.repositoriesUsing(item.repositoriesUsing)}
             </span>
             <button
               type="button"
               onclick={async () => {
                 const result = await duplicate(item.id);
                 notice = ('problem' in result ? result.problem : result.message) ?? null;
-              }}>Duplicate</button
+              }}>{m.pipelines.duplicate}</button
             >
           </li>
         {/each}
@@ -51,14 +50,14 @@
   </section>
 
   <form {...create} class="card new">
-    <h2 class="section">New pipeline</h2>
+    <h2 class="section">{m.pipelines.newPipeline}</h2>
     <label>
-      <span class="small muted">Name</span>
-      <input name="name" placeholder="Reviewed before build" required />
+      <span class="small muted">{m.pipelines.name}</span>
+      <input name="name" placeholder={m.pipelines.namePlaceholder} required />
     </label>
     <label>
-      <span class="small muted">What it is for</span>
-      <input name="description" placeholder="Everything customer-facing" />
+      <span class="small muted">{m.pipelines.whatItIsFor}</span>
+      <input name="description" placeholder={m.pipelines.descriptionPlaceholder} />
     </label>
     {#if create.fields.allIssues()?.length}
       <ul class="errors" role="alert">
@@ -71,7 +70,7 @@
       <p class="errors" role="alert">{create.result.problem}</p>
     {/if}
     <div class="row">
-      <button class="primary" type="submit" disabled={create.pending > 0}>Create</button>
+      <button class="primary" type="submit" disabled={create.pending > 0}>{m.pipelines.create}</button>
     </div>
   </form>
 {/if}

@@ -1,6 +1,7 @@
 import { afterAll, beforeEach, expect, test } from 'bun:test';
 import { approvals, artifacts, runs, tickets } from '@factory/db/schema';
 import type { Callback, ResumeRequest } from '@factory/shared';
+import { m } from '../../src/lib/i18n';
 import { eq } from 'drizzle-orm';
 import { editArtifact } from '../../src/lib/services/artifact';
 import { applyCallback } from '../../src/lib/services/callbacks';
@@ -104,7 +105,7 @@ test('request changes without feedback is refused — the feedback IS the payloa
     decide(db, { runId, stepIndex: 1, decision: 'changes_requested', feedback: '  ' }, approver, {
       resume,
     }),
-  ).rejects.toThrow(/Say what should change/);
+  ).rejects.toThrow(m.form.feedbackRequired);
   expect(sent).toHaveLength(0);
 });
 

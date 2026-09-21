@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { m } from '$lib/i18n';
   /**
    * The screens a design step produced, as thumbnails that open full size
    * with next and previous (FR-077). The images come from a conventional
@@ -7,7 +8,7 @@
    */
   let {
     screens,
-    heading = 'Screens',
+    heading = m.gallery.heading,
     note
   }: {
     screens: { id: string; path: string; screenName: string | null; version: number }[];
@@ -41,7 +42,7 @@
   {#if note}<p class="muted small note">{note}</p>{/if}
 
   {#if screens.length === 0}
-    <p class="muted small">No screens were exported.</p>
+    <p class="muted small">{m.gallery.empty}</p>
   {:else}
     <ul class="grid">
       {#each screens as screen, index (screen.id)}
@@ -73,7 +74,7 @@
         {label(open)}
         <span class="muted small">{(openIndex ?? 0) + 1} of {screens.length}</span>
       </span>
-      <button type="button" class="close" onclick={() => (openIndex = null)} aria-label="Close">
+      <button type="button" class="close" onclick={() => (openIndex = null)} aria-label={m.gallery.close}>
         ✕
       </button>
     </header>
@@ -82,7 +83,7 @@
         type="button"
         class="nav"
         onclick={() => step(-1)}
-        aria-label="Previous screen"
+        aria-label={m.gallery.previous}
         disabled={screens.length < 2}>‹</button
       >
       <img src="/api/artifacts/{open.id}/image" alt={label(open)} />
@@ -90,7 +91,7 @@
         type="button"
         class="nav"
         onclick={() => step(1)}
-        aria-label="Next screen"
+        aria-label={m.gallery.next}
         disabled={screens.length < 2}>›</button
       >
     </div>

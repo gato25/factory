@@ -18,6 +18,7 @@ import { requireApprover } from './authz';
 import { notifyRun } from './notify';
 import { setRunStatus } from './run';
 import { setTicketStatus } from './ticket';
+import { m } from '$lib/i18n';
 
 const log = createLogger('web');
 
@@ -54,7 +55,7 @@ export async function gateView(
   stepIndex: number,
 ): Promise<GateView> {
   const [run] = await database.select().from(runs).where(eq(runs.id, runId)).limit(1);
-  if (!run) throw notFound('no such run');
+  if (!run) throw notFound(m.error.noSuchRun);
   const snapshot = run.snapshot as PipelineSnapshot;
   const step = snapshot.pipeline.steps[stepIndex];
   if (step?.type !== 'checkpoint') {
@@ -66,7 +67,7 @@ export async function gateView(
     .from(tickets)
     .where(eq(tickets.id, run.ticketId))
     .limit(1);
-  if (!ticket) throw notFound('that run has no ticket');
+  if (!ticket) throw notFound(m.error.runHasNoTicket);
 
   const [existing] = await database
     .select()
@@ -133,7 +134,7 @@ export async function decide(
   requireApprover(user, gate.approvers, gate.ticketCreatedBy);
 
   if (input.decision === 'changes_requested' && !input.feedback?.trim()) {
-    throw invalidInput('Say what should change — the feedback is what the agent reads.');
+    throw invalidInput(m.form.feedbackRequired);
   }
 
   try {
@@ -317,14 +318,14 @@ export async function gateDetail(
 ): Promise<GateDetail> {
   const gate = await gateView(database, runId, stepIndex);
   const [run] = await database.select().from(runs).where(eq(runs.id, runId)).limit(1);
-  if (!run) throw notFound('no such run');
+  if (!run) throw notFound(m.error.noSuchRun);
   const snapshot = run.snapshot as PipelineSnapshot;
   const [ticket] = await database
     .select()
     .from(tickets)
     .where(eq(tickets.id, gate.ticketId))
     .limit(1);
-  if (!ticket) throw notFound('that run has no ticket');
+  if (!ticket) throw notFound(m.error.runHasNoTicket);
 
   // Latest version per path, so a human's edit is what is shown (FR-062).
   const rows = await database
@@ -451,7 +452,7 @@ export async function designReview(
 ): Promise<DesignReview> {
   const detail = await gateDetail(database, runId, stepIndex);
   const [run] = await database.select().from(runs).where(eq(runs.id, runId)).limit(1);
-  if (!run) throw notFound('no such run');
+  if (!run) throw notFound(m.error.noSuchRun);
   const snapshot = run.snapshot as PipelineSnapshot;
 
   const screens = detail.artifacts

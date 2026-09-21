@@ -1,5 +1,6 @@
 <script lang="ts">
   import { blocks } from '$lib/markdown';
+  import { m } from '$lib/i18n';
 
   /**
    * Renders the Markdown subset in `$lib/markdown` as elements — never with
@@ -63,7 +64,7 @@
     {/if}
   {/each}
   {#if parsed.length === 0}
-    <p class="empty">Nothing to preview yet.</p>
+    <p class="empty">{m.markdown.nothingToPreview}</p>
   {/if}
 </div>
 

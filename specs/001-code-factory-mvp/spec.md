@@ -907,7 +907,12 @@ specification revisited.
 - More than one run of the same ticket at the same time.
 - Importing tickets from an existing issue tracker.
 - Editing the orchestration workflow itself from within the application.
-- Layouts optimised for small screens, and languages other than English.
+- Layouts optimised for small screens. The interface's own language is no longer out of scope: it
+  is Mongolian, because `design.pen` is, and the words live in one catalogue per language
+  (`apps/web/src/lib/i18n`) rather than in each component. What stays in English stays on purpose —
+  command-line output, repository and branch names, model identifiers, file paths, URLs, and the
+  product's name. Choosing a language per PERSON is still out of scope: the language belongs to the
+  deployment.
 - Self-hosted and enterprise-hosted git servers — including GitLab Self-Managed and GitHub
   Enterprise Server — and any provider other than GitLab.com and GitHub.com.
 - Inferring, detecting or storing a repository's build, test or lint commands.

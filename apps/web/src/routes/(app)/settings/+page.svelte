@@ -2,6 +2,7 @@
   import {
   } from '@factory/shared';
   import Icon from '$components/Icon.svelte';
+  import { m } from '$lib/i18n';
   import { publicBaseUrl } from '$lib/remote/repositories.remote';
   import {
     changeRole,
@@ -45,13 +46,13 @@
   let testing = $state(false);
 
   const SECTIONS = [
-    { id: 'workspace', label: 'Workspace' },
-    { id: 'sandbox', label: 'Sandbox (Docker)' },
-    { id: 'keys', label: 'Claude CLI & keys' },
-    { id: 'design', label: 'Design (pen.dev)' },
-    { id: 'limits', label: 'Cost limits' },
-    { id: 'members', label: 'Members' },
-    { id: 'notifications', label: 'Notifications' },
+    { id: 'workspace', label: m.settings.workspace },
+    { id: 'sandbox', label: m.settings.sandboxDocker },
+    { id: 'keys', label: m.settings.claudeCliAndKeys },
+    { id: 'design', label: m.settings.designPen },
+    { id: 'limits', label: m.settings.costLimits },
+    { id: 'members', label: m.settings.members },
+    { id: 'notifications', label: m.settings.notifications },
   ];
 
   const STATE_TONE: Record<string, string> = {
@@ -62,8 +63,8 @@
     wrong_shape: 'warn',
   };
   const WHAT: Record<string, string> = {
-    runner: 'Container host',
-    design: 'Design service',
+    runner: m.settings.containerHost,
+    design: m.settings.designService,
   };
 
   /** What a card's badge says: the last test if there was one, else whether
@@ -72,8 +73,8 @@
     const result = tested?.find((row) => row.what === what);
     if (result) return { label: result.state.replace('_', ' '), tone: STATE_TONE[result.state] ?? '' };
     return configured
-      ? { label: 'Configured', tone: '' }
-      : { label: 'Not set up', tone: 'warn' };
+      ? { label: m.settings.configured, tone: '' }
+      : { label: m.settings.notSetUp, tone: 'warn' };
   }
 
   async function test() {
@@ -90,9 +91,7 @@
 
 {#if data.user.role !== 'admin'}
   <p class="card notice">
-    Workspace settings — credentials, connections, ceilings and membership — are for
-    administrators. Everything else in Code Factory is not: pipelines, agents and skills go by who
-    owns them, and anyone can make their own.
+    {m.settings.adminOnly}
   </p>
 {:else if config.error}
   <p class="card failure" role="alert">{(config.error as Error).message}</p>
@@ -103,7 +102,7 @@
   {@const r = config.current.readiness}
 
   <div class="wrap">
-    <nav class="sections" aria-label="Settings sections">
+    <nav class="sections" aria-label={m.settings.sections}>
       {#each SECTIONS as section (section.id)}
         <a href="#{section.id}">{section.label}</a>
       {/each}
@@ -114,7 +113,7 @@
 
       {#if !r.ready}
         <p class="banner warn" role="status">
-          This workspace cannot start a run yet. Still needed: {r.missing.join(', ')}.
+          {m.settings.cannotStart(r.missing.join(', '))}
         </p>
       {/if}
 
@@ -123,8 +122,8 @@
           <header>
             <span class="ic"><Icon name="settings" size={18} /></span>
             <div class="tx">
-              <h2>Workspace</h2>
-              <p>One deployment, one workspace. Its name is what members see in the sidebar.</p>
+              <h2>{m.settings.workspace}</h2>
+              <p>{m.settings.workspaceLede}</p>
             </div>
             <span class="badge {r.ready ? 'ok' : 'warn'}">
               <span class="dot"></span>
@@ -143,8 +142,8 @@
           <header>
             <span class="ic"><Icon name="container" size={18} /></span>
             <div class="tx">
-              <h2>Sandbox · Docker</h2>
-              <p>Each run gets one fresh container with the repo, Claude CLI and your toolchain.</p>
+              <h2>{m.settings.sandboxHeading}</h2>
+              <p>{m.settings.sandboxLede}</p>
             </div>
             {#await Promise.resolve(stateOf('runner', Boolean(w.runnerBaseUrl))) then s}
               <span class="badge {s.tone}"><span class="dot"></span>{s.label}</span>
@@ -152,7 +151,7 @@
           </header>
           <div class="grid">
             <label class="f">
-              <span>Container host address</span>
+              <span>{m.settings.containerHostAddress}</span>
               <input
                 name="runnerBaseUrl"
                 value={w.runnerBaseUrl ?? ''}
@@ -160,17 +159,17 @@
               />
             </label>
             <label class="f">
-              <span>Image</span>
+              <span>{m.settings.image}</span>
               <input name="sandboxImage" value={w.sandboxImage} required />
             </label>
           </div>
           <div class="grid four">
             <label class="f">
-              <span>Processors</span>
+              <span>{m.settings.processors}</span>
               <input name="sandboxCpu" type="number" min="1" value={w.sandboxCpu} required />
             </label>
             <label class="f">
-              <span>Memory, in megabytes</span>
+              <span>{m.settings.memoryMb}</span>
               <input
                 name="sandboxMemoryMb"
                 type="number"
@@ -181,7 +180,7 @@
               />
             </label>
             <label class="f">
-              <span>Lifetime, in minutes</span>
+              <span>{m.settings.lifetimeMinutes}</span>
               <input
                 name="sandboxWallClockMinutes"
                 type="number"
@@ -191,7 +190,7 @@
               />
             </label>
             <label class="f">
-              <span>Keep a failed run's sandbox for, in hours</span>
+              <span>{m.settings.retainFailedHours}</span>
               <input
                 name="retainFailedSandboxesHours"
                 type="number"
@@ -203,13 +202,8 @@
           </div>
           <label class="opt">
             <span class="tx">
-              <span class="t">Let a sandbox reach the network while code is being written</span>
-              <span class="d">
-                Needed by every agent and design step: the agent runs inside the sandbox and
-                reaches the model over the network, so a run that has one of those steps is
-                refused while this is off. Turn it off only for pipelines of shell steps,
-                where a sandbox that cannot reach the network cannot send anything out.
-              </span>
+              <span class="t">{m.settings.networkDuringImplement}</span>
+              <span class="d">{m.settings.networkDuringImplementNote}</span>
             </span>
             <input
               type="checkbox"
@@ -225,20 +219,17 @@
           <header>
             <span class="ic"><Icon name="coins" size={18} /></span>
             <div class="tx">
-              <h2>Cost limits</h2>
-              <p>
-                The ceilings a member's own limits cannot exceed. A limit somebody sets on their
-                agent is capped at these, so it can only ever lower what a run may consume.
-              </p>
+              <h2>{m.settings.costLimits}</h2>
+              <p>{m.settings.costLimitsLede}</p>
             </div>
           </header>
           <div class="grid">
             <label class="f">
-              <span>Most a run may spend, in dollars</span>
+              <span>{m.settings.maxSpend}</span>
               <input name="defaultCostCeilingUsd" value={w.defaultCostCeilingUsd} required />
             </label>
             <label class="f">
-              <span>Longest a run may take, in minutes</span>
+              <span>{m.settings.maxTime}</span>
               <input
                 name="defaultTimeCeilingMinutes"
                 type="number"
@@ -248,7 +239,7 @@
               />
             </label>
             <label class="f">
-              <span>Runs that may execute at once</span>
+              <span>{m.settings.maxConcurrent}</span>
               <input
                 name="maxConcurrentRuns"
                 type="number"
@@ -280,7 +271,7 @@
           {/if}
           <button type="button" class="secondary" disabled={testing} onclick={test}>
             <Icon name="plug" size={16} />
-            <span>{testing ? 'Testing…' : 'Test connection'}</span>
+            <span>{testing ? m.settings.testing : m.settings.testConnection}</span>
           </button>
         </div>
 
@@ -299,7 +290,7 @@
         <div class="end">
           <button class="primary" type="submit" disabled={saveWorkspace.pending > 0}>
             <Icon name="save" size={16} />
-            <span>Save</span>
+            <span>{m.settings.save}</span>
           </button>
         </div>
       </form>
@@ -309,22 +300,24 @@
         <header>
           <span class="ic"><Icon name="key-round" size={18} /></span>
           <div class="tx">
-            <h2>Claude CLI &amp; keys</h2>
-            <p>
-              Stored encrypted, supplied to a run as environment, and never shown again — not even
-              to you. Replacing one is the only way to change it.
-            </p>
+            <h2>{m.settings.claudeCliAndKeys}</h2>
+            <p>{m.settings.keysLede}</p>
           </div>
           <span class="badge {w.hasModelCredential ? 'ok' : 'warn'}">
             <span class="dot"></span>
-            {w.hasModelCredential ? 'One is stored' : 'None yet'}
+            {w.hasModelCredential ? m.settings.oneIsStored : m.settings.noneYet}
           </span>
         </header>
         <form {...modelKey} class="grid">
           <input type="hidden" name="kind" value="model" />
           <label class="f">
-            <span>Model credential</span>
-            <input name="token" type="password" placeholder="paste it here" autocomplete="off" />
+            <span>{m.settings.modelCredential}</span>
+            <input
+              name="token"
+              type="password"
+              placeholder={m.settings.pasteItHere}
+              autocomplete="off"
+            />
             <!--
               Either kind is accepted, and which one this is decides how the
               work is paid for. The runner tells them apart by prefix and hands
@@ -342,7 +335,7 @@
           <div class="f end-field">
             <button type="submit" class="secondary" disabled={modelKey.pending > 0}>
               <Icon name="key-round" size={16} />
-              <span>Store</span>
+              <span>{m.settings.store}</span>
             </button>
           </div>
         </form>
@@ -364,11 +357,8 @@
         <header>
           <span class="ic pink"><Icon name="palette" size={18} /></span>
           <div class="tx">
-            <h2>Design · pen.dev</h2>
-            <p>
-              Used only by design steps. Screens are exported as images and the .pen file is
-              committed with the code.
-            </p>
+            <h2>{m.settings.designHeading}</h2>
+            <p>{m.settings.designLede}</p>
           </div>
           <span class="badge {w.hasDesignCredential ? 'ok' : ''}">
             <span class="dot"></span>
@@ -378,13 +368,13 @@
         <form {...designKey} class="grid">
           <input type="hidden" name="kind" value="design" />
           <label class="f">
-            <span>Design credential</span>
+            <span>{m.settings.designCredential}</span>
             <input name="token" type="password" placeholder="paste it here" autocomplete="off" />
           </label>
           <div class="f end-field">
             <button type="submit" class="secondary" disabled={designKey.pending > 0}>
               <Icon name="key-round" size={16} />
-              <span>Store design credential</span>
+              <span>{m.settings.storeDesignCredential}</span>
             </button>
           </div>
         </form>
@@ -410,11 +400,8 @@
         <header>
           <span class="ic"><Icon name="user" size={18} /></span>
           <div class="tx">
-            <h2>Members</h2>
-            <p>
-              An administrator configures the workspace. Everything else — pipelines, agents,
-              skills — goes by who owns it.
-            </p>
+            <h2>{m.settings.members}</h2>
+            <p>{m.settings.membersLede}</p>
           </div>
         </header>
 
@@ -433,7 +420,7 @@
                 </span>
                 <select
                   value={person.role}
-                  aria-label="Role for {person.name}"
+                  aria-label={m.settings.roleFor(person.name)}
                   onchange={async (event) => {
                     const result = await changeRole({
                       userId: person.id,
@@ -452,7 +439,7 @@
                     onclick={async () => {
                       const result = await removeMember(person.id);
                       notice = ('problem' in result ? result.problem : result.message) ?? null;
-                    }}>Remove</button
+                    }}>{m.settings.remove}</button
                   >
                 {:else}
                   <span class="quiet">you</span>
@@ -499,10 +486,10 @@
         <header>
           <span class="ic"><Icon name="bell" size={18} /></span>
           <div class="tx">
-            <h2>Notifications</h2>
-            <p>Who is told when a run needs a person, and how.</p>
+            <h2>{m.settings.notifications}</h2>
+            <p>{m.settings.notificationsLede}</p>
           </div>
-          <span class="badge"><span class="dot"></span>Nothing to configure</span>
+          <span class="badge"><span class="dot"></span>{m.settings.nothingToConfigure}</span>
         </header>
         <!--
           Stated rather than offered. A checkpoint resolves its own approvers
@@ -511,14 +498,10 @@
           otherwise would be worse than the truth.
         -->
         <p class="quiet">
-          A checkpoint decides who may approve it — anyone in the workspace, the ticket's author,
-          or named people — on the step itself, in the pipeline builder. When a run reaches one,
-          those people are resolved and recorded, and the notice is written to the application
-          log.
+          {m.settings.approversNote}
         </p>
         <p class="quiet">
-          To send it somewhere a person will see, add a Notify step to the pipeline: it goes out
-          through n8n, which is where this deployment's Slack, email and webhook connections live.
+          {m.settings.notifyStepNote}
         </p>
       </section>
 
@@ -528,7 +511,7 @@
           <header>
             <span class="ic"><Icon name="timer" size={18} /></span>
             <div class="tx">
-              <h2>Runs now</h2>
+              <h2>{m.settings.runsNow}</h2>
               <p>
                 {waiting.current.executing} of {waiting.current.cap} executing
                 {#if waiting.current.waiting > 0}&middot; {waiting.current.waiting} waiting{/if}

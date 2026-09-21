@@ -1,5 +1,6 @@
 <script lang="ts">
   import { send } from '$lib/remote/launches.remote';
+  import { m } from '$lib/i18n';
 
   /**
    * A request console for a running project that has no page to show
@@ -57,14 +58,14 @@
 <div class="console">
   <form class="request" onsubmit={go}>
     <div class="line">
-      <select bind:value={method} aria-label="Method">
+      <select bind:value={method} aria-label={m.console.method}>
         {#each METHODS as m (m)}<option value={m}>{m}</option>{/each}
       </select>
       <input
         bind:value={path}
         placeholder="/api/health"
-        aria-label="Path, sent to {baseUrl}"
-        title="Sent to {baseUrl}"
+        aria-label={m.console.path(baseUrl)}
+        title={m.console.sentTo(baseUrl)}
         spellcheck="false"
       />
       <button type="submit" class="primary" disabled={sending}>{sending ? 'Sending…' : 'Send'}</button>
@@ -76,7 +77,7 @@
         rows="2"
         placeholder={'Accept: application/json\nX-Debug: 1'}
         spellcheck="false"
-        aria-label="Headers, one per line"
+        aria-label={m.console.headers}
       ></textarea>
       {#if hasBody}
         <textarea
@@ -84,7 +85,7 @@
           rows="5"
           placeholder={'{ "name": "example" }'}
           spellcheck="false"
-          aria-label="Body"
+          aria-label={m.console.body}
         ></textarea>
       {/if}
     </details>
@@ -113,7 +114,7 @@
       {/if}
       <pre class="body">{response.json ?? response.body}</pre>
       {#if response.truncated}
-        <p class="small muted">Showing the first 256 KB.</p>
+        <p class="small muted">{m.console.truncated}</p>
       {/if}
     </div>
   {/if}

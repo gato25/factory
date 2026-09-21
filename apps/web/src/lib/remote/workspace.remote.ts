@@ -2,6 +2,7 @@ import { users } from '@factory/db/schema';
 import { notAuthorised } from '@factory/shared';
 import { getRequestEvent, query } from '$app/server';
 import { db } from '$lib/db';
+import { m } from '$lib/i18n';
 
 /**
  * Who is in the workspace. Needed wherever a person is chosen — a gate's
@@ -11,7 +12,7 @@ import { db } from '$lib/db';
 
 function requireUser() {
   const user = getRequestEvent().locals.user;
-  if (!user) throw notAuthorised('you must be signed in');
+  if (!user) throw notAuthorised(m.form.signInRequired);
   return user;
 }
 

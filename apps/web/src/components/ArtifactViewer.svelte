@@ -1,6 +1,7 @@
 <script lang="ts">
   import Icon from '$components/Icon.svelte';
   import ScreenGallery from '$components/ScreenGallery.svelte';
+  import { m } from '$lib/i18n';
   import { openDesign } from '$lib/remote/run-actions.remote';
   import { artifact } from '$lib/remote/runs.remote';
   import type { RunView } from '$lib/services/run-view';
@@ -47,7 +48,7 @@
       const said = await openDesign({ runId, path });
       openNote = said.ok ? null : said.message;
     } catch (error) {
-      openNote = error instanceof Error ? error.message : 'It could not be opened.';
+      openNote = error instanceof Error ? error.message : m.artifacts.couldNotOpen;
     } finally {
       opening = null;
     }
@@ -63,18 +64,18 @@
 
   /** What a document is for, in the words the artboard uses. */
   const PURPOSE: Record<string, string> = {
-    'docs/spec.md': 'Requirements',
-    'docs/plan.md': 'Architecture & files to change',
-    'docs/tasks.md': 'Ordered tasks',
+    'docs/spec.md': m.artifacts.purposeSpec,
+    'docs/plan.md': m.artifacts.purposePlan,
+    'docs/tasks.md': m.artifacts.purposeTasks,
   };
-  const purposeOf = (path: string) => PURPOSE[path] ?? 'Produced by the run';
+  const purposeOf = (path: string) => PURPOSE[path] ?? m.artifacts.purposeOther;
 </script>
 
 <section class="card">
-  <h2>Artifacts</h2>
+  <h2>{m.artifacts.heading}</h2>
 
   {#if artifacts.length === 0 && !mergeRequestUrl}
-    <p class="empty">Nothing produced yet.</p>
+    <p class="empty">{m.artifacts.empty}</p>
   {/if}
 
   {#each documents as doc (doc.id)}
@@ -109,7 +110,7 @@
           <span class="s">docs/design/screens</span>
         </span>
       </div>
-      <ScreenGallery {screens} heading="Screens" />
+      <ScreenGallery {screens} heading={m.artifacts.screens} />
       {#each designFiles as source (source.id)}
         <p class="foot">
           <Icon name="pen-tool" size={12} />
@@ -121,7 +122,7 @@
               onclick={() => openInPen(source.path)}
               disabled={opening === source.path}
             >
-              {opening === source.path ? 'Opening…' : 'Open in pen.dev'}
+              {opening === source.path ? m.artifacts.opening : m.artifacts.openInPen}
             </button>
           {/if}
         </p>
@@ -138,7 +139,7 @@
         <Icon name="git-commit-horizontal" size={16} />
         <span class="tx">
           <span class="n">{row.path}</span>
-          {#if branchName}<span class="s">on {branchName}</span>{/if}
+          {#if branchName}<span class="s">{m.artifacts.onBranch(branchName)}</span>{/if}
         </span>
       </div>
     {/each}
@@ -149,8 +150,8 @@
     <a class="row" href={mergeRequestUrl} target="_blank" rel="noreferrer noopener">
       <Icon name="git-pull-request" size={16} />
       <span class="tx">
-        <span class="n">Merge request</span>
-        <span class="s">Review and merge on the provider, as usual</span>
+        <span class="n">{m.artifacts.mergeRequest}</span>
+        <span class="s">{m.artifacts.mergeRequestOpen}</span>
       </span>
       <Icon name="external-link" size={14} />
     </a>
@@ -158,8 +159,8 @@
     <div class="row waiting">
       <Icon name="git-pull-request" size={16} />
       <span class="tx">
-        <span class="n">Merge request</span>
-        <span class="s">Created when the last step finishes</span>
+        <span class="n">{m.artifacts.mergeRequest}</span>
+        <span class="s">{m.artifacts.mergeRequestPending}</span>
       </span>
     </div>
   {/if}

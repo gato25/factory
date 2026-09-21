@@ -2,6 +2,7 @@ import { notAuthorised } from '@factory/shared';
 import { db } from '$lib/db';
 import { screenBytes } from '$lib/services/run-view';
 import type { RequestHandler } from './$types';
+import { m } from '$lib/i18n';
 
 /**
  * One screen's image. A `query` hands JSON to code that asked for it; an
@@ -12,7 +13,7 @@ import type { RequestHandler } from './$types';
  * function — the route being conventional does not make it public.
  */
 export const GET: RequestHandler = async ({ params, locals }) => {
-  if (!locals.user) throw notAuthorised('you must be signed in');
+  if (!locals.user) throw notAuthorised(m.form.signInRequired);
 
   const screen = await screenBytes(db(), params.id);
   if (!screen) return new Response('not found', { status: 404 });

@@ -2,6 +2,7 @@ import type { Database } from '@factory/db';
 import { artifacts, runs, stepResults, tickets } from '@factory/db/schema';
 import { type FailureReason, notFound, type PipelineSnapshot } from '@factory/shared';
 import { desc, eq, sql } from 'drizzle-orm';
+import { m } from '$lib/i18n';
 
 /**
  * What a person is shown when a run fails: which step, why, and what to do
@@ -39,13 +40,13 @@ export interface Failure {
  */
 const EXPLANATIONS: Record<FailureReason, { what: string; next: string; needsAChange: boolean }> = {
   missing_output: {
-    what: 'The step finished without producing the document it was supposed to write.',
-    next: 'Usually the ticket did not give the agent enough to work from. Add detail to the description or the acceptance criteria, then retry.',
+    what: m.failure.missingOutputWhat,
+    next: m.failure.missingOutputNext,
     needsAChange: true,
   },
   budget_exceeded: {
-    what: 'The run reached the most it was allowed to spend.',
-    next: 'Either the ticket is larger than the ceiling allows, or it needs narrowing. Split it, or raise the ceiling on the pipeline.',
+    what: m.failure.budgetWhat,
+    next: m.failure.budgetNext,
     needsAChange: true,
   },
   // The ceiling is a deadline on each STEP, not a budget for the run. Saying
@@ -53,63 +54,63 @@ const EXPLANATIONS: Record<FailureReason, { what: string; next: string; needsACh
   // minutes under a forty-five minute ceiling and finding nothing wrong with
   // it, because nothing was: one step had exceeded the limit on its own.
   time_exceeded: {
-    what: 'A step ran for longer than any one step is allowed to take.',
-    next: 'The time ceiling applies to each step separately, so this is one step needing more time rather than the run as a whole. Give that agent a longer limit of its own, narrow the ticket, or raise the ceiling on the pipeline — which raises it for every step.',
+    what: m.failure.timeWhat,
+    next: m.failure.timeNext,
     needsAChange: true,
   },
   engine_unavailable: {
-    what: 'The model could not be reached.',
-    next: 'Nothing is wrong with the ticket. Retry.',
+    what: m.failure.engineWhat,
+    next: m.failure.retryOnly,
     needsAChange: false,
   },
   credential_invalid: {
-    what: 'A stored credential was rejected.',
-    next: 'An administrator needs to replace it in Settings before a retry can get further.',
+    what: m.failure.credentialInvalidWhat,
+    next: m.failure.credentialInvalidNext,
     needsAChange: true,
   },
   credential_missing: {
-    what: 'A credential this pipeline needs is not configured.',
-    next: 'An administrator needs to add it in Settings before a retry can get further.',
+    what: m.failure.credentialMissingWhat,
+    next: m.failure.credentialMissingNext,
     needsAChange: true,
   },
   sandbox_lost: {
-    what: 'The sandbox the step was running in disappeared, and the second attempt did not get further.',
-    next: 'Nothing is wrong with the ticket. Retry.',
+    what: m.failure.sandboxLostWhat,
+    next: m.failure.retryOnly,
     needsAChange: false,
   },
   app_unreachable: {
-    what: 'The execution service could not reach this application to collect something the run needs.',
-    next: 'Nothing is wrong with the ticket. Check that the execution service can reach the address in PUBLIC_BASE_URL, then retry.',
+    what: m.failure.appUnreachableWhat,
+    next: m.failure.appUnreachableNext,
     needsAChange: false,
   },
   runner_unreachable: {
-    what: 'This application could not reach the execution service.',
-    next: 'Nothing is wrong with the ticket. Check the runner address in Settings and that the runner is running, then try again.',
+    what: m.failure.runnerUnreachableWhat,
+    next: m.failure.runnerUnreachableNext,
     needsAChange: false,
   },
   command_failed: {
-    what: 'A command the pipeline runs exited with an error.',
-    next: 'Read the step output to see which command and why. If it is the repository, fix that first.',
+    what: m.failure.commandFailedWhat,
+    next: m.failure.commandFailedNext,
     needsAChange: true,
   },
   not_authorised: {
-    what: 'The run was refused access to something it needed.',
-    next: 'Check the credential has the permissions the repository requires.',
+    what: m.failure.notAuthorisedWhat,
+    next: m.failure.notAuthorisedNext,
     needsAChange: true,
   },
   conflict: {
-    what: 'Something changed underneath the run.',
-    next: 'Retry — the run will take a fresh look.',
+    what: m.failure.conflictWhat,
+    next: m.failure.conflictNext,
     needsAChange: false,
   },
   not_found: {
-    what: 'Something the run expected to exist did not.',
-    next: 'Check the repository and branch still exist, then retry.',
+    what: m.failure.notFoundWhat,
+    next: m.failure.notFoundNext,
     needsAChange: true,
   },
   invalid_input: {
-    what: 'The run was given something it could not use.',
-    next: 'Read the detail below, correct the ticket, then retry.',
+    what: m.failure.invalidInputWhat,
+    next: m.failure.invalidInputNext,
     needsAChange: true,
   },
 };
@@ -122,8 +123,8 @@ export function explain(reason: string | null): {
 } {
   if (!reason) {
     return {
-      what: 'The run stopped without recording why.',
-      next: 'Retry. If it stops again the same way, the step output is the only place left to look.',
+      what: m.failure.unknownWhat,
+      next: m.failure.unknownNext,
       needsAChange: false,
     };
   }
@@ -138,8 +139,8 @@ export function explain(reason: string | null): {
   if (/time ceiling|minutes/i.test(reason)) return EXPLANATIONS.time_exceeded;
   if (/checkpoint within/i.test(reason)) {
     return {
-      what: 'Nobody decided the checkpoint before it expired, and the gate was set to fail.',
-      next: 'Retry, and decide the checkpoint this time — or change the gate to wait indefinitely.',
+      what: m.failure.gateExpiredWhat,
+      next: m.failure.gateExpiredNext,
       needsAChange: false,
     };
   }
@@ -148,14 +149,14 @@ export function explain(reason: string | null): {
   // rather than wrapping it in a worse one.
   return {
     what: reason.charAt(0).toUpperCase() + reason.slice(1),
-    next: 'Retry, or edit the ticket first if the reason points at the ticket.',
+    next: m.failure.ownSentenceNext,
     needsAChange: false,
   };
 }
 
 export async function failureOf(database: Database, runId: string): Promise<Failure | null> {
   const [run] = await database.select().from(runs).where(eq(runs.id, runId)).limit(1);
-  if (!run) throw notFound('no such run');
+  if (!run) throw notFound(m.error.noSuchRun);
   if (run.status !== 'failed' && run.status !== 'cancelled') return null;
 
   const snapshot = run.snapshot as PipelineSnapshot;
@@ -190,9 +191,9 @@ export async function failureOf(database: Database, runId: string): Promise<Fail
     stepLabel,
     what:
       run.status === 'cancelled'
-        ? 'The run was cancelled. The branch it had pushed is still there.'
+        ? m.failure.cancelledWhat
         : explanation.what,
-    next: run.status === 'cancelled' ? 'Retry when you want it to carry on.' : explanation.next,
+    next: run.status === 'cancelled' ? m.failure.cancelledNext : explanation.next,
     needsAChange: run.status === 'cancelled' ? false : explanation.needsAChange,
     detail: failedStep?.errorDetail ?? null,
     spentUsd: run.costUsd,
@@ -211,7 +212,7 @@ export async function attemptsOf(database: Database, ticketId: string) {
     .from(tickets)
     .where(eq(tickets.id, ticketId))
     .limit(1);
-  if (!ticket) throw notFound('no such ticket');
+  if (!ticket) throw notFound(m.error.noSuchTicket);
 
   const rows = await database
     .select({

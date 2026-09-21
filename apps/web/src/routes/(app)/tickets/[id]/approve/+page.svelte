@@ -2,6 +2,8 @@
   import { onMount } from 'svelte';
   import { page } from '$app/state';
   import Icon from '$components/Icon.svelte';
+  import { exact } from '$lib/format';
+  import { m } from '$lib/i18n';
   import Markdown from '$components/Markdown.svelte';
   import ScreenGallery from '$components/ScreenGallery.svelte';
   import TicketHead from '$components/TicketHead.svelte';
@@ -72,11 +74,11 @@
 </script>
 
 {#if !view.ready}
-  <p class="card">Loading…</p>
+  <p class="card">{m.approve.loading}</p>
 {:else if !view.current}
-  <p class="card">This ticket has not been started.</p>
+  <p class="card">{m.approve.notStarted}</p>
 {:else if !detail?.ready}
-  <p class="card">Loading the checkpoint…</p>
+  <p class="card">{m.approve.loadingCheckpoint}</p>
 {:else}
   {@const d = detail.current}
   {@const loaded = view.current}
@@ -94,8 +96,8 @@
     startedAt={loaded.run.startedAt}
     costUsd={loaded.run.costUsd}
     status={paused
-      ? { label: 'Waiting for your approval', tone: 'warn' }
-      : { label: 'Decided', tone: 'ok' }}
+      ? { label: m.approve.waitingForYourApproval, tone: 'warn' }
+      : { label: m.approve.decided, tone: 'ok' }}
   >
     {#snippet actions()}
       {#if paused && d.mayDecide}
@@ -104,13 +106,13 @@
           <input type="hidden" name="stepIndex" value={d.gate.stepIndex} />
           <button class="secondary" type="submit" disabled={cancelRun.pending > 0}>
             <Icon name="circle-x" size={16} />
-            <span>Cancel run</span>
+            <span>{m.approve.cancelRun}</span>
           </button>
         </form>
       {/if}
       <a class="secondary" href="/tickets/{ticketId}">
         <Icon name="undo-2" size={16} />
-        <span>Back to the run</span>
+        <span>{m.approve.backToTheRun}</span>
       </a>
     {/snippet}
   </TicketHead>
@@ -135,24 +137,29 @@
     <div class="tx">
       {#if paused}
         <p class="t">
-          Checkpoint: review
-          {d.gate.precedingLabel ? `the ${shortName(d.gate.precedingLabel).toLowerCase()}` : 'this'}
-          {d.gate.precedingIsDesign ? 'before any code is written' : 'before the pipeline continues'}
+          {m.approve.checkpointReview(
+            d.gate.precedingLabel
+              ? m.approve.checkpointThe(shortName(d.gate.precedingLabel).toLowerCase())
+              : m.approve.checkpointThis,
+            d.gate.precedingIsDesign
+              ? m.approve.beforeAnyCode
+              : m.approve.beforePipelineContinues,
+          )}
         </p>
         <p class="s">
-          {d.gate.precedingLabel ?? 'The previous step'} finished. The pipeline is
-          {`paused at step ${d.gate.stepIndex + 1}`} (held by the execution service) until you approve, ask for
-          changes, or edit the document yourself. Cancelling instead releases the sandbox and
-          leaves the branch alone.
+          {m.approve.pausedExplain(
+            d.gate.precedingLabel ?? m.approve.thePreviousStep,
+            d.gate.stepIndex + 1,
+          )}
         </p>
       {:else if d.gate.decided}
         <p class="t">
-          Already decided: {d.gate.decided.decision.replace('_', ' ')}
+          {m.approve.alreadyDecided(d.gate.decided.decision.replace('_', ' '))}
         </p>
-        <p class="s">On {new Date(d.gate.decided.at).toLocaleString()}. Nothing is waiting here.</p>
+        <p class="s">{m.approve.decidedAt(exact(d.gate.decided.at))}</p>
       {:else}
-        <p class="t">This run is not waiting at a checkpoint</p>
-        <p class="s">Nothing here needs deciding.</p>
+        <p class="t">{m.approve.notAtCheckpoint}</p>
+        <p class="s">{m.approve.nothingToDecide}</p>
       {/if}
     </div>
 
@@ -160,7 +167,7 @@
       <div class="btns">
         {#if !d.mayDecide}
           <!-- Readable by anyone; decidable only by the gate's approvers (FR-064) -->
-          <p class="s">This checkpoint is not yours to decide. You can read everything here.</p>
+          <p class="s">{m.approve.notYoursToDecide}</p>
         {:else}
           <!-- Submits the feedback box in the side column: one form, two
                places to press it. An empty note is refused by the server,
@@ -172,14 +179,14 @@
             disabled={requestChanges.pending > 0}
           >
             <Icon name="message-square" size={16} />
-            <span>Request changes</span>
+            <span>{m.approve.requestChanges}</span>
           </button>
           <form {...approve} class="inline">
             <input type="hidden" name="runId" value={d.gate.runId} />
             <input type="hidden" name="stepIndex" value={d.gate.stepIndex} />
             <button class="go" type="submit" disabled={approve.pending > 0}>
               <Icon name="check" size={16} />
-              <span>Approve &amp; continue</span>
+              <span>{m.approve.approveAndContinue}</span>
             </button>
           </form>
         {/if}
@@ -197,8 +204,9 @@
   -->
   {#if d.gate.precedingIsDesign}
     <p class="card notice">
-      This checkpoint follows a design step.
-      <a href="/tickets/{ticketId}/design">Review the screens</a> to see them at full size.
+      {m.approve.followsDesign}
+      <a href="/tickets/{ticketId}/design">{m.approve.reviewTheScreens}</a>
+      {m.approve.toSeeFullSize}
     </p>
   {/if}
 
@@ -217,7 +225,7 @@
               }}
             >
               {item.path.split('/').pop()}
-              {#if item.editedByHuman}<span class="edited">edited</span>{/if}
+              {#if item.editedByHuman}<span class="edited">{m.approve.edited}</span>{/if}
             </button>
           {/each}
         </div>
@@ -225,7 +233,7 @@
         {#if openPath && openDoc?.ready && !editing}
           <div class="head-actions">
             <button type="button" class="link" onclick={() => (source = !source)}>
-              {source ? 'Rendered' : 'Source'}
+              {source ? m.approve.rendered : m.approve.source}
             </button>
             {#if d.mayDecide && paused}
               <button
@@ -237,7 +245,7 @@
                 }}
               >
                 <Icon name="pencil" size={16} />
-                <span>Edit {shortName(openPath)}</span>
+                <span>{m.approve.edit(shortName(openPath))}</span>
               </button>
             {/if}
           </div>
@@ -246,11 +254,11 @@
 
       <div class="doc-body">
         {#if screens.length > 0}
-          <div class="screens"><ScreenGallery {screens} heading="Screens" /></div>
+          <div class="screens"><ScreenGallery {screens} heading={m.approve.screens} /></div>
         {/if}
 
         {#if readable.length === 0}
-          <p class="quiet">No documents yet — the screens above are what exists so far.</p>
+          <p class="quiet">{m.approve.noDocuments}</p>
         {:else if openPath && openDoc?.ready}
           {#if editing}
             <form {...editAndApprove} class="edit">
@@ -267,28 +275,27 @@
               {/if}
               <div class="row">
                 <button type="button" class="secondary" onclick={() => (editing = false)}>
-                  Discard changes
+                  {m.approve.discardChanges}
                 </button>
                 <button class="go" type="submit" disabled={!d.mayDecide}>
                   <Icon name="check" size={16} />
-                  <span>Save &amp; continue</span>
+                  <span>{m.approve.saveAndContinue}</span>
                 </button>
               </div>
               <p class="quiet">
-                Saving writes a new version. The previous one is kept, and every step after this
-                reads the version you saved.
+                {m.approve.savingNote}
               </p>
             </form>
           {:else if source}
-            <pre>{openDoc.current.content ?? '(empty)'}</pre>
+            <pre>{openDoc.current.content ?? m.approve.empty}</pre>
           {:else}
             <Markdown source={openDoc.current.content ?? ''} />
           {/if}
-          <p class="quiet">Version {openDoc.current.version}</p>
+          <p class="quiet">{m.approve.version(openDoc.current.version)}</p>
         {:else if openPath}
-          <p class="quiet">Loading…</p>
+          <p class="quiet">{m.approve.loading}</p>
         {:else}
-          <p class="quiet">Choose a document to read it.</p>
+          <p class="quiet">{m.approve.chooseDocument}</p>
         {/if}
       </div>
     </section>
@@ -296,10 +303,9 @@
     <aside class="side">
       {#if paused && d.mayDecide}
         <section class="card">
-          <h2>Request changes</h2>
+          <h2>{m.approve.requestChanges}</h2>
           <p class="quiet">
-            Your note is sent back to {d.gate.precedingLabel ?? 'the previous step'}, which revises
-            what it wrote and pauses here again.
+            {m.approve.sentBackTo(d.gate.precedingLabel ?? m.approve.thePreviousStep)}
           </p>
           <form {...requestChanges} id="request-changes" class="stack">
             <input type="hidden" name="runId" value={d.gate.runId} />
@@ -308,21 +314,21 @@
               name="feedback"
               rows="5"
               bind:value={draft}
-              aria-label="Request changes — this text is sent to the agent"
-              placeholder="What should change, and why?"
+              aria-label={m.approve.feedbackLabel}
+              placeholder={m.approve.feedbackPlaceholder}
             ></textarea>
             <button class="secondary wide" type="submit" disabled={requestChanges.pending > 0}>
               <Icon name="undo-2" size={16} />
-              <span>Send back to {d.gate.precedingLabel ?? 'the agent'}</span>
+              <span>{m.approve.sendBackTo(d.gate.precedingLabel ?? m.approve.theAgent)}</span>
             </button>
           </form>
         </section>
       {/if}
 
       <section class="card">
-        <h2>Acceptance criteria</h2>
+        <h2>{m.approve.acceptance}</h2>
         {#if d.ticket.acceptanceCriteria.length === 0}
-          <p class="quiet">None were given. That is the biggest quality lever there is.</p>
+          <p class="quiet">{m.approve.noAcceptance}</p>
         {:else}
           <ul class="criteria">
             {#each d.ticket.acceptanceCriteria as criterion (criterion)}
@@ -332,14 +338,16 @@
         {/if}
         {#if d.ticket.uiRationale}
           <p class="quiet">
-            Classified as {d.ticket.hasUi ? 'interface work' : 'not interface work'} —
-            {d.ticket.uiRationale}
+            {m.approve.classifiedAs(
+              d.ticket.hasUi ? m.approve.interfaceWork : m.approve.notInterfaceWork,
+              d.ticket.uiRationale,
+            )}
           </p>
         {/if}
       </section>
 
       <section class="card">
-        <h2>Timeline</h2>
+        <h2>{m.approve.timeline}</h2>
         <ol class="timeline">
           {#each d.timeline as entry (entry.at.toString() + entry.label)}
             <li class={entry.kind}>
@@ -360,7 +368,11 @@
           {#if paused}
             <li class="now">
               <Icon name="hand" size={15} />
-              <span class="what">Waiting for approval{d.mayDecide ? ' (you)' : ''}</span>
+              <span class="what"
+                >{m.approve.waitingForApproval}{d.mayDecide
+                  ? m.approve.waitingForApprovalYou
+                  : ''}</span
+              >
               <time></time>
             </li>
           {/if}

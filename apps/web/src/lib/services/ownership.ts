@@ -4,6 +4,7 @@ import { notAuthorised, notFound } from '@factory/shared';
 import { eq } from 'drizzle-orm';
 import type { SessionUser } from './auth';
 import { canChangeOwned } from './authz';
+import { m } from '$lib/i18n';
 
 /**
  * Pipelines, agents and skills all follow one ownership rule (FR-006a,
@@ -72,7 +73,7 @@ export async function requireChangeable(
 ): Promise<Ownership> {
   const ownership = await ownershipOf(database, kind, id, user);
   if (ownership.mayChange) return ownership;
-  if (!user) throw notAuthorised('you must be signed in');
+  if (!user) throw notAuthorised(m.form.signInRequired);
 
   throw notAuthorised(
     ownership.isDefault

@@ -13,6 +13,7 @@ import {
 import { CONDITION_DESCRIPTION, notFound, type PipelineSnapshot, type Step } from '@factory/shared';
 import { and, count, desc, eq, gte, inArray, sql } from 'drizzle-orm';
 import { queueState } from './queue';
+import { m } from '$lib/i18n';
 
 /**
  * Everything the run page and the dashboard read. The stream carries changes;
@@ -87,14 +88,14 @@ export interface RunView {
 
 export async function runView(database: Database, runId: string): Promise<RunView> {
   const [run] = await database.select().from(runs).where(eq(runs.id, runId)).limit(1);
-  if (!run) throw notFound('no such run');
+  if (!run) throw notFound(m.error.noSuchRun);
 
   const [ticket] = await database
     .select()
     .from(tickets)
     .where(eq(tickets.id, run.ticketId))
     .limit(1);
-  if (!ticket) throw notFound('that run has no ticket');
+  if (!ticket) throw notFound(m.error.runHasNoTicket);
 
   const [repository] = await database
     .select()
@@ -235,7 +236,7 @@ export async function artifactContent(database: Database, artifactId: string) {
     .from(artifacts)
     .where(eq(artifacts.id, artifactId))
     .limit(1);
-  if (!row) throw notFound('no such artifact');
+  if (!row) throw notFound(m.error.noSuchArtifact);
   return row;
 }
 
@@ -453,17 +454,23 @@ export async function board(database: Database): Promise<BoardTicket[]> {
       return null;
     })();
 
-    let strip: BoardTicket['strip'] = { kind: 'none', text: 'Not started' };
+    // The words a ticket carries on the board are copy, so they come from the
+    // catalogue rather than from here (`m.strip` in `$lib/i18n`). The step's
+    // own name does not: it is whatever the pipeline calls it.
+    let strip: BoardTicket['strip'] = { kind: 'none', text: m.strip.notStarted };
     if (row.mergeRequestUrl) {
-      strip = { kind: 'merge_request', text: 'Merge request opened' };
+      strip = { kind: 'merge_request', text: m.strip.mergeRequestOpened };
     } else if (row.runStatus === 'failed') {
-      strip = { kind: 'failure', text: row.failureReason ?? 'The run failed' };
+      strip = { kind: 'failure', text: row.failureReason ?? m.strip.runFailed };
     } else if (row.runStatus === 'waiting_approval') {
-      strip = { kind: 'gate', text: `${gatedLabel ?? label ?? 'A step'} needs your approval` };
+      strip = {
+        kind: 'gate',
+        text: m.strip.needsApproval(gatedLabel ?? label ?? m.strip.aStep),
+      };
     } else if (row.runStatus === 'running' && label) {
-      strip = { kind: 'step', text: `${label} · step ${index + 1} of ${steps.length}` };
+      strip = { kind: 'step', text: m.strip.atStep(label, index + 1, steps.length) };
     } else if (row.runStatus === 'queued') {
-      strip = { kind: 'none', text: 'Waiting to start' };
+      strip = { kind: 'none', text: m.strip.waitingToStart };
     }
 
     return {

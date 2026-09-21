@@ -7,6 +7,7 @@
     MAX_FILES
   } from '@factory/shared';
   import Icon from '$components/Icon.svelte';
+  import { m } from '$lib/i18n';
 
   /**
    * Picking requirement documents to attach to a ticket.
@@ -90,7 +91,7 @@
           <Icon name="file-text" size={14} />
           <span class="n">{file.name}</span>
           <span class="s">{describeBytes(file.size)}</span>
-          <button type="button" onclick={() => drop(index)} aria-label="Remove {file.name}">
+          <button type="button" onclick={() => drop(index)} aria-label={m.files.remove(file.name)}>
             <Icon name="x" size={14} />
           </button>
         </li>

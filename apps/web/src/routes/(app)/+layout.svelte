@@ -3,6 +3,7 @@
   import { page } from '$app/state';
   import type { Snippet } from 'svelte';
   import Icon from '$components/Icon.svelte';
+  import { m } from '$lib/i18n';
 
   /**
    * The shared frame, built to `design.pen`'s Sidebar and Top Bar components
@@ -19,23 +20,24 @@
     children: Snippet;
   } = $props();
 
-  // The design's own icons, by the design's own names.
+  // The design's own icons, by the design's own names; the words from the
+  // catalogue, which is where the design's copy lives ($lib/i18n).
   const nav = [
-    { href: '/', label: 'Dashboard', icon: 'layout-dashboard' },
-    { href: '/repositories', label: 'Repositories', icon: 'git-branch' },
-    { href: '/tickets', label: 'Tickets', icon: 'ticket' },
-    { href: '/pipelines', label: 'Pipelines', icon: 'workflow' },
-    { href: '/agents', label: 'Agents', icon: 'bot' },
-    { href: '/skills', label: 'Skills', icon: 'sparkles' },
+    { href: '/', label: m.nav.dashboard, icon: 'layout-dashboard' },
+    { href: '/repositories', label: m.nav.repositories, icon: 'git-branch' },
+    { href: '/tickets', label: m.nav.tickets, icon: 'ticket' },
+    { href: '/pipelines', label: m.nav.pipelines, icon: 'workflow' },
+    { href: '/agents', label: m.nav.agents, icon: 'bot' },
+    { href: '/skills', label: m.nav.skills, icon: 'sparkles' },
   ];
-  const settings = { href: '/settings', label: 'Settings', icon: 'settings' };
+  const settings = { href: '/settings', label: m.nav.settings, icon: 'settings' };
 
   const isActive = (href: string) =>
     href === '/' ? page.url.pathname === '/' : page.url.pathname.startsWith(href);
 
   const title = $derived(
     [...nav, settings].find((item) => item.href !== '/' && isActive(item.href))?.label ??
-      'Dashboard',
+      m.nav.dashboard,
   );
 
   /** "Gantogtokh B." → "GB", as the design's avatar shows. */
@@ -58,10 +60,10 @@
   <aside>
     <a class="logo-row" href="/">
       <span class="logo-mark"><Icon name="factory" size={18} /></span>
-      <span class="brand">Code Factory</span>
+      <span class="brand">{m.app.name}</span>
     </a>
 
-    <p class="section">Main</p>
+    <p class="section">{m.nav.section}</p>
 
     <nav>
       {#each nav as item (item.href)}
@@ -83,7 +85,7 @@
       <span class="avatar">{initials}</span>
       <span class="user-text">
         <span class="name">{data.user.name}</span>
-        <span class="workspace">{data.workspace.name} workspace</span>
+        <span class="workspace">{m.frame.workspace(data.workspace.name)}</span>
       </span>
       <Icon name="chevron-down" size={14} />
     </div>
@@ -94,26 +96,26 @@
       <h1>{title}</h1>
       <div class="right">
         <form class="search" action="/tickets">
-          <label class="sr" for="global-search">Search tickets and repositories</label>
+          <label class="sr" for="global-search">{m.frame.searchLabel}</label>
           <Icon name="search" size={16} />
           <input
             id="global-search"
             name="q"
             type="search"
             bind:value={query}
-            placeholder="Search tickets, repos..."
+            placeholder={m.frame.searchPlaceholder}
           />
         </form>
         <!--
           The design draws a bell and no destination for it. Approvals are the
           only thing here that waits on a person, so that is where it goes.
         -->
-        <a class="bell" href="/" aria-label="Runs waiting for your approval">
+        <a class="bell" href="/" aria-label={m.frame.approvalsBell}>
           <Icon name="bell" size={16} />
         </a>
         <a class="primary" href="/tickets/new">
           <Icon name="plus" size={16} />
-          <span>New ticket</span>
+          <span>{m.frame.newTicket}</span>
         </a>
       </div>
     </header>

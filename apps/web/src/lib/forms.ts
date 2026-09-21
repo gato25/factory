@@ -1,4 +1,5 @@
 import * as v from 'valibot';
+import { m } from '$lib/i18n';
 
 /**
  * Everything a browser sends in a form is a string. A schema that declares
@@ -9,7 +10,7 @@ import * as v from 'valibot';
  */
 
 /** A hidden input, a select or a query argument carrying a whole number. */
-export function formInteger(message = 'Expected a whole number.') {
+export function formInteger(message = m.form.wholeNumber) {
   return v.pipe(
     v.union([v.number(), v.pipe(v.string(), v.regex(/^-?\d+$/, message))], message),
     v.transform(Number),
@@ -18,7 +19,7 @@ export function formInteger(message = 'Expected a whole number.') {
 }
 
 /** The same, refusing anything below zero — an index or a version. */
-export function formIndex(message = 'Expected a whole number, zero or more.') {
+export function formIndex(message = m.form.wholeNumberOrMore) {
   return v.pipe(formInteger(message), v.minValue(0, message));
 }
 

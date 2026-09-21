@@ -1,6 +1,7 @@
 <script lang="ts">
   import Icon from '$components/Icon.svelte';
   import Markdown from '$components/Markdown.svelte';
+  import { m } from '$lib/i18n';
   import { ago, exact } from '$lib/format';
   import { create, history, remove, save, skill, skills } from '$lib/remote/skills.remote';
 
@@ -108,7 +109,7 @@
   <section class="panel list">
     <header>
       <div class="title">
-        <h2>Skills</h2>
+        <h2>{m.skills.heading}</h2>
         <button
           type="button"
           class="new"
@@ -119,26 +120,25 @@
           }}
         >
           <Icon name="plus" size={14} />
-          <span>New</span>
+          <span>{m.skills.new}</span>
         </button>
       </div>
       <p>
-        Reusable instruction files any agent can use. They are copied into .claude/skills/ for each
-        run.
+        {m.skills.lede}
       </p>
       <label class="search">
         <Icon name="search" size={14} />
-        <input placeholder="Search skills" bind:value={filter} aria-label="Search skills" />
+        <input placeholder={m.skills.search} bind:value={filter} aria-label={m.skills.search} />
       </label>
     </header>
 
     {#if list.error}
       <p class="state error" role="alert">{(list.error as Error).message}</p>
     {:else if !list.ready}
-      <p class="state">Loading skills…</p>
+      <p class="state">{m.skills.loading}</p>
     {:else if shown.length === 0}
       <p class="state">
-        {list.current.length === 0 ? 'No skills yet.' : 'No skill matches that.'}
+        {list.current.length === 0 ? m.skills.empty : m.skills.noMatch}
       </p>
     {:else}
       <ul>
@@ -165,9 +165,9 @@
 
   <section class="panel editor">
     {#if !creating && openId && !open?.ready}
-      <p class="state">Loading…</p>
+      <p class="state">{m.skills.loadingOne}</p>
     {:else if !creating && !openId}
-      <p class="state">Pick a skill on the left, or start a new one.</p>
+      <p class="state">{m.skills.pickOne}</p>
     {:else}
       {@const s = open?.ready ? open.current : null}
       <form {...action} class="sheet">
@@ -178,28 +178,28 @@
         <header class="h">
           <div class="l">
             <div class="nr">
-              <span class="name">{creating ? 'New skill' : (s?.name ?? '')}</span>
+              <span class="name">{creating ? m.skills.newSkill : (s?.name ?? '')}</span>
               {#if s}
                 <!-- How much depends on it, at the point of changing it (FR-043a) -->
                 <span class="badge">
                   <span class="dot"></span>
-                  Used by {s.agents.length} agent{s.agents.length === 1 ? '' : 's'}
+                  {m.skills.usedBy(s.agents.length)}
                 </span>
               {/if}
             </div>
             <p class="path" title={s ? exact(s.updatedAt) : undefined}>
               {#if creating}
-                Saved to .claude/skills/&lt;name&gt;/SKILL.md inside every run that uses it.
+                {m.skills.savedTo}
               {:else if s}
-                .claude/skills/{s.name}/SKILL.md · last edited {ago(s.updatedAt)}
-                {#if s.updatedByName}by {s.updatedByName}{/if}
+                .claude/skills/{s.name}/SKILL.md {m.skills.lastEdited(ago(s.updatedAt))}
+                {#if s.updatedByName}{m.skills.by(s.updatedByName)}{/if}
                 <!-- Whose it is, where there is something to say: a shipped
                      default belongs to nobody, and another member's is
                      readable but not yours to change (FR-006b, FR-006c). -->
                 {#if s.isDefault}
-                  · shipped
+                  {m.skills.shipped}
                 {:else if s.ownerId !== data.user.id && s.ownerName}
-                  · owned by {s.ownerName}
+                  {m.skills.ownedBy(s.ownerName)}
                 {/if}
               {/if}
             </p>
@@ -217,7 +217,7 @@
                 }}
               >
                 <Icon name="history" size={16} />
-                <span>History</span>
+                <span>{m.skills.history}</span>
               </button>
             {/if}
             {#if !creating && s?.mayChange}
@@ -234,13 +234,13 @@
                 }}
               >
                 <Icon name="trash-2" size={16} />
-                <span>Delete</span>
+                <span>{m.skills.delete}</span>
               </button>
             {/if}
             {#if mayChange}
               <button type="submit" class="primary" disabled={action.pending > 0}>
                 <Icon name="save" size={16} />
-                <span>{creating ? 'Create skill' : 'Save skill'}</span>
+                <span>{creating ? m.skills.createSkill : m.skills.saveSkill}</span>
               </button>
             {/if}
           </div>
@@ -261,24 +261,24 @@
 
         <div class="meta">
           <label class="f name">
-            <span>Name</span>
+            <span>{m.skills.name}</span>
             <input name="name" bind:value={draft.name} readonly={!mayChange} required />
           </label>
           <label class="f">
-            <span>Description (shown to the agent so it knows when to use this)</span>
+            <span>{m.skills.descriptionLabel}</span>
             <input
               name="description"
               bind:value={draft.description}
               readonly={!mayChange}
               required
-              placeholder="Use before creating or moving files"
+              placeholder={m.skills.descriptionPlaceholder}
             />
           </label>
         </div>
 
         {#if showHistory && versions}
           <div class="ed-label">
-            <span>History</span>
+            <span>{m.skills.history}</span>
             <button type="button" class="link" onclick={() => (showHistory = false)}>
               Back to the content
             </button>
@@ -286,7 +286,7 @@
           {#if versions?.error}
             <p class="state error" role="alert">{(versions.error as Error).message}</p>
           {:else if !versions?.ready}
-            <p class="state">Loading history…</p>
+            <p class="state">{m.skills.loadingHistory}</p>
           {:else}
             <div class="history">
               <ul class="versions">
@@ -304,24 +304,23 @@
                         <span class="n">{version.name}</span>
                         <span class="d">
                           <time title={exact(version.createdAt)}>{ago(version.createdAt)}</time>
-                          {#if version.authorName}by {version.authorName}{/if}
+                          {#if version.authorName}{m.skills.by(version.authorName)}{/if}
                         </span>
                       </span>
-                      {#if version.current}<span class="u">current</span>{/if}
+                      {#if version.current}<span class="u">{m.skills.current}</span>{/if}
                     </button>
                   </li>
                 {/each}
                 {#if versionList.length === 0}
                   <li class="state">
-                    Nothing recorded yet — this skill predates the history, and the next save starts
-                    it.
+                    {m.skills.noHistory}
                   </li>
                 {/if}
               </ul>
 
               <div class="reading">
                 {#if chosen === null}
-                  <p class="state">Pick a version to read what it said.</p>
+                  <p class="state">{m.skills.pickVersion}</p>
                 {:else}
                   <div class="code" data-testid="version-content">
                     {#each chosen.content.split('\n') as line, i (i)}
@@ -359,9 +358,9 @@
           {/if}
         {:else}
           <div class="ed-label">
-            <span>Content (Markdown)</span>
+            <span>{m.skills.content}</span>
             <button type="button" class="link" onclick={() => (preview = !preview)}>
-              {preview ? 'Source' : 'Preview'}
+              {preview ? m.skills.source : m.skills.preview}
             </button>
           </div>
 
@@ -380,7 +379,7 @@
                     >{#if i < lines.length - 1}{'\n'}{/if}{/each}</pre>
                 <textarea
                   name="content"
-                  aria-label="Content (Markdown)"
+                  aria-label={m.skills.content}
                   spellcheck="false"
                   readonly={!mayChange}
                   bind:value={draft.content}

@@ -12,6 +12,7 @@ import {
 } from '$lib/services/auth';
 import { configuredProviders } from '$lib/services/oauth';
 import type { Actions, PageServerLoad } from './$types';
+import { m } from '$lib/i18n';
 
 const log = createLogger('web');
 
@@ -48,7 +49,7 @@ export const actions: Actions = {
     const email = String(form.get('email') ?? '').trim();
     const password = String(form.get('password') ?? '');
     if (!email || !password) {
-      return fail(400, { email, message: 'Enter an email address and a password.' });
+      return fail(400, { email, message: m.error.enterEmailAndPassword });
     }
     try {
       const user = await registerFirstUser(db(), { name, email, password });
@@ -73,7 +74,7 @@ export const actions: Actions = {
       const message =
         error instanceof FactoryError
           ? error.message
-          : 'Could not create the account. The reason is in the application’s own output.';
+          : m.error.accountNotCreated;
       return fail(400, { email, message });
     }
     redirect(303, url.searchParams.get('next') ?? '/');
@@ -84,7 +85,7 @@ export const actions: Actions = {
     const email = String(form.get('email') ?? '').trim();
     const password = String(form.get('password') ?? '');
     if (!email || !password) {
-      return fail(400, { email, message: 'Enter your email address and password.' });
+      return fail(400, { email, message: m.error.enterYourEmailAndPassword });
     }
     try {
       const user = await signInWithPassword(db(), email, password);
@@ -95,7 +96,7 @@ export const actions: Actions = {
       );
     } catch (error) {
       const message =
-        error instanceof FactoryError ? error.message : 'Could not sign you in just now.';
+        error instanceof FactoryError ? error.message : m.error.couldNotSignIn;
       return fail(401, { email, message });
     }
     redirect(303, url.searchParams.get('next') ?? '/');

@@ -1,5 +1,6 @@
 <script lang="ts">
   import Icon from '$components/Icon.svelte';
+  import { m } from '$lib/i18n';
   import { ticketBoard } from '$lib/remote/tickets.remote';
 
   /**
@@ -14,7 +15,7 @@
    * shouted. Amber now appears exactly twice per row, on things that mean
    * "waiting"; blue appears once, on the thing to press.
    */
-  let { heading = 'Waiting for your approval' }: { heading?: string } = $props();
+  let { heading = m.approvals.heading }: { heading?: string } = $props();
 
   const board = $derived(ticketBoard());
   const waiting = $derived(
@@ -37,7 +38,7 @@
             <span class="title"><span class="id">{ticket.reference}</span> {ticket.title}</span>
             <span class="sub">{ticket.repository} &middot; {ticket.strip.text}</span>
           </span>
-          <a class="review" href="/tickets/{ticket.id}/approve">Review</a>
+          <a class="review" href="/tickets/{ticket.id}/approve">{m.approvals.review}</a>
         </li>
       {/each}
     </ul>

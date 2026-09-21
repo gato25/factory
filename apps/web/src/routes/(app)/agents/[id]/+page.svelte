@@ -1,6 +1,7 @@
 <script lang="ts">
   import { page } from '$app/state';
   import Icon from '$components/Icon.svelte';
+  import { m } from '$lib/i18n';
   import { agent, options, reset, save } from '$lib/remote/agents.remote';
   import { skills } from '$lib/remote/skills.remote';
 
@@ -76,7 +77,7 @@
 {#if detail.error}
   <p class="card failure" role="alert">{(detail.error as Error).message}</p>
 {:else if !detail.ready || engine === null}
-  <p class="card">Loading the agent…</p>
+  <p class="card">{m.agentEditor.loading}</p>
 {:else}
   {@const a = detail.current}
 
@@ -92,35 +93,38 @@
           <input
             class="name"
             name="name"
-            aria-label="Name"
+            aria-label={m.agentEditor.name}
             value={a.name}
             required
             readonly={!a.mayChange}
           />
           <span class="badge">
             <span class="dot"></span>
-            {a.isDefault ? 'Default' : (a.ownerName ?? 'Custom')}{a.modifiedFromShipped
-              ? ' · edited'
+            {a.isDefault
+              ? m.agentEditor.default
+              : (a.ownerName ?? m.agentEditor.custom)}{a.modifiedFromShipped
+              ? m.agentEditor.edited
               : ''}
           </span>
           <span class="badge quiet">
             <span class="dot"></span>
-            {a.usage.pipelines} pipeline{a.usage.pipelines === 1 ? '' : 's'} ·
-            {a.usage.runs} run{a.usage.runs === 1 ? '' : 's'}
+            {m.agentEditor.usage(a.usage.pipelines, a.usage.runs)}
           </span>
         </div>
         <input
           class="what"
           name="description"
-          aria-label="What it is for"
+          aria-label={m.agentEditor.whatItIsFor}
           value={a.description ?? ''}
-          placeholder="What it is for"
+          placeholder={m.agentEditor.whatItIsFor}
           readonly={!a.mayChange}
         />
         <p class="s">
-          Changes apply to new runs only. Running tickets keep the version they started with.
+          {m.agentEditor.changesApplyNote}
           {#if !a.mayChange}
-            Changing this one is for {a.isDefault ? 'an administrator' : (a.ownerName ?? 'its owner')}.
+            {m.agentEditor.changingIsFor(
+              a.isDefault ? m.agentEditor.anAdministrator : (a.ownerName ?? m.agentEditor.itsOwner),
+            )}
           {/if}
         </p>
       </div>
@@ -133,8 +137,8 @@
             class="secondary"
             disabled={!a.modifiedFromShipped}
             title={a.modifiedFromShipped
-              ? 'Discard every change and go back to what shipped'
-              : 'This agent already matches what shipped'}
+              ? m.agentEditor.resetTitle
+              : m.agentEditor.alreadyShipped}
             onclick={async () => {
               const result = await reset(a.id);
               notice = ('problem' in result ? result.problem : result.message) ?? null;
@@ -142,13 +146,13 @@
             }}
           >
             <Icon name="rotate-ccw" size={16} />
-            <span>Reset to default</span>
+            <span>{m.agentEditor.resetToDefault}</span>
           </button>
         {/if}
         {#if a.mayChange}
           <button class="primary" type="submit" disabled={save.pending > 0}>
             <Icon name="save" size={16} />
-            <span>{save.pending > 0 ? 'Saving…' : 'Save changes'}</span>
+            <span>{save.pending > 0 ? m.agentEditor.saving : m.agentEditor.saveChanges}</span>
           </button>
         {/if}
       </div>
@@ -171,11 +175,8 @@
       <section class="card prompt">
         <header class="ph">
           <div class="t">
-            <h2>System prompt</h2>
-            <p>
-              Given to the engine before it runs. Use &#123;&#123;variables&#125;&#125; for ticket
-              data.
-            </p>
+            <h2>{m.agentEditor.systemPrompt}</h2>
+            <p>{m.agentEditor.systemPromptNote}</p>
           </div>
           {#if vocabulary.ready}
             <div class="vars">
@@ -185,7 +186,7 @@
                 </span>
               {/each}
               <details class="more">
-                <summary>all {vocabulary.current.variables.length}</summary>
+                <summary>{m.agentEditor.allOf(vocabulary.current.variables.length)}</summary>
                 <dl>
                   {#each vocabulary.current.variables as variable (variable.name)}
                     <dt><code>&#123;&#123;{variable.name}&#125;&#125;</code></dt>
@@ -209,7 +210,7 @@
                 >{#if i < lines.length - 1}{'\n'}{/if}{/each}</pre>
             <textarea
               name="systemPrompt"
-              aria-label="System prompt"
+              aria-label={m.agentEditor.systemPrompt}
               spellcheck="false"
               readonly={!a.mayChange}
               bind:value={prompt}
@@ -223,7 +224,7 @@
           <h2>Model &amp; limits</h2>
 
           <label class="f">
-            <span>Engine</span>
+            <span>{m.agentEditor.engine}</span>
             <div class="select">
               <Icon name="bot" size={16} />
               <select
@@ -236,15 +237,15 @@
                   model = null;
                 }}
               >
-                <option value="claude_cli">Coding agent</option>
-                <option value="design_cli">Design service</option>
+                <option value="claude_cli">{m.agentEditor.codingAgent}</option>
+                <option value="design_cli">{m.agentEditor.designService}</option>
               </select>
               <Icon name="chevron-down" size={16} />
             </div>
           </label>
 
           <label class="f">
-            <span>Model</span>
+            <span>{m.agentEditor.model}</span>
             <div class="select">
               <Icon name="code" size={16} />
               <select name="model" disabled={!a.mayChange} value={model ?? models[0] ?? ''}>
@@ -258,7 +259,7 @@
 
           <div class="three">
             <label class="f">
-              <span>Max cost per run</span>
+              <span>{m.agentEditor.maxCost}</span>
               <input
                 name="maxCostUsd"
                 readonly={!a.mayChange}
@@ -267,7 +268,7 @@
               />
             </label>
             <label class="f">
-              <span>Max time</span>
+              <span>{m.agentEditor.maxTime}</span>
               <input
                 name="maxMinutes"
                 type="number"
@@ -278,7 +279,7 @@
               />
             </label>
             <label class="f">
-              <span>Max turns</span>
+              <span>{m.agentEditor.maxTurns}</span>
               <input
                 name="maxTurns"
                 type="number"
@@ -299,8 +300,8 @@
           <!-- Withholding a tool makes it unreachable, not discouraged (FR-039) -->
           <section class="card">
             <div class="ch">
-              <h2>Allowed tools</h2>
-              <p class="quiet">Passed to the CLI as --allowedTools</p>
+              <h2>{m.agentEditor.allowedTools}</h2>
+              <p class="quiet">{m.agentEditor.allowedToolsNote}</p>
             </div>
             {#if vocabulary.ready}
               {#each vocabulary.current.tools as tool (tool.name)}
@@ -312,7 +313,7 @@
                   <input
                     type="checkbox"
                     class="switch"
-                    aria-label="{tool.name} — {tool.what}"
+                    aria-label={m.agentEditor.toolLabel(tool.name, tool.what)}
                     disabled={!a.mayChange}
                     checked={(tools ?? []).includes(tool.name)}
                     onchange={(event) => toggleTool(tool.name, event.currentTarget.checked)}
@@ -323,7 +324,7 @@
           </section>
         {:else}
           <section class="card">
-            <h2>Allowed tools</h2>
+            <h2>{m.agentEditor.allowedTools}</h2>
             <p class="quiet">
               Tool permissions do not apply to the design service, so there are none to set.
             </p>
@@ -332,8 +333,8 @@
 
         <section class="card">
           <div class="ch">
-            <h2>Skills attached</h2>
-            <a href="/skills">Manage skills →</a>
+            <h2>{m.agentEditor.skillsAttached}</h2>
+            <a href="/skills">{m.agentEditor.manageSkills}</a>
           </div>
           <div class="chips">
             {#each held as skill (skill.id)}
@@ -343,7 +344,7 @@
                 {#if a.mayChange}
                   <button
                     type="button"
-                    aria-label="Remove {skill.name}"
+                    aria-label={m.agentEditor.removeSkill(skill.name)}
                     onclick={() => toggleSkill(skill.id, false)}
                   >
                     <Icon name="x" size={12} />
@@ -363,7 +364,7 @@
                   }}
                 >
                   <Icon name="plus" size={12} />
-                  <span>Add</span>
+                  <span>{m.agentEditor.add}</span>
                 </button>
                 {#if adding}
                   <!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -372,8 +373,8 @@
                     {#if unheld.length === 0}
                       <span class="none">
                         {skillList.ready && skillList.current.length === 0
-                          ? 'No skills yet — write one first.'
-                          : 'It already holds every skill.'}
+                          ? m.agentEditor.noSkillsYet
+                          : m.agentEditor.holdsEverySkill}
                       </span>
                     {:else}
                       {#each unheld as available (available.id)}
@@ -395,7 +396,7 @@
             {/if}
 
             {#if held.length === 0 && !a.mayChange}
-              <span class="quiet">None.</span>
+              <span class="quiet">{m.agentEditor.none}</span>
             {/if}
           </div>
         </section>

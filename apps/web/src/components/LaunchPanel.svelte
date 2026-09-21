@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onDestroy } from 'svelte';
   import Icon from '$components/Icon.svelte';
+  import { m } from '$lib/i18n';
   import RequestConsole from '$components/RequestConsole.svelte';
   import { launchFor, start, stop } from '$lib/remote/launches.remote';
 
@@ -41,16 +42,16 @@
   /** Why the button is not available, in words rather than by hiding it (FR-003). */
   const blocker = $derived(
     !branchName
-      ? 'This ticket has no branch yet.'
+      ? m.launch.noBranchYet
       : status === 'done'
         ? null
         : status === 'running' || status === 'queued'
-          ? 'Available once the run has finished and pushed its branch.'
+          ? m.launch.afterPush
           : status === 'waiting_approval'
-            ? 'Available once the run has finished; it is waiting at a checkpoint.'
+            ? m.launch.atCheckpoint
             : status === 'failed'
-              ? 'The run did not finish, so the branch may not hold a working project.'
-              : 'Available once a run has finished.'
+              ? m.launch.didNotFinish
+              : m.launch.afterAnyRun
   );
 
   async function act(work: () => Promise<{ ok: boolean; message?: string }>) {
@@ -58,7 +59,7 @@
     notice = null;
     try {
       const result = await work();
-      if (!result.ok) notice = result.message ?? 'That did not work.';
+      if (!result.ok) notice = result.message ?? m.launch.didNotWork;
     } finally {
       working = false;
     }
@@ -82,14 +83,14 @@
   });
 </script>
 
-<section class="card run" aria-label="Run it">
+<section class="card run" aria-label={m.launch.heading}>
   <header>
     <span class="ic"><Icon name="play" size={15} /></span>
-    <h2>Run it</h2>
+    <h2>{m.launch.heading}</h2>
     {#if launch?.status === 'running'}
-      <span class="state ok"><span class="dot"></span>Running</span>
+      <span class="state ok"><span class="dot"></span>{m.launch.running}</span>
     {:else if launch?.status === 'starting'}
-      <span class="state live"><span class="dot"></span>Starting</span>
+      <span class="state live"><span class="dot"></span>{m.launch.starting}</span>
     {/if}
   </header>
 
@@ -97,15 +98,15 @@
     <!-- Nothing running: the button, or the reason there is none. -->
     {#if launch?.status === 'failed'}
       <p class="ended bad">
-        <strong>It did not start.</strong>
+        <strong>{m.launch.didNotStart}</strong>
         {#if launch.detail}<span class="detail">{launch.detail}</span>{/if}
       </p>
       <p class="small muted">
         If the command is wrong for this project, set one on the repository —
-        <a href="/repositories">Repositories → Set how it starts</a>.
+        <a href="/repositories">{m.launch.setHowItStarts}</a>.
       </p>
     {:else if launch?.status === 'stopped'}
-      <p class="ended">{launch.detail ?? 'Stopped.'}</p>
+      <p class="ended">{launch.detail ?? m.launch.stopped}</p>
     {/if}
     <p class="small muted">
       Starts the branch <code>{branchName ?? '—'}</code> in a fresh sandbox, on a port only this
@@ -119,7 +120,7 @@
       onclick={() => act(() => start(ticketId))}
     >
       <Icon name="play" size={14} />
-      {launch ? 'Run it again' : 'Run it'}
+      {launch ? m.launch.runAgain : m.launch.heading}
     </button>
     {#if blocker}<p class="small muted">{blocker}</p>{/if}
   {:else if launch.status === 'starting'}
@@ -144,8 +145,8 @@
     {/each}
 
     <div class="faces">
-      <button type="button" class:on={showing === 'page'} onclick={() => (face = 'page')}>Page</button>
-      <button type="button" class:on={showing === 'console'} onclick={() => (face = 'console')}>Requests</button>
+      <button type="button" class:on={showing === 'page'} onclick={() => (face = 'page')}>{m.launch.page}</button>
+      <button type="button" class:on={showing === 'console'} onclick={() => (face = 'console')}>{m.launch.requests}</button>
       <a class="open" href={launch.url ?? '#'} target="_blank" rel="noopener">
         Open in new tab <Icon name="external-link" size={13} />
       </a>
@@ -153,7 +154,7 @@
 
     {#if showing === 'page' && launch.url}
       <!-- A page that refuses to be framed still opens in its own tab above. -->
-      <iframe class="page" src={launch.url} title="The running project"></iframe>
+      <iframe class="page" src={launch.url} title={m.launch.runningProject}></iframe>
     {:else if launch.url}
       <RequestConsole launchId={launch.id} baseUrl={launch.url} />
     {/if}

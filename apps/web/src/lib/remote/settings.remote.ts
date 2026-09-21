@@ -9,6 +9,7 @@ import { readiness, testEverything } from '$lib/services/connections';
 import { invite, listMembers, remove, setRole } from '$lib/services/members';
 import { queueState } from '$lib/services/queue';
 import { getWorkspace, storeCredential, updateWorkspace } from '$lib/services/workspace';
+import { m } from '$lib/i18n';
 
 /**
  * Workspace settings. Every one of these checks the administrator rule
@@ -18,7 +19,7 @@ import { getWorkspace, storeCredential, updateWorkspace } from '$lib/services/wo
 
 function requireUser() {
   const user = getRequestEvent().locals.user;
-  if (!user) throw notAuthorised('you must be signed in');
+  if (!user) throw notAuthorised(m.form.signInRequired);
   return user;
 }
 
@@ -71,17 +72,17 @@ export const connections = command(async () => {
 });
 
 const WorkspaceSchema = v.object({
-  name: v.pipe(v.string(), v.trim(), v.minLength(1, 'Give the workspace a name.')),
+  name: v.pipe(v.string(), v.trim(), v.minLength(1, m.form.workspaceName)),
   runnerBaseUrl: v.optional(v.string(), ''),
-  defaultCostCeilingUsd: v.pipe(v.string(), v.trim(), v.minLength(1, 'Set a cost ceiling.')),
-  defaultTimeCeilingMinutes: formInteger('Set a time ceiling in whole minutes.'),
-  maxConcurrentRuns: formInteger('Set how many runs may execute at once.'),
-  sandboxImage: v.pipe(v.string(), v.trim(), v.minLength(1, 'Name the sandbox image.')),
-  sandboxCpu: formInteger('Set the processors as a whole number.'),
-  sandboxMemoryMb: formInteger('Set the memory in whole megabytes.'),
-  sandboxWallClockMinutes: formInteger('Set the sandbox lifetime in whole minutes.'),
+  defaultCostCeilingUsd: v.pipe(v.string(), v.trim(), v.minLength(1, m.form.costCeiling)),
+  defaultTimeCeilingMinutes: formInteger(m.form.timeCeiling),
+  maxConcurrentRuns: formInteger(m.form.concurrency),
+  sandboxImage: v.pipe(v.string(), v.trim(), v.minLength(1, m.form.sandboxImage)),
+  sandboxCpu: formInteger(m.form.processors),
+  sandboxMemoryMb: formInteger(m.form.memory),
+  sandboxWallClockMinutes: formInteger(m.form.lifetime),
   sandboxNetworkDuringImplement: formBoolean(),
-  retainFailedSandboxesHours: formInteger('Set the retention in whole hours.'),
+  retainFailedSandboxesHours: formInteger(m.form.retention),
 });
 
 export const saveWorkspace = form(WorkspaceSchema, async (input) => {
@@ -96,7 +97,7 @@ export const saveWorkspace = form(WorkspaceSchema, async (input) => {
       user,
     );
     await settings().refresh();
-    return { message: 'Saved. Runs already in flight keep the ceilings they started with.' };
+    return { message: m.notice.settingsSaved };
   });
 });
 
@@ -107,7 +108,7 @@ export const saveWorkspace = form(WorkspaceSchema, async (input) => {
  */
 const CredentialSchema = v.object({
   kind: v.picklist(['model', 'design'] as const),
-  token: v.pipe(v.string(), v.trim(), v.minLength(1, 'Paste the credential.')),
+  token: v.pipe(v.string(), v.trim(), v.minLength(1, m.form.credential)),
 });
 
 export const saveCredential = form(CredentialSchema, async (input) => {
@@ -115,13 +116,13 @@ export const saveCredential = form(CredentialSchema, async (input) => {
   return attempt(async () => {
     await storeCredential(db(), input, user, keyRingFromEnv());
     await settings().refresh();
-    return { message: 'Stored. It is encrypted at rest and never shown again.' };
+    return { message: m.notice.credentialStored };
   });
 });
 
 const InviteSchema = v.object({
-  name: v.pipe(v.string(), v.trim(), v.minLength(1, 'Give them a name.')),
-  email: v.pipe(v.string(), v.trim(), v.email('That does not look like an email address.')),
+  name: v.pipe(v.string(), v.trim(), v.minLength(1, m.form.personName)),
+  email: v.pipe(v.string(), v.trim(), v.email(m.form.notAnEmail)),
   role: v.optional(v.picklist(['admin', 'member'] as const), 'member'),
 });
 

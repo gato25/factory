@@ -1,6 +1,7 @@
 <script lang="ts">
   import QueuePosition from '$components/QueuePosition.svelte';
   import { position } from '$lib/remote/runs.remote';
+  import { m } from '$lib/i18n';
   import type { RunView } from '$lib/services/run-view';
 
   let { view }: { view: RunView } = $props();
@@ -9,50 +10,44 @@
 </script>
 
 <section class="card">
-  <h2>Run details</h2>
+  <h2>{m.runDetails.heading}</h2>
   <dl>
-    <dt>Pipeline</dt>
+    <dt>{m.runDetails.pipeline}</dt>
     <dd>{view.pipeline.name} <span class="muted small">v{view.pipeline.version}</span></dd>
 
-    <dt>Run</dt>
+    <dt>{m.runDetails.run}</dt>
     <dd>
       {view.ticket.reference}-r{view.run.attempt}
-      <span class="muted">({view.run.attempt}{view.run.attempt === 1
-          ? 'st'
-          : view.run.attempt === 2
-            ? 'nd'
-            : view.run.attempt === 3
-              ? 'rd'
-              : 'th'} attempt)</span>
+      <span class="muted">{m.runDetails.attemptOrdinal(view.run.attempt)}</span>
     </dd>
 
-    <dt>Repository</dt>
+    <dt>{m.runDetails.repository}</dt>
     <dd>{view.repository.fullPath}</dd>
 
-    <dt>Branch</dt>
+    <dt>{m.runDetails.branch}</dt>
     <dd><code>{view.ticket.branchName}</code> → <code>{view.repository.defaultBranch}</code></dd>
 
-    <dt>Sandbox</dt>
+    <dt>{m.runDetails.sandbox}</dt>
     <dd>
       {#if view.run.containerId}
         <code>{view.run.containerId.slice(0, 12)}</code>
       {:else}
-        <span class="muted">not created</span>
+        <span class="muted">{m.runDetails.notCreated}</span>
       {/if}
     </dd>
 
     <!-- A reference identifying the execution on the execution service (FR-078) -->
-    <dt>Execution</dt>
+    <dt>{m.runDetails.execution}</dt>
     <dd>
       {#if view.run.orchestratorExecutionId}
         <code>{view.run.orchestratorExecutionId}</code>
       {:else}
-        <span class="muted">not started</span>
+        <span class="muted">{m.runDetails.notStarted}</span>
       {/if}
     </dd>
 
-    <dt>Budget</dt>
-    <dd>${view.run.costUsd} of ${view.run.costCeilingUsd} cap</dd>
+    <dt>{m.runDetails.budget}</dt>
+    <dd>{m.runDetails.budgetOf(view.run.costUsd, view.run.costCeilingUsd)}</dd>
 
     <!--
       Per step, and it says so. The tracker used to print "45 min limit"
@@ -60,8 +55,8 @@
       took ninety-five minutes under that ceiling looked like a bug, when in
       fact the ceiling is a deadline each step gets separately.
     -->
-    <dt>Time</dt>
-    <dd>{view.run.timeCeilingMinutes} min cap per step</dd>
+    <dt>{m.runDetails.time}</dt>
+    <dd>{m.runDetails.timeCap(view.run.timeCeilingMinutes)}</dd>
   </dl>
 
   {#if place?.ready}
@@ -72,12 +67,11 @@
   {#if view.ticket.classificationMissing}
     <!-- FR-102: the warning is a field on the run, not a log line -->
     <p class="badge warn">
-      The specification step recorded no decision about the interface, so design was skipped.
-      Check whether this ticket needed screens.
+      {m.runDetails.classificationMissing}
     </p>
   {:else if view.ticket.hasUi !== null}
     <p class="small muted">
-      {view.ticket.hasUi ? 'Changes the interface' : 'No interface change'}
+      {view.ticket.hasUi ? m.runDetails.changesInterface : m.runDetails.noInterfaceChange}
       {#if view.ticket.uiRationale}— {view.ticket.uiRationale}{/if}
     </p>
   {/if}

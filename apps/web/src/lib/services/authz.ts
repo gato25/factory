@@ -1,5 +1,6 @@
 import { type ApproverRule, notAuthorised } from '@factory/shared';
 import type { SessionUser } from './auth';
+import { m } from '$lib/i18n';
 
 /**
  * Exactly three rules cover the whole surface (contracts/ui-data.md). Every
@@ -17,9 +18,9 @@ export function isAdmin(user: SessionUser | null): boolean {
 }
 
 export function requireAdmin(user: SessionUser | null): SessionUser {
-  if (!user) throw notAuthorised('you must be signed in');
+  if (!user) throw notAuthorised(m.form.signInRequired);
   if (user.role !== 'admin') {
-    throw notAuthorised('only an administrator may change workspace settings');
+    throw notAuthorised(m.conflicts.adminOnlySettings);
   }
   return user;
 }
@@ -40,7 +41,7 @@ export function requireOwnerOrAdmin(
   ownerId: string | null,
   what = 'this',
 ): SessionUser {
-  if (!user) throw notAuthorised('you must be signed in');
+  if (!user) throw notAuthorised(m.form.signInRequired);
   if (!canChangeOwned(user, ownerId)) {
     throw notAuthorised(`${what} belongs to someone else — you can use it but not change it`);
   }
@@ -67,9 +68,9 @@ export function requireApprover(
   approvers: ApproverRule,
   ticketCreatedBy: string,
 ): SessionUser {
-  if (!user) throw notAuthorised('you must be signed in');
+  if (!user) throw notAuthorised(m.form.signInRequired);
   if (!canDecide(user, approvers, ticketCreatedBy)) {
-    throw notAuthorised('this checkpoint is not yours to decide');
+    throw notAuthorised(m.conflicts.checkpointNotYours);
   }
   return user;
 }
