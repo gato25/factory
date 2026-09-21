@@ -1,7 +1,7 @@
 import type { Database } from '@factory/db';
 import { runs, stepResults, tickets } from '@factory/db/schema';
 import { conflict, type PipelineSnapshot, type RunFacts } from '@factory/shared';
-import { eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { getRun } from './run';
 
 /**
@@ -106,10 +106,53 @@ export async function continueRun(
   const facts: RunFacts =
     ticket?.hasUi === null || ticket?.hasUi === undefined ? {} : { hasUi: ticket.hasUi };
 
-  // The stale reason goes now: a person has acted on it.
+  const reviving = run.status === 'failed';
+
+  /**
+   * At most one run per ticket may be active (FR-020), enforced by a partial
+   * unique index over exactly the statuses below. Reviving a failed run
+   * while a retry of the same ticket is already going would breach it, and
+   * the breach would surface as a database error rather than as an answer.
+   * So it is checked here and said in words.
+   */
+  if (reviving) {
+    const active = await database
+      .select({ id: runs.id })
+      .from(runs)
+      .where(
+        and(
+          eq(runs.ticketId, run.ticketId),
+          inArray(runs.status, ['queued', 'running', 'waiting_approval', 'opening_mr']),
+        ),
+      )
+      .limit(1);
+    if (active.length > 0) {
+      throw conflict(
+        'this ticket already has a run going; wait for it to finish before continuing an earlier one',
+      );
+    }
+  }
+  /**
+   * The stale reason goes now: a person has acted on it. And a failed run
+   * stops being failed, because otherwise it is not continuing at all.
+   *
+   * Everything the execution service does for a run begins by asking the
+   * application for its credentials, and that route refuses a run whose
+   * status is terminal — rightly, since a finished run has no sandbox to
+   * prepare. Handing one over still marked `failed` therefore got it
+   * accepted and then killed a moment later with `credential_missing: that
+   * run has ended`, which names neither the cause nor the remedy.
+   *
+   * `queued` rather than `running`: it has been handed over and has not
+   * begun. The `started` callback moves it on, exactly as for a first run.
+   */
   await database
     .update(runs)
-    .set({ failureReason: null, updatedAt: new Date() })
+    .set({
+      failureReason: null,
+      ...(reviving ? { status: 'queued' as const, failureStepIndex: null, finishedAt: null } : {}),
+      updatedAt: new Date(),
+    })
     .where(eq(runs.id, runId));
 
   return {

@@ -125,3 +125,50 @@ test('the stale "not started yet" reason is cleared when a person continues', as
     .where(eq(runs.id, runId));
   expect(row?.reason).toBeNull();
 });
+
+test('a failed run stops being failed, or it cannot get its credentials', async () => {
+  const { runs } = await import('@factory/db/schema');
+  const { eq } = await import('drizzle-orm');
+  await applyCallback(db, { ...envelope('started'), container_id: 'ws-1' } as Callback);
+  await applyCallback(db, {
+    ...envelope('step_finished', 0),
+    status: 'done',
+    duration_s: 12,
+    cost_usd: '0.2000',
+    artifacts: [],
+  } as Callback);
+  await db
+    .update(runs)
+    .set({
+      status: 'failed',
+      failureReason: 'time_exceeded',
+      failureStepIndex: 1,
+      finishedAt: new Date(),
+    })
+    .where(eq(runs.id, runId));
+
+  const { index } = await continueRun(db, runId);
+  expect(index).toBe(1);
+
+  // Everything the execution service does begins by asking for credentials,
+  // and that route refuses a run whose status is terminal. Left `failed`,
+  // continuing was accepted and then killed with "that run has ended".
+  const [after] = await db.select().from(runs).where(eq(runs.id, runId)).limit(1);
+  expect(after?.status).toBe('queued');
+  expect(after?.failureReason).toBeNull();
+  expect(after?.failureStepIndex).toBeNull();
+  expect(after?.finishedAt).toBeNull();
+});
+
+test('a cancelled run is not revived — somebody stopped that one on purpose', async () => {
+  const { runs } = await import('@factory/db/schema');
+  const { eq } = await import('drizzle-orm');
+  await db.update(runs).set({ status: 'cancelled' }).where(eq(runs.id, runId));
+  let thrown: unknown;
+  try {
+    await continueRun(db, runId);
+  } catch (error) {
+    thrown = error;
+  }
+  expect((thrown as Error)?.message).toContain('cancelled');
+});
