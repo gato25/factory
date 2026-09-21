@@ -67,3 +67,54 @@ test('the design writes a distance, not a date', () => {
   expect(ago(new Date('2026-09-11T11:59:50Z'), now)).toBe('just now');
   expect(ago('not a date', now)).toBe('at an unknown time');
 });
+
+/**
+ * Tables. An agent writing a plan or a summary reaches for one constantly,
+ * and without this the reader saw the pipes.
+ */
+test('a pipe table becomes a table, with its alignments', () => {
+  const [block] = blocks(
+    ['| Step | Time | Cost |', '| --- | :---: | ---: |', '| Spec | 2m 10s | $0.14 |'].join('\n'),
+  );
+  expect(block).toEqual({
+    kind: 'table',
+    align: [null, 'center', 'right'],
+    head: [
+      [{ kind: 'text', text: 'Step' }],
+      [{ kind: 'text', text: 'Time' }],
+      [{ kind: 'text', text: 'Cost' }],
+    ],
+    rows: [
+      [
+        [{ kind: 'text', text: 'Spec' }],
+        [{ kind: 'text', text: '2m 10s' }],
+        [{ kind: 'text', text: '$0.14' }],
+      ],
+    ],
+  });
+});
+
+test('the outer pipes are optional, and cells carry inline marks', () => {
+  const [block] = blocks(['a | b', '--- | ---', '`x` | **y**'].join('\n'));
+  expect(block?.kind).toBe('table');
+  if (block?.kind !== 'table') throw new Error('not a table');
+  expect(block.rows[0]).toEqual([[{ kind: 'code', text: 'x' }], [{ kind: 'strong', text: 'y' }]]);
+});
+
+test('a short row is squared off against the header', () => {
+  const [block] = blocks(['| a | b | c |', '| - | - | - |', '| only |'].join('\n'));
+  if (block?.kind !== 'table') throw new Error('not a table');
+  expect(block.rows[0]).toHaveLength(3);
+  expect(block.rows[0]?.[2]).toEqual([]);
+});
+
+test('a sentence containing a pipe is still a sentence', () => {
+  // The delimiter line underneath is what makes a table, not the pipe.
+  const [block] = blocks('Run `a | b` to pipe it');
+  expect(block?.kind).toBe('paragraph');
+});
+
+test('the table ends where its rows end', () => {
+  const out = blocks(['| a |', '| - |', '| 1 |', '', 'After the table.'].join('\n'));
+  expect(out.map((b) => b.kind)).toEqual(['table', 'paragraph']);
+});

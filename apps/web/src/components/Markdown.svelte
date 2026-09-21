@@ -35,6 +35,29 @@
       </ul>
     {:else if block.kind === 'code'}
       <pre>{block.lines.join('\n')}</pre>
+    {:else if block.kind === 'table'}
+      <!-- Wrapped, because a wide table should scroll rather than stretch
+           whatever it is sitting in. -->
+      <div class="table">
+        <table>
+          <thead>
+            <tr>
+              {#each block.head as cell, n (n)}
+                <th style:text-align={block.align[n] ?? 'left'}>{@render spans(cell)}</th>
+              {/each}
+            </tr>
+          </thead>
+          <tbody>
+            {#each block.rows as row, r (r)}
+              <tr>
+                {#each row as cell, n (n)}
+                  <td style:text-align={block.align[n] ?? 'left'}>{@render spans(cell)}</td>
+                {/each}
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      </div>
     {:else}
       <p>{@render spans(block.content)}</p>
     {/if}
@@ -86,6 +109,41 @@
     font-family: var(--font-mono);
     font-size: 12px;
   }
+  .table {
+    margin: 0 0 10px;
+    overflow-x: auto;
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 12px;
+  }
+  th,
+  td {
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  th {
+    font-weight: 600;
+    color: var(--text-2);
+    white-space: nowrap;
+    background: var(--surface-2);
+  }
+  /* Rounded ends on the header, so the table reads as one object. */
+  th:first-child {
+    border-top-left-radius: var(--r-sm);
+  }
+  th:last-child {
+    border-top-right-radius: var(--r-sm);
+  }
+  td {
+    color: var(--text);
+  }
+  tbody tr:last-child td {
+    border-bottom: 0;
+  }
+
   pre {
     margin: 0 0 10px;
     padding: 12px 14px;

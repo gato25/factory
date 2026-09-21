@@ -15,10 +15,13 @@ export interface Inline {
   text: string;
 }
 
+export type Align = 'left' | 'center' | 'right' | null;
+
 export type Block =
   | { kind: 'heading'; level: number; content: Inline[] }
   | { kind: 'list'; items: Inline[][] }
   | { kind: 'code'; lines: string[] }
+  | { kind: 'table'; head: Inline[][]; rows: Inline[][][]; align: Align[] }
   | { kind: 'paragraph'; content: Inline[] };
 
 const INLINE = /`([^`]+)`|\*\*([^*]+)\*\*/g;
@@ -40,6 +43,37 @@ export function inline(text: string): Inline[] {
   return out;
 }
 
+/**
+ * A pipe table, the way everything that writes Markdown writes one.
+ *
+ * A row is recognised only when the line UNDER it is the dashed delimiter,
+ * which is what keeps an ordinary sentence containing a pipe from being read
+ * as a table. Leading and trailing pipes are optional, as they are
+ * everywhere else.
+ */
+const DELIMITER = /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/;
+
+const looksLikeRow = (line: string | undefined): boolean =>
+  Boolean(line?.includes('|')) && line?.trim() !== '';
+
+function cells(line: string): string[] {
+  let text = line.trim();
+  if (text.startsWith('|')) text = text.slice(1);
+  if (text.endsWith('|')) text = text.slice(0, -1);
+  return text.split('|').map((cell) => cell.trim());
+}
+
+function alignments(line: string): Align[] {
+  return cells(line).map((cell) => {
+    const left = cell.startsWith(':');
+    const right = cell.endsWith(':');
+    if (left && right) return 'center';
+    if (right) return 'right';
+    if (left) return 'left';
+    return null;
+  });
+}
+
 export function blocks(markdown: string): Block[] {
   const out: Block[] = [];
   let paragraph: string[] = [];
@@ -59,7 +93,9 @@ export function blocks(markdown: string): Block[] {
     }
   };
 
-  for (const line of markdown.replace(/\r\n/g, '\n').split('\n')) {
+  const lines = markdown.replace(/\r\n/g, '\n').split('\n');
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i] as string;
     if (fence) {
       if (line.trimStart().startsWith('```')) {
         out.push({ kind: 'code', lines: fence });
@@ -85,6 +121,28 @@ export function blocks(markdown: string): Block[] {
         level: (heading[1] as string).length,
         content: inline(heading[2] as string),
       });
+      continue;
+    }
+
+    // Checked before the list, because `| --- |` would otherwise read as a
+    // bullet, and before the paragraph, because every row would.
+    if (looksLikeRow(line) && DELIMITER.test(lines[i + 1] ?? '')) {
+      endParagraph();
+      endList();
+      const align = alignments(lines[i + 1] as string);
+      const head = cells(line).map(inline);
+      const rows: Inline[][][] = [];
+      let at = i + 2;
+      while (looksLikeRow(lines[at])) {
+        const row = cells(lines[at] as string);
+        // Squared off against the header, so a short row does not shear the
+        // table and a long one does not widen it past its own headings.
+        while (row.length < head.length) row.push('');
+        rows.push(row.slice(0, head.length).map(inline));
+        at += 1;
+      }
+      out.push({ kind: 'table', head, rows, align });
+      i = at - 1;
       continue;
     }
 
