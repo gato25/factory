@@ -1,4 +1,4 @@
-import { createRedactor, type Redactor } from '@factory/shared';
+import { createRedactor, type Redactor, stripAnsi } from '@factory/shared';
 
 /**
  * Output is streamed as it arrives (FR-076) and redacted where it is
@@ -110,7 +110,7 @@ export class LogSink {
   private emit(stream: 'stdout' | 'stderr', text: string) {
     this.lastFlushAt = this.now();
     this.seq += 1;
-    void this.options.send({ seq: this.seq, stream, text: this.redact(text) });
+    void this.options.send({ seq: this.seq, stream, text: this.clean(text) });
   }
 
   get chunksSent(): number {
@@ -118,12 +118,18 @@ export class LogSink {
   }
 
   /**
-   * The same redaction, for text that is retained but does not go through a
-   * chunk — a step's failure detail, above all. That detail is shown to a
-   * person and stored, so it is step output in every sense FR-084 means
-   * (Principle V). One redactor per step, built from one set of secrets.
+   * What every piece of captured output passes through on its way in: the
+   * secrets redacted (FR-084, Principle V) and the terminal escape
+   * sequences removed. Both belong at ingest rather than at display — a
+   * consumer that forgot either would show a credential or a screenful of
+   * `[33m` to a person.
+   *
+   * Public because text that is retained WITHOUT going through a chunk
+   * needs the same treatment — a step's failure detail, above all, which
+   * is step output in every sense FR-084 means. One redactor per step,
+   * built from one set of secrets.
    */
   clean(text: string): string {
-    return this.redact(text);
+    return this.redact(stripAnsi(text));
   }
 }
