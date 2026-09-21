@@ -35,6 +35,33 @@ import {
  * `tests/fake-host.ts` and an in-memory store.
  */
 
+/**
+ * How long the container must live for the work it has been handed.
+ *
+ * The two numbers were set independently and never reconciled. A sandbox
+ * defaults to 90 minutes; a six-step pipeline whose run ceiling is 45
+ * minutes may spend 45 minutes PER STEP, because a step with no limit of
+ * its own inherits the whole ceiling (see `engines/limits.ts`). That is 270
+ * minutes of authorised work inside a 90-minute container, and when the
+ * container goes first the step does not fail on its own terms — it fails
+ * as something unreachable, which reads like a network fault.
+ *
+ * So the floor is what the steps may actually take, plus a margin for the
+ * clone, the installs and the commits between them. The configured value is
+ * still honoured when it is the larger of the two: this raises a lifetime
+ * that is too short and never shortens one somebody chose.
+ */
+export function sandboxLifetime(
+  snapshot: { pipeline?: { steps?: unknown[] }; limits?: { time_ceiling_minutes?: number } },
+  configured: number,
+): number {
+  const steps = snapshot.pipeline?.steps?.length ?? 0;
+  const perStep = snapshot.limits?.time_ceiling_minutes ?? 0;
+  if (steps === 0 || perStep === 0) return configured;
+  const OVERHEAD_MINUTES = 15;
+  return Math.max(configured, steps * perStep + OVERHEAD_MINUTES);
+}
+
 export interface RouterDeps {
   config: RunnerConfig;
   host: ContainerHost;
@@ -124,7 +151,7 @@ export function routesFor(deps: RouterDeps): Route[] {
             image: limits?.image || config.sandboxImage,
             cpu: limits?.cpu ?? 2,
             memoryMb: limits?.memory_mb ?? 4096,
-            wallClockMinutes: limits?.wall_clock_minutes ?? 90,
+            wallClockMinutes: sandboxLifetime(snapshot, limits?.wall_clock_minutes ?? 90),
             networkDuringImplement: limits?.network_during_implement ?? false,
           },
         });
