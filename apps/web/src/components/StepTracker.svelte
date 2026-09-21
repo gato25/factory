@@ -1,384 +1,282 @@
 <script lang="ts">
   import Icon from '$components/Icon.svelte';
   import type { RunView } from '$lib/services/run-view';
+  import { duration, iconFor } from '$lib/step-kind';
 
   /**
-   * `design.pen`'s tracker: one bar per step on a shared time axis, so a
-   * bar's WIDTH is how long that step actually took. Equal-width circles
-   * said only "four of six done"; this says where the ten minutes went,
-   * which is the question a person watching a run is actually asking.
+   * `design.pen`'s stepper, artboard 06: one row per step down the side rail,
+   * each node threaded on a continuous connector — accent behind the run,
+   * hairline grey ahead of it. A finished step shows a check, the one
+   * running shows its own mark on a solid node, the ones ahead show theirs
+   * greyed.
    *
-   * Width comes from `flex-grow: durationS`, not from a computed pixel, so
-   * the row balances itself for a pipeline of three steps or ten. A
-   * `min-width` keeps the shortest step's label readable — which means a
-   * very short step is drawn wider than its true share. That is a deliberate
-   * floor, not a rounding error: a bar nobody can read carries nothing.
+   * **Why it runs down rather than across.** It was a horizontal row whose
+   * widths were `flex-grow: durationS`, so a bar's width was the time that
+   * step took. Six boxes of arbitrary width read as an accident rather than
+   * a measurement, and the shortest step needed a `min-width` floor that
+   * made its width a lie anyway. Down the rail every label has room, and the
+   * duration is printed rather than implied — 3m 42s against 2m 41s is exact
+   * where one box being somewhat wider than another was only comparable.
+   * What is lost is seeing the slowest step at a glance.
    *
-   * What the artboard has no room for is under it rather than dropped: why a
-   * step was skipped (FR-075a), why the run failed and in whose words
-   * (FR-087), and the Retry that belongs beside the step that failed.
+   * No card of its own: the rail is one card and this is the lower half of
+   * it. No spend bar either — the cost against its ceiling belongs in Run
+   * details, which is where `design.pen` puts it and where it already is.
+   * The failure and the Retry live on the page, which says more about both
+   * than this could.
    */
   let {
     steps,
     run,
     onSelect,
     selected,
-    onRetry,
-    retrying = false,
   }: {
     steps: RunView['steps'];
     run: RunView['run'];
     onSelect?: (index: number) => void;
     selected?: number;
-    /** Absent when the viewer has nothing to retry — a live run. */
-    onRetry?: () => void;
-    retrying?: boolean;
   } = $props();
 
   /**
-   * The step that failed, so it is the one the eye lands on and the one the
-   * Retry action sits beside (FR-087). The run's own record of where it
-   * failed wins over a step row, because a ceiling stops a run between steps.
+   * The step that failed, so it is the one the eye lands on. The run's own
+   * record of where it failed wins over a step row, because a ceiling stops
+   * a run between steps.
    */
   const failedIndex = $derived(
     run.failureStepIndex ?? (steps.find((step) => step.state === 'failed')?.index ?? null),
   );
 
-  const spentPercent = $derived(
-    Math.min(100, Math.round((Number(run.costUsd) / Number(run.costCeilingUsd)) * 100)),
-  );
-
   const chosen = $derived(steps.find((step) => step.index === selected) ?? null);
   const skipped = $derived(steps.filter((step) => step.state === 'skipped'));
 
-  /** Enough to recognise the failure, not enough to bury the list. */
-  function firstLine(detail: string | null | undefined): string {
-    if (!detail) return 'failed';
-    const line = detail.split('\n')[0]?.trim() ?? '';
-    if (!line) return 'failed';
-    return line.length > 100 ? `${line.slice(0, 100)}…` : line;
+  type State = 'done' | 'running' | 'pending' | 'skipped' | 'failed';
+
+  interface Cell {
+    /** Absent for the merge request, which is not a step anybody can open. */
+    index: number | null;
+    label: string;
+    state: State;
+    /** The figure on the right of the row: a duration, or what it waits on. */
+    detail: string;
+    icon: string;
   }
 
-  /**
-   * An emoji per step kind, keyed on `type` rather than on the agent, because
-   * an agent is whatever a workspace made it — "Security review" and "Docs
-   * writer" are as valid as the five shipped defaults, and a map keyed on
-   * agent names would be wrong for them the day somebody adds one.
-   */
-  const GLYPH: Record<string, string> = {
-    agent: '\u{1F9FE}',
-    design: '\u{1F3A8}',
-    shell: '\u26A1',
-    checkpoint: '\u270B',
-    notify: '\u{1F514}',
+  /** A finished step says so with a check; the rest carry their own mark. */
+  const MARK: Record<State, string | null> = {
+    done: 'check',
+    failed: 'x',
+    skipped: 'chevron-right',
+    running: null,
+    pending: null,
   };
-  const glyph = (type: string) => GLYPH[type] ?? '\u{1F916}';
 
-  /**
-   * What a bar is worth on the time axis. A step that has not run has no
-   * duration to plot, so it takes a fixed slot rather than collapsing.
-   */
-  function weight(step: RunView['steps'][number]): number {
-    return step.durationS && step.durationS > 0 ? step.durationS : 0;
-  }
-  /**
-   * Before anything has run there is no axis to plot against, so the bars
-   * share the row evenly rather than all collapsing to their floor.
-   */
-  const anyDuration = $derived(steps.some((step) => weight(step) > 0));
+  const cells = $derived.by((): Cell[] => {
+    const out: Cell[] = steps.map((step) => {
+      const state: State = step.index === failedIndex ? 'failed' : (step.state as State);
+      return {
+        index: step.index,
+        label: step.label,
+        state,
+        detail:
+          state === 'running'
+            ? 'running'
+            : state === 'pending'
+              ? 'waiting'
+              : state === 'skipped'
+                ? 'skipped'
+                : step.durationS
+                  ? duration(step.durationS)
+                  : '—',
+        icon: MARK[state] ?? iconFor(step.type),
+      };
+    });
+    // Implicit and always last (FR-029).
+    const opened = run.status === 'done';
+    out.push({
+      index: null,
+      label: 'Merge request',
+      state: opened ? 'done' : 'pending',
+      detail: opened ? 'opened' : 'waiting',
+      icon: opened ? 'check' : 'git-pull-request',
+    });
+    return out;
+  });
 
-  /** "2m 10s · $0.14", as the artboard writes it. */
-  function took(step: RunView['steps'][number]): string {
-    const parts: string[] = [];
-    if (step.state === 'running') parts.push('Running');
-    else if (step.state === 'pending') parts.push('waiting');
-    else if (step.state === 'skipped') parts.push('skipped');
-    else if (step.durationS) {
-      const minutes = Math.floor(step.durationS / 60);
-      const seconds = step.durationS % 60;
-      parts.push(minutes > 0 ? `${minutes}m ${String(seconds).padStart(2, '0')}s` : `${seconds}s`);
-    }
-    if (step.costUsd && step.costUsd !== '0.0000') parts.push(`$${step.costUsd}`);
-    return parts.join(' · ') || '—';
-  }
+  /** A cell the run has got to, which is what colours the rail into it. */
+  const reached = (cell: Cell) => cell.state !== 'pending';
 </script>
 
-<section class="card">
-  <ol class="track">
-    {#each steps as step (step.index)}
-      <li
-        class={step.state}
-        class:culprit={step.index === failedIndex}
-        style="flex-grow: {anyDuration ? weight(step) : 1}"
-      >
+<!--
+  Each row draws its own half of the connector above and below its node, so
+  the line is continuous without anything being positioned over anything
+  else. The rows have a fixed height and no gap, which is what lets the
+  halves meet.
+-->
+{#snippet inside(cell: Cell, i: number)}
+  {@const first = i === 0}
+  {@const last = i === cells.length - 1}
+  <span class="rail" aria-hidden="true">
+    <span class="line" class:hidden={first} class:on={!first && reached(cell)}></span>
+    <span class="node"><Icon name={cell.icon} size={13} /></span>
+    <span class="line" class:hidden={last} class:on={!last && reached(cells[i + 1])}></span>
+  </span>
+  <span class="n">{cell.label}</span>
+  <span class="d">{cell.detail}</span>
+{/snippet}
+
+<ol class="track">
+  {#each cells as cell, i (cell.index ?? 'mr')}
+    <li class={cell.state}>
+      {#if cell.index === null}
+        <span class="cell">{@render inside(cell, i)}</span>
+      {:else}
         <button
           type="button"
-          class:on={selected === step.index}
-          aria-label="Step {step.index + 1} — {step.label}, {took(step)}"
-          onclick={() => onSelect?.(step.index)}
-        >
-          <span class="n"><span class="glyph" aria-hidden="true">{glyph(step.type)}</span>{step.label}</span>
-          <span class="s">{took(step)}</span>
-        </button>
-      </li>
-    {/each}
-
-    <!-- Implicit and always last (FR-029) -->
-    <li class="pending implicit">
-      <span class="static">
-        <span class="n"><span class="glyph" aria-hidden="true">&#x1F680;</span>Merge request</span>
-        <span class="s">{run.status === 'done' ? 'opened' : 'waiting'}</span>
-      </span>
-    </li>
-  </ol>
-
-  <!--
-    What the artboard's row cannot carry. A skipped step is shown WITH its
-    reason and never omitted (FR-075a), so these are listed whether or not
-    the step is the one selected.
-  -->
-  {#each skipped as step (step.index)}
-    <p class="note">{step.label} skipped — {step.conditionNotMet}.</p>
-  {/each}
-  {#if chosen?.summary && chosen.state === 'done'}
-    <p class="note">{chosen.label} — {chosen.summary}</p>
-  {/if}
-
-  {#if failedIndex !== null}
-    {@const culprit = steps.find((step) => step.index === failedIndex)}
-    <div class="failed">
-      <p>
-        {#if run.failureReason}
-          {run.failureReason}
-        {:else if culprit}
-          {firstLine(culprit.errorDetail)}
-        {/if}
-      </p>
-      {#if onRetry}
-        <div class="retry">
-          <button type="button" class="action" onclick={onRetry} disabled={retrying}>
-            {retrying ? 'Retrying…' : 'Retry from here'}
-          </button>
-          <span class="small muted">A new attempt on this ticket. This one stays readable.</span>
-        </div>
+          class="cell"
+          class:on={selected === cell.index}
+          aria-label={`Step ${cell.index + 1} — ${cell.label}, ${cell.detail}`}
+          onclick={() => onSelect?.(cell.index as number)}>{@render inside(cell, i)}</button>
       {/if}
-    </div>
-  {/if}
+    </li>
+  {/each}
+</ol>
 
-  <div class="spend">
-    <div class="bar"><div class="fill" style="width: {spentPercent}%"></div></div>
-    <p class="small muted">
-      ${run.costUsd} of ${run.costCeilingUsd} ceiling &middot; {run.timeCeilingMinutes} min limit
-    </p>
-  </div>
-</section>
+<!--
+  A skipped step is shown WITH its reason and never omitted (FR-075a), so
+  these are listed whether or not the step is the one selected.
+-->
+{#each skipped as step (step.index)}
+  <p class="note">{step.label} skipped — {step.conditionNotMet}.</p>
+{/each}
+{#if chosen?.summary && chosen.state === 'done'}
+  <p class="note">{chosen.label} — {chosen.summary}</p>
+{/if}
 
 <style>
-  .card {
-    padding: 16px 20px;
-    background: var(--surface);
-    border: 1px solid var(--card-border);
-    border-radius: var(--r-lg);
-    box-shadow: 0 1px 2px #0f172a0a;
-  }
-
-  /* One shared axis. `flex-grow` is the step's seconds, so the bars divide
-     the row in proportion to the time they took. */
   .track {
     list-style: none;
     margin: 0;
     padding: 0;
-    display: flex;
-    align-items: stretch;
-    gap: 4px;
   }
   .track > li {
     display: flex;
-    flex-basis: 0;
-    min-width: 98px;
-  }
-  /* The merge request has no duration of its own — a fixed slot at the end. */
-  .track > li.implicit {
-    flex: none;
-    width: 108px;
   }
 
-  button,
-  .static {
+  /* A fixed row height with no gap between rows: the 8px stubs above and
+     below each node meet, and the rail reads as one line. */
+  .cell {
     display: flex;
-    flex-direction: column;
-    justify-content: center;
-    gap: 1px;
+    align-items: center;
+    gap: 10px;
     flex: 1;
     min-width: 0;
-    padding: 6px 9px;
-    height: 40px;
+    height: 38px;
+    padding: 0;
     border: 0;
-    border-radius: var(--r-sm);
-    background: var(--surface-2);
+    background: none;
     font: inherit;
+    color: inherit;
     text-align: left;
+  }
+  button.cell {
     cursor: pointer;
   }
-  .static {
-    cursor: default;
+  button.cell:hover .node,
+  button.cell.on .node {
+    outline: 3px solid var(--accent-soft);
   }
-  button:hover,
-  button.on {
-    outline: 2px solid var(--accent-soft);
+  button.cell:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: var(--r-sm);
   }
 
-  .glyph {
-    margin-right: 5px;
+  .rail {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 26px;
+    height: 38px;
+    flex: none;
   }
-  .n,
-  .s {
+  .line {
+    width: 2px;
+    height: 8px;
+    flex: none;
+    background: var(--border);
+  }
+  .line.on {
+    background: var(--accent);
+  }
+  .line.hidden {
+    background: none;
+  }
+
+  .node {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    flex: none;
+    border-radius: 999px;
+    background: var(--surface-2);
+    box-shadow: inset 0 0 0 1.5px var(--border);
+    color: var(--text-3);
+  }
+  li.done .node {
+    background: var(--accent-soft);
+    box-shadow: inset 0 0 0 1.5px var(--accent);
+    color: var(--accent);
+  }
+  li.running .node {
+    background: var(--accent);
+    box-shadow: 0 2px 8px #2450e64d;
+    color: var(--text-inv);
+  }
+  li.failed .node {
+    background: var(--danger);
+    box-shadow: 0 2px 8px #dc26264d;
+    color: var(--text-inv);
+  }
+
+  .n {
+    flex: 1;
+    min-width: 0;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-2);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  .n {
-    font-size: 10.5px;
-    font-weight: 600;
-    color: var(--text-2);
-  }
-  .s {
-    font-size: 9.5px;
+  .d {
+    flex: none;
     font-family: var(--font-mono);
+    font-size: 10px;
     color: var(--text-3);
-  }
-
-  /* Behind the run: the step's own colour, held back so the running step is
-     the only saturated block on the row. */
-  li.done button {
-    background: var(--accent-soft);
-  }
-  li.done .n {
-    color: var(--accent-text);
-  }
-  li.done .s {
-    color: var(--accent-text);
-    opacity: 0.75;
-  }
-
-  li.running button {
-    background: var(--accent);
   }
   li.running .n {
-    color: var(--text-inv);
+    font-weight: 700;
+    color: var(--text);
   }
-  li.running .s {
-    color: var(--text-inv);
-    opacity: 0.8;
+  li.failed .n {
+    color: var(--danger);
   }
-
-  /* Ahead of the run: an empty slot, as the artboard draws it. */
-  li.pending button,
-  li.pending .static {
-    background: var(--surface);
-    box-shadow: inset 0 0 0 1px var(--border);
-  }
-  li.pending .n,
-  li.pending .s {
+  li.pending .n {
     color: var(--text-3);
-  }
-
-  li.skipped button {
-    background: var(--surface-2);
   }
   li.skipped .n {
     color: var(--text-3);
     text-decoration: line-through;
   }
 
-  li.failed button,
-  li.culprit button {
-    background: var(--danger);
-  }
-  li.failed .n,
-  li.culprit .n,
-  li.failed .s,
-  li.culprit .s {
-    color: var(--text-inv);
-  }
-
   .note {
-    margin: 14px 0 0;
-    padding-top: 12px;
+    margin: 10px 0 0;
+    padding-top: 10px;
     border-top: 1px solid var(--border);
-    font-size: 12px;
+    font-size: 11.5px;
+    line-height: 1.5;
     color: var(--text-2);
-  }
-
-  .failed {
-    margin-top: 14px;
-    padding: 12px 14px;
-    border-radius: var(--r-md);
-    background: var(--danger-soft);
-  }
-  .failed p {
-    margin: 0;
-    font-size: 13px;
-    color: var(--danger);
-  }
-  .retry {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-    margin-top: 10px;
-  }
-  .retry button.action {
-    padding: 7px 14px;
-    border: 1px solid var(--border);
-    border-radius: var(--r-sm);
-    background: var(--surface);
-    font: inherit;
-    font-weight: 600;
-    cursor: pointer;
-  }
-  .retry button.action:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  .spend {
-    margin-top: 14px;
-    border-top: 1px solid var(--border);
-    padding-top: 12px;
-  }
-  .bar {
-    height: 6px;
-    border-radius: 999px;
-    background: var(--surface-2);
-    overflow: hidden;
-  }
-  .fill {
-    height: 100%;
-    background: var(--accent);
-  }
-  .spend p {
-    margin: 6px 0 0;
-  }
-
-  /* Narrow: the row becomes a column rather than shrinking into nothing.
-     The time axis cannot survive the fold, so every step takes one row. */
-  @media (max-width: 1100px) {
-    .track {
-      flex-direction: column;
-    }
-    .track > li,
-    .track > li.implicit {
-      width: auto;
-      flex: none;
-    }
-    button,
-    .static {
-      flex-direction: row;
-      align-items: center;
-      justify-content: space-between;
-      height: auto;
-      padding: 9px 12px;
-    }
   }
 </style>
