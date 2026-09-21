@@ -827,6 +827,7 @@
               ],
               "width": "fill_container",
               "height": "fit_content(60)",
+              "fill": "$log-bg",
               "layout": "vertical",
               "padding": [
                 2,
@@ -9217,631 +9218,183 @@
               "name": "Body",
               "width": "fill_container",
               "height": "fill_container",
-              "layout": "vertical",
-              "gap": 28,
+              "gap": 20,
               "padding": [
                 16,
                 40,
-                40,
+                24,
                 40
               ],
               "children": [
-                {
-                  "type": "frame",
-                  "id": "EmGnS",
-                  "name": "Ticket Head",
-                  "width": "fill_container",
-                  "justifyContent": "space_between",
-                  "children": [
-                    {
-                      "type": "frame",
-                      "id": "V52RZ",
-                      "name": "L",
-                      "layout": "vertical",
-                      "gap": 8,
-                      "children": [
-                        {
-                          "type": "frame",
-                          "id": "UrqeI",
-                          "name": "Crumb",
-                          "gap": 6,
-                          "alignItems": "center",
-                          "children": [
-                            {
-                              "type": "text",
-                              "id": "OJzbg",
-                              "name": "A",
-                              "fill": "$text-3",
-                              "content": "Даалгавар",
-                              "fontFamily": "$font",
-                              "fontSize": 13,
-                              "fontWeight": "normal"
-                            },
-                            {
-                              "type": "icon",
-                              "id": "iCtXk",
-                              "name": "C",
-                              "width": 14,
-                              "height": 14,
-                              "icon": "chevron-right",
-                              "library": "lucide",
-                              "fill": "$text-3"
-                            },
-                            {
-                              "type": "text",
-                              "id": "P9W2v",
-                              "name": "B",
-                              "fill": "$text-3",
-                              "content": "shop-frontend",
-                              "fontFamily": "$font",
-                              "fontSize": 13,
-                              "fontWeight": "normal"
-                            },
-                            {
-                              "type": "icon",
-                              "id": "L6lAO",
-                              "name": "C2",
-                              "width": 14,
-                              "height": 14,
-                              "icon": "chevron-right",
-                              "library": "lucide",
-                              "fill": "$text-3"
-                            },
-                            {
-                              "type": "text",
-                              "id": "fG17F",
-                              "name": "Id",
-                              "fill": "$text-2",
-                              "content": "#142",
-                              "fontFamily": "$font-mono",
-                              "fontSize": 13,
-                              "fontWeight": "normal"
-                            }
-                          ]
-                        },
-                        {
-                          "type": "frame",
-                          "id": "Z2Z6Q",
-                          "name": "Title Row",
-                          "gap": 12,
-                          "alignItems": "center",
-                          "children": [
-                            {
-                              "type": "text",
-                              "id": "R7ngfA",
-                              "name": "Title",
-                              "fill": "$text",
-                              "content": "Google-ээр нэвтрэх эрх нэмэх",
-                              "fontFamily": "$font-head",
-                              "fontSize": 24,
-                              "fontWeight": "700"
-                            },
-                            {
-                              "id": "bvgwV",
-                              "type": "ref",
-                              "ref": "Tc1n9",
-                              "name": "Badge Running · Implement",
-                              "fill": "$accent-soft",
-                              "descendants": {
-                                "v4BZZV": {
-                                  "fill": "$accent-text"
-                                },
-                                "z3RGC0": {
-                                  "content": "Ажиллаж буй · Хөгжүүлэлт",
-                                  "fill": "$accent-text"
-                                }
-                              }
-                            }
-                          ]
-                        },
-                        {
-                          "type": "frame",
-                          "id": "sLCyi",
-                          "name": "Meta",
-                          "gap": 16,
-                          "alignItems": "center",
-                          "children": [
-                            {
-                              "type": "frame",
-                              "id": "afpDF",
-                              "name": "M",
-                              "gap": 6,
-                              "alignItems": "center",
-                              "children": [
-                                {
-                                  "type": "icon",
-                                  "id": "UgVmL",
-                                  "name": "I",
-                                  "width": 14,
-                                  "height": 14,
-                                  "icon": "git-branch",
-                                  "library": "lucide",
-                                  "fill": "$text-3"
-                                },
-                                {
-                                  "type": "text",
-                                  "id": "tJadL",
-                                  "name": "T",
-                                  "fill": "$text-2",
-                                  "content": "factory/142-oauth-google",
-                                  "fontFamily": "$font-mono",
-                                  "fontSize": 13,
-                                  "fontWeight": "normal"
-                                }
-                              ]
-                            },
-                            {
-                              "type": "frame",
-                              "id": "Y5HQh",
-                              "name": "M",
-                              "gap": 6,
-                              "alignItems": "center",
-                              "children": [
-                                {
-                                  "type": "icon",
-                                  "id": "q3xrcn",
-                                  "name": "I",
-                                  "width": 14,
-                                  "height": 14,
-                                  "icon": "user",
-                                  "library": "lucide",
-                                  "fill": "$text-3"
-                                },
-                                {
-                                  "type": "text",
-                                  "id": "f3LqC",
-                                  "name": "T",
-                                  "fill": "$text-2",
-                                  "content": "Gantogtokh үүсгэсэн",
-                                  "fontFamily": "$font",
-                                  "fontSize": 13,
-                                  "fontWeight": "normal"
-                                }
-                              ]
-                            },
-                            {
-                              "type": "frame",
-                              "id": "l1e0b",
-                              "name": "M",
-                              "gap": 6,
-                              "alignItems": "center",
-                              "children": [
-                                {
-                                  "type": "icon",
-                                  "id": "mzbOa",
-                                  "name": "I",
-                                  "width": 14,
-                                  "height": 14,
-                                  "icon": "timer",
-                                  "library": "lucide",
-                                  "fill": "$text-3"
-                                },
-                                {
-                                  "type": "text",
-                                  "id": "AkhAK",
-                                  "name": "T",
-                                  "fill": "$text-2",
-                                  "content": "14 мин өмнө эхэлсэн",
-                                  "fontFamily": "$font",
-                                  "fontSize": 13,
-                                  "fontWeight": "normal"
-                                }
-                              ]
-                            },
-                            {
-                              "type": "frame",
-                              "id": "JCsQ0",
-                              "name": "M",
-                              "gap": 6,
-                              "alignItems": "center",
-                              "children": [
-                                {
-                                  "type": "icon",
-                                  "id": "LIFKT",
-                                  "name": "I",
-                                  "width": 14,
-                                  "height": 14,
-                                  "icon": "coins",
-                                  "library": "lucide",
-                                  "fill": "$text-3"
-                                },
-                                {
-                                  "type": "text",
-                                  "id": "EIR91",
-                                  "name": "T",
-                                  "fill": "$text-2",
-                                  "content": "одоогоор $1.12",
-                                  "fontFamily": "$font",
-                                  "fontSize": 13,
-                                  "fontWeight": "normal"
-                                }
-                              ]
-                            }
-                          ]
-                        }
-                      ]
-                    },
-                    {
-                      "type": "frame",
-                      "id": "y3vTh3",
-                      "name": "Actions",
-                      "gap": 10,
-                      "children": [
-                        {
-                          "id": "s3f01N",
-                          "type": "ref",
-                          "ref": "ilkU0",
-                          "name": "Pause",
-                          "descendants": {
-                            "gLdHj": {
-                              "icon": "pause"
-                            },
-                            "hsDx0": {
-                              "content": "Түр зогсоох"
-                            }
-                          }
-                        },
-                        {
-                          "id": "D93Xd",
-                          "type": "ref",
-                          "ref": "ilkU0",
-                          "name": "Cancel run",
-                          "descendants": {
-                            "gLdHj": {
-                              "icon": "circle-x"
-                            },
-                            "hsDx0": {
-                              "content": "Ажиллагаа цуцлах"
-                            }
-                          }
-                        }
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "FthID",
-                  "name": "Pipeline Steps",
-                  "width": "fill_container",
-                  "fill": "$surface",
-                  "cornerRadius": "$r-lg",
-                  "stroke": "#E6E8EE",
-                  "strokeWidth": 1,
-                  "effect": {
-                    "type": "shadow",
-                    "shadowType": "outer",
-                    "color": "#0F172A0A",
-                    "offset": {
-                      "x": 0,
-                      "y": 1
-                    },
-                    "blur": 2
-                  },
-                  "gap": 14,
-                  "padding": [
-                    13,
-                    20
-                  ],
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "frame",
-                      "id": "dONiG",
-                      "name": "Track",
-                      "width": "fill_container",
-                      "gap": 4,
-                      "alignItems": "center",
-                      "children": [
-                        {
-                          "type": "frame",
-                          "id": "JEIZr",
-                          "name": "Seg Тодорхойлолт",
-                          "clip": true,
-                          "width": 146,
-                          "height": 40,
-                          "fill": "$accent-soft",
-                          "cornerRadius": 8,
-                          "layout": "vertical",
-                          "gap": 1,
-                          "padding": [
-                            0,
-                            9
-                          ],
-                          "justifyContent": "center",
-                          "children": [
-                            {
-                              "type": "text",
-                              "id": "JY7xY",
-                              "name": "N",
-                              "fill": "$accent-text",
-                              "textGrowth": "fixed-width",
-                              "width": "fill_container",
-                              "content": "🧾 Тодорхойлолт",
-                              "fontFamily": "$font",
-                              "fontSize": 10.5,
-                              "fontWeight": "600"
-                            },
-                            {
-                              "type": "text",
-                              "id": "OCVKi",
-                              "name": "D",
-                              "fill": "#7C93D8",
-                              "textGrowth": "fixed-width",
-                              "width": "fill_container",
-                              "content": "2м 10с",
-                              "fontFamily": "$font-mono",
-                              "fontSize": 9.5,
-                              "fontWeight": "normal"
-                            }
-                          ]
-                        },
-                        {
-                          "type": "frame",
-                          "id": "Y3cWjg",
-                          "name": "Seg Дизайн",
-                          "clip": true,
-                          "width": 182,
-                          "height": 40,
-                          "fill": "$accent-soft",
-                          "cornerRadius": 8,
-                          "layout": "vertical",
-                          "gap": 1,
-                          "padding": [
-                            0,
-                            9
-                          ],
-                          "justifyContent": "center",
-                          "children": [
-                            {
-                              "type": "text",
-                              "id": "f0qvbN",
-                              "name": "N",
-                              "fill": "$accent-text",
-                              "textGrowth": "fixed-width",
-                              "width": "fill_container",
-                              "content": "🎨 Дизайн",
-                              "fontFamily": "$font",
-                              "fontSize": 10.5,
-                              "fontWeight": "600"
-                            },
-                            {
-                              "type": "text",
-                              "id": "RNACv",
-                              "name": "D",
-                              "fill": "#7C93D8",
-                              "textGrowth": "fixed-width",
-                              "width": "fill_container",
-                              "content": "2м 41с",
-                              "fontFamily": "$font-mono",
-                              "fontSize": 9.5,
-                              "fontWeight": "normal"
-                            }
-                          ]
-                        },
-                        {
-                          "type": "frame",
-                          "id": "G4OvEB",
-                          "name": "Seg Төлөвлөгөө",
-                          "clip": true,
-                          "width": 233,
-                          "height": 40,
-                          "fill": "$accent-soft",
-                          "cornerRadius": 8,
-                          "layout": "vertical",
-                          "gap": 1,
-                          "padding": [
-                            0,
-                            9
-                          ],
-                          "justifyContent": "center",
-                          "children": [
-                            {
-                              "type": "text",
-                              "id": "A5Zvbc",
-                              "name": "N",
-                              "fill": "$accent-text",
-                              "textGrowth": "fixed-width",
-                              "width": "fill_container",
-                              "content": "🗺️ Төлөвлөгөө",
-                              "fontFamily": "$font",
-                              "fontSize": 10.5,
-                              "fontWeight": "600"
-                            },
-                            {
-                              "type": "text",
-                              "id": "wVoe1",
-                              "name": "D",
-                              "fill": "#7C93D8",
-                              "textGrowth": "fixed-width",
-                              "width": "fill_container",
-                              "content": "3м 42с",
-                              "fontFamily": "$font-mono",
-                              "fontSize": 9.5,
-                              "fontWeight": "normal"
-                            }
-                          ]
-                        },
-                        {
-                          "type": "frame",
-                          "id": "E202NB",
-                          "name": "Seg Даалгавар",
-                          "clip": true,
-                          "width": 98,
-                          "height": 40,
-                          "fill": "$accent-soft",
-                          "cornerRadius": 8,
-                          "layout": "vertical",
-                          "gap": 1,
-                          "padding": [
-                            0,
-                            9
-                          ],
-                          "justifyContent": "center",
-                          "children": [
-                            {
-                              "type": "text",
-                              "id": "M9l8Di",
-                              "name": "N",
-                              "fill": "$accent-text",
-                              "textGrowth": "fixed-width",
-                              "width": "fill_container",
-                              "content": "📋 Даалгавар",
-                              "fontFamily": "$font",
-                              "fontSize": 10.5,
-                              "fontWeight": "600"
-                            },
-                            {
-                              "type": "text",
-                              "id": "raqiX",
-                              "name": "D",
-                              "fill": "#7C93D8",
-                              "textGrowth": "fixed-width",
-                              "width": "fill_container",
-                              "content": "1м 05с",
-                              "fontFamily": "$font-mono",
-                              "fontSize": 9.5,
-                              "fontWeight": "normal"
-                            }
-                          ]
-                        },
-                        {
-                          "type": "frame",
-                          "id": "dOSE3",
-                          "name": "Seg Хөгжүүлэлт",
-                          "clip": true,
-                          "width": 182,
-                          "height": 40,
-                          "fill": "$accent",
-                          "cornerRadius": 8,
-                          "layout": "vertical",
-                          "gap": 1,
-                          "padding": [
-                            0,
-                            9
-                          ],
-                          "justifyContent": "center",
-                          "children": [
-                            {
-                              "type": "text",
-                              "id": "YPdct",
-                              "name": "N",
-                              "fill": "$text-inv",
-                              "textGrowth": "fixed-width",
-                              "width": "fill_container",
-                              "content": "💻 Хөгжүүлэлт",
-                              "fontFamily": "$font",
-                              "fontSize": 10.5,
-                              "fontWeight": "600"
-                            },
-                            {
-                              "type": "text",
-                              "id": "ClDZr",
-                              "name": "D",
-                              "fill": "#C7D8FF",
-                              "textGrowth": "fixed-width",
-                              "width": "fill_container",
-                              "content": "2м 41с",
-                              "fontFamily": "$font-mono",
-                              "fontSize": 9.5,
-                              "fontWeight": "normal"
-                            }
-                          ]
-                        },
-                        {
-                          "type": "frame",
-                          "id": "lT20m",
-                          "name": "Seg Нэгтгэх хүсэлт",
-                          "clip": true,
-                          "width": 96,
-                          "height": 40,
-                          "fill": "$surface",
-                          "cornerRadius": 8,
-                          "stroke": "$border",
-                          "strokeWidth": 1,
-                          "layout": "vertical",
-                          "gap": 1,
-                          "padding": [
-                            0,
-                            9
-                          ],
-                          "justifyContent": "center",
-                          "children": [
-                            {
-                              "type": "text",
-                              "id": "p2mynC",
-                              "name": "N",
-                              "fill": "$text-3",
-                              "textGrowth": "fixed-width",
-                              "width": "fill_container",
-                              "content": "🚀 Нэгтгэлт",
-                              "fontFamily": "$font",
-                              "fontSize": 10.5,
-                              "fontWeight": "600"
-                            },
-                            {
-                              "type": "text",
-                              "id": "iT4dm",
-                              "name": "D",
-                              "fill": "$text-3",
-                              "textGrowth": "fixed-width",
-                              "width": "fill_container",
-                              "content": "хүлээгдэж",
-                              "fontFamily": "$font-mono",
-                              "fontSize": 9.5,
-                              "fontWeight": "normal"
-                            }
-                          ]
-                        }
-                      ]
-                    },
-                    {
-                      "type": "frame",
-                      "id": "ldaFB",
-                      "name": "Total",
-                      "width": 96,
-                      "layout": "vertical",
-                      "gap": 1,
-                      "alignItems": "end",
-                      "children": [
-                        {
-                          "type": "text",
-                          "id": "T19gU",
-                          "name": "T",
-                          "fill": "$text",
-                          "textGrowth": "fixed-width",
-                          "width": "fill_container",
-                          "content": "12м 19с",
-                          "textAlign": "right",
-                          "fontFamily": "$font-mono",
-                          "fontSize": 12.5,
-                          "fontWeight": "700"
-                        },
-                        {
-                          "type": "text",
-                          "id": "GG3qO",
-                          "name": "C",
-                          "fill": "$text-3",
-                          "textGrowth": "fixed-width",
-                          "width": "fill_container",
-                          "content": "нийт · $1.54",
-                          "textAlign": "right",
-                          "fontFamily": "$font-mono",
-                          "fontSize": 10,
-                          "fontWeight": "normal"
-                        }
-                      ]
-                    }
-                  ]
-                },
                 {
                   "type": "frame",
                   "id": "RvFx5",
                   "name": "Lower",
                   "width": "fill_container",
                   "height": "fill_container",
-                  "gap": 24,
+                  "layout": "vertical",
+                  "gap": 10,
                   "children": [
+                    {
+                      "type": "frame",
+                      "id": "aRIh1",
+                      "name": "Tabs",
+                      "width": "fill_container",
+                      "gap": 10,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "zw58j",
+                          "name": "Segmented",
+                          "fill": "$surface-2",
+                          "cornerRadius": 999,
+                          "gap": 2,
+                          "padding": 3,
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "ilvYn",
+                              "name": "Tab Гаралт",
+                              "fill": "$surface",
+                              "cornerRadius": 999,
+                              "effect": {
+                                "type": "shadow",
+                                "shadowType": "outer",
+                                "color": "#0F172A14",
+                                "offset": {
+                                  "x": 0,
+                                  "y": 1
+                                },
+                                "blur": 2
+                              },
+                              "gap": 6,
+                              "padding": [
+                                5,
+                                12
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "sCONN",
+                                  "name": "T",
+                                  "fill": "$text",
+                                  "content": "Гаралт",
+                                  "fontFamily": "$font",
+                                  "fontSize": 12,
+                                  "fontWeight": "600"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "WfPsz",
+                              "name": "Tab Артефакт",
+                              "cornerRadius": 999,
+                              "gap": 6,
+                              "padding": [
+                                5,
+                                12
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "ONw9w",
+                                  "name": "T",
+                                  "fill": "$text-2",
+                                  "content": "Артефакт",
+                                  "fontFamily": "$font",
+                                  "fontSize": 12,
+                                  "fontWeight": "500"
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "avSBk",
+                                  "name": "N",
+                                  "fill": "#00000000",
+                                  "cornerRadius": 999,
+                                  "padding": [
+                                    1,
+                                    6
+                                  ],
+                                  "alignItems": "center",
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "F2ILt2",
+                                      "name": "C",
+                                      "fill": "$text-3",
+                                      "content": "3",
+                                      "fontFamily": "$font-mono",
+                                      "fontSize": 10,
+                                      "fontWeight": "600"
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "JL9SL",
+                              "name": "Tab Ажиллуулах",
+                              "cornerRadius": 999,
+                              "gap": 6,
+                              "padding": [
+                                5,
+                                12
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "bqenB",
+                                  "name": "T",
+                                  "fill": "$text-2",
+                                  "content": "Ажиллуулах",
+                                  "fontFamily": "$font",
+                                  "fontSize": 12,
+                                  "fontWeight": "500"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "z5XbMl",
+                              "name": "Tab Мэдээлэл",
+                              "cornerRadius": 999,
+                              "gap": 6,
+                              "padding": [
+                                5,
+                                12
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "dNgmd",
+                                  "name": "T",
+                                  "fill": "$text-2",
+                                  "content": "Мэдээлэл",
+                                  "fontFamily": "$font",
+                                  "fontSize": 12,
+                                  "fontWeight": "500"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "Gn8RR",
+                          "name": "Spacer",
+                          "width": "fill_container",
+                          "height": 1
+                        }
+                      ]
+                    },
                     {
                       "id": "gjig0",
                       "type": "ref",
@@ -9875,6 +9428,7 @@
                           "clip": true,
                           "width": "fill_container",
                           "height": "fill_container",
+                          "fill": "$log-bg",
                           "layout": "vertical",
                           "padding": [
                             2,
@@ -9891,19 +9445,21 @@
                               "width": "fill_container",
                               "descendants": {
                                 "F7Rjt3": {
-                                  "fill": "$success"
+                                  "fill": "$log-ok"
                                 },
                                 "Jzqti": {
-                                  "enabled": false
+                                  "enabled": false,
+                                  "fill": "$log-text"
                                 },
                                 "Ys67t": {
                                   "content": "Reading docs/tasks.md · 6 tasks found",
-                                  "fill": "$text-3",
+                                  "fill": "$log-muted",
                                   "fontFamily": "$font-mono",
                                   "fontSize": 11
                                 },
                                 "t6x6Q": {
-                                  "content": "12:04:11"
+                                  "content": "12:04:11",
+                                  "fill": "$log-muted"
                                 }
                               }
                             },
@@ -9913,7 +9469,7 @@
                               "ref": "wtLlc",
                               "name": "L",
                               "width": "fill_container",
-                              "fill": "$success-soft",
+                              "fill": "$log-ok-soft",
                               "cornerRadius": 10,
                               "padding": [
                                 7,
@@ -9921,20 +9477,23 @@
                               ],
                               "descendants": {
                                 "F7Rjt3": {
-                                  "enabled": false
+                                  "enabled": false,
+                                  "fill": "$log-muted"
                                 },
                                 "Jzqti": {
-                                  "content": "✅"
+                                  "content": "✅",
+                                  "fill": "$log-text"
                                 },
                                 "Ys67t": {
                                   "content": "Task 1 — Add GoogleProvider to src/auth/providers.ts",
-                                  "fill": "$success",
+                                  "fill": "$log-ok",
                                   "fontFamily": "$font",
                                   "fontSize": 11,
                                   "fontWeight": "600"
                                 },
                                 "t6x6Q": {
-                                  "content": "12:04:13"
+                                  "content": "12:04:13",
+                                  "fill": "$log-muted"
                                 }
                               }
                             },
@@ -9944,7 +9503,7 @@
                               "ref": "wtLlc",
                               "name": "L",
                               "width": "fill_container",
-                              "fill": "$success-soft",
+                              "fill": "$log-ok-soft",
                               "cornerRadius": 10,
                               "padding": [
                                 7,
@@ -9952,20 +9511,23 @@
                               ],
                               "descendants": {
                                 "F7Rjt3": {
-                                  "enabled": false
+                                  "enabled": false,
+                                  "fill": "$log-muted"
                                 },
                                 "Jzqti": {
-                                  "content": "✅"
+                                  "content": "✅",
+                                  "fill": "$log-text"
                                 },
                                 "Ys67t": {
                                   "content": "Task 2 — Create auth/google/callback route",
-                                  "fill": "$success",
+                                  "fill": "$log-ok",
                                   "fontFamily": "$font",
                                   "fontSize": 11,
                                   "fontWeight": "600"
                                 },
                                 "t6x6Q": {
-                                  "content": "12:04:52"
+                                  "content": "12:04:52",
+                                  "fill": "$log-muted"
                                 }
                               }
                             },
@@ -9975,7 +9537,7 @@
                               "ref": "wtLlc",
                               "name": "L",
                               "width": "fill_container",
-                              "fill": "$success-soft",
+                              "fill": "$log-ok-soft",
                               "cornerRadius": 10,
                               "padding": [
                                 7,
@@ -9983,20 +9545,23 @@
                               ],
                               "descendants": {
                                 "F7Rjt3": {
-                                  "enabled": false
+                                  "enabled": false,
+                                  "fill": "$log-muted"
                                 },
                                 "Jzqti": {
-                                  "content": "✅"
+                                  "content": "✅",
+                                  "fill": "$log-text"
                                 },
                                 "Ys67t": {
                                   "content": "Task 3 — Persist google_id in users table (migration 0042)",
-                                  "fill": "$success",
+                                  "fill": "$log-ok",
                                   "fontFamily": "$font",
                                   "fontSize": 11,
                                   "fontWeight": "600"
                                 },
                                 "t6x6Q": {
-                                  "content": "12:06:40"
+                                  "content": "12:06:40",
+                                  "fill": "$log-muted"
                                 }
                               }
                             },
@@ -10006,7 +9571,7 @@
                               "ref": "wtLlc",
                               "name": "L",
                               "width": "fill_container",
-                              "fill": "$success-soft",
+                              "fill": "$log-ok-soft",
                               "cornerRadius": 10,
                               "padding": [
                                 7,
@@ -10014,20 +9579,23 @@
                               ],
                               "descendants": {
                                 "F7Rjt3": {
-                                  "enabled": false
+                                  "enabled": false,
+                                  "fill": "$log-muted"
                                 },
                                 "Jzqti": {
-                                  "content": "✅"
+                                  "content": "✅",
+                                  "fill": "$log-text"
                                 },
                                 "Ys67t": {
                                   "content": "Task 4 — Add Google button to LoginPage",
-                                  "fill": "$success",
+                                  "fill": "$log-ok",
                                   "fontFamily": "$font",
                                   "fontSize": 11,
                                   "fontWeight": "600"
                                 },
                                 "t6x6Q": {
-                                  "content": "12:07:55"
+                                  "content": "12:07:55",
+                                  "fill": "$log-muted"
                                 }
                               }
                             },
@@ -10039,19 +9607,21 @@
                               "width": "fill_container",
                               "descendants": {
                                 "F7Rjt3": {
-                                  "fill": "$success"
+                                  "fill": "$log-ok"
                                 },
                                 "Jzqti": {
-                                  "enabled": false
+                                  "enabled": false,
+                                  "fill": "$log-text"
                                 },
                                 "Ys67t": {
                                   "content": "Task 5 — Write tests for callback handler",
-                                  "fill": "$text-3",
+                                  "fill": "$log-muted",
                                   "fontFamily": "$font-mono",
                                   "fontSize": 11
                                 },
                                 "t6x6Q": {
-                                  "content": "12:08:30"
+                                  "content": "12:08:30",
+                                  "fill": "$log-muted"
                                 }
                               }
                             },
@@ -10063,19 +9633,21 @@
                               "width": "fill_container",
                               "descendants": {
                                 "F7Rjt3": {
-                                  "fill": "$success"
+                                  "fill": "$log-ok"
                                 },
                                 "Jzqti": {
-                                  "enabled": false
+                                  "enabled": false,
+                                  "fill": "$log-text"
                                 },
                                 "Ys67t": {
                                   "content": "bun test auth/",
-                                  "fill": "$text-3",
+                                  "fill": "$log-muted",
                                   "fontFamily": "$font-mono",
                                   "fontSize": 11
                                 },
                                 "t6x6Q": {
-                                  "content": "12:08:58"
+                                  "content": "12:08:58",
+                                  "fill": "$log-muted"
                                 }
                               }
                             },
@@ -10085,7 +9657,7 @@
                               "ref": "wtLlc",
                               "name": "L",
                               "width": "fill_container",
-                              "fill": "$warning-soft",
+                              "fill": "$log-warn-soft",
                               "cornerRadius": 10,
                               "padding": [
                                 7,
@@ -10093,20 +9665,23 @@
                               ],
                               "descendants": {
                                 "F7Rjt3": {
-                                  "enabled": false
+                                  "enabled": false,
+                                  "fill": "$log-muted"
                                 },
                                 "Jzqti": {
-                                  "content": "⚠️"
+                                  "content": "⚠️",
+                                  "fill": "$log-text"
                                 },
                                 "Ys67t": {
                                   "content": "1 failing — “rejects invalid state token”. Тестийг засаж байна.",
-                                  "fill": "$warning",
+                                  "fill": "$log-warn",
                                   "fontFamily": "$font",
                                   "fontSize": 11,
                                   "fontWeight": "600"
                                 },
                                 "t6x6Q": {
-                                  "content": "12:09:20"
+                                  "content": "12:09:20",
+                                  "fill": "$log-muted"
                                 }
                               }
                             },
@@ -10118,19 +9693,21 @@
                               "width": "fill_container",
                               "descendants": {
                                 "F7Rjt3": {
-                                  "fill": "$success"
+                                  "fill": "$log-ok"
                                 },
                                 "Jzqti": {
-                                  "enabled": false
+                                  "enabled": false,
+                                  "fill": "$log-text"
                                 },
                                 "Ys67t": {
                                   "content": "Edit src/routes/login/[provider]/callback/+server.ts",
-                                  "fill": "$text-3",
+                                  "fill": "$log-muted",
                                   "fontFamily": "$font-mono",
                                   "fontSize": 11
                                 },
                                 "t6x6Q": {
-                                  "content": "12:10:02"
+                                  "content": "12:10:02",
+                                  "fill": "$log-muted"
                                 }
                               }
                             },
@@ -10140,7 +9717,7 @@
                               "ref": "wtLlc",
                               "name": "L",
                               "width": "fill_container",
-                              "fill": "$success-soft",
+                              "fill": "$log-ok-soft",
                               "cornerRadius": 10,
                               "padding": [
                                 7,
@@ -10148,20 +9725,23 @@
                               ],
                               "descendants": {
                                 "F7Rjt3": {
-                                  "enabled": false
+                                  "enabled": false,
+                                  "fill": "$log-muted"
                                 },
                                 "Jzqti": {
-                                  "content": "✅"
+                                  "content": "✅",
+                                  "fill": "$log-text"
                                 },
                                 "Ys67t": {
                                   "content": "24 passing · 0 failing",
-                                  "fill": "$success",
+                                  "fill": "$log-ok",
                                   "fontFamily": "$font",
                                   "fontSize": 11,
                                   "fontWeight": "600"
                                 },
                                 "t6x6Q": {
-                                  "content": "12:10:41"
+                                  "content": "12:10:41",
+                                  "fill": "$log-muted"
                                 }
                               }
                             },
@@ -10173,19 +9753,21 @@
                               "width": "fill_container",
                               "descendants": {
                                 "F7Rjt3": {
-                                  "fill": "$success"
+                                  "fill": "$log-ok"
                                 },
                                 "Jzqti": {
-                                  "enabled": false
+                                  "enabled": false,
+                                  "fill": "$log-text"
                                 },
                                 "Ys67t": {
                                   "content": "Task 6 — Run full test suite and commit",
-                                  "fill": "$text-3",
+                                  "fill": "$log-muted",
                                   "fontFamily": "$font-mono",
                                   "fontSize": 11
                                 },
                                 "t6x6Q": {
-                                  "content": "12:10:44"
+                                  "content": "12:10:44",
+                                  "fill": "$log-muted"
                                 }
                               }
                             },
@@ -10197,21 +9779,72 @@
                               "width": "fill_container",
                               "descendants": {
                                 "F7Rjt3": {
-                                  "enabled": false
+                                  "enabled": false,
+                                  "fill": "$log-muted"
                                 },
                                 "Jzqti": {
-                                  "content": "⌨️"
+                                  "content": "⌨️",
+                                  "fill": "$log-text"
                                 },
                                 "Ys67t": {
                                   "content": "▍",
-                                  "fill": "$text",
+                                  "fill": "$log-text",
                                   "fontFamily": "$font-mono",
                                   "fontSize": 11
                                 },
                                 "t6x6Q": {
-                                  "content": "12:10:47"
+                                  "content": "12:10:47",
+                                  "fill": "$log-muted"
                                 }
                               }
+                            },
+                            {
+                              "type": "frame",
+                              "id": "TXnEy",
+                              "layoutPosition": "absolute",
+                              "x": 328,
+                              "y": 642,
+                              "name": "Jump To Latest",
+                              "fill": "$log-text",
+                              "cornerRadius": 999,
+                              "effect": {
+                                "type": "shadow",
+                                "shadowType": "outer",
+                                "color": "#00000066",
+                                "offset": {
+                                  "x": 0,
+                                  "y": 3
+                                },
+                                "blur": 10
+                              },
+                              "gap": 6,
+                              "padding": [
+                                6,
+                                12
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "zVk24",
+                                  "name": "I",
+                                  "width": 13,
+                                  "height": 13,
+                                  "icon": "chevron-down",
+                                  "library": "lucide",
+                                  "fill": "$log-bg"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "AXM4W",
+                                  "name": "T",
+                                  "fill": "$log-bg",
+                                  "content": "12 шинэ мөр",
+                                  "fontFamily": "$font",
+                                  "fontSize": 11.5,
+                                  "fontWeight": "600"
+                                }
+                              ]
                             }
                           ]
                         }
@@ -10220,9 +9853,13 @@
                     {
                       "type": "frame",
                       "id": "kRO5A",
-                      "name": "Right",
+                      "layoutPosition": "absolute",
+                      "x": 0,
+                      "y": 0,
+                      "name": "Tab Panels · hidden",
+                      "enabled": false,
                       "width": 360,
-                      "height": "fill_container",
+                      "height": 630,
                       "layout": "vertical",
                       "gap": 16,
                       "children": [
@@ -11210,6 +10847,983 @@
                                       "fontWeight": "600"
                                     }
                                   ]
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "nbmJ8",
+                              "name": "Row People",
+                              "width": "fill_container",
+                              "gap": 10,
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "F1gPL",
+                                  "name": "KV",
+                                  "width": "fill_container",
+                                  "layout": "vertical",
+                                  "gap": 1,
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "OA47P",
+                                      "name": "K",
+                                      "fill": "$text-3",
+                                      "content": "Үүсгэсэн",
+                                      "fontFamily": "$font",
+                                      "fontSize": 9.5,
+                                      "fontWeight": "500"
+                                    },
+                                    {
+                                      "type": "text",
+                                      "id": "v8jnk1",
+                                      "name": "V",
+                                      "fill": "$text",
+                                      "textGrowth": "fixed-width",
+                                      "width": "fill_container",
+                                      "content": "Gantogtokh",
+                                      "fontFamily": "$font",
+                                      "fontSize": 11,
+                                      "fontWeight": "600"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "zidCz",
+                                  "name": "KV",
+                                  "width": "fill_container",
+                                  "layout": "vertical",
+                                  "gap": 1,
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "IQvCl",
+                                      "name": "K",
+                                      "fill": "$text-3",
+                                      "content": "Загвар",
+                                      "fontFamily": "$font",
+                                      "fontSize": 9.5,
+                                      "fontWeight": "500"
+                                    },
+                                    {
+                                      "type": "text",
+                                      "id": "wT0IO",
+                                      "name": "V",
+                                      "fill": "$text",
+                                      "textGrowth": "fixed-width",
+                                      "width": "fill_container",
+                                      "content": "claude-opus-5",
+                                      "fontFamily": "$font",
+                                      "fontSize": 11,
+                                      "fontWeight": "600"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "EmGnS",
+                  "name": "Ticket Head",
+                  "width": 320,
+                  "height": "fill_container",
+                  "fill": "$surface",
+                  "cornerRadius": "$r-lg",
+                  "stroke": "#E6E8EE",
+                  "strokeWidth": 1,
+                  "effect": {
+                    "type": "shadow",
+                    "shadowType": "outer",
+                    "color": "#0F172A0A",
+                    "offset": {
+                      "x": 0,
+                      "y": 1
+                    },
+                    "blur": 2
+                  },
+                  "layout": "vertical",
+                  "gap": 12,
+                  "padding": [
+                    14,
+                    18
+                  ],
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "f7MZ1",
+                      "name": "Top",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 12,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "V52RZ",
+                          "name": "L",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "gap": 9,
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "UrqeI",
+                              "name": "Crumb",
+                              "gap": 6,
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "P9W2v",
+                                  "name": "B",
+                                  "fill": "$text-3",
+                                  "content": "shop-frontend",
+                                  "fontFamily": "$font",
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "icon",
+                                  "id": "L6lAO",
+                                  "name": "C2",
+                                  "width": 14,
+                                  "height": 14,
+                                  "icon": "chevron-right",
+                                  "library": "lucide",
+                                  "fill": "$text-3"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "fG17F",
+                                  "name": "Id",
+                                  "fill": "$text-2",
+                                  "content": "#142",
+                                  "fontFamily": "$font-mono",
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "Z2Z6Q",
+                              "name": "Title Row",
+                              "width": "fill_container",
+                              "layout": "vertical",
+                              "gap": 8,
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "R7ngfA",
+                                  "name": "Title",
+                                  "fill": "$text",
+                                  "textGrowth": "fixed-width",
+                                  "width": "fill_container",
+                                  "content": "Google-ээр нэвтрэх эрх нэмэх",
+                                  "lineHeight": 1.3,
+                                  "fontFamily": "$font-head",
+                                  "fontSize": 17,
+                                  "fontWeight": "700"
+                                },
+                                {
+                                  "id": "bvgwV",
+                                  "type": "ref",
+                                  "ref": "Tc1n9",
+                                  "name": "Badge Running · Implement",
+                                  "fill": "$accent-soft",
+                                  "descendants": {
+                                    "v4BZZV": {
+                                      "fill": "$accent-text"
+                                    },
+                                    "z3RGC0": {
+                                      "content": "Ажиллаж буй · Хөгжүүлэлт",
+                                      "fill": "$accent-text"
+                                    }
+                                  }
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "wkMVV",
+                          "name": "Stats",
+                          "width": "fill_container",
+                          "gap": 8,
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "sbXlB",
+                              "name": "Elapsed",
+                              "width": "fill_container",
+                              "fill": "$surface-2",
+                              "cornerRadius": "$r-md",
+                              "layout": "vertical",
+                              "gap": 2,
+                              "padding": [
+                                8,
+                                10
+                              ],
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "d2u5tM",
+                                  "name": "V",
+                                  "fill": "$text",
+                                  "content": "12м 19с",
+                                  "fontFamily": "$font-mono",
+                                  "fontSize": 14,
+                                  "fontWeight": "700"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "a20w6h",
+                                  "name": "K",
+                                  "fill": "$text-3",
+                                  "content": "хугацаа",
+                                  "fontFamily": "$font",
+                                  "fontSize": 10.5,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "rjuFi",
+                              "name": "Cost",
+                              "width": "fill_container",
+                              "fill": "$surface-2",
+                              "cornerRadius": "$r-md",
+                              "layout": "vertical",
+                              "gap": 2,
+                              "padding": [
+                                8,
+                                10
+                              ],
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "DS86i",
+                                  "name": "V",
+                                  "fill": "$text",
+                                  "content": "$1.54",
+                                  "fontFamily": "$font-mono",
+                                  "fontSize": 14,
+                                  "fontWeight": "700"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "k91LWM",
+                                  "name": "K",
+                                  "fill": "$text-3",
+                                  "content": "зарцуулсан",
+                                  "fontFamily": "$font",
+                                  "fontSize": 10.5,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "sLCyi",
+                          "name": "Meta",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "gap": 6,
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "afpDF",
+                              "name": "M",
+                              "gap": 6,
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "UgVmL",
+                                  "name": "I",
+                                  "width": 14,
+                                  "height": 14,
+                                  "icon": "git-branch",
+                                  "library": "lucide",
+                                  "fill": "$text-3"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "tJadL",
+                                  "name": "T",
+                                  "fill": "$text-2",
+                                  "content": "factory/142-oauth-google",
+                                  "fontFamily": "$font-mono",
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "l1e0b",
+                              "name": "M",
+                              "gap": 6,
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "mzbOa",
+                                  "name": "I",
+                                  "width": 14,
+                                  "height": 14,
+                                  "icon": "timer",
+                                  "library": "lucide",
+                                  "fill": "$text-3"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "AkhAK",
+                                  "name": "T",
+                                  "fill": "$text-2",
+                                  "content": "14 мин өмнө эхэлсэн",
+                                  "fontFamily": "$font",
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "y3vTh3",
+                          "name": "Actions",
+                          "width": "fill_container",
+                          "gap": 8,
+                          "children": [
+                            {
+                              "id": "s3f01N",
+                              "type": "ref",
+                              "ref": "ilkU0",
+                              "name": "Pause",
+                              "width": "fill_container",
+                              "descendants": {
+                                "gLdHj": {
+                                  "icon": "pause"
+                                },
+                                "hsDx0": {
+                                  "content": "Түр зогсоох"
+                                }
+                              }
+                            },
+                            {
+                              "id": "D93Xd",
+                              "type": "ref",
+                              "ref": "ilkU0",
+                              "name": "Cancel run",
+                              "width": "fill_container",
+                              "descendants": {
+                                "gLdHj": {
+                                  "icon": "circle-x"
+                                },
+                                "hsDx0": {
+                                  "content": "Цуцлах"
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "dONiG",
+                      "name": "Track",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "CN6Sh",
+                          "name": "Step Тодорхойлолт",
+                          "width": "fill_container",
+                          "height": 38,
+                          "gap": 10,
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "hSZRC",
+                              "name": "Rail",
+                              "width": 26,
+                              "height": 38,
+                              "layout": "vertical",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "id": "k5DJY",
+                                  "name": "Up",
+                                  "fill": "#00000000",
+                                  "width": 2,
+                                  "height": 8
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "x0R34",
+                                  "name": "Node",
+                                  "width": 22,
+                                  "height": 22,
+                                  "fill": "$accent-soft",
+                                  "cornerRadius": 999,
+                                  "stroke": "$accent",
+                                  "strokeWidth": 1.5,
+                                  "justifyContent": "center",
+                                  "alignItems": "center",
+                                  "children": [
+                                    {
+                                      "type": "icon",
+                                      "id": "G4RZ7",
+                                      "name": "Glyph",
+                                      "width": 13,
+                                      "height": 13,
+                                      "icon": "check",
+                                      "library": "lucide",
+                                      "fill": "$accent"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "id": "W1XAI",
+                                  "name": "Down",
+                                  "fill": "$accent",
+                                  "width": 2,
+                                  "height": 8
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "UUQAi",
+                              "name": "Label",
+                              "width": "fill_container",
+                              "gap": 8,
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "D12mE",
+                                  "name": "Name",
+                                  "fill": "$text-2",
+                                  "textGrowth": "fixed-width",
+                                  "width": "fill_container",
+                                  "content": "Тодорхойлолт",
+                                  "fontFamily": "$font",
+                                  "fontSize": 12,
+                                  "fontWeight": "600"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "M5q1q",
+                                  "name": "Dur",
+                                  "fill": "$text-3",
+                                  "content": "2м 10с",
+                                  "fontFamily": "$font-mono",
+                                  "fontSize": 10,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "tfAKw",
+                          "name": "Step Дизайн",
+                          "width": "fill_container",
+                          "height": 38,
+                          "gap": 10,
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "X7Wva2",
+                              "name": "Rail",
+                              "width": 26,
+                              "height": 38,
+                              "layout": "vertical",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "id": "HvqjX",
+                                  "name": "Up",
+                                  "fill": "$accent",
+                                  "width": 2,
+                                  "height": 8
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "z1LCew",
+                                  "name": "Node",
+                                  "width": 22,
+                                  "height": 22,
+                                  "fill": "$accent-soft",
+                                  "cornerRadius": 999,
+                                  "stroke": "$accent",
+                                  "strokeWidth": 1.5,
+                                  "justifyContent": "center",
+                                  "alignItems": "center",
+                                  "children": [
+                                    {
+                                      "type": "icon",
+                                      "id": "I9yrAo",
+                                      "name": "Glyph",
+                                      "width": 13,
+                                      "height": 13,
+                                      "icon": "check",
+                                      "library": "lucide",
+                                      "fill": "$accent"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "id": "rkYiP",
+                                  "name": "Down",
+                                  "fill": "$accent",
+                                  "width": 2,
+                                  "height": 8
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "FHUvh",
+                              "name": "Label",
+                              "width": "fill_container",
+                              "gap": 8,
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "sjV2R",
+                                  "name": "Name",
+                                  "fill": "$text-2",
+                                  "textGrowth": "fixed-width",
+                                  "width": "fill_container",
+                                  "content": "Дизайн",
+                                  "fontFamily": "$font",
+                                  "fontSize": 12,
+                                  "fontWeight": "600"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "zHgt9",
+                                  "name": "Dur",
+                                  "fill": "$text-3",
+                                  "content": "2м 41с",
+                                  "fontFamily": "$font-mono",
+                                  "fontSize": 10,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "cNZoB",
+                          "name": "Step Төлөвлөгөө",
+                          "width": "fill_container",
+                          "height": 38,
+                          "gap": 10,
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "wN9wi",
+                              "name": "Rail",
+                              "width": 26,
+                              "height": 38,
+                              "layout": "vertical",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "id": "Mgjj3",
+                                  "name": "Up",
+                                  "fill": "$accent",
+                                  "width": 2,
+                                  "height": 8
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "GOYVy",
+                                  "name": "Node",
+                                  "width": 22,
+                                  "height": 22,
+                                  "fill": "$accent-soft",
+                                  "cornerRadius": 999,
+                                  "stroke": "$accent",
+                                  "strokeWidth": 1.5,
+                                  "justifyContent": "center",
+                                  "alignItems": "center",
+                                  "children": [
+                                    {
+                                      "type": "icon",
+                                      "id": "PsMed",
+                                      "name": "Glyph",
+                                      "width": 13,
+                                      "height": 13,
+                                      "icon": "check",
+                                      "library": "lucide",
+                                      "fill": "$accent"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "id": "nflb4",
+                                  "name": "Down",
+                                  "fill": "$accent",
+                                  "width": 2,
+                                  "height": 8
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "K0lZX2",
+                              "name": "Label",
+                              "width": "fill_container",
+                              "gap": 8,
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "viKKh",
+                                  "name": "Name",
+                                  "fill": "$text-2",
+                                  "textGrowth": "fixed-width",
+                                  "width": "fill_container",
+                                  "content": "Төлөвлөгөө",
+                                  "fontFamily": "$font",
+                                  "fontSize": 12,
+                                  "fontWeight": "600"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "Q27qf",
+                                  "name": "Dur",
+                                  "fill": "$text-3",
+                                  "content": "3м 42с",
+                                  "fontFamily": "$font-mono",
+                                  "fontSize": 10,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "ff4xB",
+                          "name": "Step Даалгавар",
+                          "width": "fill_container",
+                          "height": 38,
+                          "gap": 10,
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "fbHPD",
+                              "name": "Rail",
+                              "width": 26,
+                              "height": 38,
+                              "layout": "vertical",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "id": "v9UYC",
+                                  "name": "Up",
+                                  "fill": "$accent",
+                                  "width": 2,
+                                  "height": 8
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "gxB8S",
+                                  "name": "Node",
+                                  "width": 22,
+                                  "height": 22,
+                                  "fill": "$accent-soft",
+                                  "cornerRadius": 999,
+                                  "stroke": "$accent",
+                                  "strokeWidth": 1.5,
+                                  "justifyContent": "center",
+                                  "alignItems": "center",
+                                  "children": [
+                                    {
+                                      "type": "icon",
+                                      "id": "cpjeb",
+                                      "name": "Glyph",
+                                      "width": 13,
+                                      "height": 13,
+                                      "icon": "check",
+                                      "library": "lucide",
+                                      "fill": "$accent"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "id": "OjdCK",
+                                  "name": "Down",
+                                  "fill": "$accent",
+                                  "width": 2,
+                                  "height": 8
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "g2r2hF",
+                              "name": "Label",
+                              "width": "fill_container",
+                              "gap": 8,
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "vwtEI",
+                                  "name": "Name",
+                                  "fill": "$text-2",
+                                  "textGrowth": "fixed-width",
+                                  "width": "fill_container",
+                                  "content": "Даалгавар",
+                                  "fontFamily": "$font",
+                                  "fontSize": 12,
+                                  "fontWeight": "600"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "pGXR5",
+                                  "name": "Dur",
+                                  "fill": "$text-3",
+                                  "content": "1м 05с",
+                                  "fontFamily": "$font-mono",
+                                  "fontSize": 10,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "ieAQo",
+                          "name": "Step Хөгжүүлэлт",
+                          "width": "fill_container",
+                          "height": 38,
+                          "gap": 10,
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "g1nkdp",
+                              "name": "Rail",
+                              "width": 26,
+                              "height": 38,
+                              "layout": "vertical",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "id": "AIHYa",
+                                  "name": "Up",
+                                  "fill": "$accent",
+                                  "width": 2,
+                                  "height": 8
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "EhsDo",
+                                  "name": "Node",
+                                  "width": 22,
+                                  "height": 22,
+                                  "fill": "$accent",
+                                  "cornerRadius": 999,
+                                  "stroke": "#00000000",
+                                  "strokeWidth": 1.5,
+                                  "effect": {
+                                    "type": "shadow",
+                                    "shadowType": "outer",
+                                    "color": "#2450E64D",
+                                    "offset": {
+                                      "x": 0,
+                                      "y": 2
+                                    },
+                                    "blur": 8
+                                  },
+                                  "justifyContent": "center",
+                                  "alignItems": "center",
+                                  "children": [
+                                    {
+                                      "type": "icon",
+                                      "id": "N1PDw",
+                                      "name": "Glyph",
+                                      "width": 13,
+                                      "height": 13,
+                                      "icon": "code",
+                                      "library": "lucide",
+                                      "fill": "#FFFFFF"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "id": "zPAat",
+                                  "name": "Down",
+                                  "fill": "$border",
+                                  "width": 2,
+                                  "height": 8
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "gimmt",
+                              "name": "Label",
+                              "width": "fill_container",
+                              "gap": 8,
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "uKwMX",
+                                  "name": "Name",
+                                  "fill": "$text",
+                                  "textGrowth": "fixed-width",
+                                  "width": "fill_container",
+                                  "content": "Хөгжүүлэлт",
+                                  "fontFamily": "$font",
+                                  "fontSize": 12,
+                                  "fontWeight": "700"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "VIQgC",
+                                  "name": "Dur",
+                                  "fill": "$text-3",
+                                  "content": "2м 41с",
+                                  "fontFamily": "$font-mono",
+                                  "fontSize": 10,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "IJCxy",
+                          "name": "Step Нэгтгэлт",
+                          "width": "fill_container",
+                          "height": 38,
+                          "gap": 10,
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "Q5LAhP",
+                              "name": "Rail",
+                              "width": 26,
+                              "height": 38,
+                              "layout": "vertical",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "id": "Y891b",
+                                  "name": "Up",
+                                  "fill": "$border",
+                                  "width": 2,
+                                  "height": 8
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "dgrDB",
+                                  "name": "Node",
+                                  "width": 22,
+                                  "height": 22,
+                                  "fill": "$surface-2",
+                                  "cornerRadius": 999,
+                                  "stroke": "$border",
+                                  "strokeWidth": 1.5,
+                                  "justifyContent": "center",
+                                  "alignItems": "center",
+                                  "children": [
+                                    {
+                                      "type": "icon",
+                                      "id": "k42qM",
+                                      "name": "Glyph",
+                                      "width": 13,
+                                      "height": 13,
+                                      "icon": "git-pull-request",
+                                      "library": "lucide",
+                                      "fill": "$text-3"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "id": "YX9i0",
+                                  "name": "Down",
+                                  "fill": "#00000000",
+                                  "width": 2,
+                                  "height": 8
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "UUK8i",
+                              "name": "Label",
+                              "width": "fill_container",
+                              "gap": 8,
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "dPHWU",
+                                  "name": "Name",
+                                  "fill": "$text-3",
+                                  "textGrowth": "fixed-width",
+                                  "width": "fill_container",
+                                  "content": "Нэгтгэлт",
+                                  "fontFamily": "$font",
+                                  "fontSize": 12,
+                                  "fontWeight": "600"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "yO2yf",
+                                  "name": "Dur",
+                                  "fill": "$text-3",
+                                  "content": "хүлээгдэж",
+                                  "fontFamily": "$font-mono",
+                                  "fontSize": 10,
+                                  "fontWeight": "normal"
                                 }
                               ]
                             }
@@ -27413,6 +28027,7 @@
                       "id": "wXkQh",
                       "name": "Body",
                       "width": "fill_container",
+                      "fill": "$log-bg",
                       "layout": "vertical",
                       "padding": [
                         2,
@@ -27429,19 +28044,22 @@
                           "width": "fill_container",
                           "descendants": {
                             "F7Rjt3": {
-                              "enabled": false
+                              "enabled": false,
+                              "fill": "$log-muted"
                             },
                             "Jzqti": {
-                              "content": "⚡"
+                              "content": "⚡",
+                              "fill": "$log-text"
                             },
                             "Ys67t": {
                               "content": "Session started · claude-sonnet-5",
-                              "fill": "$accent",
+                              "fill": "$log-accent",
                               "fontFamily": "$font-mono",
                               "fontSize": 11
                             },
                             "t6x6Q": {
-                              "content": "12:01:02"
+                              "content": "12:01:02",
+                              "fill": "$log-muted"
                             }
                           }
                         },
@@ -27459,20 +28077,23 @@
                           ],
                           "descendants": {
                             "F7Rjt3": {
-                              "enabled": false
+                              "enabled": false,
+                              "fill": "$log-muted"
                             },
                             "Jzqti": {
-                              "enabled": false
+                              "enabled": false,
+                              "fill": "$log-text"
                             },
                             "Ys67t": {
                               "content": "Тасалбар болон хүлээн авах шалгуурыг уншиж байна.",
-                              "fill": "$text-2",
+                              "fill": "$log-text",
                               "fontFamily": "$font",
                               "fontSize": 12.5,
                               "lineHeight": 1.5
                             },
                             "t6x6Q": {
-                              "content": "12:01:04"
+                              "content": "12:01:04",
+                              "fill": "$log-muted"
                             }
                           }
                         },
@@ -27484,19 +28105,21 @@
                           "width": "fill_container",
                           "descendants": {
                             "F7Rjt3": {
-                              "fill": "$accent"
+                              "fill": "$log-accent"
                             },
                             "Jzqti": {
-                              "enabled": false
+                              "enabled": false,
+                              "fill": "$log-text"
                             },
                             "Ys67t": {
                               "content": "Read .factory/ticket.md",
-                              "fill": "$text-3",
+                              "fill": "$log-muted",
                               "fontFamily": "$font-mono",
                               "fontSize": 11
                             },
                             "t6x6Q": {
-                              "content": "12:01:06"
+                              "content": "12:01:06",
+                              "fill": "$log-muted"
                             }
                           }
                         },
@@ -27508,19 +28131,21 @@
                           "width": "fill_container",
                           "descendants": {
                             "F7Rjt3": {
-                              "fill": "$accent"
+                              "fill": "$log-accent"
                             },
                             "Jzqti": {
-                              "enabled": false
+                              "enabled": false,
+                              "fill": "$log-text"
                             },
                             "Ys67t": {
                               "content": "Grep oauth|passport",
-                              "fill": "$text-3",
+                              "fill": "$log-muted",
                               "fontFamily": "$font-mono",
                               "fontSize": 11
                             },
                             "t6x6Q": {
-                              "content": "12:01:11"
+                              "content": "12:01:11",
+                              "fill": "$log-muted"
                             }
                           }
                         },
@@ -27538,20 +28163,23 @@
                           ],
                           "descendants": {
                             "F7Rjt3": {
-                              "enabled": false
+                              "enabled": false,
+                              "fill": "$log-muted"
                             },
                             "Jzqti": {
-                              "enabled": false
+                              "enabled": false,
+                              "fill": "$log-text"
                             },
                             "Ys67t": {
                               "content": "Хамрах хүрээ: нэвтрэх дэлгэц ба callback маршрут. Сешн хадгалалт хамаарахгүй.",
-                              "fill": "$text-2",
+                              "fill": "$log-text",
                               "fontFamily": "$font",
                               "fontSize": 12.5,
                               "lineHeight": 1.5
                             },
                             "t6x6Q": {
-                              "content": "12:01:28"
+                              "content": "12:01:28",
+                              "fill": "$log-muted"
                             }
                           }
                         },
@@ -27563,19 +28191,21 @@
                           "width": "fill_container",
                           "descendants": {
                             "F7Rjt3": {
-                              "fill": "$accent"
+                              "fill": "$log-accent"
                             },
                             "Jzqti": {
-                              "enabled": false
+                              "enabled": false,
+                              "fill": "$log-text"
                             },
                             "Ys67t": {
                               "content": "Write docs/spec.md",
-                              "fill": "$text-3",
+                              "fill": "$log-muted",
                               "fontFamily": "$font-mono",
                               "fontSize": 11
                             },
                             "t6x6Q": {
-                              "content": "12:02:40"
+                              "content": "12:02:40",
+                              "fill": "$log-muted"
                             }
                           }
                         },
@@ -27585,7 +28215,7 @@
                           "ref": "wtLlc",
                           "name": "L",
                           "width": "fill_container",
-                          "fill": "$success-soft",
+                          "fill": "$log-ok-soft",
                           "cornerRadius": 10,
                           "padding": [
                             8,
@@ -27593,20 +28223,23 @@
                           ],
                           "descendants": {
                             "F7Rjt3": {
-                              "enabled": false
+                              "enabled": false,
+                              "fill": "$log-muted"
                             },
                             "Jzqti": {
-                              "content": "✅"
+                              "content": "✅",
+                              "fill": "$log-text"
                             },
                             "Ys67t": {
                               "content": "Дууслаа · 9 эргэлт · has_ui: true",
-                              "fill": "$success",
+                              "fill": "$log-ok",
                               "fontFamily": "$font",
                               "fontSize": 11.5,
                               "fontWeight": "600"
                             },
                             "t6x6Q": {
-                              "content": "12:03:12"
+                              "content": "12:03:12",
+                              "fill": "$log-muted"
                             }
                           }
                         }
@@ -27644,6 +28277,7 @@
                       "id": "i4NV9Z",
                       "name": "Body",
                       "width": "fill_container",
+                      "fill": "$log-bg",
                       "layout": "vertical",
                       "padding": [
                         2,
@@ -27660,19 +28294,22 @@
                           "width": "fill_container",
                           "descendants": {
                             "F7Rjt3": {
-                              "enabled": false
+                              "enabled": false,
+                              "fill": "$log-muted"
                             },
                             "Jzqti": {
-                              "content": "⚡"
+                              "content": "⚡",
+                              "fill": "$log-text"
                             },
                             "Ys67t": {
                               "content": "pen --repo /work --out docs/design/ui.pen --export …",
-                              "fill": "$design",
+                              "fill": "$log-design",
                               "fontFamily": "$font-mono",
                               "fontSize": 11
                             },
                             "t6x6Q": {
-                              "content": "12:03:20"
+                              "content": "12:03:20",
+                              "fill": "$log-muted"
                             }
                           }
                         },
@@ -27684,19 +28321,21 @@
                           "width": "fill_container",
                           "descendants": {
                             "F7Rjt3": {
-                              "fill": "$design"
+                              "fill": "$log-design"
                             },
                             "Jzqti": {
-                              "enabled": false
+                              "enabled": false,
+                              "fill": "$log-text"
                             },
                             "Ys67t": {
                               "content": "Санг /work дээр уншиж байна",
-                              "fill": "$text-3",
+                              "fill": "$log-muted",
                               "fontFamily": "$font-mono",
                               "fontSize": 11
                             },
                             "t6x6Q": {
-                              "content": "12:03:26"
+                              "content": "12:03:26",
+                              "fill": "$log-muted"
                             }
                           }
                         },
@@ -27714,20 +28353,23 @@
                           ],
                           "descendants": {
                             "F7Rjt3": {
-                              "enabled": false
+                              "enabled": false,
+                              "fill": "$log-muted"
                             },
                             "Jzqti": {
-                              "enabled": false
+                              "enabled": false,
+                              "fill": "$log-text"
                             },
                             "Ys67t": {
                               "content": "Брифээс 4 дэлгэц зурж байна.",
-                              "fill": "$text-2",
+                              "fill": "$log-text",
                               "fontFamily": "$font",
                               "fontSize": 12.5,
                               "lineHeight": 1.5
                             },
                             "t6x6Q": {
-                              "content": "12:03:51"
+                              "content": "12:03:51",
+                              "fill": "$log-muted"
                             }
                           }
                         },
@@ -27739,19 +28381,21 @@
                           "width": "fill_container",
                           "descendants": {
                             "F7Rjt3": {
-                              "fill": "$design"
+                              "fill": "$log-design"
                             },
                             "Jzqti": {
-                              "enabled": false
+                              "enabled": false,
+                              "fill": "$log-text"
                             },
                             "Ys67t": {
                               "content": "login.png (2x)",
-                              "fill": "$text-3",
+                              "fill": "$log-muted",
                               "fontFamily": "$font-mono",
                               "fontSize": 11
                             },
                             "t6x6Q": {
-                              "content": "12:04:38"
+                              "content": "12:04:38",
+                              "fill": "$log-muted"
                             }
                           }
                         },
@@ -27763,19 +28407,21 @@
                           "width": "fill_container",
                           "descendants": {
                             "F7Rjt3": {
-                              "fill": "$design"
+                              "fill": "$log-design"
                             },
                             "Jzqti": {
-                              "enabled": false
+                              "enabled": false,
+                              "fill": "$log-text"
                             },
                             "Ys67t": {
                               "content": "consent.png (2x)",
-                              "fill": "$text-3",
+                              "fill": "$log-muted",
                               "fontFamily": "$font-mono",
                               "fontSize": 11
                             },
                             "t6x6Q": {
-                              "content": "12:05:07"
+                              "content": "12:05:07",
+                              "fill": "$log-muted"
                             }
                           }
                         },
@@ -27787,19 +28433,21 @@
                           "width": "fill_container",
                           "descendants": {
                             "F7Rjt3": {
-                              "fill": "$design"
+                              "fill": "$log-design"
                             },
                             "Jzqti": {
-                              "enabled": false
+                              "enabled": false,
+                              "fill": "$log-text"
                             },
                             "Ys67t": {
                               "content": "error.png (2x)",
-                              "fill": "$text-3",
+                              "fill": "$log-muted",
                               "fontFamily": "$font-mono",
                               "fontSize": 11
                             },
                             "t6x6Q": {
-                              "content": "12:05:33"
+                              "content": "12:05:33",
+                              "fill": "$log-muted"
                             }
                           }
                         },
@@ -27809,7 +28457,7 @@
                           "ref": "wtLlc",
                           "name": "L",
                           "width": "fill_container",
-                          "fill": "$success-soft",
+                          "fill": "$log-ok-soft",
                           "cornerRadius": 10,
                           "padding": [
                             8,
@@ -27817,20 +28465,23 @@
                           ],
                           "descendants": {
                             "F7Rjt3": {
-                              "enabled": false
+                              "enabled": false,
+                              "fill": "$log-muted"
                             },
                             "Jzqti": {
-                              "content": "✅"
+                              "content": "✅",
+                              "fill": "$log-text"
                             },
                             "Ys67t": {
                               "content": "ui.pen бичигдлээ · 4 дэлгэц экспортлов",
-                              "fill": "$success",
+                              "fill": "$log-ok",
                               "fontFamily": "$font",
                               "fontSize": 11.5,
                               "fontWeight": "600"
                             },
                             "t6x6Q": {
-                              "content": "12:06:01"
+                              "content": "12:06:01",
+                              "fill": "$log-muted"
                             }
                           }
                         }
@@ -27868,6 +28519,7 @@
                       "id": "N6xRa",
                       "name": "Body",
                       "width": "fill_container",
+                      "fill": "$log-bg",
                       "layout": "vertical",
                       "padding": [
                         2,
@@ -27884,19 +28536,22 @@
                           "width": "fill_container",
                           "descendants": {
                             "F7Rjt3": {
-                              "enabled": false
+                              "enabled": false,
+                              "fill": "$log-muted"
                             },
                             "Jzqti": {
-                              "content": "⚡"
+                              "content": "⚡",
+                              "fill": "$log-text"
                             },
                             "Ys67t": {
                               "content": "Session started · claude-opus-5",
-                              "fill": "$purple",
+                              "fill": "$log-accent",
                               "fontFamily": "$font-mono",
                               "fontSize": 11
                             },
                             "t6x6Q": {
-                              "content": "12:06:10"
+                              "content": "12:06:10",
+                              "fill": "$log-muted"
                             }
                           }
                         },
@@ -27908,19 +28563,21 @@
                           "width": "fill_container",
                           "descendants": {
                             "F7Rjt3": {
-                              "fill": "$purple"
+                              "fill": "$log-accent"
                             },
                             "Jzqti": {
-                              "enabled": false
+                              "enabled": false,
+                              "fill": "$log-text"
                             },
                             "Ys67t": {
                               "content": "Read docs/spec.md",
-                              "fill": "$text-3",
+                              "fill": "$log-muted",
                               "fontFamily": "$font-mono",
                               "fontSize": 11
                             },
                             "t6x6Q": {
-                              "content": "12:06:14"
+                              "content": "12:06:14",
+                              "fill": "$log-muted"
                             }
                           }
                         },
@@ -27932,19 +28589,21 @@
                           "width": "fill_container",
                           "descendants": {
                             "F7Rjt3": {
-                              "fill": "$purple"
+                              "fill": "$log-accent"
                             },
                             "Jzqti": {
-                              "enabled": false
+                              "enabled": false,
+                              "fill": "$log-text"
                             },
                             "Ys67t": {
                               "content": "Read docs/design/exports/login.png",
-                              "fill": "$text-3",
+                              "fill": "$log-muted",
                               "fontFamily": "$font-mono",
                               "fontSize": 11
                             },
                             "t6x6Q": {
-                              "content": "12:06:19"
+                              "content": "12:06:19",
+                              "fill": "$log-muted"
                             }
                           }
                         },
@@ -27956,19 +28615,21 @@
                           "width": "fill_container",
                           "descendants": {
                             "F7Rjt3": {
-                              "fill": "$purple"
+                              "fill": "$log-accent"
                             },
                             "Jzqti": {
-                              "enabled": false
+                              "enabled": false,
+                              "fill": "$log-text"
                             },
                             "Ys67t": {
                               "content": "Bash rg -n \"createSession\" src/",
-                              "fill": "$text-3",
+                              "fill": "$log-muted",
                               "fontFamily": "$font-mono",
                               "fontSize": 11
                             },
                             "t6x6Q": {
-                              "content": "12:06:44"
+                              "content": "12:06:44",
+                              "fill": "$log-muted"
                             }
                           }
                         },
@@ -27986,20 +28647,23 @@
                           ],
                           "descendants": {
                             "F7Rjt3": {
-                              "enabled": false
+                              "enabled": false,
+                              "fill": "$log-muted"
                             },
                             "Jzqti": {
-                              "enabled": false
+                              "enabled": false,
+                              "fill": "$log-text"
                             },
                             "Ys67t": {
                               "content": "Сешн үүсгэх туслах аль хэдийн байна; шинэ провайдер түүн рүү залгагдана.",
-                              "fill": "$text-2",
+                              "fill": "$log-text",
                               "fontFamily": "$font",
                               "fontSize": 12.5,
                               "lineHeight": 1.5
                             },
                             "t6x6Q": {
-                              "content": "12:07:21"
+                              "content": "12:07:21",
+                              "fill": "$log-muted"
                             }
                           }
                         },
@@ -28011,19 +28675,21 @@
                           "width": "fill_container",
                           "descendants": {
                             "F7Rjt3": {
-                              "fill": "$purple"
+                              "fill": "$log-accent"
                             },
                             "Jzqti": {
-                              "enabled": false
+                              "enabled": false,
+                              "fill": "$log-text"
                             },
                             "Ys67t": {
                               "content": "Write docs/plan.md",
-                              "fill": "$text-3",
+                              "fill": "$log-muted",
                               "fontFamily": "$font-mono",
                               "fontSize": 11
                             },
                             "t6x6Q": {
-                              "content": "12:08:02"
+                              "content": "12:08:02",
+                              "fill": "$log-muted"
                             }
                           }
                         },
@@ -28033,7 +28699,7 @@
                           "ref": "wtLlc",
                           "name": "L",
                           "width": "fill_container",
-                          "fill": "$warning-soft",
+                          "fill": "$log-warn-soft",
                           "cornerRadius": 10,
                           "padding": [
                             8,
@@ -28041,20 +28707,23 @@
                           ],
                           "descendants": {
                             "F7Rjt3": {
-                              "enabled": false
+                              "enabled": false,
+                              "fill": "$log-muted"
                             },
                             "Jzqti": {
-                              "content": "⚠️"
+                              "content": "⚠️",
+                              "fill": "$log-text"
                             },
                             "Ys67t": {
                               "content": "Edit src/auth/index.ts — зөвшөөрөлд байхгүй тул татгалзав",
-                              "fill": "$warning",
+                              "fill": "$log-warn",
                               "fontFamily": "$font",
                               "fontSize": 11.5,
                               "fontWeight": "600"
                             },
                             "t6x6Q": {
-                              "content": "12:09:18"
+                              "content": "12:09:18",
+                              "fill": "$log-muted"
                             }
                           }
                         },
@@ -28064,7 +28733,7 @@
                           "ref": "wtLlc",
                           "name": "L",
                           "width": "fill_container",
-                          "fill": "$success-soft",
+                          "fill": "$log-ok-soft",
                           "cornerRadius": 10,
                           "padding": [
                             8,
@@ -28072,20 +28741,23 @@
                           ],
                           "descendants": {
                             "F7Rjt3": {
-                              "enabled": false
+                              "enabled": false,
+                              "fill": "$log-muted"
                             },
                             "Jzqti": {
-                              "content": "✅"
+                              "content": "✅",
+                              "fill": "$log-text"
                             },
                             "Ys67t": {
                               "content": "Дууслаа · 14 эргэлт · $0.5100",
-                              "fill": "$success",
+                              "fill": "$log-ok",
                               "fontFamily": "$font",
                               "fontSize": 11.5,
                               "fontWeight": "600"
                             },
                             "t6x6Q": {
-                              "content": "12:09:52"
+                              "content": "12:09:52",
+                              "fill": "$log-muted"
                             }
                           }
                         }
@@ -28198,6 +28870,7 @@
                           "name": "Body",
                           "width": "fill_container",
                           "height": 104,
+                          "fill": "$log-bg",
                           "layout": "vertical",
                           "padding": [
                             2,
@@ -28214,20 +28887,22 @@
                               "width": "fill_container",
                               "descendants": {
                                 "F7Rjt3": {
-                                  "fill": "$success"
+                                  "fill": "$log-ok"
                                 },
                                 "Jzqti": {
-                                  "enabled": false
+                                  "enabled": false,
+                                  "fill": "$log-text"
                                 },
                                 "Ys67t": {
                                   "content": "Write src/auth/google.ts",
-                                  "fill": "$text-3",
+                                  "fill": "$log-muted",
                                   "fontFamily": "$font-mono",
                                   "fontSize": 10.5
                                 },
                                 "t6x6Q": {
                                   "content": "12:10:02",
-                                  "enabled": false
+                                  "enabled": false,
+                                  "fill": "$log-muted"
                                 }
                               }
                             },
@@ -28239,21 +28914,24 @@
                               "width": "fill_container",
                               "descendants": {
                                 "F7Rjt3": {
-                                  "enabled": false
+                                  "enabled": false,
+                                  "fill": "$log-muted"
                                 },
                                 "Jzqti": {
-                                  "enabled": false
+                                  "enabled": false,
+                                  "fill": "$log-text"
                                 },
                                 "Ys67t": {
                                   "content": "Провайдерыг бүртгэлд нэмж байна.",
-                                  "fill": "$text-2",
+                                  "fill": "$log-text",
                                   "fontFamily": "$font",
                                   "fontSize": 11.5,
                                   "lineHeight": 1.45
                                 },
                                 "t6x6Q": {
                                   "content": "12:10:07",
-                                  "enabled": false
+                                  "enabled": false,
+                                  "fill": "$log-muted"
                                 }
                               }
                             },
@@ -28265,20 +28943,23 @@
                               "width": "fill_container",
                               "descendants": {
                                 "F7Rjt3": {
-                                  "enabled": false
+                                  "enabled": false,
+                                  "fill": "$log-muted"
                                 },
                                 "Jzqti": {
-                                  "content": "⌨️"
+                                  "content": "⌨️",
+                                  "fill": "$log-text"
                                 },
                                 "Ys67t": {
                                   "content": "▍",
-                                  "fill": "$text",
+                                  "fill": "$log-text",
                                   "fontFamily": "$font-mono",
                                   "fontSize": 11
                                 },
                                 "t6x6Q": {
                                   "content": "12:10:11",
-                                  "enabled": false
+                                  "enabled": false,
+                                  "fill": "$log-muted"
                                 }
                               }
                             }
@@ -28329,6 +29010,7 @@
                           "name": "Body",
                           "width": "fill_container",
                           "height": 104,
+                          "fill": "$log-bg",
                           "layout": "vertical",
                           "gap": 8,
                           "padding": [
@@ -28345,7 +29027,7 @@
                               "id": "nGvez",
                               "name": "E",
                               "opacity": 0.85,
-                              "fill": "$text",
+                              "fill": "$log-text",
                               "content": "🕒",
                               "fontFamily": "$font",
                               "fontSize": 22,
@@ -28355,7 +29037,7 @@
                               "type": "text",
                               "id": "jM0Ly",
                               "name": "Msg",
-                              "fill": "$text-3",
+                              "fill": "$log-muted",
                               "textGrowth": "fixed-width",
                               "width": "fill_container",
                               "content": "Энэ алхам эхлээгүй байна.",
@@ -28412,6 +29094,7 @@
                           "name": "Body",
                           "width": "fill_container",
                           "height": 104,
+                          "fill": "$log-bg",
                           "layout": "vertical",
                           "gap": 8,
                           "padding": [
@@ -28428,7 +29111,7 @@
                               "id": "qJMfw",
                               "name": "E",
                               "opacity": 0.85,
-                              "fill": "$text",
+                              "fill": "$log-text",
                               "content": "⏭️",
                               "fontFamily": "$font",
                               "fontSize": 22,
@@ -28438,7 +29121,7 @@
                               "type": "text",
                               "id": "C7ctDH",
                               "name": "Msg",
-                              "fill": "$text-3",
+                              "fill": "$log-muted",
                               "textGrowth": "fixed-width",
                               "width": "fill_container",
                               "content": "Алгассан — тасалбар интерфэйс өөрчлөхгүй.",
@@ -28504,6 +29187,7 @@
                           "name": "Body",
                           "width": "fill_container",
                           "height": 104,
+                          "fill": "$log-bg",
                           "layout": "vertical",
                           "gap": 8,
                           "padding": [
@@ -28520,7 +29204,7 @@
                               "id": "nGMsz",
                               "name": "E",
                               "opacity": 0.85,
-                              "fill": "$text",
+                              "fill": "$log-text",
                               "content": "📭",
                               "fontFamily": "$font",
                               "fontSize": 22,
@@ -28530,7 +29214,7 @@
                               "type": "text",
                               "id": "Gq6zL",
                               "name": "Msg",
-                              "fill": "$text-3",
+                              "fill": "$log-muted",
                               "textGrowth": "fixed-width",
                               "width": "fill_container",
                               "content": "Одоогоор гаралт алга.",
@@ -28587,6 +29271,7 @@
                           "name": "Body",
                           "width": "fill_container",
                           "height": 104,
+                          "fill": "$log-bg",
                           "layout": "vertical",
                           "gap": 8,
                           "padding": [
@@ -28603,7 +29288,7 @@
                               "id": "Q1ZZu4",
                               "name": "E",
                               "opacity": 0.85,
-                              "fill": "$text",
+                              "fill": "$log-text",
                               "content": "⚠️",
                               "fontFamily": "$font",
                               "fontSize": 22,
@@ -28613,7 +29298,7 @@
                               "type": "text",
                               "id": "ENci6",
                               "name": "Msg",
-                              "fill": "$text-3",
+                              "fill": "$log-muted",
                               "textGrowth": "fixed-width",
                               "width": "fill_container",
                               "content": "Гаралтыг ачаалж чадсангүй.",
@@ -30563,6 +31248,54 @@
     "r-xl": {
       "type": "number",
       "value": 20
+    },
+    "log-bg": {
+      "type": "color",
+      "value": "#0B1220"
+    },
+    "log-text": {
+      "type": "color",
+      "value": "#E2E8F0"
+    },
+    "log-muted": {
+      "type": "color",
+      "value": "#94A3B8"
+    },
+    "log-accent": {
+      "type": "color",
+      "value": "#93C5FD"
+    },
+    "log-design": {
+      "type": "color",
+      "value": "#F9A8D4"
+    },
+    "log-ok": {
+      "type": "color",
+      "value": "#4ADE80"
+    },
+    "log-warn": {
+      "type": "color",
+      "value": "#FBBF24"
+    },
+    "log-bad": {
+      "type": "color",
+      "value": "#F87171"
+    },
+    "log-chip": {
+      "type": "color",
+      "value": "#1E293B"
+    },
+    "log-ok-soft": {
+      "type": "color",
+      "value": "#10271C"
+    },
+    "log-warn-soft": {
+      "type": "color",
+      "value": "#2A2110"
+    },
+    "log-bad-soft": {
+      "type": "color",
+      "value": "#2C1518"
     }
   },
   "fileToken": "b65d09ac-f10c-47b6-a833-a5bf3e9dd555"
