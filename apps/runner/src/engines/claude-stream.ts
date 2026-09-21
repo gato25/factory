@@ -32,7 +32,11 @@ interface Event {
   subtype?: string;
   model?: string;
   session_id?: string;
-  message?: { content?: Block[] | string };
+  message?: {
+    content?: Block[] | string;
+    /** Per-turn counts. Cost is not here — only the result event carries it. */
+    usage?: { input_tokens?: number; output_tokens?: number };
+  };
   // result
   is_error?: boolean;
   result?: string;
@@ -51,6 +55,28 @@ export class ClaudeStreamRenderer {
   /** How many tools the agent has called, and the last one, for the heartbeat. */
   toolCalls = 0;
   lastTool: string | null = null;
+  /**
+   * Tokens and turns as the stream reports them, for the case where the
+   * final result event never arrives.
+   *
+   * A step killed at its deadline is recorded at $0.0000, because cost is
+   * only in that last event and FR-108 forbids estimating one — a guessed
+   * number would be enforced against a ceiling. So a step can burn
+   * forty-five minutes of Opus and contribute nothing to the run's total,
+   * silently. These do not fix that, and are not cost: they are what the
+   * engine itself said, kept so the gap can be NAMED rather than left as a
+   * zero indistinguishable from a step that really was free.
+   */
+  turns = 0;
+  inputTokens = 0;
+  outputTokens = 0;
+
+  /** What the stream saw, for a step that ended before it reported. */
+  observed(): string | null {
+    if (this.turns === 0 && this.inputTokens === 0 && this.outputTokens === 0) return null;
+    const tokens = this.inputTokens + this.outputTokens;
+    return `${this.turns} turn${this.turns === 1 ? '' : 's'} and ${tokens} tokens`;
+  }
 
   constructor(private readonly write: (text: string) => void) {}
 
@@ -105,6 +131,9 @@ export class ClaudeStreamRenderer {
         }
         return;
       case 'assistant':
+        this.turns += 1;
+        this.inputTokens += event.message?.usage?.input_tokens ?? 0;
+        this.outputTokens += event.message?.usage?.output_tokens ?? 0;
         for (const block of blocks(event)) {
           if (block.type === 'text' && 'text' in block && block.text.trim()) {
             this.write(`${block.text.trim()}\n`);

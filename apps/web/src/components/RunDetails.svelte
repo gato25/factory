@@ -53,6 +53,15 @@
 
     <dt>Budget</dt>
     <dd>${view.run.costUsd} of ${view.run.costCeilingUsd} cap</dd>
+
+    <!--
+      Per step, and it says so. The tracker used to print "45 min limit"
+      beside the run's spend, which read as a budget for the run: a run that
+      took ninety-five minutes under that ceiling looked like a bug, when in
+      fact the ceiling is a deadline each step gets separately.
+    -->
+    <dt>Time</dt>
+    <dd>{view.run.timeCeilingMinutes} min cap per step</dd>
   </dl>
 
   {#if place?.ready}

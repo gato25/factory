@@ -213,7 +213,22 @@ export async function runClaudeStep(
   const durationS = Math.max(1, Math.round((usage.durationMs ?? Date.now() - started) / 1000));
 
   if (result.exitCode !== 0) {
-    return applyLimits(
+    /**
+     * A step stopped before it reported says so.
+     *
+     * Cost lives only in the CLI's final result event, and a step killed at
+     * its deadline never emits one, so `usage.costUsd` here is $0.0000 —
+     * which is indistinguishable from a step that really was free. FR-108
+     * forbids substituting an estimate, and rightly: a guessed number would
+     * be enforced against a ceiling. So the zero stands, and this names it
+     * instead, with the turns and tokens the stream did report.
+     */
+    const unreported =
+      rendered.resultJson === null && rendered.observed()
+        ? ` It was stopped before reporting its cost, so this step is recorded at ` +
+          `$0.0000 although it ran ${rendered.observed()}.`
+        : '';
+    const outcome = applyLimits(
       {
         status: 'failed',
         costUsd: usage.costUsd,
@@ -229,6 +244,9 @@ export async function runClaudeStep(
       limits,
       { agentName: input.agent.name, exitCode: result.exitCode },
     );
+    return unreported && outcome.error
+      ? { ...outcome, error: { ...outcome.error, detail: outcome.error.detail + unreported } }
+      : outcome;
   }
 
   try {

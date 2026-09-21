@@ -48,9 +48,13 @@ const EXPLANATIONS: Record<FailureReason, { what: string; next: string; needsACh
     next: 'Either the ticket is larger than the ceiling allows, or it needs narrowing. Split it, or raise the ceiling on the pipeline.',
     needsAChange: true,
   },
+  // The ceiling is a deadline on each STEP, not a budget for the run. Saying
+  // "the run" sent a reader looking at a run that had taken ninety-five
+  // minutes under a forty-five minute ceiling and finding nothing wrong with
+  // it, because nothing was: one step had exceeded the limit on its own.
   time_exceeded: {
-    what: 'The run reached the longest it was allowed to take.',
-    next: 'Narrow the ticket, or raise the time ceiling on the pipeline.',
+    what: 'A step ran for longer than any one step is allowed to take.',
+    next: 'The time ceiling applies to each step separately, so this is one step needing more time rather than the run as a whole. Give that agent a longer limit of its own, narrow the ticket, or raise the ceiling on the pipeline — which raises it for every step.',
     needsAChange: true,
   },
   engine_unavailable: {
