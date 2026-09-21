@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { artboards, labels } from '../resolve';
+import { artboards, labels, load } from '../resolve';
 import { SCREENS } from '../screens';
 
 /**
@@ -36,7 +36,10 @@ const codeOnly = (text: string) =>
   text.replace(/<!--[\s\S]*?-->/g, ' ').replace(/\/\*[\s\S]*?\*\//g, ' ');
 
 const BOARDS = new Map(
-  artboards().map((board) => [board.name ?? '', flat([...new Set(labels(board))].join('  '))]),
+  artboards(load()).map((board) => [
+    board.name ?? '',
+    flat([...new Set(labels(board))].join('  ')),
+  ]),
 );
 
 const source = new Map<string, string>();

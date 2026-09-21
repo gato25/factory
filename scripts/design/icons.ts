@@ -14,11 +14,11 @@
 
 import { existsSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { artboards, icons } from './resolve';
+import { artboards, icons, load } from './resolve';
 
 const ROOT = resolve(import.meta.dir, '../..');
 const used = new Set<string>();
-for (const board of artboards()) for (const icon of icons(board)) used.add(icon);
+for (const board of artboards(load())) for (const icon of icons(board)) used.add(icon);
 const names = [...used].sort();
 
 // Lucide dropped the brand marks over trademark, so these two are drawn here.

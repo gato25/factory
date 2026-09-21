@@ -1,6 +1,7 @@
 export * from './account';
 export * from './ansi';
 export * from './callbacks';
+export * from './design';
 export * from './errors';
 export * from './log';
 export * from './redact';

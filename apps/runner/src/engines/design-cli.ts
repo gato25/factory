@@ -1,9 +1,11 @@
-import type {
-  DesignStepConfig,
-  PipelineSnapshot,
-  SnapshotAgent,
-  Step,
-  StepOutcome,
+import {
+  type DesignStepConfig,
+  outline,
+  type PenFile,
+  type PipelineSnapshot,
+  type SnapshotAgent,
+  type Step,
+  type StepOutcome,
 } from '@factory/shared';
 import { commitDesign } from '../container/commit';
 import type { ContainerHost } from '../container/host';
@@ -261,11 +263,28 @@ export async function runDesignStep(
     };
   }
 
-  // The source and the screens go onto the branch, so the design travels
-  // with the code it describes (FR-105).
+  // The design, resolved, written beside it as text.
+  //
+  // What the implementing agent is given otherwise is PNG exports, which
+  // show what a screen looks like and carry none of its values — no hex, no
+  // spacing, no type size. So it opens the `.pen` instead, and a `.pen` is
+  // not a description of a screen: it is a component tree of `$variable`
+  // references and per-instance override maps, and reading one means
+  // writing the resolver in `@factory/shared`. A run was observed doing
+  // exactly that, in `node -e` one-liners, and was killed at its deadline
+  // with the feature half built. Resolving it here costs milliseconds and
+  // happens once.
+  //
+  // Best-effort: a design that cannot be resolved is still a design, and
+  // failing the step over its companion file would be the tail wagging the
+  // dog. The reason lands in the log, where somebody can see it.
+  const outlined = await writeOutline(host, input.containerId, produced.source, input.logs);
+
+  // The source, the screens and the outline go onto the branch, so the
+  // design travels with the code it describes (FR-105).
   await commitDesign(host, input.containerId, {
     reference: input.snapshot.ticket.reference,
-    paths: [produced.source, ...produced.screens],
+    paths: [produced.source, ...(outlined ? [outlined] : []), ...produced.screens],
     revising,
   });
 
@@ -282,6 +301,40 @@ export async function runDesignStep(
     limits,
     { agentName: input.agent.name, exitCode: 0 },
   );
+}
+
+/** `docs/design/ui.pen` → `docs/design/ui.txt`. */
+export function outlinePath(source: string): string {
+  return source.replace(/\.pen$/i, '') + '.txt';
+}
+
+/**
+ * Resolves the design the step just wrote and leaves it as text beside it.
+ * Returns the path written, or nothing if it could not be.
+ */
+async function writeOutline(
+  host: ContainerHost,
+  containerId: string,
+  source: string,
+  logs: LogSink,
+): Promise<string | null> {
+  const path = outlinePath(source);
+  try {
+    const raw = await host.readFile(containerId, `${WORKDIR}/${source}`);
+    if (!raw) return null;
+    const text = outline(JSON.parse(raw) as PenFile);
+    await host.writeFile(containerId, `${WORKDIR}/${path}`, text);
+    logs.write('stdout', `✓ Resolved the design into ${path}\n`);
+    return path;
+  } catch (error) {
+    logs.write(
+      'stdout',
+      `⚠ Could not resolve the design into text: ${
+        error instanceof Error ? error.message : String(error)
+      }\n`,
+    );
+    return null;
+  }
 }
 
 /** The design source and each screen, as the app stores artifacts. */

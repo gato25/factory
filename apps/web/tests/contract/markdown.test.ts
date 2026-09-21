@@ -118,3 +118,39 @@ test('the table ends where its rows end', () => {
   const out = blocks(['| a |', '| - |', '| 1 |', '', 'After the table.'].join('\n'));
   expect(out.map((b) => b.kind)).toEqual(['table', 'paragraph']);
 });
+
+/**
+ * The design, resolved into text for whoever has to build it. The exported
+ * PNGs show what a screen looks like and carry none of its values, so a run
+ * reached for the `.pen` instead and spent its time writing this by hand.
+ */
+test('a design resolves into tokens and a tree', () => {
+  const { outline } = require('@factory/shared') as typeof import('@factory/shared');
+  const file = {
+    version: '2.17',
+    variables: { accent: { type: 'color' as const, value: '#2450E6' } },
+    children: [
+      {
+        id: 'cmp',
+        name: 'Components',
+        type: 'frame',
+        children: [{ id: 'btn', name: 'Button', type: 'frame', reusable: true, fill: '$accent' }],
+      },
+      {
+        id: 'scr',
+        name: '01 Home',
+        type: 'frame',
+        children: [{ id: 'use', type: 'ref', ref: 'btn', name: 'Primary' }],
+      },
+    ],
+  };
+  const text = outline(file);
+  // The token layer, with its values rather than its names.
+  expect(text).toContain('accent: #2450E6');
+  // The screen, with the component reference expanded and the variable
+  // substituted — the two things a PNG cannot tell you.
+  expect(text).toContain('## 01 Home');
+  expect(text).toContain('fill=#2450E6');
+  // The `Components` frame is not a screen and is not listed as one.
+  expect(text).not.toContain('## Components');
+});

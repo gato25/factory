@@ -39,7 +39,7 @@ function tree(node: Resolved, depth = 0, into: string[] = []): string[] {
   return into;
 }
 
-for (const board of artboards()) {
+for (const board of artboards(load())) {
   if (wanted.length > 0 && !wanted.some((w) => board.name?.includes(w))) continue;
   if (wanted.length === 0) {
     console.log(`${board.name}  ${count(board)} nodes, ${labels(board).length} labels`);
