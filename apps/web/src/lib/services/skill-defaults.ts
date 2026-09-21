@@ -275,13 +275,90 @@ tree, including files a tool wrote that you have not looked at.
   one working commit per task is the unit.
 `;
 
+const DESIGNING = `# Designing screens for this ticket
+
+You draw on a pen.dev canvas and write \`docs/design/ui.pen\`. Three things
+come out of the step, and knowing what happens to each changes how you work.
+
+| Output | Who reads it |
+| --- | --- |
+| \`docs/design/ui.pen\` | You, on a later revision. Nobody else. |
+| \`docs/design/screens/ui.png\` | The person who approves the design. |
+| \`docs/design/ui.txt\` | The agent that builds it. Generated from your file. |
+
+## One export, one image
+
+The export is a single PNG of the whole canvas, not one file per screen.
+So the canvas IS the deliverable: lay the artboards out in a readable
+arrangement — a row, or a grid with room between them — and give each a
+title. Screens scattered across empty space make an image nobody can read,
+and that image is what gets approved.
+
+## Look at the repository first
+
+You are given the project at \`/work\`. Read it before drawing. An interface
+that already exists has a layout, a spacing rhythm, a type scale and a set
+of components, and a design that ignores them asks for a rewrite rather
+than a change. Find the stylesheet or theme file and the existing
+components, and design with them.
+
+Prefer reading files to running commands. A shell call may need a
+permission that cannot be granted here, and the answer never arrives.
+
+## The variables are the handoff
+
+Every colour, radius, font and spacing should be a named variable rather
+than a literal. Those names and values become the token layer the
+implementing agent copies into the project, so a variable called
+\`accent-soft\` is worth ten \`#EDF1FE\` scattered through the file. Where the
+project already names a token, use its name.
+
+## Layout rules that actually bite
+
+- Sizes are \`fill_container\`, \`fit_content\`, or a number. **Percentages do
+  not exist** and will fail.
+- **Text is invisible without \`fill\`.** Every text node needs one. So does
+  an emoji.
+- Text that must wrap needs \`textGrowth: "fixed-width"\` and a width. Left
+  at the default it never wraps.
+- A parent sized \`fit_content\` whose children are all \`fill_container\`
+  collapses to nothing. One of them has to decide.
+- There is no wrapping in a row. A grid is rows you build.
+
+## Build the repeated things once
+
+Anything appearing more than twice — a button, a row, a card — belongs in
+the \`Components\` frame as a reusable node, instanced everywhere else with
+its per-instance overrides. Seven hand-drawn copies of one row is seven
+places to fix.
+
+## Check before you finish
+
+Look for content clipped or overflowing its frame, for text sitting outside
+its parent, and for a row that has run past the edge of its screen. Resize
+the container rather than shrinking the text. Then check the contrast of
+every text colour against what is behind it.
+
+## Revising
+
+A revision addresses the reviewer's note and changes nothing else. The
+previous design was accepted apart from what they raised; redrawing it
+loses that agreement and the work that went into it.
+
+## Do not hand-draw artwork
+
+No logos, mascots or illustrations built from paths — they always look
+wrong. Use icons for iconography, frames and fills for decoration, and ask
+for generated artwork only when the artwork itself is the point.
+`;
+
 export const DEFAULT_SKILLS: DefaultSkill[] = [
   {
     name: 'sandbox',
     description:
       'What is installed in this container and what is not — no browser, no display, no python. Read before installing a tool, looking for one, or trying to view a page.',
     content: SANDBOX,
-    agents: ['spec', 'plan', 'tasks', 'implement'],
+    agents: ['spec', 'design', 'plan', 'tasks', 'implement'],
   },
   {
     name: 'verifying',
@@ -310,6 +387,13 @@ export const DEFAULT_SKILLS: DefaultSkill[] = [
       'How long a specification, plan or task list should be and what to leave out, given the next agent pays for every token of it. Read before writing a document.',
     content: WRITING_FOR_THE_NEXT_STEP,
     agents: ['spec', 'plan', 'tasks'],
+  },
+  {
+    name: 'designing',
+    description:
+      'Drawing screens on the pen.dev canvas so they can be approved and then built: one export image, named variables as the handoff, and the layout rules that fail silently. Read before drawing or revising a design.',
+    content: DESIGNING,
+    agents: ['design'],
   },
   {
     name: 'committing',
