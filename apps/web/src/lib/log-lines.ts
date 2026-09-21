@@ -1,4 +1,5 @@
 import { stripAnsi } from '@factory/shared';
+import { startsTable } from './markdown';
 
 /**
  * Raw command-line output, turned into rows a person can read.
@@ -250,33 +251,51 @@ export function toRows(chunks: readonly Chunk[]): Row[] {
     rows.push(line.kind === 'blank' ? { ...row, kind: 'prose', text: '' } : row);
   }
 
-  // 4. One Markdown block per run of the agent’s prose.
+  // 4. Group ONLY what Markdown needs more than one line for.
   //
-  //    The agent writes Markdown — a heading, a bullet list, `a path` in
-  //    backticks — and it arrives one line at a time. Rendered a line at a
-  //    time it stayed literal: readers saw `**Task 1**` with its asterisks.
-  //    Joined back into a block it can be parsed as what it is. Blank lines
-  //    inside the run are kept because they are the paragraph breaks;
-  //    leading and trailing ones are not, and a gap of three or more is
-  //    still just one break.
+  //    A log is a sequence of utterances, not a document. The first
+  //    attempt joined every run of prose into one block and handed it to
+  //    the Markdown parser, which reflowed it: two sentences the agent
+  //    said at different moments became one paragraph, and a line of
+  //    dashes under a line containing a pipe became an empty table.
+  //
+  //    So lines stay lines. A fenced block, a table and a run of bullets
+  //    are the three things that genuinely span lines, and only those are
+  //    gathered. Everything else keeps its own row, its own timestamp and
+  //    its own place in the order — and still renders its inline marks,
+  //    which is what was actually missing.
   const joined: Row[] = [];
   for (let i = 0; i < rows.length; i += 1) {
     const row = rows[i] as Row;
+    const at = (n: number) => (rows[n]?.kind === 'prose' ? rows[n]?.text : undefined);
     if (row.kind !== 'prose' || row.detail) {
       joined.push(row);
       continue;
     }
+    if (!row.text.trim()) continue;
+
     let end = i;
-    while (end + 1 < rows.length && (rows[end + 1] as Row).kind === 'prose') end += 1;
-    const lines = rows
+    if (row.text.trimStart().startsWith('```')) {
+      end += 1;
+      while (end < rows.length && at(end) !== undefined) {
+        const line = at(end) as string;
+        if (line.trimStart().startsWith('```')) break;
+        end += 1;
+      }
+      if (end >= rows.length) end = rows.length - 1;
+    } else if (startsTable(row.text, at(i + 1))) {
+      end = i + 1;
+      while (end + 1 < rows.length && (at(end + 1) ?? '').includes('|')) end += 1;
+    } else if (/^\s*[-*]\s+/.test(row.text)) {
+      while (end + 1 < rows.length && /^\s*[-*]\s+/.test(at(end + 1) ?? '')) end += 1;
+    }
+
+    const text = rows
       .slice(i, end + 1)
       .map((r) => (r as Row).text)
-      .join('\n')
-      .replace(/\n{3,}/g, '\n\n')
-      .trim();
+      .join('\n');
     i = end;
-    // A run that was nothing but blank lines says nothing.
-    if (lines) joined.push({ ...row, text: lines });
+    joined.push({ ...row, text });
   }
 
   // 5. Fold a run of one quiet kind into the first of them.

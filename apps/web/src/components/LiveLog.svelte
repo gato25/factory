@@ -530,10 +530,27 @@
   .row.prose .m :global(.markdown > :last-child) {
     margin-bottom: 0;
   }
+  /* A heading in a log is emphasis, not a document title. At the
+     component's own sizes an agent writing `## Plan` produced 15px type in
+     the middle of 12.5px output, which read as the panel breaking rather
+     than as a heading. */
   .row.prose .m :global(.markdown h1),
   .row.prose .m :global(.markdown h2),
   .row.prose .m :global(.markdown h3) {
+    margin: 0;
+    font-family: var(--font);
+    font-size: 12.5px;
+    font-weight: 700;
     color: var(--log-text);
+  }
+  /* One line of prose is one line. The component's paragraph spacing is for
+     a document, and here it put a gap under every remark the agent made. */
+  .row.prose .m :global(.markdown p) {
+    margin: 0;
+  }
+  .row.prose .m :global(.markdown ul) {
+    margin: 2px 0 0;
+    padding-left: 18px;
   }
   .row.prose .m :global(.markdown code) {
     background: var(--log-chip);

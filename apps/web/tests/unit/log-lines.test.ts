@@ -175,9 +175,11 @@ describe('the kinds the artboard draws', () => {
     // Prose is Markdown, and Markdown contains braces. Folding on one would
     // hide the remainder of a message behind a disclosure nobody asked for.
     const out = rows(['The config takes { "mode": "strict" }', 'and nothing else.'].join('\n'));
-    expect(out).toHaveLength(1);
-    expect(out[0]?.detail).toBeUndefined();
-    expect(out[0]?.text).toBe('The config takes { "mode": "strict" }\nand nothing else.');
+    expect(out.every((row) => row.detail === undefined)).toBe(true);
+    expect(out.map((row) => row.text)).toEqual([
+      'The config takes { "mode": "strict" }',
+      'and nothing else.',
+    ]);
   });
 });
 
@@ -196,30 +198,55 @@ describe('the timestamp', () => {
   });
 });
 
-describe("the agent's prose, which is Markdown", () => {
-  test('a run of lines becomes one block, so Markdown can be parsed', () => {
-    // One line at a time, `**Task 1**` rendered with its asterisks showing.
-    const out = rows(['## Plan', '', '- **One** first', '- Then `two`'].join('\n'));
-    expect(out).toHaveLength(1);
-    expect(out[0]?.kind).toBe('prose');
-    expect(out[0]?.text).toBe('## Plan\n\n- **One** first\n- Then `two`');
+describe("the agent's prose, which is a log and not a document", () => {
+  test('a line stays a line', () => {
+    // The first attempt joined every run of prose and gave it to the
+    // Markdown parser, which reflowed it: two statements the agent made at
+    // different moments became one paragraph. Only the constructs that
+    // genuinely span lines are gathered now.
+    const out = rows(['Reading the plan.', 'The home page has six sections:'].join('\n'));
+    expect(out.map((r) => r.text)).toEqual([
+      'Reading the plan.',
+      'The home page has six sections:',
+    ]);
   });
 
-  test('a blank line survives inside the block and is dropped around it', () => {
-    const out = rows(['', 'first', '', '', '', 'second', ''].join('\n'));
-    expect(out).toHaveLength(1);
-    expect(out[0]?.text).toBe('first\n\nsecond');
+  test('a heading does not absorb the line after it', () => {
+    const out = rows(['## Plan', 'First we read the spec.'].join('\n'));
+    expect(out.map((r) => r.text)).toEqual(['## Plan', 'First we read the spec.']);
   });
 
-  test('a tool call between two paragraphs keeps them apart', () => {
+  test('a run of bullets is one row, because a list spans lines', () => {
+    const out = rows(['- **One** first', '- Then it', 'Not a bullet.'].join('\n'));
+    expect(out).toHaveLength(2);
+    expect(out[0]?.text).toBe('- **One** first\n- Then it');
+    expect(out[1]?.text).toBe('Not a bullet.');
+  });
+
+  test('a tool call between two remarks keeps them apart', () => {
     const out = rows(['thinking', '▶ Read src/x.ts', 'done thinking'].join('\n'));
     expect(out.map((r) => r.kind)).toEqual(['prose', 'tool', 'prose']);
   });
 
-  test('a fenced block stays prose even when a line inside it looks like an error', () => {
-    const out = rows(['Here is what broke:', '```', 'error: ENOENT', '```'].join('\n'));
-    expect(out).toHaveLength(1);
-    expect(out[0]?.kind).toBe('prose');
-    expect(out[0]?.text).toContain('error: ENOENT');
+  test('a fenced block is one row, whatever the lines inside it look like', () => {
+    const fence = '```';
+    const out = rows(['Here is what broke:', fence, 'error: ENOENT', fence].join('\n'));
+    expect(out).toHaveLength(2);
+    expect(out[1]?.kind).toBe('prose');
+    expect(out[1]?.text).toContain('error: ENOENT');
+  });
+
+  test('a table is one row: header, delimiter and body together', () => {
+    const out = rows(['| Step | Time |', '| --- | --- |', '| Spec | 2m |', 'Done.'].join('\n'));
+    expect(out).toHaveLength(2);
+    expect(out[0]?.text.split('\n')).toHaveLength(3);
+    expect(out[1]?.text).toBe('Done.');
+  });
+
+  test('a rule under a line that happens to contain a pipe is not a table', () => {
+    // The delimiter pattern alone matches a bare rule, so a log line
+    // carrying a pipe became a table with no body. Counting cells stops it.
+    const out = rows(['Task 5 | Write tests', '----------------------', 'Done.'].join('\n'));
+    expect(out).toHaveLength(3);
   });
 });

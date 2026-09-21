@@ -56,6 +56,27 @@ const DELIMITER = /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/;
 const looksLikeRow = (line: string | undefined): boolean =>
   Boolean(line?.includes('|')) && line?.trim() !== '';
 
+/**
+ * A header and the dashed line under it, only when they agree on how many
+ * columns there are.
+ *
+ * The delimiter pattern alone matches a bare `-----`, which meant a log
+ * line that happened to contain a pipe, followed by a rule, became a table
+ * with no body:
+ *
+ *     Task 5 | Write tests for the callback handler
+ *     ---------------------------------------------
+ *
+ * Counting cells is what every Markdown implementation does and what stops
+ * it. Exported because the live log has to recognise a table before it
+ * decides which lines belong together.
+ */
+export function startsTable(header: string | undefined, delimiter: string | undefined): boolean {
+  if (!looksLikeRow(header) || delimiter === undefined) return false;
+  if (!DELIMITER.test(delimiter)) return false;
+  return cells(header as string).length === cells(delimiter).length;
+}
+
 function cells(line: string): string[] {
   let text = line.trim();
   if (text.startsWith('|')) text = text.slice(1);
@@ -126,7 +147,7 @@ export function blocks(markdown: string): Block[] {
 
     // Checked before the list, because `| --- |` would otherwise read as a
     // bullet, and before the paragraph, because every row would.
-    if (looksLikeRow(line) && DELIMITER.test(lines[i + 1] ?? '')) {
+    if (startsTable(line, lines[i + 1])) {
       endParagraph();
       endList();
       const align = alignments(lines[i + 1] as string);
