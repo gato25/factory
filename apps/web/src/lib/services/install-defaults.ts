@@ -66,6 +66,7 @@ export async function installDefaults(database: Database): Promise<Installed> {
       model: shipped.model,
       systemPrompt: shipped.systemPrompt,
       allowedTools: shipped.allowedTools,
+      maxMinutes: shipped.maxMinutes ?? null,
     };
     const [created] = await database
       .insert(agents)

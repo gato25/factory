@@ -16,6 +16,19 @@ export interface DefaultAgent {
   systemPrompt: string;
   allowedTools: string[];
   outputFiles: string[];
+  /**
+   * The longest this agent's step may take, when that is shorter or longer
+   * than the run's own ceiling would give it.
+   *
+   * Left unset, a step inherits the WHOLE run ceiling as its deadline, which
+   * is right for the four agents that read and write a document and wrong
+   * for the one that builds the feature. Raising the pipeline's ceiling
+   * instead would hand the same larger number to every step.
+   *
+   * It is still capped by the run ceiling (FR-079a), so this cannot buy more
+   * time than the pipeline allows — it only asks for more of it.
+   */
+  maxMinutes?: number;
 }
 
 const SPEC_PROMPT = `You write the specification for one ticket.
@@ -72,9 +85,29 @@ message of the form \`feat(#<ticket>): <task>\`.
 You are responsible for leaving the repository's tests passing within this
 step, using the tools you have been permitted. Find how this repository runs
 its tests — its own scripts, not an assumed command — run them, and fix what
-you break. Nothing downstream will do it for you: there is no verification
-stage after this one, and a step that ends with the tests red has not
-finished. Where a design exists, build the interface to match it.`;
+you break. A step that ends with the tests red has not finished.
+
+Verifying means running this repository's own scripts: its typecheck, its
+tests, its build. That is all it means here. Do not start a development or
+preview server, do not fetch a page over HTTP, and do not install a browser
+or a screenshot tool. There is no display in this sandbox and no browser in
+its image, so an attempt to look at the result costs the whole of your time
+limit and returns nothing. One run spent most of a forty-five minute limit
+on exactly that and was killed with the work unfinished.
+
+Where a design exists, build the interface to match it. Read the exported
+screens for what it looks like, and \`docs/design/ui.txt\` for what it is
+made of — that file is the design resolved into tokens and a tree, and it
+carries the exact colours, spacing and type sizes a PNG cannot. Do not
+write a parser for \`docs/design/ui.pen\`: it is a component tree of
+variable references and per-instance override maps, the resolved form is
+already sitting next to it, and doing that work by hand is a long detour
+from the tasks.
+
+A pipeline may install dependencies in a shell step before this one, so
+check whether they are already there before installing them again. If a
+tool you want is genuinely absent, say so and work without it rather than
+building it yourself.`;
 
 export const DEFAULT_AGENTS: DefaultAgent[] = [
   {
@@ -143,6 +176,11 @@ export const DEFAULT_AGENTS: DefaultAgent[] = [
     // after the pipeline finishes, never a tool an agent calls.
     allowedTools: ['Read', 'Write', 'Edit', 'Bash'],
     outputFiles: [],
+    // Building a feature is not the same size of job as writing a document.
+    // The other four steps of the standard pipeline finish in a couple of
+    // minutes each; this one is the work. It was being killed at the run's
+    // 45-minute ceiling with the implementation half done.
+    maxMinutes: 120,
   },
 ];
 

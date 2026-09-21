@@ -13,8 +13,16 @@ FROM node:22-bookworm-slim
 
 # Node and npm come with the base. `git` is what a run actually needs on top;
 # `ca-certificates` is what makes the clone and the model calls work at all.
+#
+# `jq` is here because an agent reaches for it constantly and its absence is
+# expensive rather than fatal: a run was observed probing for `jq`, `python3`
+# and `bun`, finding none, and then writing every small JSON read as a
+# `node -e` one-liner for the rest of the step. One small package removes
+# that. Nothing heavier is added on the same argument — a browser is the
+# thing agents reach for next, and that one is answered by telling them not
+# to rather than by shipping three hundred megabytes into every sandbox.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends git ca-certificates \
+    && apt-get install -y --no-install-recommends git ca-certificates jq \
     && rm -rf /var/lib/apt/lists/*
 
 # Both agent engines live here, never in our own services (001 research D6).
