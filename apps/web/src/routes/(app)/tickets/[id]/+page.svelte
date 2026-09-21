@@ -361,9 +361,29 @@
                   <span>Cancel run</span>
                 </button>
               {:else if retryable}
+                <!--
+                  Offered before Retry, and only for a failed run, because it
+                  is almost always the cheaper of the two. Retry starts again
+                  from the ticket and pays for every finished step a second
+                  time; this picks up at the step that failed and keeps what
+                  the run already produced and spent. A cancelled run is not
+                  offered it: somebody stopped that one on purpose.
+                -->
+                {#if loaded.run.status === 'failed'}
+                  <button
+                    type="button"
+                    class="primary"
+                    disabled={working}
+                    title="Run again from the step that failed. Finished steps and their cost are kept."
+                    onclick={() => act(() => continueFrom(loaded.run.id))}
+                  >
+                    <Icon name="play" size={16} />
+                    <span>Continue from the failed step</span>
+                  </button>
+                {/if}
                 <button
                   type="button"
-                  class="primary"
+                  class={loaded.run.status === 'failed' ? 'secondary' : 'primary'}
                   disabled={working}
                   onclick={() => act(() => retry(ticketId))}
                 >
