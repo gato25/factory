@@ -517,6 +517,39 @@ function serve(label: string, colour: string, argv: string[]) {
 const runner = serve('runner', BLUE, ['bun', 'run', 'dev:runner']);
 const web = serve('web', GREEN, ['bun', 'run', 'dev:web']);
 
+/**
+ * The periodic pass, on a timer here.
+ *
+ * `scripts/maintenance.ts` is what stops a run past its ceiling, resolves a
+ * gate whose waiting time expired and releases a retained sandbox. It is
+ * deliberately not a timer inside the web application — an operator should
+ * be able to see and change the schedule — and the consequence was that in
+ * development nothing called it at all. A run was observed sitting for
+ * seventy hours under a forty-five minute ceiling because of it.
+ *
+ * So development gets a schedule of its own, in the one place that already
+ * knows the services are running. `--quiet` keeps it silent unless a pass
+ * actually did something. A deployment still schedules the script itself;
+ * see its own comment for how.
+ */
+const SWEEP_MINUTES = 2;
+function sweep(): void {
+  const proc = Bun.spawn(['bun', 'scripts/maintenance.ts', '--quiet'], {
+    stdout: 'pipe',
+    stderr: 'pipe',
+  });
+  void (async () => {
+    for (const stream of [proc.stdout, proc.stderr]) {
+      const text = await new Response(stream).text();
+      for (const line of text.split('\n')) {
+        if (line.trim()) console.log(`${DIM}sweep ${OFF} ${line}`);
+      }
+    }
+  })();
+}
+const sweeper = setInterval(sweep, SWEEP_MINUTES * 60_000);
+note(`Ceilings and gates are swept every ${SWEEP_MINUTES} minutes.`);
+
 console.log(`\n${BOLD}Open http://localhost:5173${OFF}`);
 console.log(`${DIM}If nobody has an account yet it will ask you to create one, and that${OFF}`);
 console.log(`${DIM}first account is the administrator.${OFF}\n`);
@@ -527,6 +560,7 @@ function stopBoth(): void {
   // again half way through it.
   if (stopping) return;
   stopping = true;
+  clearInterval(sweeper);
   stopTree(runner);
   stopTree(web);
 }

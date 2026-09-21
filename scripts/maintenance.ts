@@ -16,6 +16,26 @@
  *   bun scripts/maintenance.ts --quiet     # print only when something happened
  *
  * Exits 0 when the pass completed, 1 when part of it could not.
+ *
+ * **Schedule it, or none of the three happens.** Being a script an operator
+ * runs is the point, but "an operator schedules it" was written and then
+ * nobody did: a run sat for seventy hours under a forty-five minute
+ * ceiling, because the only thing that would have stopped it was this, and
+ * this was never called. `scripts/dev.ts` now runs it on a timer while the
+ * services are up, so development is covered. A deployment needs one of:
+ *
+ *   # cron, every two minutes
+ *   *\/2 * * * * cd /srv/factory && bun scripts/maintenance.ts --quiet
+ *
+ *   # systemd, as a .timer beside a .service running the same line
+ *   OnUnitActiveSec=2min
+ *
+ *   # Windows Task Scheduler
+ *   schtasks /create /tn factory-sweep /sc minute /mo 2 ^
+ *     /tr "bun C:\factory\scripts\maintenance.ts --quiet"
+ *
+ * Two minutes is a suggestion, not a requirement: every pass is idempotent
+ * and a missed one costs lateness rather than correctness.
  */
 
 import { createClient } from '@factory/db';
