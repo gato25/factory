@@ -70,7 +70,15 @@ test('every colour comes from the design, named or not', () => {
 });
 
 test('the typefaces are self-hosted, so a screen does not depend on a font service', () => {
-  for (const family of ['Inter', 'Geist', 'Geist Mono']) {
+  // Which faces those are is the design's to say, not this test's. The list
+  // was written out by hand and then the design changed its heading face
+  // from Geist to Manrope, leaving a test that asserted a typeface the
+  // design no longer names. Read from `variables` it cannot drift again.
+  const families = Object.values(variables)
+    .filter((variable) => variable.type === 'string')
+    .map((variable) => String(variable.value));
+  expect(families.length).toBeGreaterThan(0);
+  for (const family of families) {
     expect(CSS).toContain(`font-family: '${family}';`);
   }
   expect(CSS).not.toContain('fonts.googleapis.com');

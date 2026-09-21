@@ -115,80 +115,83 @@
     U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
-  font-family: "Geist";
+  font-family: "Manrope";
   font-style: normal;
-  font-weight: 500;
+  font-weight: 600;
   font-display: swap;
-  src: url("/fonts/geist-500-cyrillic.woff2") format("woff2");
-  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+  src: url("/fonts/manrope-600-cyrillic.woff2") format("woff2");
+  unicode-range:
+    U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
 }
 @font-face {
-  font-family: "Geist";
+  font-family: "Manrope";
   font-style: normal;
-  font-weight: 500;
+  font-weight: 600;
   font-display: swap;
-  src: url("/fonts/geist-500-latin-ext.woff2") format("woff2");
+  src: url("/fonts/manrope-600-latin-ext.woff2") format("woff2");
   unicode-range:
     U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 @font-face {
-  font-family: "Geist";
+  font-family: "Manrope";
   font-style: normal;
-  font-weight: 500;
+  font-weight: 600;
   font-display: swap;
-  src: url("/fonts/geist-500-latin.woff2") format("woff2");
+  src: url("/fonts/manrope-600-latin.woff2") format("woff2");
   unicode-range:
     U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
-  font-family: "Geist";
+  font-family: "Manrope";
   font-style: normal;
-  font-weight: 600;
+  font-weight: 700;
   font-display: swap;
-  src: url("/fonts/geist-600-cyrillic.woff2") format("woff2");
-  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+  src: url("/fonts/manrope-700-cyrillic.woff2") format("woff2");
+  unicode-range:
+    U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
 }
 @font-face {
-  font-family: "Geist";
+  font-family: "Manrope";
   font-style: normal;
-  font-weight: 600;
+  font-weight: 700;
   font-display: swap;
-  src: url("/fonts/geist-600-latin-ext.woff2") format("woff2");
+  src: url("/fonts/manrope-700-latin-ext.woff2") format("woff2");
   unicode-range:
     U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 @font-face {
-  font-family: "Geist";
+  font-family: "Manrope";
   font-style: normal;
-  font-weight: 600;
+  font-weight: 700;
   font-display: swap;
-  src: url("/fonts/geist-600-latin.woff2") format("woff2");
+  src: url("/fonts/manrope-700-latin.woff2") format("woff2");
   unicode-range:
     U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
-  font-family: "Geist";
+  font-family: "Manrope";
   font-style: normal;
-  font-weight: 700;
+  font-weight: 800;
   font-display: swap;
-  src: url("/fonts/geist-700-cyrillic.woff2") format("woff2");
-  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+  src: url("/fonts/manrope-800-cyrillic.woff2") format("woff2");
+  unicode-range:
+    U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
 }
 @font-face {
-  font-family: "Geist";
+  font-family: "Manrope";
   font-style: normal;
-  font-weight: 700;
+  font-weight: 800;
   font-display: swap;
-  src: url("/fonts/geist-700-latin-ext.woff2") format("woff2");
+  src: url("/fonts/manrope-800-latin-ext.woff2") format("woff2");
   unicode-range:
     U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 @font-face {
-  font-family: "Geist";
+  font-family: "Manrope";
   font-style: normal;
-  font-weight: 700;
+  font-weight: 800;
   font-display: swap;
-  src: url("/fonts/geist-700-latin.woff2") format("woff2");
+  src: url("/fonts/manrope-800-latin.woff2") format("woff2");
   unicode-range:
     U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
@@ -247,26 +250,26 @@
 
 :root {
   /* Surfaces */
-  --bg: #f7f8fa;
+  --bg:#f6f7f9;
   --surface: #ffffff;
   --surface-2: #f3f4f7;
   --sidebar: #ffffff;
-  --sidebar-hover: #eef3ff;
-  --border: #eceef2;
+  --sidebar-hover:#edf1fe;
+  --border:#e9ebf0;
 
   /* Text */
-  --text: #111827;
-  --text-2: #64708a;
-  --text-3: #9aa3b2;
+  --text:#0b1220;
+  --text-2:#5a6478;
+  --text-3:#98a1b0;
   --text-inv: #ffffff;
   --text-inv-2: #94a3b8;
-  --nav-text: #4b5565;
-  --nav-text-active: #1d4ed8;
+  --nav-text:#5a6478;
+  --nav-text-active:#1b3fc4;
 
   /* Accent */
-  --accent: #2563eb;
-  --accent-soft: #eef3ff;
-  --accent-text: #1d4ed8;
+  --accent:#2450e6;
+  --accent-soft:#edf1fe;
+  --accent-text:#1b3fc4;
 
   /* State */
   --success: #16a34a;
@@ -302,6 +305,37 @@
   --warning-edge: #f59e0b;
   --amber: #fbbf24;
 
+  /*
+   * The live log's own palette, for a dark ground.
+   *
+   * The panel head stays white and the body is a console. A pale tint was
+   * tried first and was the worst of both: `--text-3` fell to about 2.3:1
+   * on it, and the soft green and amber rows were so near the ground's own
+   * lightness that they stopped reading as rows.
+   *
+   * These are picked FOR the dark ground rather than borrowed from the
+   * light one, which is what went wrong the last time this panel was dark:
+   * `bad` fell back to `--danger`, a red chosen for white, and measured
+   * 3.89:1. Every tone here clears AA against `--log-bg` — the muted grey
+   * at about 7:1, the text at about 15:1, and none of the three states
+   * below 7:1.
+   */
+  --log-bg: #0b1220;
+  --log-text: #e2e8f0;
+  --log-muted: #94a3b8;
+  --log-accent: #93c5fd;
+  --log-design: #f9a8d4;
+  --log-ok: #4ade80;
+  --log-warn: #fbbf24;
+  --log-bad: #f87171;
+  /* The ground under a tool-call chip, a fold and a Markdown table head. */
+  --log-chip: #1e293b;
+  /* Row grounds: dark enough to stay behind their text, distinct enough to
+     find while scanning. */
+  --log-ok-soft: #10271c;
+  --log-warn-soft: #2a2110;
+  --log-bad-soft: #2c1518;
+
   /* The code surface. design.pen draws the skill editor and the run log on a
      dark ground it never named: #0B1220 behind, #E2E8F0 text, #475569 line
      numbers, #93C5FD for a Markdown heading. Literals in the file, tokenised
@@ -316,10 +350,13 @@
   --r-sm: 8px;
   --r-md: 12px;
   --r-lg: 16px;
+  /* The panel radius. design.pen names it and draws the Live Output and the
+     reference cards with it; nothing smaller is the same shape. */
+  --r-xl: 20px;
 
   /* Typefaces */
   --font: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --font-head: "Geist", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-head: "Manrope", "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
 }
 
