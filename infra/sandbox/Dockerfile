@@ -44,6 +44,27 @@ RUN npm install -g @anthropic-ai/claude-code@2.1.268 @pen.dev/cli@0.3.7 \
     && npm cache clean --force \
     && rm -rf /root/.npm /tmp/*
 
+# `bun`, because a pipeline's shell steps run whatever the target repository
+# uses and that is increasingly bun rather than npm.
+#
+# This was learned the expensive way in the other direction: a pipeline was
+# given `npm ci` for a repository that declares `"packageManager": "bun"` and
+# ships a `bun.lock` with no `package-lock.json`, and every run died at
+# `npm error The 'npm ci' command can only install with an existing
+# package-lock.json`. Correcting the pipeline to bun then meant the image had
+# to have it, and the `sandbox` skill — which told agents bun was absent —
+# had to stop saying so.
+#
+# From npm rather than bun.sh's install script: the script wants `curl` and
+# `unzip`, neither of which is here for anything else, and the npm package
+# fetches the same binary. Pinned and verified, on the same argument as the
+# engines above. 1.3 rather than the 1.1 a repository may name, because
+# `bun.lock` is a 1.2 format and 1.1 cannot read it.
+RUN npm install -g bun@1.3.14 \
+    && bun --version \
+    && npm cache clean --force \
+    && rm -rf /root/.npm /tmp/*
+
 # The workspace, owned by UID 1000 — which is what `container/host.ts` passes
 # as `--user 1000:1000`, because an agent runs arbitrary code against a
 # customer repository (001 FR-046). The `node` base image already has a user at
@@ -53,6 +74,21 @@ RUN mkdir -p /work && chown 1000:1000 /work
 USER 1000:1000
 WORKDIR /work
 ENV FACTORY_WORKDIR=/work
+
+# A writable HOME, stated rather than inherited.
+#
+# `host.ts` starts the container with `--user 1000:1000`, a NUMERIC user.
+# Docker resolves a home directory from `/etc/passwd` only when the user is
+# named, so a numeric one gets `HOME=/` — a directory this uid cannot write.
+# Everything in this image keeps state under the home: `bun` its install
+# cache, `npm` its own, `claude` its `~/.claude`, `pen` its credentials. Each
+# would fail at its first write, and for reasons naming a path rather than a
+# permission.
+#
+# `/home/node` already exists and already belongs to uid 1000 — the base
+# image's own `node` user is that id — so this names what is there rather
+# than creating anything.
+ENV HOME=/home/node
 
 # Deliberately NO ENTRYPOINT and no CMD.
 #

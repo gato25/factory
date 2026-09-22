@@ -41,6 +41,10 @@ which is a clone of the branch for this ticket.
 ## Present
 
 - \`node\` and \`npm\` — the image is \`node:22-bookworm-slim\`
+- \`bun\` — use it when the repository does, which you can tell from
+  \`bun.lock\` or a \`packageManager\` field in \`package.json\`. Do not run
+  \`npm ci\` against a repository that has no \`package-lock.json\`; it fails
+  on the missing lockfile rather than falling back.
 - \`git\`, configured and on the ticket's branch
 - \`jq\`
 - \`claude\` and \`pen\`, the two step engines
@@ -50,7 +54,7 @@ which is a clone of the branch for this ticket.
 - **Any browser.** No Chrome, no Chromium, no Playwright, no Puppeteer.
   There is also no display. Installing one costs several hundred megabytes
   and a large part of your time limit, and still cannot show you anything.
-- \`python3\`, \`bun\`, \`make\`, \`docker\`
+- \`python3\`, \`make\`, \`docker\`
 - Anything the project itself does not install
 
 Check once with \`command -v <tool>\` if you must. Do not probe repeatedly,
@@ -59,9 +63,9 @@ is missing and carry on without it.
 
 ## Network
 
-Usually available, so \`npm install\` works. It is a setting per run and can
-be off. If a fetch fails, that is the answer; it is not something to retry
-ten times.
+Usually available, so installing dependencies works. It is a setting per run
+and can be off. If a fetch fails, that is the answer; it is not something to
+retry ten times.
 
 ## Files that are already there
 
