@@ -33,10 +33,32 @@ export interface Recovery<T> {
 }
 
 /**
+ * How many replacement sandboxes one step may be given.
+ *
+ * This was one, and the reasoning held at the time: a rebuild resumed from
+ * the last commit that had reached the remote, and only the design step ever
+ * pushed anything, so a rebuild usually meant starting the step from a
+ * workspace with none of the run's work in it. Doing that repeatedly would
+ * have spent a ticket's whole ceiling on infrastructure.
+ *
+ * Every step now commits what it produced and pushes it, and a rebuilt
+ * workspace takes the branch rather than starting it over. So a replacement
+ * costs a clone and loses nothing — a run of this pipeline lost its sandbox
+ * and came back with its specification, design, plan and task list intact.
+ * A lost sandbox is a bad moment on the host, not a reason to throw away
+ * four finished steps.
+ *
+ * Bounded rather than unlimited because a host that cannot hold a sandbox at
+ * all must still fail rather than clone forever, and the step's own time
+ * ceiling is the other thing stopping it.
+ */
+const MAX_REPLACEMENTS = 3;
+
+/**
  * Runs `work` in the given sandbox, and on sandbox loss builds a replacement
- * resuming from the last commit on the branch and runs it once more. Any
- * other failure is the step's own and passes straight through — only a lost
- * sandbox earns a second sandbox.
+ * that takes the branch as the steps before it left it, then runs the work
+ * again. Any other failure is the step's own and passes straight through —
+ * only a lost sandbox earns another sandbox.
  */
 export async function withSandboxRecovery<T>(
   host: ContainerHost,
@@ -50,29 +72,35 @@ export async function withSandboxRecovery<T>(
    */
   canRecover: () => Promise<boolean> = async () => true,
 ): Promise<Recovery<T>> {
-  try {
-    return { outcome: await work(containerId), recovered: false };
-  } catch (error) {
-    if (!isSandboxLoss(error)) throw error;
-    if (!(await canRecover())) throw error;
+  let current = containerId;
+  let resumedFrom: string | undefined;
+  let lost = 0;
 
-    // Do not wait on the corpse: it is the host that is unreliable.
-    await host.destroy(input.lostContainerId ?? containerId).catch(() => {});
-
-    const replacement = await buildReplacement(host, input);
+  for (;;) {
     try {
-      const outcome = await work(replacement.containerId);
-      return { outcome, recovered: true, resumedFrom: replacement.resumedFrom };
-    } catch (second) {
-      if (isSandboxLoss(second)) {
+      const outcome = await work(current);
+      return lost === 0 ? { outcome, recovered: false } : { outcome, recovered: true, resumedFrom };
+    } catch (error) {
+      if (!isSandboxLoss(error)) throw error;
+      if (!(await canRecover())) throw error;
+
+      lost += 1;
+      if (lost > MAX_REPLACEMENTS) {
         throw new FactoryError(
           'sandbox_lost',
-          'The sandbox disappeared while the step was running, and the replacement did too. ' +
-            'The work committed to the branch is still there.',
-          { detail: second instanceof Error ? second.message : String(second) },
+          `The sandbox disappeared while the step was running, and so did ${MAX_REPLACEMENTS} ` +
+            'replacements. Something is wrong with the machine running the steps rather than ' +
+            'with this ticket. The work committed to the branch is still there.',
+          { detail: error instanceof Error ? error.message : String(error) },
         );
       }
-      throw second;
+
+      // Do not wait on the corpse: it is the host that is unreliable.
+      await host.destroy(lost === 1 ? (input.lostContainerId ?? current) : current).catch(() => {});
+
+      const replacement = await buildReplacement(host, input);
+      current = replacement.containerId;
+      resumedFrom = replacement.resumedFrom;
     }
   }
 }

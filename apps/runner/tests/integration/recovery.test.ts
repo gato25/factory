@@ -98,7 +98,28 @@ test('a branch no previous attempt pushed leaves the replacement where it starte
   expect(result.resumedFrom).toBe('mainhead1');
 });
 
-test('a second loss fails, and says the committed work is still there', async () => {
+test('a second loss earns a third sandbox rather than failing the run', async () => {
+  // This used to fail here. It could afford to when a rebuild resumed from
+  // whatever had reached the remote and only the design step ever pushed —
+  // so a rebuild usually meant a workspace with none of the run's work in
+  // it. Every step now pushes, and a replacement takes the branch, so a
+  // rebuild costs a clone and loses nothing. Losing a sandbox twice is a bad
+  // host, not a reason to throw away four finished steps.
+  const ranIn: string[] = [];
+  const result = await withSandboxRecovery(host, 'the-original', input, async (id) => {
+    ranIn.push(id);
+    if (ranIn.length < 3) throw lost();
+    return 'done';
+  });
+
+  expect(result.outcome).toBe('done');
+  expect(result.recovered).toBe(true);
+  expect(ranIn).toEqual(['the-original', 'container-1', 'container-2']);
+  // Each corpse is cleared up, not left behind.
+  expect(host.destroyed).toEqual(['the-original', 'container-1']);
+});
+
+test('a host that cannot hold a sandbox at all still fails, and says so', async () => {
   let failure: FactoryError | null = null;
   try {
     await withSandboxRecovery(host, 'the-original', input, async () => {
@@ -109,12 +130,13 @@ test('a second loss fails, and says the committed work is still there', async ()
   }
 
   expect(failure?.reason).toBe('sandbox_lost');
-  expect(failure?.message).toBe(
-    'The sandbox disappeared while the step was running, and the replacement did too. ' +
-      'The work committed to the branch is still there.',
-  );
-  // Once, not repeatedly: exactly one replacement was built.
-  expect(host.created).toHaveLength(1);
+  // It names the machine rather than the ticket, because that is what is
+  // wrong, and it says the work is not lost.
+  expect(failure?.message).toContain('3 replacements');
+  expect(failure?.message).toContain('the machine running the steps');
+  expect(failure?.message).toContain('committed to the branch is still there');
+  // Bounded, not endless.
+  expect(host.created).toHaveLength(3);
 });
 
 test("a step's own failure is not a sandbox loss and gets no second sandbox", async () => {
