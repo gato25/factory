@@ -49,6 +49,12 @@ export interface StartInput {
   snapshot: PipelineSnapshot;
   credentials: ResolvedCredentials;
   sandbox: SandboxLimits;
+  /**
+   * Take the run branch from the remote rather than starting it from the
+   * default branch. True for a workspace built in the MIDDLE of an attempt,
+   * which must pick up what the steps before it pushed.
+   */
+  adoptBranch?: boolean;
 }
 
 /**
@@ -132,7 +138,9 @@ export async function startRunWorkspace(
 
   const containerId = await host.create(spec);
   try {
-    await cloneRepository(host, containerId, input.snapshot, input.credentials.gitToken);
+    await cloneRepository(host, containerId, input.snapshot, input.credentials.gitToken, {
+      adoptBranch: input.adoptBranch,
+    });
     await writeAgentConfig(host, containerId, WORKDIR, {
       snapshot: input.snapshot,
       requirementFiles: requirements.map((file) => file.name),
@@ -166,15 +174,44 @@ export async function cloneRepository(
   containerId: string,
   snapshot: PipelineSnapshot,
   gitToken: string,
+  options: { adoptBranch?: boolean } = {},
 ): Promise<void> {
+  const branch = quoteOne(snapshot.repo.branch);
+  const remote = authenticatedRemote(snapshot.repo.clone_url);
+
+  /**
+   * Whether to take the run's branch from the remote, or start it from the
+   * default branch.
+   *
+   * `git checkout -B` RESETS the branch to whatever is checked out, which is
+   * the default branch, and that is right at the start of an attempt: a
+   * second attempt inheriting the first one's half-finished commits would be
+   * reasoning about work nobody approved (FR-091).
+   *
+   * It is wrong for a workspace rebuilt in the MIDDLE of an attempt. Each
+   * step now pushes what it produced, precisely so a replacement sandbox can
+   * pick the work up — and this line threw it away again. A run that waited
+   * at its checkpoint overnight, lost its sandbox and resumed got a clone of
+   * the default branch, so the step after the gate found no specification and
+   * no plan, exactly as before anything was pushed at all. The push was
+   * working; the clone was discarding it.
+   *
+   * The fetch is allowed to fail: on a first attempt the branch does not
+   * exist remotely yet, and then starting it from the default branch is the
+   * correct thing.
+   */
+  const takeBranch = options.adoptBranch
+    ? `{ git fetch ${remote} ${branch} && git checkout -B ${branch} FETCH_HEAD; } || ` +
+      `git checkout -B ${branch}`
+    : `git checkout -B ${branch}`;
+
   const script = [
-    `git clone --branch ${quoteOne(snapshot.repo.default_branch)} --single-branch ` +
-      `${authenticatedRemote(snapshot.repo.clone_url)} .`,
+    `git clone --branch ${quoteOne(snapshot.repo.default_branch)} --single-branch ${remote} .`,
     // Detach the credential from the stored remote immediately.
     `git remote set-url origin ${quoteOne(snapshot.repo.clone_url)}`,
     'git config user.name "Code Factory"',
     'git config user.email "factory@localhost"',
-    `git checkout -B ${quoteOne(snapshot.repo.branch)}`,
+    takeBranch,
   ].join(' && ');
 
   const result = await host.exec(containerId, ['sh', '-c', script], {

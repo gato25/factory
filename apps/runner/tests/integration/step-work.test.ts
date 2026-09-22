@@ -86,3 +86,31 @@ test('a commit that genuinely fails says which step it was', async () => {
   expect((thrown as Error)?.message).toContain("step 3's output");
   expect((thrown as Error)?.message).toContain('index.lock');
 });
+
+/**
+ * A workspace built part-way through an attempt takes the run's branch from
+ * the remote. Each step pushes what it produced precisely so a replacement
+ * can pick it up, and `git checkout -B` was throwing that away: it resets
+ * the branch to whatever is checked out, which is the default branch.
+ */
+test('a mid-attempt workspace fetches the run branch before checking it out', async () => {
+  const { cloneRepository } = await import('../../src/container/start');
+  const { snapshot } = await import('../fake-host');
+  await cloneRepository(host, 'c1', snapshot, 'token', { adoptBranch: true });
+  const script = host.calls.map((c) => c.argv.join(' ')).join('\n');
+  expect(script).toContain('git fetch');
+  expect(script).toContain('FETCH_HEAD');
+  // And it still works on a first attempt, where the branch is not yet on
+  // the remote: the fetch is allowed to fail and the branch starts from the
+  // default one.
+  expect(script).toContain('|| git checkout -B');
+});
+
+test('a workspace that begins an attempt starts the branch from the default one', async () => {
+  const { cloneRepository } = await import('../../src/container/start');
+  const { snapshot } = await import('../fake-host');
+  await cloneRepository(host, 'c1', snapshot, 'token');
+  const script = host.calls.map((c) => c.argv.join(' ')).join('\n');
+  expect(script).not.toContain('git fetch');
+  expect(script).toContain('git checkout -B');
+});

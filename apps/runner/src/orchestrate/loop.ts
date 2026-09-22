@@ -529,11 +529,22 @@ export class Orchestrator {
       return state;
     }
 
-    const started = await startRun(host, store, {
-      snapshot: state.snapshot,
-      credentials,
-      sandbox: state.sandbox,
-    });
+    const started = await startRun(
+      host,
+      store,
+      {
+        snapshot: state.snapshot,
+        credentials,
+        sandbox: state.sandbox,
+      },
+      // Past the first step means this run has already produced work and
+      // pushed it, so the new workspace takes the branch rather than
+      // starting it over. A run that waited at its checkpoint overnight,
+      // lost its sandbox and was continued landed here, cloned the default
+      // branch, and the step after the gate found no specification and no
+      // plan — the same failure as before anything was pushed at all.
+      { resuming: state.index > 0 },
+    );
     state.containerId = started.container_id;
     state.phase = 'stepping';
     await this.save(state);

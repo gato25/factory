@@ -90,6 +90,11 @@ export async function buildReplacement(
     snapshot: input.snapshot,
     credentials: input.credentials,
     sandbox: input.sandbox,
+    // A replacement is built mid-attempt, so it takes the run's branch from
+    // the remote rather than starting it from the default branch. Without
+    // this it cloned the default branch and every step's pushed work was
+    // discarded, which is the whole thing this function exists to preserve.
+    adoptBranch: true,
   });
 
   try {

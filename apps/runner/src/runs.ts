@@ -237,17 +237,24 @@ export async function startRun(
   host: ContainerHost,
   store: RunStore,
   context: RunContext,
+  options: { resuming?: boolean } = {},
 ): Promise<{ container_id: string }> {
   const { snapshot } = context;
   const { containerId } = await startRunWorkspace(host, {
     snapshot,
     credentials: context.credentials,
     sandbox: context.sandbox,
+    // Resuming means this workspace is being built part-way through an
+    // attempt, so it takes the run branch from the remote and picks up what
+    // the steps before it pushed. Beginning an attempt does not: the branch
+    // starts from the default one.
+    adoptBranch: options.resuming === true,
   });
 
   // A branch a previous attempt already wrote to starts from a known state
-  // (FR-091). On a first attempt this finds nothing and does nothing.
-  if (snapshot.attempt > 1) {
+  // (FR-091). On a first attempt this finds nothing and does nothing — and a
+  // resume must not reset, or it would throw away the attempt’s own work.
+  if (snapshot.attempt > 1 && !options.resuming) {
     const reset = await resetRunBranch(host, containerId, snapshot, context.credentials.gitToken);
     if (reset.existedRemotely) {
       log.info('brought the run branch back to a known state', {
