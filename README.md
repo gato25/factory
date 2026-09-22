@@ -70,7 +70,10 @@ asks for: the process runs as you, not as an unprivileged user; CPU and memory c
 and not enforced; and a run cannot be cut off from the network, so a workspace that asks for that is
 refused at start rather than quietly given the internet. `EXECUTION_HOST=docker` restores all three
 — one fresh non-root container per run from the sandbox image, which `bun run dev` then builds — and
-a deployment should run that way.
+a deployment should run that way. To host the execution service itself as a container — restarted
+when it dies, bounded, its logs rotated — `infra/runner/compose.yml` does that against the host's
+Docker; [docs/operations.md](docs/operations.md#hosting-the-runner-in-a-container) says what it
+gets right that is easy to get wrong.
 
 The **Run it** card publishes a port and needs a container for it whichever host runs execute on, so
 it uses Docker and the sandbox image in either mode. Build the image once when you want it:

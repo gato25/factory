@@ -202,6 +202,18 @@ export function memoryStore(): RunStore {
 
 export type CallbackSender = (callback: Callback) => Promise<void>;
 
+/**
+ * How long one callback request may take.
+ *
+ * A step awaits its `step_started` and every log chunk it sends. Without a
+ * timeout, an application that accepted the connection and then hung — a
+ * process being stopped mid-request, a proxy holding the socket open — held
+ * the step with it, for the rest of the sandbox's lifetime. Half a minute is
+ * generous for a request that carries at most a few kilobytes of log and is
+ * answered by one database write.
+ */
+export const CALLBACK_TIMEOUT_MS = 30_000;
+
 /** Posts a callback to the app, authenticated with the run's own secret. */
 export function callbackSender(
   snapshot: PipelineSnapshot,
@@ -216,6 +228,7 @@ export function callbackSender(
           authorization: `Bearer ${snapshot.resume_secret}`,
         },
         body: JSON.stringify(callback),
+        signal: AbortSignal.timeout(CALLBACK_TIMEOUT_MS),
       });
     } catch (error) {
       // A lost log chunk must not fail the step that produced it.

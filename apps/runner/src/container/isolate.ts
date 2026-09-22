@@ -7,6 +7,7 @@ import {
   type ExecResult,
   run,
 } from './host';
+import { labelArgs, stepLabels } from './labels';
 import { quote } from './shell';
 import { WORKDIR } from './start';
 
@@ -163,6 +164,7 @@ export function isolatingHost(options: IsolatingHostOptions): ContainerHost & { 
           '--rm',
           '--name',
           name,
+          ...labelArgs(stepLabels(spec.labels)),
           // An agent runs arbitrary code against a customer repository
           // (FR-046). The image's workspace is owned by this id.
           '--user',

@@ -1,5 +1,6 @@
 import { FactoryError } from '@factory/shared';
 import { TIMEOUT_EXIT_CODE } from '../engines/limits';
+import { type ContainerLabels, labelArgs } from './labels';
 import { quoteOne } from './shell';
 import { resolveShell } from './shell-path';
 import { annotateUnreachable } from './unreachable';
@@ -44,6 +45,11 @@ export interface ContainerSpec {
    * Docker and read back with `address`, so two launches cannot collide.
    */
   publish?: number[];
+  /**
+   * What the container is marked with, so it can be traced to what it was
+   * made for and found when it cannot be — see `labels.ts`.
+   */
+  labels?: ContainerLabels;
 }
 
 export interface ExecResult {
@@ -141,6 +147,15 @@ export const dockerHost: ContainerHost = {
     const argv = [
       'run',
       '--detach',
+      // Gone when it stops. The container's command is the `sleep` that is
+      // its wall-clock ceiling, and when that ends the container has nothing
+      // left to say; keeping the exited container around only kept its
+      // writable layer on disk, for a runner that might no longer be there
+      // to `rm` it. Every read of a stopped sandbox already treated it as
+      // lost (`assertContainerAlive`), so nothing distinguishes an exited
+      // container from a removed one — except the disk (002 FR-010, FR-022).
+      '--rm',
+      ...labelArgs(spec.labels),
       '--user',
       // Non-root: an agent runs arbitrary code against a customer repository.
       '1000:1000',

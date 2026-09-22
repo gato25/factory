@@ -1,6 +1,6 @@
 import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import type { PipelineSnapshot, RunFacts } from '@factory/shared';
+import type { Callback, PipelineSnapshot, RunFacts } from '@factory/shared';
 import type { SandboxLimits } from '../container/start';
 
 /**
@@ -29,6 +29,27 @@ export type Phase =
   | 'failed'
   | 'cancelled';
 
+/**
+ * A step's outcome that the application has not yet been told.
+ *
+ * The expensive part of a step is the work; the report is one request. When
+ * that request could not be delivered — the application down for a deploy at
+ * the moment an Implement step finished — the loop used to fail the run
+ * after a few seconds of trying, and a restart in that window re-ran the
+ * whole step, because the position on disk still said the step was ahead.
+ * So the outcome is written here BEFORE it is sent, and a runner that picks
+ * the run up delivers this first and re-runs nothing. A duplicate delivery
+ * is a no-op to the application (FR-095), which is what makes writing it
+ * before sending it safe.
+ */
+export interface PendingDelivery {
+  /** The callback, complete, as it will be posted. */
+  callback: Callback;
+  since: string;
+  /** What follows delivery: the run goes on, or it fails as the step did. */
+  after: { outcome: 'done' } | { outcome: 'failed'; reason: string; detail: string };
+}
+
 export interface LoopState {
   runId: string;
   snapshot: PipelineSnapshot;
@@ -49,6 +70,8 @@ export interface LoopState {
   phase: Phase;
   /** The step a wait belongs to. */
   waitingAt?: number;
+  /** A step's outcome not yet delivered to the application; sent before anything else. */
+  pending?: PendingDelivery;
   startedAt: string;
   updatedAt: string;
 }

@@ -100,7 +100,12 @@ Startup fails, loudly, on a missing or malformed value rather than at the first 
 | `FACTORY_WORK_DIR` | `~/.code-factory/runs` | Where the process host makes each run's directory |
 | `DATABASE_URL` | | Present for parity; the Runner works from the snapshot it is handed |
 | `SANDBOX_IMAGE` | `code-factory/sandbox:latest` | The image a Docker sandbox, and every Run it launch, is made from |
-| `RUNNER_AUTH_TOKEN` | `dev-only-token` | **Change it.** Every route but `/health` requires it |
+| `RUNNER_AUTH_TOKEN` | `dev-only-token`, development only | **Set it.** Every route but `/health` requires it. The development default is accepted only for a service at a `localhost` address with `NODE_ENV` unset; with `NODE_ENV=production`, or a `RUNNER_BASE_URL` that is not loopback, the Runner refuses to start until this is set. The example's `change-me` is refused everywhere |
+| `NODE_ENV` | | `production` marks a deployment: the development credential is refused (above). Nothing else reads it |
+
+A blank value — `FACTORY_WORK_DIR=` with nothing after it, as `.env.example` ships several keys — is
+read as absent and gets the default. It used to be read as an empty string, which for the work
+directory meant every run's directory was made relative to wherever the Runner happened to start.
 
 ### Execution hosts
 
@@ -147,6 +152,58 @@ lifetime — is met for the whole run only by `docker`. Under `process` it is me
 run commands and not for the rest: those execute an agent's code as the person running the Runner,
 on their machine, against repositories they already hold credentials for. That is acceptable for
 that person's own machine and for nothing else. A deployment MUST set `EXECUTION_HOST=docker`.
+
+### Hosting the runner in a container
+
+`infra/runner/Dockerfile` and `infra/runner/compose.yml` run the Runner as a container on a machine
+whose Docker daemon the sandboxes are created on. That is **docker-out-of-docker**: the host's
+`/var/run/docker.sock` is mounted into the Runner's container, and every sandbox is a sibling
+container on the host's daemon — one fresh container per run, exactly as `EXECUTION_HOST=docker`
+from a bare process. There is no daemon inside the image and nothing about it is privileged.
+
+What the container gives that a bare `bun src/index.ts` does not: `restart: unless-stopped`, so a
+Runner that dies is started again and resumes every run from `FACTORY_STATE_DIR`; a memory and a
+process ceiling on the Runner itself, so a runaway elsewhere on the machine cannot take the
+orchestrator down with it; rotated logs; a health check the restart policy can act on; and pinned
+versions of bun and the Docker CLI. It is `EXECUTION_HOST=docker` only. `process` would need git,
+Node and the Claude CLI in the image and would run every agent inside the Runner's own container —
+one shared sandbox for every run, which the constitution's sandbox invariant forbids.
+
+```bash
+sudo mkdir -p /srv/factory/runs && sudo chown 1000:1000 /srv/factory/runs   # once
+stat -c %g /var/run/docker.sock                                              # → DOCKER_GID, into .env
+docker compose -f infra/runner/compose.yml --env-file .env up -d --build
+docker compose -f infra/runner/compose.yml logs -f runner
+```
+
+Three things the compose file gets right that are easy to get wrong, and that any other way of
+running the image must get right too:
+
+1. **The same path on both sides.** An isolated step bind-mounts a run's workspace into a step's
+   container, and the daemon resolves that path **on the host**. So the runs directory is mounted at
+   an identical path inside the Runner's container and on the host, and `FACTORY_WORK_DIR` names it
+   (`FACTORY_RUNS_DIR` in `.env`, default `/srv/factory/runs`). A different path on either side and
+   every isolated step sees an empty directory.
+2. **State on a volume.** `FACTORY_STATE_DIR` is a named volume. Without it a restart forgets every
+   run in flight — which is the one thing the restart policy exists to prevent.
+3. **The host's network.** The application reaches the Runner, the Runner reaches the application,
+   and the Run it card publishes on the host's loopback; every one of those addresses says
+   `localhost`. `network_mode: host` keeps all of them true. The Runner already holds the Docker
+   socket, so no isolation it had is given up.
+
+The image runs as uid 1000 — the same uid the sandbox image runs as — so a workspace directory the
+Runner makes is writable inside a step's container. `group_add` gives that user the host's `docker`
+group, which is why `DOCKER_GID` has to be right; a wrong id shows up as `container_host:
+unreachable` on **Test every connection**, with `permission denied` in the Runner's log.
+
+The socket is root-equivalent on the host. That is the arrangement the constitution allows for
+exactly one component — the one holding execution rights, which serves no interface and no session
+(Principle V) — and no other container may be given it. Where the machine's policy wants more, a
+rootless daemon, or a socket proxy that exposes only the container, exec and image endpoints, both
+work unchanged with this image.
+
+The same image runs equally well under systemd on the host instead, with `Restart=always` and
+`MemoryMax=`; the compose file is the shape, not the requirement.
 
 ### The shipped agents and pipelines
 
@@ -272,6 +329,10 @@ there is one. The lines worth alerting on:
 | `could not report the failure to the application` (runner) | The run failed AND the application could not be reached. The run's row is stale until somebody looks |
 | `the specification step produced no usable classification` | FR-102 — the run continues, treated as not interface work, and the warning is on the run for a person to see. Not an outage |
 | `run stopped at a ceiling` | Working as intended. Worth counting, not alerting |
+| `a callback could not be delivered; it will be tried again` (runner) | The application did not answer; `attempt` and `next_attempt_in_ms` say where the retry stands. One or two during a deploy is normal; a run of them means the application is down |
+| `the container host is not answering` (runner) | Docker stopped answering after startup. `consequence` says what that costs this deployment; steps in flight wait for it, and `the container host is answering again` follows with how long it was gone |
+| `the container host is not answering; the run waits for it` (runner) | A run lost its sandbox while Docker was down and is waiting, for up to five minutes, rather than failing |
+| `removed stopped sandboxes nothing was going to release` (runner) | Housekeeping: containers left by a crash, or by an older Runner, were removed. Informational |
 
 A run's own state is on its ticket page and needs no log reading: which step is executing, what has
 been spent, what the last agent produced, and the failing step and reason when it fails.
@@ -286,6 +347,26 @@ that was in flight again from that position and keeps waiting on every run that 
 sandbox that still exists is adopted; one that does not is rebuilt from the branch. A step that was
 executing when the runner stopped runs again from its start. Credentials are fetched from the
 application again; none are on disk.
+
+A step that had **finished** when the Runner stopped is not run again. Its outcome is written to the
+state file before it is sent to the application, so a Runner that picks the run up sends that
+outcome first — before it asks the application for anything else — and goes on from there. The
+application treats a repeated delivery as a no-op (FR-095), which is what makes writing it down
+before sending it safe.
+
+**Restarting the application** does not fail runs that finish a step meanwhile. A callback the loop
+depends on is retried with pauses that double up to a minute, for fifteen minutes in all, each
+request with a timeout of its own; only when that budget is spent does the run fail, naming the
+application as unreachable. The old schedule gave up after twelve seconds — less than an
+application restart takes.
+
+**Restarting the Docker daemon** takes every sandbox with it unless the daemon is configured to keep
+them (`live-restore`). A run whose step was executing loses its sandbox; the Runner asks the daemon
+whether it is answering, and if it is not, waits for it — for five minutes, polling every ten
+seconds — and then goes on in a replacement sandbox built from the branch. A daemon still silent
+after five minutes fails the run, saying that it was the daemon. Stopped containers the Runner
+made and nothing was going to release are removed at startup and every ten minutes; a running one
+is never touched by that sweep, because it may be a retained failed sandbox somebody is inspecting.
 
 ## What has not been run
 

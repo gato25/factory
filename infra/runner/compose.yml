@@ -1,0 +1,77 @@
+# The execution service, hosted in a container — see infra/runner/Dockerfile
+# for what that gives and what it does not change, and docs/operations.md,
+# "Hosting the runner in a container", for the setup this file assumes.
+#
+#   docker compose -f infra/runner/compose.yml --env-file .env up -d --build
+#
+# Run from the repository root with the root `.env`: the values below are
+# read from it. Postgres and the web application are not here; this is only
+# the runner, which is the one component that needs the host's Docker.
+#
+# Three things this file gets right that are easy to get wrong:
+#
+# 1. THE SAME PATH ON BOTH SIDES. The runner tells the daemon to bind-mount a
+#    run's workspace, and the daemon resolves that path on the HOST. So the
+#    runs directory is mounted at an identical path inside and out, and
+#    `FACTORY_WORK_DIR` names it. A different path on either side and every
+#    isolated step sees an empty directory.
+# 2. STATE ON A VOLUME. Each run's position lives under `FACTORY_STATE_DIR`;
+#    without the volume a restart forgets every run in flight.
+# 3. THE HOST'S NETWORK. The application reaches the runner, the runner
+#    reaches the application, and the Run it card publishes on the host's
+#    loopback — every one of those addresses says `localhost`. Sharing the
+#    host's network namespace keeps all of them true. The runner is the
+#    privileged component already (it holds the Docker socket), so no
+#    isolation is given up here that it had.
+services:
+  runner:
+    build:
+      context: ../..
+      dockerfile: infra/runner/Dockerfile
+    image: code-factory/runner:latest
+    container_name: factory-runner
+    restart: unless-stopped
+    network_mode: host
+    # The mounted socket is owned by the host's `docker` group; this is that
+    # group's id, so the non-root user in the image may use it:
+    #   stat -c %g /var/run/docker.sock
+    group_add:
+      - '${DOCKER_GID:-999}'
+    environment:
+      NODE_ENV: production
+      EXECUTION_HOST: docker
+      RUNNER_PORT: '${RUNNER_PORT:-8080}'
+      # This service's address AS THE APPLICATION REACHES IT. With the
+      # host's network that is localhost on the same machine.
+      RUNNER_BASE_URL: '${RUNNER_BASE_URL:-http://localhost:8080}'
+      # Required: the credential is the whole boundary once the service is
+      # hosted, and the image refuses to start with the development one.
+      RUNNER_AUTH_TOKEN: '${RUNNER_AUTH_TOKEN:?set RUNNER_AUTH_TOKEN in .env}'
+      RUNNER_AUTH_TOKEN_PREVIOUS: '${RUNNER_AUTH_TOKEN_PREVIOUS:-}'
+      SANDBOX_IMAGE: '${SANDBOX_IMAGE:-code-factory/sandbox:latest}'
+      FACTORY_STATE_DIR: /srv/factory/state
+      FACTORY_WORK_DIR: '${FACTORY_RUNS_DIR:-/srv/factory/runs}'
+    volumes:
+      # The host's daemon, which is where every sandbox is created.
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Where runs are written down. A named volume: the image made this
+      # directory owned by its user, and an empty volume inherits that.
+      - factory-runner-state:/srv/factory/state
+      # Where workspaces are made, at the SAME path inside and out (see 1).
+      # A bind mount, because the daemon needs a host path it can mount into
+      # a step's container. Make it once, owned by the sandbox's uid:
+      #   sudo mkdir -p /srv/factory/runs && sudo chown 1000:1000 /srv/factory/runs
+      - '${FACTORY_RUNS_DIR:-/srv/factory/runs}:${FACTORY_RUNS_DIR:-/srv/factory/runs}'
+    # Ceilings for the runner ITSELF — the sandboxes have their own, from
+    # Settings. A gigabyte is generous for a process that shells out for
+    # everything heavy; the pids limit stops a fork bomb reaching the host.
+    mem_limit: 1g
+    pids_limit: 512
+    logging:
+      driver: json-file
+      options:
+        max-size: '50m'
+        max-file: '5'
+
+volumes:
+  factory-runner-state:

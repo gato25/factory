@@ -2,6 +2,8 @@ import { loadRunnerConfig } from './config';
 import { type ContainerHost, dockerHost, run } from './container/host';
 import { isolatingHost } from './container/isolate';
 import { processHost } from './container/process-host';
+import { reapStoppedContainers } from './container/reap';
+import { watchContainerHost } from './container/watch';
 import { log } from './errors';
 import { DEFAULT_IDLE_MS, memoryLaunchStore, sweepLaunches } from './launch/launches';
 import { Orchestrator } from './orchestrate/loop';
@@ -107,6 +109,32 @@ async function probeTools(): Promise<{ reachable: boolean; detail: string }> {
       };
 }
 
+/**
+ * Docker, asked again and again rather than once (see `watch.ts`).
+ *
+ * Under `docker` the daemon is what every run lives in; under `process` it is
+ * what the steps that run commands, and the Run it card, get their container
+ * from. Either way a daemon that stops answering an hour after startup is
+ * worth one line in the log at the moment it happens, and one when it is
+ * back — and the loop, asked whether a lost sandbox was the daemon's doing,
+ * needs a current answer rather than the one from startup. Not started under
+ * `process` on a machine that had no Docker to begin with: that machine was
+ * told so at startup, and a probe every half minute would tell it nothing new.
+ */
+const dockerWatch = watchContainerHost({
+  probe: probeDocker,
+  intervalMs: 30_000,
+  consequence:
+    config.executionHost === 'docker'
+      ? 'no sandbox can be created or reached until it answers; a run that loses its sandbox meanwhile waits for it'
+      : 'steps that run commands, and the Run it card, cannot have a container until it answers',
+});
+const watchingDocker = config.executionHost === 'docker' || isolation === null;
+if (watchingDocker) {
+  void dockerWatch.check();
+  dockerWatch.start();
+}
+
 const store = memoryStore();
 const launches = memoryLaunchStore();
 const orchestrator = new Orchestrator({
@@ -114,6 +142,10 @@ const orchestrator = new Orchestrator({
   store,
   states: fileStateStore(config.stateDir),
   publicBaseUrl: config.publicBaseUrl,
+  // Under `docker` a lost sandbox may be the daemon's fault, and the run
+  // waits for the daemon. A directory on this machine has no daemon to wait
+  // for, so the process host offers no probe.
+  ...(config.executionHost === 'docker' ? { probeHost: () => dockerWatch.check() } : {}),
 });
 
 const fetch = handlerFor({
@@ -150,6 +182,22 @@ setInterval(() => {
       }),
   );
 }, 60_000);
+
+// Containers this service made that have stopped and that nothing is going
+// to release — left by a crash, or by a version of this service that made
+// sandboxes without `--rm` — are removed (see `reap.ts`). Once now, for what
+// the last process left, and then every ten minutes; a stopped container
+// costs disk, not money, so ten minutes is soon enough.
+if (watchingDocker) {
+  const reap = () =>
+    reapStoppedContainers().catch((error) =>
+      log.warn('the sandbox sweep failed', {
+        detail: error instanceof Error ? error.message : String(error),
+      }),
+    );
+  void reap();
+  setInterval(() => void reap(), 10 * 60_000);
+}
 
 log.info('runner listening', {
   port: server.port,

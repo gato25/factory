@@ -1,5 +1,6 @@
 import { FactoryError } from '@factory/shared';
 import type { ContainerHost } from '../container/host';
+import { launchLabels } from '../container/labels';
 import { quoteOne } from '../container/shell';
 import { authenticatedRemote, type SandboxLimits, WORKDIR } from '../container/start';
 import { log } from '../errors';
@@ -163,7 +164,7 @@ async function runLaunch(deps: LaunchDeps, record: LaunchRecord, input: LaunchIn
     let port = input.port ?? null;
 
     if (!command || !port) {
-      const probeId = await host.create(containerSpec(input.sandbox, []));
+      const probeId = await host.create(containerSpec(record.id, input.sandbox, []));
       try {
         await cloneBranch(host, probeId, input);
         const files = await readWorkspace(host, probeId);
@@ -191,7 +192,7 @@ async function runLaunch(deps: LaunchDeps, record: LaunchRecord, input: LaunchIn
     }
 
     // Now the real one, with the port published (FR-006).
-    const containerId = await host.create(containerSpec(input.sandbox, [port]));
+    const containerId = await host.create(containerSpec(record.id, input.sandbox, [port]));
     record.containerId = containerId;
     await cloneBranch(host, containerId, input);
 
@@ -255,7 +256,7 @@ async function runLaunch(deps: LaunchDeps, record: LaunchRecord, input: LaunchIn
 }
 
 /** The spec a launch's sandbox is created with — the run's ceilings, network on. */
-function containerSpec(sandbox: SandboxLimits, publish: number[]) {
+function containerSpec(launchId: string, sandbox: SandboxLimits, publish: number[]) {
   return {
     image: sandbox.image,
     cpu: sandbox.cpu,
@@ -267,6 +268,7 @@ function containerSpec(sandbox: SandboxLimits, publish: number[]) {
     env: {},
     workdir: WORKDIR,
     publish,
+    labels: launchLabels(launchId),
   };
 }
 

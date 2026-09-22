@@ -2,6 +2,7 @@ import { FactoryError, type PipelineSnapshot } from '@factory/shared';
 import { log } from '../errors';
 import { writeAgentConfig } from './config';
 import type { ContainerHost, ContainerSpec } from './host';
+import { runLabels } from './labels';
 import { fetchRequirementFiles, writeRequirementFiles } from './requirements';
 import { buildEnvironment, type ResolvedCredentials } from './secrets';
 import { quoteOne } from './shell';
@@ -128,6 +129,7 @@ export async function startRunWorkspace(
     network: !isolate,
     env,
     workdir: WORKDIR,
+    labels: runLabels(input.snapshot.run_id),
   };
 
   // Collected BEFORE the container exists, so an application that cannot be

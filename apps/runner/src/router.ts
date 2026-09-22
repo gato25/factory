@@ -194,8 +194,23 @@ export function routesFor(deps: RouterDeps): Route[] {
         const state = await orchestrator?.state(match[1] as string);
         if (!state)
           throw new FactoryError('not_found', 'that run is not one this service is driving');
-        const { snapshot: _snapshot, ...rest } = state;
-        return Response.json(rest);
+        // The pending outcome's body can carry a step's documents and
+        // screens; what a person debugging wants is that there is one, for
+        // which step, and since when.
+        const { snapshot: _snapshot, pending, ...rest } = state;
+        return Response.json({
+          ...rest,
+          ...(pending
+            ? {
+                pending: {
+                  event: pending.callback.event,
+                  step_index: pending.callback.step_index,
+                  since: pending.since,
+                  after: pending.after.outcome,
+                },
+              }
+            : {}),
+        });
       },
     },
     // --- launches: a ticket's branch, running (003, contracts/launches.md) ---
