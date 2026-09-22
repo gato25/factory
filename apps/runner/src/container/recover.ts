@@ -7,12 +7,11 @@ import { authenticatedRemote, type StartInput, startRunWorkspace, WORKDIR } from
 
 /**
  * A sandbox or its host can disappear mid-step. When that happens the step is
- * attempted once more in a NEW sandbox, resuming from the last commit on the
- * branch, and a second loss fails the run (FR-093).
+ * attempted again in a NEW sandbox holding the branch as the steps before it
+ * left it (FR-093).
  *
- * Once, not repeatedly, and that is the point: a host that drops two
- * sandboxes in a row is not having a bad moment, and a run that keeps
- * restarting spends the ticket's whole ceiling on infrastructure.
+ * A few times, not once and not forever — see `MAX_REPLACEMENTS` below for
+ * why that number changed and what still bounds it.
  */
 
 export function isSandboxLoss(error: unknown): boolean {
