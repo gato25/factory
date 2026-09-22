@@ -466,8 +466,7 @@ export class Orchestrator {
       // purpose, and there is nobody to tell.
       if (!current || current.phase === 'cancelled') return;
       const reason = error instanceof FactoryError ? error.reason : 'command_failed';
-      const detail = error instanceof Error ? error.message : String(error);
-      await this.fail(current, current.index, reason, detail);
+      await this.fail(current, current.index, reason, Orchestrator.evidence(error));
     } finally {
       this.driving.delete(runId);
     }
@@ -620,6 +619,27 @@ export class Orchestrator {
     state.phase = 'finished';
     await this.save(state);
     await this.deps.states.delete(state.runId);
+  }
+
+  /**
+   * Everything a failure knows about itself, in one string.
+   *
+   * A `FactoryError` carries the sentence a person reads AND the evidence
+   * for it — the stderr of the command that failed. Only the sentence was
+   * reported, and the evidence existed nowhere else: not in the step's log,
+   * which a start failure never opens, not in the step's row, not in this
+   * service's own output, which logs the message too.
+   *
+   * So three runs in a row failed at `Could not clone <url>.` with nothing
+   * to say whether the token was refused, the branch was missing, or the
+   * transfer broke — the one line of git's output that distinguishes them
+   * having been thrown away here.
+   */
+  private static evidence(error: unknown): string {
+    if (error instanceof FactoryError) {
+      return error.detail ? `${error.message}\n${error.detail}` : error.message;
+    }
+    return error instanceof Error ? error.message : String(error);
   }
 
   private async fail(
