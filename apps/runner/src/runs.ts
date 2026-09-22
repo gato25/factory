@@ -5,7 +5,7 @@ import {
   type Step,
   type StepOutcome,
 } from '@factory/shared';
-import { commitDesign } from './container/commit';
+import { commitDesign, commitPaths } from './container/commit';
 import { writeAgentConfig } from './container/config';
 import { destroyRunWorkspace } from './container/destroy';
 import type { ContainerHost } from './container/host';
@@ -325,6 +325,12 @@ export async function runStep(
 
   const outcome = recovery.outcome.outcome;
 
+  // What the step produced goes onto the branch, and the branch goes to the
+  // remote, before the next step begins.
+  if (outcome.status === 'done') {
+    await persistStepWork(host, recovery.outcome.containerId, state, stepIndex, outcome, logs);
+  }
+
   // The classification is a separate event, so the app can store it whether
   // or not the step that produced it went on to succeed (FR-099, FR-100).
   if (outcome.classification) {
@@ -340,6 +346,70 @@ export async function runStep(
 
   return outcome;
 }
+
+/**
+ * A finished step's work, committed and pushed before the next one starts.
+ *
+ * **Why every step and not just the design one.** A sandbox lives for hours;
+ * an approval checkpoint waits for however long a person takes. A run that
+ * paused overnight came back to a destroyed sandbox, and the recovery path
+ * built a replacement — which is a fresh clone of the branch, because that
+ * path says it resumes "from the last commit on the branch". Only the design
+ * step had put anything there. The specification and the plan written before
+ * the checkpoint were in the database as artifacts and nowhere a sandbox
+ * could see, so the step after the gate reported, correctly, that its inputs
+ * did not exist.
+ *
+ * Committing here makes that sentence true rather than aspirational. It also
+ * means the branch shows progress while a run is still going, instead of
+ * appearing all at once at the end.
+ *
+ * **Best effort, deliberately.** Neither the commit nor the push may fail a
+ * step that did its work. The commit is a no-op when a step declared no
+ * outputs or already committed its own — which the implementing agent does,
+ * once per task. The push is the part that can fail for reasons that have
+ * nothing to do with the step: a token, a network, a branch someone else
+ * moved. It is retried at the end of the run by `verifyAndPush`, which is
+ * the gate that actually matters, so a failure here is logged and the run
+ * carries on rather than losing finished work to a bad moment.
+ */
+async function persistStepWork(
+  host: ContainerHost,
+  containerId: string,
+  state: RunContext,
+  stepIndex: number,
+  outcome: StepOutcome,
+  logs: LogSink,
+): Promise<void> {
+  const { snapshot } = state;
+  const paths = (outcome.outputs ?? []).map((output) => output.path);
+  try {
+    await commitPaths(host, containerId, {
+      paths,
+      subject: `chore(${snapshot.ticket.reference}): step ${stepIndex + 1} output`,
+      whatFailed: `step ${stepIndex + 1}'s output`,
+    });
+  } catch (error) {
+    logs.write('stdout', `⚠ Could not commit this step's output: ${message(error)}\n`);
+  }
+
+  // A second attempt replaces the branch it reset, so the push carries a
+  // lease rather than blindly overwriting (FR-091) — the same rule the
+  // final push uses.
+  const pushed = await pushBranch(host, containerId, snapshot, state.credentials.gitToken, {
+    force: snapshot.attempt > 1,
+  });
+  if (!pushed.pushed) {
+    logs.write('stdout', `⚠ ${pushed.reason}. The work is committed and will be pushed again.\n`);
+    log.warn('a step could not push its work', {
+      run_id: snapshot.run_id,
+      step_index: stepIndex,
+      reason: pushed.reason,
+    });
+  }
+}
+
+const message = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
 /** By type, and only by type (contracts/runner.md). */
 async function dispatch(
