@@ -35,6 +35,28 @@ describe('the step a continued run starts at', () => {
     expect(resumeIndex(3, settled(0, 1, 2))).toBe(-1);
   });
 
+  test('a failed step is where it resumes, not the gate before it', () => {
+    // The real shape of the deadlock: spec, design and plan done, an
+    // approval gate at 3 with no step result, and Tasks FAILED at 4. A
+    // failed step is not settled, so the furthest SETTLED step was still
+    // the plan — and continuing sent the run back to a gate it had already
+    // decided, where the page refused to take a second decision and the run
+    // could go neither forward nor back.
+    const out = resumeIndex(8, settled(0, 1, 2), settled(0, 1, 2, 4), settled(3));
+    expect(out).toBe(4);
+  });
+
+  test('a decided gate is behind us even when nothing after it has run', () => {
+    // Approved, and then the step after it never started. Without the
+    // decision there is nothing to say the gate is done, and it would be
+    // asked again.
+    expect(resumeIndex(6, settled(0, 1), settled(0, 1), settled(2))).toBe(3);
+  });
+
+  test('an undecided gate is still where it stops', () => {
+    expect(resumeIndex(6, settled(0, 1), settled(0, 1), settled())).toBe(2);
+  });
+
   test('nothing left to do says so rather than starting over', () => {
     expect(resumeIndex(2, settled(0, 1))).toBe(-1);
     // Even with a gap behind the furthest settled step: those are steps the

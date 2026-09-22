@@ -1,5 +1,5 @@
 import type { Database } from '@factory/db';
-import { runs, stepResults, tickets } from '@factory/db/schema';
+import { approvals, runs, stepResults, tickets } from '@factory/db/schema';
 import { conflict, type PipelineSnapshot, type RunFacts } from '@factory/shared';
 import { and, eq, inArray } from 'drizzle-orm';
 import { getRun } from './run';
@@ -52,19 +52,36 @@ export type ContinuingSnapshot = PipelineSnapshot & { resume: ResumePoint };
 const CONTINUABLE = ['queued', 'running', 'failed'] as const;
 
 /**
- * Where to pick up: the first unsettled step AT OR AFTER the furthest one
- * the run has already settled. `-1` when there is nothing left.
+ * Where to pick up: the first step still to do, at or after the furthest the
+ * run ever REACHED. `-1` when there is nothing left.
  *
- * "First unsettled" alone was wrong, because a checkpoint writes no step
- * result. A run that had passed its approval gate and failed four steps
- * later resumed at the gate — asking again for an approval already given,
- * and re-running every step in between. Nothing records that a gate was
- * passed; what records it is that a later step ran at all.
+ * Three facts have to agree, and each was learned the hard way.
+ *
+ * A checkpoint writes no step result, so "first step with no result" sent a
+ * run that had passed its gate back to the gate. Hence `decided` — a gate
+ * with a recorded decision is behind us.
+ *
+ * A step is not to be re-run when it is `done` or `skipped`. Hence
+ * `settled`.
+ *
+ * And `reached` is every step with a result of ANY status, which is the fix
+ * for the case that followed: a run whose Tasks step FAILED was continued,
+ * and because a failed step is not settled, the furthest settled step was
+ * still the plan before the gate — so it resumed at the gate again, which
+ * had already been decided, and the run deadlocked waiting for an approval
+ * the page refused to take twice. A failed step is somewhere the run got
+ * to; it simply has to run again.
  */
-export function resumeIndex(stepCount: number, settled: ReadonlySet<number>): number {
-  const furthest = settled.size === 0 ? 0 : Math.max(...settled);
+export function resumeIndex(
+  stepCount: number,
+  settled: ReadonlySet<number>,
+  reached: ReadonlySet<number> = settled,
+  decided: ReadonlySet<number> = new Set(),
+): number {
+  const done = (at: number) => settled.has(at) || decided.has(at);
+  const furthest = reached.size === 0 ? 0 : Math.max(...reached);
   for (let at = furthest; at < stepCount; at += 1) {
-    if (!settled.has(at)) return at;
+    if (!done(at)) return at;
   }
   return -1;
 }
@@ -92,7 +109,18 @@ export async function continueRun(
       .filter((row) => row.status === 'done' || row.status === 'skipped')
       .map((row) => row.index),
   );
-  const index = resumeIndex(snapshot.pipeline.steps.length, settled);
+  // Every step the run got to, whatever became of it. A failed step is
+  // behind us even though it must run again.
+  const reached = new Set(recorded.map((row) => row.index));
+  // A gate that has been decided is behind us too, and it records that
+  // nowhere else: a checkpoint writes no step result.
+  const gates = await database
+    .select({ index: approvals.stepIndex })
+    .from(approvals)
+    .where(eq(approvals.runId, runId));
+  const decided = new Set(gates.map((row) => row.index));
+
+  const index = resumeIndex(snapshot.pipeline.steps.length, settled, reached, decided);
   if (index === -1) {
     throw conflict('every step of this run has finished; there is nothing left to continue');
   }
