@@ -9,6 +9,7 @@ import {
   drain,
   type ExecOptions,
   type ExecResult,
+  timerDelay,
 } from './host';
 import { killTree } from './process-tree';
 import { quote } from './shell';
@@ -200,7 +201,7 @@ export function processHost(options: ProcessHostOptions = {}): ContainerHost & {
         });
       }
       const ms = spec.wallClockMinutes * 60_000;
-      const timer = setTimeout(() => void destroy(id), ms);
+      const timer = setTimeout(() => void destroy(id), timerDelay(ms));
       // The runner must not be kept alive by a ceiling nobody is waiting on.
       (timer as { unref?: () => void }).unref?.();
       boxes.set(id, { dir, env: { ...spec.env }, deadline: now() + ms, timer, live: new Set() });
@@ -225,7 +226,7 @@ export function processHost(options: ProcessHostOptions = {}): ContainerHost & {
       // the restart is not recorded, and a generous restart beats a run that
       // dies the moment it is picked up.
       const ms = spec.wallClockMinutes * 60_000;
-      const timer = setTimeout(() => void destroy(id), ms);
+      const timer = setTimeout(() => void destroy(id), timerDelay(ms));
       (timer as { unref?: () => void }).unref?.();
       boxes.set(id, { dir, env: { ...spec.env }, deadline: now() + ms, timer, live: new Set() });
     },
@@ -246,7 +247,7 @@ export function processHost(options: ProcessHostOptions = {}): ContainerHost & {
         ? setTimeout(() => {
             killedAtDeadline = true;
             killTree(proc.pid);
-          }, options.timeoutMs)
+          }, timerDelay(options.timeoutMs))
         : null;
 
       try {

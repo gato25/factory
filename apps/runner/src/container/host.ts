@@ -332,6 +332,40 @@ async function assertContainerAlive(containerId: string, path: string): Promise<
 }
 
 /**
+ * The longest delay `setTimeout` can hold: a 32-bit signed integer of
+ * milliseconds, about 24.8 days.
+ */
+const MAX_TIMER_MS = 2 ** 31 - 1;
+
+/**
+ * A delay `setTimeout` will actually wait for.
+ *
+ * Over the 32-bit ceiling the delay does not saturate — it overflows and the
+ * timer fires almost at once. A sandbox lifetime of 36015 minutes, which is
+ * what an eight-step pipeline under a 4500-minute per-step ceiling asks for,
+ * is 2160900000 ms: 13 million over the limit, and the timer that should
+ * have removed the sandbox in 25 days removed it in 21 milliseconds — while
+ * git was still cloning into it. The clone reported
+ * `could not write config file .../.git/config: Permission denied`, because
+ * the directory it was writing into had just been deleted underneath it, and
+ * that was reported as a repository that could not be cloned.
+ *
+ * Clamping is safe: the expiry that matters is the recorded deadline, which
+ * every use of a sandbox checks. The timer is only the thing that tidies up
+ * a sandbox nobody is asking about, and one that tidies up after 24.8 days
+ * instead of 25 is not a difference anything can observe.
+ */
+export function timerDelay(ms: number): number {
+  // A duration that is not a number is not a reason to fire now. Both timers
+  // this guards are destructive — one deletes a workspace, the other kills a
+  // running step — so the safe reading of an unusable duration is "as late as
+  // this can be scheduled", never "immediately".
+  if (Number.isNaN(ms)) return MAX_TIMER_MS;
+  if (ms < 0) return 0;
+  return Math.min(ms, MAX_TIMER_MS);
+}
+
+/**
  * Exported so the deadline can be proven against a real process. An agent's
  * time limit is only a limit if something enforces it (FR-080), and that
  * something is here.
@@ -359,7 +393,7 @@ export async function run(
     ? setTimeout(() => {
         killedAtDeadline = true;
         proc.kill('SIGKILL');
-      }, options.timeoutMs)
+      }, timerDelay(options.timeoutMs))
     : null;
 
   try {
