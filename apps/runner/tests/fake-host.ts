@@ -87,6 +87,18 @@ export class FakeHost implements ContainerHost {
     this.adopted.push(containerId);
   }
 
+  /** Which sandboxes were told to stop what was running in them, in order. */
+  quiesced: string[] = [];
+  /** How many processes the next quiesce finds still running. */
+  leftover = 0;
+
+  async quiesce(containerId: string): Promise<{ stopped: number }> {
+    this.quiesced.push(containerId);
+    const stopped = this.leftover;
+    this.leftover = 0;
+    return { stopped };
+  }
+
   argvFor(match: string): string[] | undefined {
     return this.calls.find((c) => c.argv.join(' ').includes(match))?.argv;
   }

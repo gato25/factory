@@ -106,3 +106,44 @@ describe('reaping', () => {
     expect(lines).toEqual([]);
   });
 });
+
+describe('launches a restart forgot', () => {
+  const RUNNING = [
+    'lll111\tlaunch\tlaunch-known\tUp 10 minutes',
+    'lll222\tlaunch\tlaunch-forgotten\tUp 2 hours',
+    '',
+  ].join('\n');
+
+  test('the running launch containers of THIS runner that it no longer knows are removed', async () => {
+    const d = daemon(RUNNING);
+    const { reapForgottenLaunches } = await import('../../src/container/reap');
+    const result = await reapForgottenLaunches({
+      runner: 'abc123def456',
+      known: new Set(['launch-known']),
+      exec: d.exec,
+      log: d.log,
+    });
+    const ps = d.calls[0] as string[];
+    // Running ones, this runner's, launches only: a run's sandbox is never
+    // this sweep's, and neither is another runner's launch on the same daemon.
+    expect(ps).not.toContain('--all');
+    expect(ps).toContain('label=factory.kind=launch');
+    expect(ps).toContain('label=factory.runner=abc123def456');
+    expect(d.calls.slice(1)).toEqual([['rm', '--force', '--volumes', 'lll222']]);
+    expect(result.removed.map((c) => c.of)).toEqual(['launch-forgotten']);
+  });
+
+  test('a runner that remembers all of them removes none', async () => {
+    const d = daemon(RUNNING);
+    const { reapForgottenLaunches } = await import('../../src/container/reap');
+    const result = await reapForgottenLaunches({
+      runner: 'abc123def456',
+      known: new Set(['launch-known', 'launch-forgotten']),
+      exec: d.exec,
+      log: d.log,
+    });
+    expect(result.removed).toEqual([]);
+    expect(d.calls).toHaveLength(1);
+    expect(d.lines).toEqual([]);
+  });
+});

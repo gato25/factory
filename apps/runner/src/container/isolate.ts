@@ -1,5 +1,6 @@
 import type { SnapshotAgent } from '@factory/shared';
 import { TIMEOUT_EXIT_CODE } from '../engines/limits';
+import { HARDENING_ARGS } from './hardening';
 import {
   type ContainerHost,
   type ContainerSpec,
@@ -75,6 +76,61 @@ export interface IsolatingHostOptions {
   image: string;
   /** Injected by a test that must not start a container. */
   exec?: typeof run;
+  /** Who runs this service, for `stepUser`; a test says, everything else asks the process. */
+  user?: { uid: number; gid: number };
+}
+
+/** The uid the sandbox image is built for: it owns `/work` and `/home/node` there. */
+export const SANDBOX_UID = 1000;
+
+/**
+ * Who a step's container runs as, given who runs this service.
+ *
+ * The workspace is a directory on this machine, made by this service and
+ * bind-mounted into the step's container. Files in it belong to whoever
+ * this service runs as, and the container runs as uid 1000 because that is
+ * who the sandbox image is built for. Where the two are the same person —
+ * a developer whose own uid is 1000, or the runner image, which runs as
+ * 1000 on purpose — that is fine. Where they are not, every write inside
+ * the step fails with a permission error and the run fails at its first
+ * command, for a reason that names a path rather than a uid.
+ *
+ * So the container runs as THIS SERVICE'S user when that user is neither
+ * root nor 1000, with a home of its own under /tmp because /home/node
+ * belongs to 1000. Root is the exception: a step must never run as root
+ * (FR-046), so a service running as root keeps 1000 and is warned at
+ * startup that its steps' writes will fail (`uidWarning`). On a platform
+ * that has no uids the answer is the image's.
+ */
+export function stepUser(user: { uid: number; gid: number } | undefined): {
+  user: string;
+  home?: string;
+} {
+  const uid = user?.uid;
+  if (uid === undefined || uid === 0 || uid === SANDBOX_UID) {
+    return { user: `${SANDBOX_UID}:${SANDBOX_UID}` };
+  }
+  return { user: `${uid}:${user?.gid ?? uid}`, home: `/tmp/factory-home-${uid}` };
+}
+
+/** Who runs this process, where the platform says. */
+export function currentUser(): { uid: number; gid: number } | undefined {
+  const uid = process.getuid?.();
+  const gid = process.getgid?.();
+  return uid === undefined || gid === undefined ? undefined : { uid, gid };
+}
+
+/**
+ * What to say at startup when isolated steps cannot write their workspace,
+ * or nothing when they can.
+ */
+export function uidWarning(user: { uid: number; gid: number } | undefined): string | null {
+  if (user?.uid !== 0) return null;
+  return (
+    'this service runs as root, so isolated steps run as uid 1000 over a workspace root owns: ' +
+    'every write inside a step will fail. Run the service as an unprivileged user — uid 1000 ' +
+    'matches the sandbox image — or use EXECUTION_HOST=docker'
+  );
 }
 
 /**
@@ -89,6 +145,7 @@ export interface IsolatingHostOptions {
 export function isolatingHost(options: IsolatingHostOptions): ContainerHost & { root: string } {
   const { base, image } = options;
   const exec = options.exec ?? run;
+  const who = stepUser(options.user ?? currentUser());
   // The run's own spec: its credentials, and the ceilings the container is
   // given. Kept here because the base host holds its copy privately, and
   // repopulated by `adopt` so a run that outlived a restart can still be
@@ -166,9 +223,13 @@ export function isolatingHost(options: IsolatingHostOptions): ContainerHost & { 
           name,
           ...labelArgs(stepLabels(spec.labels)),
           // An agent runs arbitrary code against a customer repository
-          // (FR-046). The image's workspace is owned by this id.
+          // (FR-046): never root. Which unprivileged user is `stepUser`'s
+          // answer — the image's, or this service's own so the bind-mounted
+          // workspace is writable.
           '--user',
-          '1000:1000',
+          who.user,
+          ...(who.home ? ['--env', `HOME=${who.home}`] : []),
+          ...HARDENING_ARGS,
           '--cpus',
           String(spec.cpu),
           '--memory',

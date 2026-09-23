@@ -231,6 +231,24 @@ export function processHost(options: ProcessHostOptions = {}): ContainerHost & {
       boxes.set(id, { dir, env: { ...spec.env }, deadline: now() + ms, timer, live: new Set() });
     },
 
+    async quiesce(id: string): Promise<{ stopped: number }> {
+      const b = box(id, 'stopping what runs in the workspace');
+      let stopped = 0;
+      // What this process started and still has a handle on.
+      for (const proc of b.live) {
+        killTree(proc.pid);
+        stopped += 1;
+      }
+      b.live.clear();
+      // And what an earlier incarnation of this service started: found by
+      // where it is working, since nothing else survives a restart. Linux
+      // only — /proc is where a process says what its working directory is
+      // — and best-effort: a process that will not say is not this host's
+      // to kill.
+      stopped += await killWorkingIn(b.dir);
+      return { stopped };
+    },
+
     async exec(id: string, argv: string[], options?: ExecOptions): Promise<ExecResult> {
       const b = box(id, 'running a command');
       const proc = Bun.spawn(command(argv.map((argument) => rewrite(b, argument))), {
@@ -330,4 +348,37 @@ export function processHost(options: ProcessHostOptions = {}): ContainerHost & {
 function isAbsent(error: unknown): boolean {
   const code = (error as { code?: string })?.code;
   return code === 'ENOENT' || code === 'ENOTDIR' || code === 'EISDIR';
+}
+
+/**
+ * Kills every process whose working directory is the given one or under it,
+ * and says how many. Never this process, never its ancestors. Nothing but 0
+ * anywhere `/proc` does not exist.
+ */
+export async function killWorkingIn(dir: string): Promise<number> {
+  if (process.platform !== 'linux') return 0;
+  const { readdir, readlink } = await import('node:fs/promises');
+  let entries: string[];
+  try {
+    entries = await readdir('/proc');
+  } catch {
+    return 0;
+  }
+  const prefix = dir.endsWith('/') ? dir : `${dir}/`;
+  const self = process.pid;
+  let stopped = 0;
+  for (const entry of entries) {
+    const pid = Number(entry);
+    if (!Number.isInteger(pid) || pid <= 1 || pid === self) continue;
+    let cwd: string;
+    try {
+      cwd = await readlink(`/proc/${pid}/cwd`);
+    } catch {
+      continue;
+    }
+    if (cwd !== dir && !cwd.startsWith(prefix)) continue;
+    killTree(pid);
+    stopped += 1;
+  }
+  return stopped;
 }

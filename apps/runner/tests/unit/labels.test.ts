@@ -114,3 +114,32 @@ describe('where the labels are applied', () => {
     expect(creation).toContain('labelArgs(spec.labels)');
   });
 });
+
+describe('which runner made a container', () => {
+  test('the identity is derived from the state directory: stable, short, and different per directory', async () => {
+    const { runnerIdentityFor } = await import('../../src/container/labels');
+    expect(runnerIdentityFor('/srv/factory/state')).toBe(runnerIdentityFor('/srv/factory/state'));
+    expect(runnerIdentityFor('/srv/factory/state')).not.toBe(
+      runnerIdentityFor('/home/dev/.code-factory/state'),
+    );
+    expect(runnerIdentityFor('/srv/factory/state')).toMatch(/^[0-9a-f]{12}$/);
+  });
+
+  test('once configured, every kind of container carries it; unconfigured, none does', async () => {
+    const { configureLabels, RUNNER_LABEL } = await import('../../src/container/labels');
+    try {
+      configureLabels({ runner: 'abc123def456' });
+      expect(runLabels('r')[RUNNER_LABEL]).toBe('abc123def456');
+      expect(launchLabels('l')[RUNNER_LABEL]).toBe('abc123def456');
+      expect(stepLabels(undefined)[RUNNER_LABEL]).toBe('abc123def456');
+      // A step over a run's labels keeps the run's identity, whatever it is.
+      expect(stepLabels({ [OWNER_LABEL]: OWNER, [RUNNER_LABEL]: 'other' })[RUNNER_LABEL]).toBe(
+        'other',
+      );
+    } finally {
+      configureLabels({ runner: undefined });
+    }
+    expect(runLabels('r')[RUNNER_LABEL]).toBeUndefined();
+    expect(launchLabels('l')[RUNNER_LABEL]).toBeUndefined();
+  });
+});

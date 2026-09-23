@@ -10,6 +10,7 @@ import { writeAgentConfig } from './container/config';
 import { destroyRunWorkspace } from './container/destroy';
 import type { ContainerHost } from './container/host';
 import { pushBranch } from './container/push';
+import { REACH_TIMEOUT_MS, reachSignal } from './container/reach';
 import { isSandboxLoss, withSandboxRecovery } from './container/recover';
 import { resetRunBranch } from './container/reset';
 import { type ResolvedCredentials, secretValues } from './container/secrets';
@@ -71,6 +72,7 @@ export async function fetchCredentials(
           'content-type': 'application/json',
           authorization: `Bearer ${snapshot.resume_secret}`,
         },
+        signal: reachSignal(),
       });
       break;
     } catch (error) {
@@ -203,16 +205,15 @@ export function memoryStore(): RunStore {
 export type CallbackSender = (callback: Callback) => Promise<void>;
 
 /**
- * How long one callback request may take.
+ * How long one callback request may take: the same answer every request the
+ * runner makes out of its own process gets (`reach.ts`).
  *
  * A step awaits its `step_started` and every log chunk it sends. Without a
  * timeout, an application that accepted the connection and then hung — a
  * process being stopped mid-request, a proxy holding the socket open — held
- * the step with it, for the rest of the sandbox's lifetime. Half a minute is
- * generous for a request that carries at most a few kilobytes of log and is
- * answered by one database write.
+ * the step with it, for the rest of the sandbox's lifetime.
  */
-export const CALLBACK_TIMEOUT_MS = 30_000;
+export const CALLBACK_TIMEOUT_MS = REACH_TIMEOUT_MS;
 
 /** Posts a callback to the app, authenticated with the run's own secret. */
 export function callbackSender(
@@ -228,7 +229,7 @@ export function callbackSender(
           authorization: `Bearer ${snapshot.resume_secret}`,
         },
         body: JSON.stringify(callback),
-        signal: AbortSignal.timeout(CALLBACK_TIMEOUT_MS),
+        signal: reachSignal(),
       });
     } catch (error) {
       // A lost log chunk must not fail the step that produced it.

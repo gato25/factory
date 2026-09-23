@@ -16,6 +16,36 @@ export const KIND_LABEL = 'factory.kind';
 export const RUN_LABEL = 'factory.run';
 export const LAUNCH_LABEL = 'factory.launch';
 export const STEP_LABEL = 'factory.step';
+/**
+ * Which runner made the container.
+ *
+ * Two runners can share one daemon — a developer's beside a hosted one on
+ * the same machine — and a sweep that removed every container it did not
+ * know would remove the other's. The identity is derived from the state
+ * directory, so it survives a restart and differs between deployments; a
+ * container that carries it is this deployment's to account for.
+ */
+export const RUNNER_LABEL = 'factory.runner';
+
+let runnerIdentity: string | undefined;
+
+/** Which runner every container made from now on is marked as belonging to. */
+export function configureLabels(options: { runner: string | undefined }): void {
+  runnerIdentity = options.runner;
+}
+
+/** A stable, short identity for the runner that owns a state directory. */
+export function runnerIdentityFor(stateDir: string): string {
+  const hash = new Bun.CryptoHasher('sha256').update(stateDir).digest('hex');
+  return hash.slice(0, 12);
+}
+
+function ownership(): ContainerLabels {
+  return {
+    [OWNER_LABEL]: OWNER,
+    ...(runnerIdentity ? { [RUNNER_LABEL]: runnerIdentity } : {}),
+  };
+}
 
 export type ContainerKind =
   /** A run's sandbox, alive for the run. */
@@ -29,12 +59,12 @@ export type ContainerLabels = Record<string, string>;
 
 /** The labels for a run's sandbox. */
 export function runLabels(runId: string): ContainerLabels {
-  return { [OWNER_LABEL]: OWNER, [KIND_LABEL]: 'run', [RUN_LABEL]: runId };
+  return { ...ownership(), [KIND_LABEL]: 'run', [RUN_LABEL]: runId };
 }
 
 /** The labels for a launch's container. */
 export function launchLabels(launchId: string): ContainerLabels {
-  return { [OWNER_LABEL]: OWNER, [KIND_LABEL]: 'launch', [LAUNCH_LABEL]: launchId };
+  return { ...ownership(), [KIND_LABEL]: 'launch', [LAUNCH_LABEL]: launchId };
 }
 
 /**
@@ -47,7 +77,7 @@ export function stepLabels(
   stepIndex?: number,
 ): ContainerLabels {
   return {
-    ...(runLabelsOrNone ?? { [OWNER_LABEL]: OWNER }),
+    ...(runLabelsOrNone ?? ownership()),
     [KIND_LABEL]: 'step',
     ...(stepIndex === undefined ? {} : { [STEP_LABEL]: String(stepIndex) }),
   };

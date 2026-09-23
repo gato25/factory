@@ -262,3 +262,49 @@ function toolsIn(argv: string[]): string[] {
   const at = argv.indexOf('--allowedTools');
   return at === -1 ? [] : (argv[at + 1]?.split(',') ?? []);
 }
+
+describe('who a step’s container runs as', () => {
+  test('the image’s user when this service is that user, or root, or on a platform without uids', async () => {
+    const { stepUser, SANDBOX_UID } = await import('../../src/container/isolate');
+    expect(stepUser({ uid: 1000, gid: 1000 })).toEqual({ user: `${SANDBOX_UID}:${SANDBOX_UID}` });
+    // Root never: a service running as root keeps the unprivileged image user.
+    expect(stepUser({ uid: 0, gid: 0 })).toEqual({ user: '1000:1000' });
+    expect(stepUser(undefined)).toEqual({ user: '1000:1000' });
+  });
+
+  test('this service’s own user otherwise, with a home it can write', async () => {
+    const { stepUser } = await import('../../src/container/isolate');
+    expect(stepUser({ uid: 1001, gid: 1001 })).toEqual({
+      user: '1001:1001',
+      home: '/tmp/factory-home-1001',
+    });
+  });
+
+  test('a service running as root is warned that its steps cannot write; others are not', async () => {
+    const { uidWarning } = await import('../../src/container/isolate');
+    expect(uidWarning({ uid: 0, gid: 0 })).toMatch(/runs as root/);
+    expect(uidWarning({ uid: 1000, gid: 1000 })).toBeNull();
+    expect(uidWarning({ uid: 1001, gid: 1001 })).toBeNull();
+    expect(uidWarning(undefined)).toBeNull();
+  });
+
+  test('the container is told that user and that home', async () => {
+    const calls: string[][] = [];
+    const exec = async (_command: string, argv: string[]): Promise<ExecResult> => {
+      calls.push(argv);
+      return { exitCode: 0, stdout: '', stderr: '' };
+    };
+    const base = Object.assign(new FakeHost(), { root: '/runs' }) as FakeHost & { root: string };
+    const host = isolatingHost({
+      base,
+      image: 'code-factory/sandbox:latest',
+      exec: exec as never,
+      user: { uid: 1001, gid: 1002 },
+    });
+    const id = await host.create(spec);
+    await host.execIsolated?.(id, ['claude', '-p', 'x']);
+    const argv = calls[0] as string[];
+    expect(argv[argv.indexOf('--user') + 1]).toBe('1001:1002');
+    expect(argv).toContain('HOME=/tmp/factory-home-1001');
+  });
+});

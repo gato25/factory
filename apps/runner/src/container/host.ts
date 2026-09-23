@@ -1,5 +1,6 @@
 import { FactoryError } from '@factory/shared';
 import { TIMEOUT_EXIT_CODE } from '../engines/limits';
+import { HARDENING_ARGS } from './hardening';
 import { type ContainerLabels, labelArgs } from './labels';
 import { quoteOne } from './shell';
 import { resolveShell } from './shell-path';
@@ -96,6 +97,20 @@ export interface ContainerHost {
    * one. Absent means every sandbox this host knows is in memory only.
    */
   adopt?(containerId: string, spec: ContainerSpec): Promise<void>;
+  /**
+   * Stops everything still running in a sandbox, except what keeps the
+   * sandbox itself alive, and says how many things it stopped.
+   *
+   * Called on two occasions. After a restart, when a sandbox is adopted: the
+   * runner's death killed the `docker exec` CLIENT of the step that was
+   * running, not the agent inside the container, which went on working —
+   * and spending — with nothing recording it, while the restarted runner
+   * started the step again beside it: two agents in one workspace, one of
+   * them invisible. And at shutdown, for every run in flight, so that no
+   * agent works headless for however long the restart takes. Absent means
+   * the host has nothing that could still be running.
+   */
+  quiesce?(containerId: string): Promise<{ stopped: number }>;
   exec(containerId: string, argv: string[], options?: ExecOptions): Promise<ExecResult>;
   /**
    * Runs one command behind a wall, over the same workspace.
@@ -159,6 +174,8 @@ export const dockerHost: ContainerHost = {
       '--user',
       // Non-root: an agent runs arbitrary code against a customer repository.
       '1000:1000',
+      // And nothing a non-root process could become — see `hardening.ts`.
+      ...HARDENING_ARGS,
       '--cpus',
       String(spec.cpu),
       '--memory',
@@ -189,6 +206,24 @@ export const dockerHost: ContainerHost = {
     // A container is Docker's to keep, so adopting one is asking whether it
     // is still running.
     await assertContainerAlive(containerId, 'the workspace');
+  },
+
+  async quiesce(containerId) {
+    // Every process in the container but PID 1 — the `sleep` that is the
+    // sandbox's lifetime — and the shell doing the killing. Read from /proc
+    // rather than `ps`, which the slim image does not have; a zombie is
+    // skipped, because it is already dead and counting it would report an
+    // agent that was not there. `kill -9 -1` was tried and does not do this
+    // portably from dash. The count is what was alive, so the log can say
+    // what a restart found.
+    const result = await run('docker', ['exec', containerId, 'sh', '-c', QUIESCE_SCRIPT]);
+    if (result.exitCode !== 0) {
+      throw new FactoryError('sandbox_lost', 'could not stop what was running in the sandbox', {
+        detail: result.stderr.trim(),
+      });
+    }
+    const stopped = Number(result.stdout.trim());
+    return { stopped: Number.isFinite(stopped) ? stopped : 0 };
   },
 
   async disconnectNetwork(containerId) {
@@ -312,6 +347,21 @@ export const dockerHost: ContainerHost = {
     await run('docker', ['rm', '--force', containerId]);
   },
 };
+
+/** See `dockerHost.quiesce`. Prints how many live processes it signalled. */
+export const QUIESCE_SCRIPT = [
+  'n=0',
+  'for d in /proc/[0-9]*; do',
+  '  p=$(basename "$d")',
+  '  [ "$p" = 1 ] && continue',
+  '  [ "$p" = "$$" ] && continue',
+  '  s=$(sed "s/.*) //" "$d/stat" 2>/dev/null | cut -d" " -f1)',
+  '  [ "$s" = Z ] && continue',
+  '  n=$((n+1))',
+  '  kill -9 "$p" 2>/dev/null',
+  'done',
+  'echo $n',
+].join('\n');
 
 /**
  * Throws `sandbox_lost` if the container is not running, and returns quietly if

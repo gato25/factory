@@ -1,15 +1,18 @@
+import { join } from 'node:path';
 import { loadRunnerConfig } from './config';
 import { type ContainerHost, dockerHost, run } from './container/host';
-import { isolatingHost } from './container/isolate';
+import { currentUser, isolatingHost, uidWarning } from './container/isolate';
+import { configureLabels, runnerIdentityFor } from './container/labels';
 import { processHost } from './container/process-host';
-import { reapStoppedContainers } from './container/reap';
+import { reapForgottenLaunches, reapStoppedContainers } from './container/reap';
 import { watchContainerHost } from './container/watch';
 import { log } from './errors';
 import { DEFAULT_IDLE_MS, memoryLaunchStore, sweepLaunches } from './launch/launches';
+import { acquireInstanceLock, assertWritable } from './orchestrate/lock';
 import { Orchestrator } from './orchestrate/loop';
 import { fileStateStore } from './orchestrate/state';
 import { handlerFor } from './router';
-import { memoryStore } from './runs';
+import { fileRunStore } from './run-records';
 
 /**
  * The Runner: a long-lived daemon on a machine the team administers. It
@@ -24,6 +27,18 @@ import { memoryStore } from './runs';
  * daemon running.
  */
 const config = loadRunnerConfig();
+
+// Before anything else: that every run's position CAN be written down, and
+// that nothing else is writing there (`lock.ts`). Both fail the start with a
+// sentence naming the cause, rather than failing the first run with one
+// that does not.
+await assertWritable(config.stateDir);
+const lock = await acquireInstanceLock(config.stateDir);
+
+// Every container this service makes says which runner made it, so a sweep
+// on a daemon two runners share removes only this one's (`labels.ts`).
+const runnerIdentity = runnerIdentityFor(config.stateDir);
+configureLabels({ runner: runnerIdentity });
 
 /**
  * Why a run on this machine can still have a container.
@@ -68,6 +83,15 @@ const host: ContainerHost =
     : isolation === null
       ? isolatingHost({ base, image: config.sandboxImage })
       : base;
+
+// An isolated step runs as an unprivileged user over a workspace this
+// service made; where this service is root, the two cannot be the same
+// person and the step's writes fail (`isolate.ts`, `stepUser`).
+const uidProblem =
+  config.executionHost === 'process' && isolation === null ? uidWarning(currentUser()) : null;
+if (uidProblem) {
+  log.warn('isolated steps will not be able to write their workspace', { detail: uidProblem });
+}
 
 /** Whether Docker is answering, and which version. */
 async function probeDocker(): Promise<{ reachable: boolean; detail: string }> {
@@ -135,7 +159,10 @@ if (watchingDocker) {
   dockerWatch.start();
 }
 
-const store = memoryStore();
+// Run records on disk beside the state files, so a sandbox kept for
+// diagnosis is still this service's to release after a restart (FR-023).
+// Credentials stay in memory (`run-records.ts`).
+const store = fileRunStore(join(config.stateDir, 'runs'));
 const launches = memoryLaunchStore();
 const orchestrator = new Orchestrator({
   host,
@@ -170,6 +197,20 @@ void orchestrator.recover().then(({ resumed, waiting }) => {
     log.info('runs picked up after a restart', { resumed, waiting });
   }
 });
+
+// Launches live in memory, so this process knows none from before it
+// started; the containers it made for them are running for nobody. Removed
+// — this runner's only, and launches only (`reap.ts`).
+if (watchingDocker) {
+  void reapForgottenLaunches({
+    runner: runnerIdentity,
+    known: new Set(launches.all().map((launch) => launch.id)),
+  }).catch((error) =>
+    log.warn('could not sweep forgotten launches', {
+      detail: error instanceof Error ? error.message : String(error),
+    }),
+  );
+}
 
 // Launches nobody is looking at are stopped (003 FR-011). Every minute is
 // often enough for a 30-minute idle period, and the container's own lifetime
@@ -211,3 +252,36 @@ log.info('runner listening', {
     ? { isolated_steps: isolation === null ? 'agents permitted a shell' : 'none' }
     : {}),
 });
+
+/**
+ * Ending on a signal, in order: nothing further begins and the agents still
+ * working are stopped (`Orchestrator.shutdown`), the watch and the lock go,
+ * the server closes, and the process exits 0 — so a supervisor reads a
+ * clean stop, not a crash. A second signal during this exits at once.
+ */
+let stopping = false;
+async function shutdown(signal: string): Promise<void> {
+  if (stopping) {
+    log.warn('a second signal during shutdown; exiting at once', { signal });
+    process.exit(130);
+  }
+  stopping = true;
+  log.info('shutting down', { signal, runs_in_flight: 'stopping their agents first' });
+  try {
+    const { inFlight, quiesced } = await orchestrator.shutdown();
+    log.info('shutdown: runs left where a restart picks them up', {
+      in_flight: inFlight,
+      agents_stopped_in: quiesced,
+    });
+  } catch (error) {
+    log.error('shutdown did not complete cleanly', {
+      detail: error instanceof Error ? error.message : String(error),
+    });
+  }
+  dockerWatch.stop();
+  await lock.release().catch(() => {});
+  server.stop(true);
+  process.exit(0);
+}
+process.on('SIGTERM', () => void shutdown('SIGTERM'));
+process.on('SIGINT', () => void shutdown('SIGINT'));

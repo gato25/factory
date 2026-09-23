@@ -6,6 +6,7 @@ import {
   safeFileName,
 } from '@factory/shared';
 import type { ContainerHost } from './host';
+import { reachSignal } from './reach';
 
 const log = createLogger('runner');
 
@@ -72,6 +73,7 @@ export async function fetchRequirementFiles(
         'content-type': 'application/json',
         authorization: `Bearer ${snapshot.resume_secret}`,
       },
+      signal: reachSignal(),
     });
   } catch (error) {
     // Named the same way the credentials fetch names it, and for the same

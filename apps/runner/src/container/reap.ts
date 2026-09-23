@@ -1,6 +1,6 @@
 import { log as runnerLog } from '../errors';
 import { type ExecResult, run } from './host';
-import { KIND_LABEL, LAUNCH_LABEL, OWNED_FILTER, RUN_LABEL } from './labels';
+import { KIND_LABEL, LAUNCH_LABEL, OWNED_FILTER, RUN_LABEL, RUNNER_LABEL } from './labels';
 
 /**
  * Removes the containers this service made that have stopped.
@@ -121,4 +121,81 @@ export function parseListing(stdout: string): Reaped[] {
       if (!id || status === undefined) return [];
       return [{ id, kind: kind || 'unknown', of: of || 'unknown', status }];
     });
+}
+
+/**
+ * Removes the launch containers this runner made and no longer knows about.
+ *
+ * A launch lives in memory only — the ticket's branch, started for somebody
+ * to look at, stopped when they stop looking (003 FR-011). A restart forgets
+ * every one of them, and a forgotten launch is provably useless: nothing can
+ * show it, stop it, or reach it by its address any more, yet it keeps its
+ * port and its CPU until its own `sleep` ends. So at startup the running
+ * launch containers that carry THIS runner's identity and are not in the
+ * store are removed. Another runner's, on the same daemon, are not touched;
+ * neither is any run's sandbox — a running one of those may be retained for
+ * diagnosis, and is `recover`'s to adopt.
+ */
+export async function reapForgottenLaunches(options: {
+  /** This runner's identity, as `labels.ts` marks containers with it. */
+  runner: string;
+  /** The launches this runner knows about. */
+  known: Set<string>;
+  exec?: ReapDeps['exec'];
+  log?: ReapDeps['log'];
+}): Promise<{ removed: Reaped[]; failed: Reaped[] }> {
+  const exec = options.exec ?? run;
+  const log = options.log ?? runnerLog;
+  const listed = await exec(
+    'docker',
+    [
+      'ps',
+      '--no-trunc',
+      '--filter',
+      OWNED_FILTER,
+      '--filter',
+      `label=${KIND_LABEL}=launch`,
+      '--filter',
+      `label=${RUNNER_LABEL}=${options.runner}`,
+      '--format',
+      FORMAT,
+    ],
+    { timeoutMs: 15_000 },
+  ).catch(
+    (error): ExecResult => ({
+      exitCode: 1,
+      stdout: '',
+      stderr: error instanceof Error ? error.message : String(error),
+    }),
+  );
+  if (listed.exitCode !== 0) return { removed: [], failed: [] };
+
+  const removed: Reaped[] = [];
+  const failed: Reaped[] = [];
+  for (const container of parseListing(listed.stdout)) {
+    if (options.known.has(container.of)) continue;
+    const result = await exec('docker', ['rm', '--force', '--volumes', container.id], {
+      timeoutMs: 30_000,
+    }).catch(
+      (error): ExecResult => ({
+        exitCode: 1,
+        stdout: '',
+        stderr: error instanceof Error ? error.message : String(error),
+      }),
+    );
+    (result.exitCode === 0 ? removed : failed).push(container);
+  }
+  if (removed.length > 0) {
+    log.info('stopped launches a restart had forgotten', {
+      count: removed.length,
+      launches: removed.map((c) => `${c.of} (${c.id.slice(0, 12)})`),
+    });
+  }
+  if (failed.length > 0) {
+    log.warn('some forgotten launches could not be stopped', {
+      count: failed.length,
+      launches: failed.map((c) => `${c.of} (${c.id.slice(0, 12)})`),
+    });
+  }
+  return { removed, failed };
 }

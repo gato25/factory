@@ -103,6 +103,16 @@ Startup fails, loudly, on a missing or malformed value rather than at the first 
 | `RUNNER_AUTH_TOKEN` | `dev-only-token`, development only | **Set it.** Every route but `/health` requires it. The development default is accepted only for a service at a `localhost` address with `NODE_ENV` unset; with `NODE_ENV=production`, or a `RUNNER_BASE_URL` that is not loopback, the Runner refuses to start until this is set. The example's `change-me` is refused everywhere |
 | `NODE_ENV` | | `production` marks a deployment: the development credential is refused (above). Nothing else reads it |
 
+**Two checks before the first request.** The Runner writes and removes a probe file in
+`FACTORY_STATE_DIR` at startup, and refuses to start if it cannot — a full disk or a read-only volume
+would otherwise fail the first run with a message about the run. It then takes `runner.lock` in that
+directory, with a heartbeat every thirty seconds; a second Runner finding a lock held by a live
+process refuses to start and names the first (`another runner holds …`), because two Runners on one
+state directory drive every run twice. On the same machine the process is asked directly, so a lock
+left by a crash is taken over at once and a supervisor's restart is never refused; on another
+machine — a shared volume — a heartbeat under two minutes old counts as alive. A takeover is logged
+with a warning. Give each Runner its own `FACTORY_STATE_DIR`.
+
 A blank value — `FACTORY_WORK_DIR=` with nothing after it, as `.env.example` ships several keys — is
 read as absent and gets the default. It used to be read as an empty string, which for the work
 directory meant every run's directory was made relative to wherever the Runner happened to start.
@@ -116,7 +126,7 @@ The Runner executes a run on one of two hosts, chosen by `EXECUTION_HOST`, behin
 | | `process` | `docker` |
 | --- | --- | --- |
 | A run is | a fresh directory under `FACTORY_WORK_DIR`, removed at the end | a fresh container from the sandbox image, removed at the end |
-| Runs as | whoever started the Runner | an unprivileged user (uid 1000) |
+| Runs as | whoever started the Runner | an unprivileged user (uid 1000), with every capability dropped, no new privileges, and a bounded process table (`apps/runner/src/container/hardening.ts`) |
 | CPU and memory ceilings | recorded, **not enforced** | enforced by Docker |
 | Wall-clock ceiling | enforced: the directory and everything it started are removed | enforced: the container's own `sleep` ends |
 | "No network while code is written" | **not available** — a run that asks for it is refused at start, naming the setting | enforced after the clone |
@@ -133,6 +143,14 @@ and stay as processes, which is the speed this host exists for.
 The workspace does not move: it is one directory per run, made by the process host and handed
 between steps by being the same directory, so an isolated step reads what the step before it wrote
 and leaves its own work where the step after will find it.
+
+The step's container runs as the sandbox image's user, uid 1000, when the Runner runs as uid 1000
+too — a developer whose own uid is 1000, or the runner image. When the Runner runs as some other
+unprivileged user, the container runs as **that** user instead, with a home of its own under `/tmp`,
+so the bind-mounted workspace is writable inside the step. When the Runner runs as **root**, the
+container keeps uid 1000, and every write inside a step fails: the Runner says so at startup
+(`isolated steps will not be able to write their workspace`). Run it as an unprivileged user, or
+set `EXECUTION_HOST=docker`. The same hardening as a run's sandbox applies to a step's container.
 
 Docker absent, or the image unbuilt, and the Runner logs `steps that may run commands will NOT be
 isolated` at startup with the reason, and runs them as processes. It does not refuse to start.
@@ -333,6 +351,12 @@ there is one. The lines worth alerting on:
 | `the container host is not answering` (runner) | Docker stopped answering after startup. `consequence` says what that costs this deployment; steps in flight wait for it, and `the container host is answering again` follows with how long it was gone |
 | `the container host is not answering; the run waits for it` (runner) | A run lost its sandbox while Docker was down and is waiting, for up to five minutes, rather than failing |
 | `removed stopped sandboxes nothing was going to release` (runner) | Housekeeping: containers left by a crash, or by an older Runner, were removed. Informational |
+| `stopped processes still running in an adopted sandbox from before the restart` (runner) | The last Runner died mid-step and its agent kept working; it was stopped before the step ran again. Expected after a crash; a surprise after a clean stop |
+| `stopped launches a restart had forgotten` (runner) | Launch containers nobody could reach any more were removed. Informational |
+| `the provider did not open the merge request; it will be asked again` (runner) | GitLab or GitHub stumbled at the last step; retried, after a look for an already-open request |
+| `shutting down` … `shutdown: runs left where a restart picks them up` (runner) | A clean stop. `agents_stopped_in` names the runs whose agents were working; they run their step again after the restart |
+| `isolated steps will not be able to write their workspace` (runner, at startup) | The Runner runs as root under `process`; run it as an unprivileged user or use `EXECUTION_HOST=docker` |
+| `another runner holds …` (runner, refusing to start) | Two Runners share a state directory. Stop one, or give it its own `FACTORY_STATE_DIR` |
 
 A run's own state is on its ticket page and needs no log reading: which step is executing, what has
 been spent, what the last agent produced, and the failing step and reason when it fails.
@@ -348,6 +372,21 @@ sandbox that still exists is adopted; one that does not is rebuilt from the bran
 executing when the runner stopped runs again from its start. Credentials are fetched from the
 application again; none are on disk.
 
+**Before a step runs again after a restart, whatever the last Runner left running in the adopted
+sandbox is stopped.** The Runner's death killed the `docker exec` client of the step that was
+executing, not the agent inside the container; that agent went on working — and spending — with
+nothing recording it, while the restarted Runner started the step again beside it. Adoption now
+stops every process in the sandbox but the `sleep` that keeps it alive, and logs how many it found
+(`stopped processes still running in an adopted sandbox from before the restart`). Under `process`
+the same is done for processes whose working directory is the run's, on Linux.
+
+**A stop is clean.** On `SIGTERM` or `SIGINT` the Runner refuses new runs with `503` (the
+application retries later), stops the agents of every step in flight so nothing works headless
+while it is down, discards the outcome of a step that concludes because of that (the step runs again
+after the restart), lets deliveries settle for up to ten seconds, releases its lock, and exits `0`.
+Every run is left where the restart picks it up. `docker stop`, systemd's `Restart=` and a deploy
+all send `SIGTERM`; nothing needs configuring.
+
 A step that had **finished** when the Runner stopped is not run again. Its outcome is written to the
 state file before it is sent to the application, so a Runner that picks the run up sends that
 outcome first — before it asks the application for anything else — and goes on from there. The
@@ -360,6 +399,14 @@ request with a timeout of its own; only when that budget is spent does the run f
 application as unreachable. The old schedule gave up after twelve seconds — less than an
 application restart takes.
 
+**Opening the merge request** — the last step, after every expensive one has succeeded — is
+retried when the provider cannot be reached or answers 5xx or 429, with pauses of 2, 5 and 10
+seconds. Before each retry the Runner asks the provider whether it already has an open merge request
+for the branch, so a create whose answer was lost is found rather than repeated; a 4xx that is not
+429 is a refusal and is not retried. Every request to the application and to a provider carries a
+30-second timeout (`apps/runner/src/container/reach.ts`), so a hung connection fails the request
+rather than holding the run.
+
 **Restarting the Docker daemon** takes every sandbox with it unless the daemon is configured to keep
 them (`live-restore`). A run whose step was executing loses its sandbox; the Runner asks the daemon
 whether it is answering, and if it is not, waits for it — for five minutes, polling every ten
@@ -367,6 +414,14 @@ seconds — and then goes on in a replacement sandbox built from the branch. A d
 after five minutes fails the run, saying that it was the daemon. Stopped containers the Runner
 made and nothing was going to release are removed at startup and every ten minutes; a running one
 is never touched by that sweep, because it may be a retained failed sandbox somebody is inspecting.
+Launches are the exception: they live in memory, so a restarted Runner knows none of them, and a
+launch nobody can show, stop or reach is removed at startup whether or not it is running — this
+Runner's launches only, told apart by the `factory.runner` label every container carries.
+
+**A retained failed sandbox survives a restart.** Run records are kept on disk under
+`FACTORY_STATE_DIR/runs` — everything but the credentials, which stay in memory — so when the
+retention window ends and the application asks for the sandbox to be released, a Runner that has
+restarted in between still knows which container that is.
 
 ## What has not been run
 

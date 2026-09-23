@@ -151,6 +151,8 @@ const RE_RUNNABLE = new Set(['agent', 'design', 'shell']);
 
 export class Orchestrator {
   private readonly driving = new Set<string>();
+  /** Set by `shutdown`: nothing further begins, and what is in flight is left where it is. */
+  private stopping = false;
   private readonly doFetch: (url: string, init?: RequestInit) => Promise<Response>;
   private readonly sleep: (ms: number) => Promise<void>;
   private readonly delivery: CallbackDelivery;
@@ -172,6 +174,15 @@ export class Orchestrator {
    * a person saying where to continue from.
    */
   async execute(input: ExecuteInput): Promise<{ accepted: boolean; phase: LoopState['phase'] }> {
+    if (this.stopping) {
+      throw new FactoryError(
+        'conflict',
+        'the execution service is shutting down; ask again shortly',
+        {
+          status: 503,
+        },
+      );
+    }
     const { resume, ...snapshot } = input.snapshot;
     const runId = snapshot.run_id;
     let state = await this.deps.states.get(runId);
@@ -339,6 +350,63 @@ export class Orchestrator {
     return this.deps.states.get(runId);
   }
 
+  /** Whether `shutdown` has begun, for the routes that must refuse new work. */
+  get isStopping(): boolean {
+    return this.stopping;
+  }
+
+  /**
+   * Stops driving, cleanly, ahead of the process ending.
+   *
+   * The process used to end with whatever SIGTERM found: a run accepted a
+   * moment earlier was lost, a delivery being retried started again from
+   * its first attempt, and — worst — every step in flight left its agent
+   * working headless in its sandbox, because the runner's death killed the
+   * `docker exec` client and not the agent, for however long the restart
+   * took. Now: nothing further begins (`execute` answers 503, and the
+   * application retries later); each loop returns at its next turn, leaving
+   * its position written down; the agents still working are stopped, so
+   * that nothing spends money nobody is recording; and the outcome of a step
+   * that finishes during this is DISCARDED rather than acted on, because the
+   * step runs again after the restart anyway and a half-handled outcome is
+   * worse than a repeated step.
+   *
+   * Waits for the loops to return, up to `graceMs`. A loop that is inside a
+   * long `docker exec` cannot return sooner than the exec does; killing the
+   * agent inside is what makes the exec return.
+   */
+  async shutdown(graceMs = 10_000): Promise<{ inFlight: string[]; quiesced: string[] }> {
+    this.stopping = true;
+    const inFlight = [...this.driving];
+    const quiesced: string[] = [];
+    for (const runId of inFlight) {
+      const record = await this.deps.store.get(runId);
+      const state = await this.deps.states.get(runId);
+      const containerId = record?.containerId ?? state?.containerId;
+      if (!containerId || !this.deps.host.quiesce) continue;
+      try {
+        const { stopped } = await this.deps.host.quiesce(containerId);
+        if (stopped > 0) quiesced.push(runId);
+      } catch (error) {
+        log.warn('could not stop what was running in a sandbox at shutdown', {
+          run_id: runId,
+          container_id: containerId,
+          detail: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+    const deadline = Date.now() + graceMs;
+    while (this.driving.size > 0 && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    if (this.driving.size > 0) {
+      log.warn('shutting down with loops still in flight; their positions are written down', {
+        runs: [...this.driving],
+      });
+    }
+    return { inFlight, quiesced };
+  }
+
   /**
    * After a restart: every run that was in flight is driven again from its
    * recorded position; every run that was waiting keeps waiting. Its sandbox
@@ -373,6 +441,9 @@ export class Orchestrator {
           await this.driveOnce(runId);
           return;
         } catch (error) {
+          // Shutting down: whatever failed, failed because of that, and the
+          // run's position on disk is where the restart picks it up.
+          if (this.stopping) return;
           const current = await this.deps.states.get(runId);
           // A run cancelled while a step was executing: its sandbox went away
           // on purpose, and there is nobody to tell.
@@ -441,6 +512,7 @@ export class Orchestrator {
       const pause = Math.min(pollMs, budgetMs - waited);
       await this.sleep(pause);
       waited += pause;
+      if (this.stopping) return { kind: 'released' };
       // Released or cancelled while waiting: nobody wants the run any more.
       if (!(await this.deps.states.get(state.runId))) return { kind: 'released' };
       const again = await ask();
@@ -477,6 +549,7 @@ export class Orchestrator {
     if (!state) return;
 
     while (true) {
+      if (this.stopping) return;
       const fresh = await this.deps.states.get(runId);
       if (!fresh || fresh.phase === 'cancelled') return;
       state = fresh;
@@ -566,6 +639,11 @@ export class Orchestrator {
         },
         callbackSender(state.snapshot, this.doFetch),
       );
+      // A step that concluded because shutdown stopped its agent did not
+      // conclude: its outcome is not the step's, and the step runs again
+      // after the restart from the position already written down.
+      if (this.stopping) return;
+
       /**
        * The sandbox the step actually ran in, which is not always the one
        * this state names: a step whose sandbox was lost runs again in a
@@ -647,9 +725,13 @@ export class Orchestrator {
 
     const credentials = await fetchCredentials(state.snapshot, this.doFetch);
 
-    if (state.containerId && !record?.containerId) {
-      // After a restart: the host may still have the sandbox. Adopted where it
-      // does, so the work in it is kept; rebuilt where it does not.
+    // A sandbox this run had before this process started: named by the
+    // state file, or by a record that survived on disk without its
+    // credentials (which is what a record looks like after a restart).
+    // Either way the host may still have it — adopted where it does, so
+    // the work in it is kept; rebuilt where it does not.
+    const known = state.containerId ?? record?.containerId;
+    if (known && !record?.credentials) {
       const spec = {
         image: state.sandbox.image,
         cpu: state.sandbox.cpu,
@@ -660,23 +742,47 @@ export class Orchestrator {
         workdir: WORKDIR,
       };
       const adopted = await (host.adopt
-        ? host.adopt(state.containerId, spec).then(
+        ? host.adopt(known, spec).then(
             () => true,
             () => false,
           )
         : Promise.resolve(true));
       if (adopted) {
+        // The last runner's death killed its `docker exec`, not the agent
+        // inside: whatever that was doing is still doing it. It stops here,
+        // before this runner starts the step again beside it.
+        const quiet = await host.quiesce?.(known).catch((error) => {
+          log.warn('could not stop what was running in an adopted sandbox', {
+            run_id: state.runId,
+            container_id: known,
+            detail: error instanceof Error ? error.message : String(error),
+          });
+          return { stopped: 0 };
+        });
+        if (quiet && quiet.stopped > 0) {
+          log.warn(
+            'stopped processes still running in an adopted sandbox from before the restart',
+            {
+              run_id: state.runId,
+              container_id: known,
+              stopped: quiet.stopped,
+              consequence:
+                'the step they belonged to runs again from its start; their work is not recorded',
+            },
+          );
+        }
         await store.set(state.runId, {
           snapshot: state.snapshot,
           sandbox: state.sandbox,
           credentials,
-          containerId: state.containerId,
+          containerId: known,
           outcome: 'running',
         });
         log.info('adopted a run’s sandbox after a restart', {
           run_id: state.runId,
-          container_id: state.containerId,
+          container_id: known,
         });
+        state.containerId = known;
         state.phase = 'stepping';
         await this.save(state);
         return state;
@@ -684,11 +790,6 @@ export class Orchestrator {
       log.warn('a run’s sandbox is gone after a restart; a fresh one is built', {
         run_id: state.runId,
       });
-    }
-
-    if (record?.containerId) {
-      await store.set(state.runId, { ...record, credentials });
-      return state;
     }
 
     const started = await startRun(
@@ -794,7 +895,11 @@ export class Orchestrator {
     let url: string;
     try {
       const content = await composeMergeRequest(state.snapshot, this.doFetch);
-      url = (await openMergeRequest(state.snapshot, gitToken, content, this.doFetch)).url;
+      url = (
+        await openMergeRequest(state.snapshot, gitToken, content, this.doFetch, {
+          sleep: this.sleep,
+        })
+      ).url;
     } catch (error) {
       // FR-098: the branch is pushed and the code is safe; the failure says so.
       await this.fail(
@@ -969,6 +1074,10 @@ export class Orchestrator {
       await this.sleep(pause);
       waited += pause;
       delay = Math.min(delay * 2, maxDelayMs);
+      // Shutting down: the outcome is written down, and the restart delivers it.
+      if (this.stopping) {
+        throw new FactoryError('app_unreachable', `${lastError}; delivery interrupted by shutdown`);
+      }
       if (!(await this.deps.states.get(state.runId))) {
         throw new FactoryError(
           'app_unreachable',
