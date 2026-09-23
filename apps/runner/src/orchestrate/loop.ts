@@ -10,6 +10,7 @@ import {
   type StepOutcome,
 } from '@factory/shared';
 import type { ContainerHost } from '../container/host';
+import { withinWorkspace } from '../container/paths';
 import { isSandboxLoss } from '../container/recover';
 import { buildEnvironment, secretValues } from '../container/secrets';
 import { type SandboxLimits, WORKDIR } from '../container/start';
@@ -25,7 +26,7 @@ import {
   startRun,
   verifyAndPush,
 } from '../runs';
-import { composeMergeRequest, openMergeRequest } from './merge-request';
+import { composeMergeRequest, findOpenMergeRequest, openMergeRequest } from './merge-request';
 import type { LoopState, StateStore } from './state';
 
 /**
@@ -256,12 +257,13 @@ export class Orchestrator {
     switch (body.decision) {
       case 'cancelled': {
         state.phase = 'cancelled';
+        state.pending = {
+          callback: this.envelope(state, { event: 'cancelled', step_index: at }),
+          since: new Date().toISOString(),
+          after: { outcome: 'terminal', destroy: 'cancelled' },
+        };
         await this.save(state);
-        await this.post(state, { event: 'cancelled', step_index: at });
-        await destroyRun(this.deps.host, this.deps.store, runId, { outcome: 'cancelled' }).catch(
-          () => {},
-        );
-        await this.deps.states.delete(runId);
+        await this.settleTerminal(state);
         return;
       }
       case 'changes_requested': {
@@ -317,8 +319,12 @@ export class Orchestrator {
     const containerId = record?.containerId ?? state.containerId;
     if (!containerId) return;
     for (const [path, content] of Object.entries(documents)) {
+      // Named by the reviewer's request, so held inside the workspace before
+      // it is joined onto it (`paths.ts`). Refused, as a 400, before any of
+      // the edits is written.
+      const inside = withinWorkspace(path, 'edited document');
       try {
-        await this.deps.host.writeFile(containerId, `${WORKDIR}/${path}`, content);
+        await this.deps.host.writeFile(containerId, `${WORKDIR}/${inside}`, content);
         log.info('an edited document was written into the workspace', {
           run_id: state.runId,
           path,
@@ -420,7 +426,18 @@ export class Orchestrator {
         waiting.push(state.runId);
         continue;
       }
-      if (state.phase === 'finished' || state.phase === 'failed' || state.phase === 'cancelled') {
+      if (state.phase === 'failed' || state.phase === 'cancelled') {
+        // Ended, but not finished ending: the callback was being delivered,
+        // or the sandbox released, when the last process stopped.
+        if (state.pending?.after.outcome === 'terminal') {
+          resumed.push(state.runId);
+          void this.settleTerminal(state);
+        } else {
+          await this.deps.states.delete(state.runId);
+        }
+        continue;
+      }
+      if (state.phase === 'finished') {
         await this.deps.states.delete(state.runId);
         continue;
       }
@@ -643,6 +660,11 @@ export class Orchestrator {
       // conclude: its outcome is not the step's, and the step runs again
       // after the restart from the position already written down.
       if (this.stopping) return;
+      // Nor did one whose run was cancelled while it ran: the state file is
+      // gone, and writing this loop's copy back would resurrect the run —
+      // as it did, reporting a cancelled run failed a minute after the
+      // person had cancelled it.
+      await this.assertWanted(state);
 
       /**
        * The sandbox the step actually ran in, which is not always the one
@@ -831,6 +853,10 @@ export class Orchestrator {
   private async settle(state: LoopState): Promise<'continued' | 'stopped'> {
     const pending = state.pending;
     if (!pending) return 'continued';
+    if (pending.after.outcome === 'terminal') {
+      await this.settleTerminal(state);
+      return 'stopped';
+    }
     const reply = await this.deliver(state, pending.callback);
     state.pending = undefined;
     if (pending.after.outcome === 'failed') {
@@ -874,41 +900,52 @@ export class Orchestrator {
   private async finish(state: LoopState): Promise<void> {
     const { host, store } = this.deps;
     state.phase = 'finishing';
-    await this.save(state);
+    await this.saveDriving(state);
 
-    const pushed = await verifyAndPush(host, store, state.runId);
-    if (!pushed.pushed) {
-      await this.fail(state, state.index, 'command_failed', `${pushed.reason}: ${pushed.detail}`);
-      return;
-    }
-    const record = await store.get(state.runId);
-    const gitToken = record?.credentials?.gitToken;
-    if (!gitToken) {
-      await this.fail(
-        state,
-        state.index,
-        'credential_missing',
-        'no git token to open the merge request with',
-      );
-      return;
-    }
-    let url: string;
-    try {
-      const content = await composeMergeRequest(state.snapshot, this.doFetch);
-      url = (
-        await openMergeRequest(state.snapshot, gitToken, content, this.doFetch, {
-          sleep: this.sleep,
-        })
-      ).url;
-    } catch (error) {
-      // FR-098: the branch is pushed and the code is safe; the failure says so.
-      await this.fail(
-        state,
-        state.index,
-        'command_failed',
-        error instanceof Error ? error.message : String(error),
-      );
-      return;
+    // Already opened, by this process or the one before it: nothing to push
+    // or ask the provider for again, only to tell the application.
+    let url = state.mergeRequestUrl;
+    if (!url) {
+      const pushed = await verifyAndPush(host, store, state.runId);
+      if (!pushed.pushed) {
+        await this.fail(state, state.index, 'command_failed', `${pushed.reason}: ${pushed.detail}`);
+        return;
+      }
+      const record = await store.get(state.runId);
+      const gitToken = record?.credentials?.gitToken;
+      if (!gitToken) {
+        await this.fail(
+          state,
+          state.index,
+          'credential_missing',
+          'no git token to open the merge request with',
+        );
+        return;
+      }
+      try {
+        const content = await composeMergeRequest(state.snapshot, this.doFetch);
+        // The provider is asked first whether it already has one: a restart
+        // between opening and writing the address down, or an earlier
+        // attempt whose answer was lost, has already opened it.
+        url =
+          (await findOpenMergeRequest(state.snapshot, gitToken, content, this.doFetch)) ??
+          (
+            await openMergeRequest(state.snapshot, gitToken, content, this.doFetch, {
+              sleep: this.sleep,
+            })
+          ).url;
+      } catch (error) {
+        // FR-098: the branch is pushed and the code is safe; the failure says so.
+        await this.fail(
+          state,
+          state.index,
+          'command_failed',
+          error instanceof Error ? error.message : String(error),
+        );
+        return;
+      }
+      state.mergeRequestUrl = url;
+      await this.saveDriving(state);
     }
     await this.post(state, { event: 'mr_opened', step_index: state.index, merge_request_url: url });
     await this.post(state, {
@@ -955,26 +992,87 @@ export class Orchestrator {
     reason: string,
     detail: string,
   ): Promise<void> {
-    state.phase = 'failed';
-    await this.save(state).catch(() => {});
+    // A run released or cancelled while its step ran has nobody to tell and
+    // nothing to release; writing 'failed' over it would bring it back.
+    const current = await this.deps.states.get(state.runId);
+    if (!current || current.phase === 'cancelled') return;
     log.error('run failed', { run_id: state.runId, step_index: stepIndex, reason, detail });
-    await this.post(
-      state,
-      { event: 'failed', step_index: stepIndex, reason, detail },
-      // A run that failed BECAUSE the application could not be reached has
-      // already spent the whole delivery budget finding that out. One more
-      // attempt, in case it is back; not another quarter of an hour.
-      reason === 'app_unreachable' ? { budgetMs: 0 } : undefined,
-    ).catch((error) =>
-      log.error('could not report the failure to the application', {
+    state.phase = 'failed';
+    // Written down BEFORE anything is sent or released, so a restart in the
+    // middle of either finishes the job instead of deleting a state marked
+    // failed with its sandbox still running.
+    state.pending = {
+      callback: this.envelope(state, { event: 'failed', step_index: stepIndex, reason, detail }),
+      since: new Date().toISOString(),
+      after: { outcome: 'terminal', destroy: 'failed' },
+    };
+    await this.save(state).catch((error) =>
+      log.error('could not write the failure down', {
         run_id: state.runId,
         detail: error instanceof Error ? error.message : String(error),
       }),
     );
-    await destroyRun(this.deps.host, this.deps.store, state.runId, { outcome: 'failed' }).catch(
-      () => {},
-    );
+    await this.settleTerminal(state);
+  }
+
+  /**
+   * Ends a run whose end is written down: tells the application, releases
+   * the sandbox, forgets the run — each attempted whatever the one before
+   * did, because a sandbox must not outlive a failure the application could
+   * not be told about, and a state file must not outlive its sandbox.
+   */
+  private async settleTerminal(state: LoopState): Promise<void> {
+    const pending = state.pending;
+    if (pending?.after.outcome === 'terminal') {
+      const destroy = pending.after.destroy;
+      const reason = (pending.callback as { reason?: string }).reason;
+      await this.deliver(
+        state,
+        pending.callback,
+        // A run that failed BECAUSE the application could not be reached has
+        // already spent the whole delivery budget finding that out. One more
+        // attempt, in case it is back; not another quarter of an hour.
+        reason === 'app_unreachable' ? { budgetMs: 0 } : undefined,
+      ).catch((error) => {
+        // Interrupted by shutdown: the end is written down, and the restart
+        // delivers it — nothing is released or forgotten here, or the
+        // application would never learn how the run ended.
+        if (this.stopping) throw error;
+        log.error('could not report the failure to the application', {
+          run_id: state.runId,
+          event: pending.callback.event,
+          detail: error instanceof Error ? error.message : String(error),
+        });
+      });
+      await destroyRun(this.deps.host, this.deps.store, state.runId, { outcome: destroy }).catch(
+        (error) =>
+          log.warn('could not release the sandbox of a run that ended', {
+            run_id: state.runId,
+            outcome: destroy,
+            detail: error instanceof Error ? error.message : String(error),
+          }),
+      );
+    }
     await this.deps.states.delete(state.runId);
+  }
+
+  /**
+   * Throws when the run this loop is driving is no longer wanted — its state
+   * file gone, or marked cancelled by a route — so the loop's next write
+   * cannot bring it back. `drive()`'s catch treats that as the silent end it
+   * is.
+   */
+  private async assertWanted(state: LoopState): Promise<void> {
+    const current = await this.deps.states.get(state.runId);
+    if (!current || current.phase === 'cancelled') {
+      throw new FactoryError('conflict', 'the run was released while it was being driven');
+    }
+  }
+
+  /** `save`, for the loop's own writes: refused when the run was released meanwhile. */
+  private async saveDriving(state: LoopState): Promise<void> {
+    await this.assertWanted(state);
+    await this.save(state);
   }
 
   // --- talking to the application ---------------------------------------------

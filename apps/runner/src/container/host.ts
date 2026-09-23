@@ -153,7 +153,39 @@ export interface ContainerHost {
    * than carrying on with a connected sandbox the workspace asked to isolate.
    */
   disconnectNetwork(containerId: string): Promise<void>;
+  /**
+   * Runs `work` with the sandbox's network back for the duration.
+   *
+   * A sandbox kept off the network while code is written still has to push
+   * that code, and every git operation runs inside the sandbox — so with
+   * the network taken away after the clone, no isolated run could ever push:
+   * every step passed and the branch never reached the remote. The networks
+   * `disconnectNetwork` removed are remembered and given back for exactly
+   * one operation, then taken away again. A sandbox that was never cut off
+   * just runs the work. Absent means the host has no wall to open.
+   */
+  withNetwork?<T>(containerId: string, work: () => Promise<T>): Promise<T>;
   destroy(containerId: string): Promise<void>;
+}
+
+/**
+ * How long a Docker management command may take before the daemon is taken
+ * to be wedged. `docker inspect`, `rm`, `network disconnect` and the like
+ * answer in milliseconds; one that has not answered in half a minute is not
+ * going to, and a loop waiting on it — or the shutdown waiting on the loop —
+ * would otherwise wait for ever. Creation gets longer: it may pull an image.
+ */
+export const DOCKER_COMMAND_TIMEOUT_MS = 30_000;
+export const DOCKER_CREATE_TIMEOUT_MS = 120_000;
+
+/** What `docker rm` says when there is nothing to remove, which is the outcome asked for. */
+const ALREADY_GONE = /No such container|removal of container .* is already in progress/i;
+
+/** Null when a removal succeeded or the container was already gone; otherwise why not. */
+export function removalFailed(result: ExecResult): string | null {
+  if (result.exitCode === 0) return null;
+  if (ALREADY_GONE.test(result.stderr)) return null;
+  return result.stderr.trim() || `docker rm exited ${result.exitCode}`;
 }
 
 /** Shells out to the Docker CLI. One fresh container per run, never reused. */
@@ -193,7 +225,10 @@ export const dockerHost: ContainerHost = {
       'sleep',
       String(spec.wallClockMinutes * 60),
     ];
-    const result = await run('docker', argv, { env: spec.env });
+    const result = await run('docker', argv, {
+      env: spec.env,
+      timeoutMs: DOCKER_CREATE_TIMEOUT_MS,
+    });
     if (result.exitCode !== 0) {
       throw new FactoryError('sandbox_lost', 'could not create the sandbox', {
         detail: result.stderr.trim(),
@@ -216,7 +251,9 @@ export const dockerHost: ContainerHost = {
     // agent that was not there. `kill -9 -1` was tried and does not do this
     // portably from dash. The count is what was alive, so the log can say
     // what a restart found.
-    const result = await run('docker', ['exec', containerId, 'sh', '-c', QUIESCE_SCRIPT]);
+    const result = await run('docker', ['exec', containerId, 'sh', '-c', QUIESCE_SCRIPT], {
+      timeoutMs: DOCKER_COMMAND_TIMEOUT_MS,
+    });
     if (result.exitCode !== 0) {
       throw new FactoryError('sandbox_lost', 'could not stop what was running in the sandbox', {
         detail: result.stderr.trim(),
@@ -229,25 +266,73 @@ export const dockerHost: ContainerHost = {
   async disconnectNetwork(containerId) {
     // Every network it is on, not just the default one: a machine whose Docker
     // is configured with another default would otherwise keep its connection.
-    const attached = await run('docker', [
-      'inspect',
-      '--format',
-      '{{range $name, $_ := .NetworkSettings.Networks}}{{$name}} {{end}}',
-      containerId,
-    ]);
+    const attached = await run(
+      'docker',
+      [
+        'inspect',
+        '--format',
+        '{{range $name, $_ := .NetworkSettings.Networks}}{{$name}} {{end}}',
+        containerId,
+      ],
+      { timeoutMs: DOCKER_COMMAND_TIMEOUT_MS },
+    );
     if (attached.exitCode !== 0) {
       throw new FactoryError('sandbox_lost', 'could not read the sandbox’s networks', {
         detail: attached.stderr.trim(),
       });
     }
-    for (const network of attached.stdout.trim().split(/\s+/).filter(Boolean)) {
-      const result = await run('docker', ['network', 'disconnect', network, containerId]);
+    const networks = attached.stdout.trim().split(/\s+/).filter(Boolean);
+    for (const network of networks) {
+      const result = await run('docker', ['network', 'disconnect', network, containerId], {
+        timeoutMs: DOCKER_COMMAND_TIMEOUT_MS,
+      });
       if (result.exitCode !== 0) {
         throw new FactoryError('sandbox_lost', `could not disconnect the sandbox from ${network}`, {
           detail: result.stderr.trim(),
         });
       }
     }
+    // Remembered, so `withNetwork` can give back exactly what was taken.
+    if (networks.length > 0) disconnectedNetworks.set(containerId, networks);
+  },
+
+  async withNetwork<T>(containerId: string, work: () => Promise<T>): Promise<T> {
+    const networks = disconnectedNetworks.get(containerId);
+    // Never cut off — or cut off by a runner that has since restarted, whose
+    // memory this is not; a replacement built by this process is remembered.
+    // Either way there is nothing to open here.
+    if (!networks || networks.length === 0) return work();
+    for (const network of networks) {
+      const result = await run('docker', ['network', 'connect', network, containerId], {
+        timeoutMs: DOCKER_COMMAND_TIMEOUT_MS,
+      });
+      if (result.exitCode !== 0 && !/already exists in network/i.test(result.stderr)) {
+        throw new FactoryError('sandbox_lost', `could not reconnect the sandbox to ${network}`, {
+          detail: result.stderr.trim(),
+        });
+      }
+    }
+    let outcome: { ok: true; value: T } | { ok: false; error: unknown };
+    try {
+      outcome = { ok: true, value: await work() };
+    } catch (error) {
+      outcome = { ok: false, error };
+    }
+    // Taken away again whatever the work did. A failure here is a sandbox
+    // left connected that the workspace asked not to have, so it is thrown
+    // rather than logged — ahead of whatever the work itself threw.
+    for (const network of networks) {
+      const result = await run('docker', ['network', 'disconnect', network, containerId], {
+        timeoutMs: DOCKER_COMMAND_TIMEOUT_MS,
+      });
+      if (result.exitCode !== 0 && !/is not connected/i.test(result.stderr)) {
+        throw new FactoryError('sandbox_lost', `could not disconnect the sandbox from ${network}`, {
+          detail: result.stderr.trim(),
+        });
+      }
+    }
+    if (!outcome.ok) throw outcome.error;
+    return outcome.value;
   },
 
   async exec(containerId, argv, options) {
@@ -260,6 +345,14 @@ export const dockerHost: ContainerHost = {
       ...argv,
     ];
     const result = await run('docker', docker, { env, ...options });
+    if (result.exitCode === TIMEOUT_EXIT_CODE) {
+      // The deadline killed the `docker exec` CLIENT. The process inside the
+      // container — the agent, still working, still spending — is untouched
+      // by that, so it is stopped here: the step has already been recorded
+      // as stopped, and an agent working on after that is one nobody is
+      // paying attention to (FR-080).
+      await dockerHost.quiesce?.(containerId).catch(() => ({ stopped: 0 }));
+    }
     // A failed command that could not reach something says so in its own
     // output, as one line a person can act on (FR-013). It adds a sentence and
     // never changes an outcome — see `unreachable.ts`.
@@ -344,9 +437,25 @@ export const dockerHost: ContainerHost = {
   },
 
   async destroy(containerId) {
-    await run('docker', ['rm', '--force', containerId]);
+    // Checked, where it used to be assumed. A removal that failed — the
+    // daemon restarting, the socket's permission gone, the command hanging —
+    // resolved like a success: "sandbox released" was logged, the run's
+    // record deleted, and the container ran on with nothing left that knew
+    // its name. A container already gone is the outcome asked for, and is
+    // not a failure.
+    const result = await run('docker', ['rm', '--force', '--volumes', containerId], {
+      timeoutMs: DOCKER_COMMAND_TIMEOUT_MS,
+    });
+    const failed = removalFailed(result);
+    if (failed) {
+      throw new FactoryError('sandbox_lost', 'could not remove the sandbox', { detail: failed });
+    }
+    disconnectedNetworks.delete(containerId);
   },
 };
+
+/** Which networks `disconnectNetwork` took from which sandbox, for `withNetwork`. */
+const disconnectedNetworks = new Map<string, string[]>();
 
 /** See `dockerHost.quiesce`. Prints how many live processes it signalled. */
 export const QUIESCE_SCRIPT = [
@@ -386,7 +495,9 @@ async function assertContainerAlive(containerId: string, path: string): Promise<
   // right one here: recovery rebuilds the sandbox once and resumes from the
   // branch, which is correct if it really is gone and harmless if the read was
   // simply of a file that was never written.
-  const state = await run('docker', ['inspect', '--format', '{{.State.Running}}', containerId])
+  const state = await run('docker', ['inspect', '--format', '{{.State.Running}}', containerId], {
+    timeoutMs: DOCKER_COMMAND_TIMEOUT_MS,
+  })
     .then((probe) => (probe.exitCode === 0 ? probe.stdout.trim() : probe.stderr.trim()))
     .catch((error) => (error instanceof Error ? error.message : String(error)));
   if (state !== 'true') {

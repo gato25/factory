@@ -9,6 +9,15 @@ import { authenticatedRemote, WORKDIR } from './start';
  * because pushing is the gate before a merge request is opened.
  */
 
+/** `work`, with the sandbox's network given back for its duration where the host can. */
+export function withNetwork<T>(
+  host: ContainerHost,
+  containerId: string,
+  work: () => Promise<T>,
+): Promise<T> {
+  return host.withNetwork ? host.withNetwork(containerId, work) : work();
+}
+
 export type PushOutcome =
   | { pushed: true; commits: { hash: string; subject: string }[] }
   | { pushed: false; reason: string; detail: string };
@@ -22,17 +31,22 @@ export async function pushBranch(
 ): Promise<PushOutcome> {
   // Force is used on a retry, where the branch is brought back to a known
   // state rather than accumulating two attempts' work (FR-091).
-  const flag = options.force ? await lease(host, containerId, snapshot, gitToken) : '';
-  const result = await host.exec(
-    containerId,
-    [
-      'sh',
-      '-c',
-      `git push ${flag} ${authenticatedRemote(snapshot.repo.clone_url)} ` +
-        quoteOne(snapshot.repo.branch),
-    ],
-    { cwd: WORKDIR, env: { GIT_TOKEN: gitToken } },
-  );
+  // With the network, which a sandbox kept off it while code was written
+  // does not otherwise have: the wall the workspace asked for is opened for
+  // exactly this, and closed again after (see `ContainerHost.withNetwork`).
+  const result = await withNetwork(host, containerId, async () => {
+    const flag = options.force ? await lease(host, containerId, snapshot, gitToken) : '';
+    return host.exec(
+      containerId,
+      [
+        'sh',
+        '-c',
+        `git push ${flag} ${authenticatedRemote(snapshot.repo.clone_url)} ` +
+          quoteOne(snapshot.repo.branch),
+      ],
+      { cwd: WORKDIR, env: { GIT_TOKEN: gitToken } },
+    );
+  });
 
   if (result.exitCode !== 0) {
     const detail = result.stderr.trim();

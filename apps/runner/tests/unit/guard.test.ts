@@ -292,3 +292,55 @@ async function runScript(
     await rm(path, { force: true }).catch(() => {});
   }
 }
+
+describe('the hook as the CLI reads it', () => {
+  test('is one shell command string naming the script, with no field the CLI does not know', async () => {
+    const { guardSettings, GUARD_SCRIPT_PATH } = await import('../../src/container/guard');
+    const settings = guardSettings() as {
+      hooks: { PreToolUse: { matcher: string; hooks: Record<string, unknown>[] }[] };
+    };
+    const [entry] = settings.hooks.PreToolUse;
+    expect(entry?.matcher).toBe('Bash|PowerShell');
+    const [hook] = entry?.hooks ?? [];
+    // The CLI's hook schema is `{ type, command, timeout? }`. An `args` key
+    // was silently dropped, which left `command: 'node'` — a hook that read
+    // its JSON input as a script, failed, and objected to nothing.
+    expect(Object.keys(hook ?? {}).sort()).toEqual(['command', 'timeout', 'type']);
+    expect(hook?.type).toBe('command');
+    expect(hook?.command).toBe(`node "$CLAUDE_PROJECT_DIR/${GUARD_SCRIPT_PATH}"`);
+    expect(hook).not.toHaveProperty('args');
+  });
+
+  test('the command, run as the CLI runs it, blocks the incident’s command with exit 2', async () => {
+    // The whole path a real hook takes: the settings' command string through
+    // a shell, with CLAUDE_PROJECT_DIR in the environment and the hook's
+    // JSON on stdin.
+    const { mkdtemp, rm, writeFile, mkdir } = await import('node:fs/promises');
+    const { tmpdir } = await import('node:os');
+    const { join } = await import('node:path');
+    const { guardScript, guardSettings, GUARD_SCRIPT_PATH } = await import(
+      '../../src/container/guard'
+    );
+    const dir = await mkdtemp(join(tmpdir(), 'factory-guard-'));
+    try {
+      await mkdir(join(dir, '.claude'), { recursive: true });
+      await writeFile(join(dir, GUARD_SCRIPT_PATH), guardScript());
+      const settings = guardSettings() as {
+        hooks: { PreToolUse: { hooks: { command: string }[] }[] };
+      };
+      const command = settings.hooks.PreToolUse[0]?.hooks[0]?.command as string;
+      const proc = Bun.spawn(['sh', '-c', command], {
+        env: { ...process.env, CLAUDE_PROJECT_DIR: dir },
+        stdin: new TextEncoder().encode(
+          JSON.stringify({ tool_name: 'Bash', tool_input: { command: 'pkill -f bun' } }),
+        ),
+        stdout: 'pipe',
+        stderr: 'pipe',
+      });
+      const code = await proc.exited;
+      expect(code).toBe(2);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+});

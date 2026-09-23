@@ -71,6 +71,14 @@ export class FakeHost implements ContainerHost {
     this.disconnected.push(containerId);
   }
 
+  /** Each time a disconnected sandbox was given its network back, in order. */
+  reconnected: string[] = [];
+
+  async withNetwork<T>(containerId: string, work: () => Promise<T>): Promise<T> {
+    if (this.disconnected.includes(containerId)) this.reconnected.push(containerId);
+    return work();
+  }
+
   async destroy(containerId: string): Promise<void> {
     this.destroyed.push(containerId);
   }

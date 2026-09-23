@@ -46,8 +46,19 @@ export interface PendingDelivery {
   /** The callback, complete, as it will be posted. */
   callback: Callback;
   since: string;
-  /** What follows delivery: the run goes on, or it fails as the step did. */
-  after: { outcome: 'done' } | { outcome: 'failed'; reason: string; detail: string };
+  /**
+   * What follows delivery: the run goes on; it fails as the step did; or —
+   * for a `failed`/`cancelled` callback — the sandbox is released and the
+   * run forgotten. The terminal case is here for the same reason the step
+   * case is: `fail()` used to post its callback (retried for a quarter of an
+   * hour) and only THEN release the sandbox, and a restart in that window
+   * found a state marked failed and simply deleted it — sandbox never
+   * released, application never told.
+   */
+  after:
+    | { outcome: 'done' }
+    | { outcome: 'failed'; reason: string; detail: string }
+    | { outcome: 'terminal'; destroy: 'failed' | 'cancelled' };
 }
 
 export interface LoopState {
@@ -72,6 +83,13 @@ export interface LoopState {
   waitingAt?: number;
   /** A step's outcome not yet delivered to the application; sent before anything else. */
   pending?: PendingDelivery;
+  /**
+   * The merge request this run opened, the moment it was opened. `finish()`
+   * used to hold the address in a local across two deliveries; a restart in
+   * between re-drove `finish()`, asked the provider for a second merge
+   * request, and failed a completed run on the provider's refusal.
+   */
+  mergeRequestUrl?: string;
   startedAt: string;
   updatedAt: string;
 }
@@ -98,12 +116,29 @@ export function memoryStateStore(): StateStore {
 }
 
 /**
+ * The modes every file this service writes about a run gets.
+ *
+ * A state file carries the run's snapshot, and the snapshot carries the
+ * `resume_secret` — the credential that authenticates this run's callbacks
+ * and exchanges for its git token and model key. Written with the default
+ * umask it was readable by every account on the machine and by anything
+ * that could read the state volume. Private to the runner's own user, then:
+ * the directory 0700, each file 0600, the temporary file the same before it
+ * is renamed into place.
+ */
+export const PRIVATE_DIR = 0o700;
+export const PRIVATE_FILE = 0o600;
+
+/**
  * One JSON file per run under `dir`. Written whole on every change, through a
  * temporary name, so a runner that dies mid-write leaves the previous state
- * rather than half a file.
+ * rather than half a file. A temporary name unique to this write, so two
+ * writers for one run — the loop and a route — never share an inode and the
+ * loser's rename never fails on the winner's file.
  */
 export function fileStateStore(dir: string): StateStore {
   const pathFor = (runId: string) => join(dir, `${safe(runId)}.json`);
+  let sequence = 0;
   return {
     async get(runId) {
       try {
@@ -113,10 +148,11 @@ export function fileStateStore(dir: string): StateStore {
       }
     },
     async set(state) {
-      await mkdir(dir, { recursive: true });
+      await mkdir(dir, { recursive: true, mode: PRIVATE_DIR });
       const target = pathFor(state.runId);
-      const temporary = `${target}.tmp`;
-      await writeFile(temporary, JSON.stringify(state, null, 2));
+      sequence += 1;
+      const temporary = `${target}.${process.pid}.${sequence}.tmp`;
+      await writeFile(temporary, JSON.stringify(state, null, 2), { mode: PRIVATE_FILE });
       // rename is atomic on the same volume; a failure leaves the old file.
       const { rename } = await import('node:fs/promises');
       await rename(temporary, target);

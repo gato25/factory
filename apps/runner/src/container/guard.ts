@@ -205,8 +205,19 @@ export function guardSettings(): unknown {
           hooks: [
             {
               type: 'command',
-              command: 'node',
-              args: [`\${CLAUDE_PROJECT_DIR}/${GUARD_SCRIPT_PATH}`],
+              // ONE shell command string. The CLI's hook shape is
+              // `{ type, command, timeout? }` and nothing else: an `args`
+              // field is not an error, it is silently dropped, and this used
+              // to emit `command: 'node'` with the script in `args`. So the
+              // hook ran bare `node`, which read the hook's JSON from stdin
+              // as a script, died with a syntax error, and the CLI — which
+              // treats a hook that errors as a hook that did not object —
+              // allowed every command. The guard had never blocked anything.
+              // `CLAUDE_PROJECT_DIR` is set in a hook's environment by the
+              // CLI, and the shell expands it; quoted, because a workspace
+              // path on a developer machine may have spaces in it.
+              command: `node "$CLAUDE_PROJECT_DIR/${GUARD_SCRIPT_PATH}"`,
+              timeout: 10,
             },
           ],
         },

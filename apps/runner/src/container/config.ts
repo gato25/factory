@@ -1,6 +1,7 @@
 import { type PipelineSnapshot, REQUIREMENTS_DIR, type SnapshotAgent } from '@factory/shared';
 import { installGuard } from './guard';
 import type { ContainerHost } from './host';
+import { directoryName } from './paths';
 
 /**
  * Each agent's system prompt and each attached skill are written into the
@@ -196,14 +197,19 @@ export async function writeAgentConfig(
       `${substitute(agent.system_prompt, context)}\n`,
     );
     for (const skill of agent.skills) {
-      await host.exec(containerId, ['mkdir', '-p', `${workdir}/.claude/skills/${skill.name}`]);
+      // One directory, named by the skill and held to a name that IS one
+      // directory: a skill called `../../.claude/skills/ops` used to land in
+      // the developer's own skills folder under the process host (`paths.ts`).
+      // The frontmatter is JSON-quoted so a newline in a description cannot
+      // add a key of its own.
+      const dir = directoryName(skill.name, 'skill name');
+      await host.exec(containerId, ['mkdir', '-p', `${workdir}/.claude/skills/${dir}`]);
       await host.writeFile(
         containerId,
-        `${workdir}/.claude/skills/${skill.name}/SKILL.md`,
-        `---\nname: ${skill.name}\ndescription: ${skill.description}\n---\n\n${substitute(
-          skill.content,
-          context,
-        )}\n`,
+        `${workdir}/.claude/skills/${dir}/SKILL.md`,
+        `---\nname: ${JSON.stringify(skill.name)}\ndescription: ${JSON.stringify(
+          skill.description,
+        )}\n---\n\n${substitute(skill.content, context)}\n`,
       );
     }
   }

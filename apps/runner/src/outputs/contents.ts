@@ -1,5 +1,6 @@
 import type { ArtifactRef } from '@factory/shared';
 import type { ContainerHost } from '../container/host';
+import { withinWorkspace } from '../container/paths';
 import { quoteOne } from '../container/shell';
 import { log } from '../errors';
 
@@ -56,7 +57,10 @@ export async function readOutputContents(
     if (!TEXT_KINDS.has(output.kind)) continue;
     let text: string | null;
     try {
-      text = await host.readFile(containerId, `${workdir}/${output.path}`);
+      text = await host.readFile(
+        containerId,
+        `${workdir}/${withinWorkspace(output.path, 'output path')}`,
+      );
     } catch (error) {
       // A sandbox that went away between the step finishing and this read.
       // The step's own outcome is what matters; the document is reported
@@ -105,7 +109,7 @@ export async function readOutputBytes(
   const images: Record<string, string> = {};
   for (const output of outputs) {
     if (!IMAGE_KINDS.has(output.kind)) continue;
-    const path = `${workdir}/${output.path}`;
+    const path = `${workdir}/${withinWorkspace(output.path, 'output path')}`;
     try {
       // Asked before it is read: pulling something enormous through a pipe to
       // then discard it is the one outcome worth avoiding.

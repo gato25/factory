@@ -1,5 +1,6 @@
 import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { PRIVATE_DIR, PRIVATE_FILE } from './orchestrate/state';
 import type { RunRecord, RunStore } from './runs';
 
 /**
@@ -22,6 +23,7 @@ import type { RunRecord, RunStore } from './runs';
 export function fileRunStore(dir: string): RunStore {
   const credentials = new Map<string, RunRecord['credentials']>();
   const pathFor = (runId: string) => join(dir, `${safe(runId)}.json`);
+  let sequence = 0;
 
   return {
     async get(runId) {
@@ -42,10 +44,13 @@ export function fileRunStore(dir: string): RunStore {
       const { credentials: secret, ...rest } = value;
       if (secret) credentials.set(runId, secret);
       else credentials.delete(runId);
-      await mkdir(dir, { recursive: true });
+      // Private to the runner's user, like the state files: the snapshot in
+      // here carries the run's resume secret (see `PRIVATE_FILE`).
+      await mkdir(dir, { recursive: true, mode: PRIVATE_DIR });
       const target = pathFor(runId);
-      const temporary = `${target}.tmp`;
-      await writeFile(temporary, JSON.stringify(rest, null, 2));
+      sequence += 1;
+      const temporary = `${target}.${process.pid}.${sequence}.tmp`;
+      await writeFile(temporary, JSON.stringify(rest, null, 2), { mode: PRIVATE_FILE });
       // rename is atomic on the same volume; a failure leaves the old file.
       await rename(temporary, target);
     },

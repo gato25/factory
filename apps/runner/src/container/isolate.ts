@@ -151,7 +151,33 @@ export function isolatingHost(options: IsolatingHostOptions): ContainerHost & { 
   // repopulated by `adopt` so a run that outlived a restart can still be
   // isolated.
   const specs = new Map<string, ContainerSpec>();
+  /**
+   * The step containers alive over each workspace, by name.
+   *
+   * A step's container is started through the Docker CLI, so it is not one
+   * of the process host's `live` processes and the base host's `destroy` and
+   * `quiesce` never saw it: a cancelled, failed or shut-down run left its
+   * agent working headless in `factory-<ws>-<n>`, with the run's credentials
+   * in its environment, until the container's own deadline. Named here from
+   * before `docker run` until after it returns, so both can find them.
+   */
+  const stepContainers = new Map<string, Set<string>>();
   let sequence = 0;
+
+  /** Removes every step container alive over the workspace; says how many. */
+  async function removeStepContainers(id: string): Promise<number> {
+    const names = stepContainers.get(id);
+    if (!names || names.size === 0) return 0;
+    let removed = 0;
+    for (const name of [...names]) {
+      const result = await exec('docker', ['rm', '--force', name], { timeoutMs: 30_000 }).catch(
+        () => ({ exitCode: 1, stdout: '', stderr: '' }),
+      );
+      if (result.exitCode === 0) removed += 1;
+      names.delete(name);
+    }
+    return removed;
+  }
 
   return {
     ...base,
@@ -174,7 +200,17 @@ export function isolatingHost(options: IsolatingHostOptions): ContainerHost & { 
 
     async destroy(id) {
       specs.delete(id);
+      await removeStepContainers(id);
+      stepContainers.delete(id);
       await base.destroy(id);
+    },
+
+    async quiesce(id) {
+      // The step container first — that is where the agent is — then what
+      // the base host knows about.
+      const removed = await removeStepContainers(id);
+      const below = await base.quiesce?.(id).catch(() => ({ stopped: 0 }));
+      return { stopped: removed + (below?.stopped ?? 0) };
     },
 
     async execIsolated(id: string, argv: string[], opts?: ExecOptions): Promise<ExecResult> {
@@ -195,6 +231,9 @@ export function isolatingHost(options: IsolatingHostOptions): ContainerHost & { 
       sequence += 1;
       const name = `factory-${id}-${sequence}`;
       const source = mountSource(base.root, id);
+      const alive = stepContainers.get(id) ?? new Set<string>();
+      alive.add(name);
+      stepContainers.set(id, alive);
 
       const script = [
         // The repository is on a bind mount, so its files are owned by
@@ -257,6 +296,7 @@ export function isolatingHost(options: IsolatingHostOptions): ContainerHost & { 
       if (result.exitCode === TIMEOUT_EXIT_CODE) {
         await exec('docker', ['rm', '--force', name], { timeoutMs: 30_000 }).catch(() => {});
       }
+      stepContainers.get(id)?.delete(name);
       return result;
     },
   };

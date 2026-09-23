@@ -11,6 +11,7 @@ import {
   type ExecResult,
   timerDelay,
 } from './host';
+import { withinWorkspace } from './paths';
 import { killTree } from './process-tree';
 import { quote } from './shell';
 import { resolveShell } from './shell-path';
@@ -71,6 +72,84 @@ const NEVER_INHERITED = [
   'CLAUDE_CODE_ENTRYPOINT',
 ];
 
+/**
+ * What a step DOES inherit from the runner's environment: what a process
+ * needs to find its tools and its home, speak its language, use a proxy and
+ * trust a certificate — and nothing that is the runner's own.
+ *
+ * This used to be everything but the nine names above, and "everything" is
+ * the environment `bun run dev` hands this service: `SESSION_SECRET`,
+ * `SECRET_ENCRYPTION_KEY`, `RUNNER_AUTH_TOKEN`, the OAuth client secrets,
+ * `DATABASE_URL`. A shell step of `env | sort`, or an agent told by a ticket
+ * to print its environment, put every one of them in the step log the
+ * application stores. A denylist cannot be complete about names it has not
+ * heard of; an allowlist is complete by construction. An operator who needs
+ * more names through names them in `FACTORY_STEP_ENV_ALLOW`, comma-separated.
+ */
+const INHERITED = new Set([
+  'PATH',
+  'HOME',
+  'USER',
+  'LOGNAME',
+  'SHELL',
+  'TMPDIR',
+  'TMP',
+  'TEMP',
+  'TERM',
+  'LANG',
+  'LANGUAGE',
+  'TZ',
+  // Proxies and trust, without which nothing in a step reaches the model or
+  // the repository on a machine that routes through either.
+  'HTTP_PROXY',
+  'HTTPS_PROXY',
+  'NO_PROXY',
+  'http_proxy',
+  'https_proxy',
+  'no_proxy',
+  'SSL_CERT_FILE',
+  'SSL_CERT_DIR',
+  'NODE_EXTRA_CA_CERTS',
+  'REQUESTS_CA_BUNDLE',
+  'GIT_SSL_CAINFO',
+  // Windows: where the system is, and what Git for Windows' shell needs.
+  'SystemRoot',
+  'SYSTEMROOT',
+  'ComSpec',
+  'COMSPEC',
+  'PATHEXT',
+  'windir',
+  'WINDIR',
+  'APPDATA',
+  'LOCALAPPDATA',
+  'USERPROFILE',
+  'HOMEDRIVE',
+  'HOMEPATH',
+  'ProgramFiles',
+  'ProgramFiles(x86)',
+  'ProgramData',
+  'SystemDrive',
+  'USERNAME',
+]);
+const INHERITED_PREFIXES = ['LC_', 'XDG_'];
+
+/** Whether a variable of the runner's may be seen by a step. */
+export function inheritable(key: string, extra: ReadonlySet<string> = new Set()): boolean {
+  if (NEVER_INHERITED.includes(key)) return false;
+  if (INHERITED.has(key) || extra.has(key)) return true;
+  return INHERITED_PREFIXES.some((prefix) => key.startsWith(prefix));
+}
+
+/** The names `FACTORY_STEP_ENV_ALLOW` adds, from the runner's own environment. */
+export function extraInheritable(env: NodeJS.ProcessEnv): Set<string> {
+  return new Set(
+    (env.FACTORY_STEP_ENV_ALLOW ?? '')
+      .split(',')
+      .map((name) => name.trim())
+      .filter((name) => name.length > 0),
+  );
+}
+
 export function defaultWorkRoot(env: NodeJS.ProcessEnv = process.env): string {
   return env.FACTORY_WORK_DIR?.trim() || join(homedir(), '.code-factory', 'runs');
 }
@@ -87,6 +166,7 @@ export function processHost(options: ProcessHostOptions = {}): ContainerHost & {
   const root = options.root ?? defaultWorkRoot();
   const now = options.now ?? Date.now;
   const inherited = options.env ?? process.env;
+  const extraAllowed = extraInheritable(inherited);
   const boxes = new Map<string, Box>();
 
   /** The sandbox, or `sandbox_lost` — for a directory that is gone OR one past its ceiling. */
@@ -107,10 +187,19 @@ export function processHost(options: ProcessHostOptions = {}): ContainerHost & {
     return found;
   }
 
-  /** `/work/x` → the sandbox's own `x`; anything else is a path on this machine. */
+  /**
+   * `/work/x` → the sandbox's own `x`; anything else is a path on this machine.
+   *
+   * Held inside the workspace first: on this host `/work` is a directory on
+   * the machine, and `/work/../../.ssh/authorized_keys` — from an edited
+   * document's path, an output file's, a skill's name — walked straight out
+   * of it into the account running the runner (`paths.ts`).
+   */
   function mapPath(b: Box, path: string): string {
     if (path === WORKDIR) return b.dir;
-    if (path.startsWith(`${WORKDIR}/`)) return join(b.dir, path.slice(WORKDIR.length + 1));
+    if (path.startsWith(`${WORKDIR}/`)) {
+      return join(b.dir, withinWorkspace(path.slice(WORKDIR.length + 1), 'workspace path'));
+    }
     return path;
   }
 
@@ -123,7 +212,7 @@ export function processHost(options: ProcessHostOptions = {}): ContainerHost & {
   function childEnv(b: Box, extra?: Record<string, string>): Record<string, string> {
     const env: Record<string, string> = {};
     for (const [key, value] of Object.entries(inherited)) {
-      if (value !== undefined && !NEVER_INHERITED.includes(key)) env[key] = value;
+      if (value !== undefined && inheritable(key, extraAllowed)) env[key] = value;
     }
     Object.assign(env, b.env, extra ?? {});
     // Never a prompt: there is nobody at this terminal to answer git.

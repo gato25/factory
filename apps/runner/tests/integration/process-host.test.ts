@@ -176,3 +176,89 @@ describe('what this host cannot do, it refuses', () => {
     await host.destroy(id);
   });
 });
+
+describe('what a step is allowed to see of the runner’s environment', () => {
+  test('the runner’s own secrets never reach a step, whatever their names', async () => {
+    const { inheritable } = await import('../../src/container/process-host');
+    for (const name of [
+      'SESSION_SECRET',
+      'SECRET_ENCRYPTION_KEY',
+      'RUNNER_AUTH_TOKEN',
+      'RUNNER_AUTH_TOKEN_PREVIOUS',
+      'DATABASE_URL',
+      'GITHUB_CLIENT_SECRET',
+      'GITLAB_CLIENT_SECRET',
+      'ANTHROPIC_API_KEY',
+      'SOME_FUTURE_SECRET',
+    ]) {
+      expect(inheritable(name)).toBe(false);
+    }
+  });
+
+  test('what a process needs does: tools, home, locale, proxies, trust', async () => {
+    const { inheritable } = await import('../../src/container/process-host');
+    for (const name of [
+      'PATH',
+      'HOME',
+      'LANG',
+      'LC_ALL',
+      'TMPDIR',
+      'HTTPS_PROXY',
+      'NODE_EXTRA_CA_CERTS',
+      'XDG_CONFIG_HOME',
+      'SystemRoot',
+    ]) {
+      expect(inheritable(name)).toBe(true);
+    }
+  });
+
+  test('an operator may name more, and the denylist still wins', async () => {
+    const { extraInheritable, inheritable } = await import('../../src/container/process-host');
+    const extra = extraInheritable({
+      FACTORY_STEP_ENV_ALLOW: 'NPM_CONFIG_REGISTRY, CI ,GIT_TOKEN',
+    });
+    expect(inheritable('NPM_CONFIG_REGISTRY', extra)).toBe(true);
+    expect(inheritable('CI', extra)).toBe(true);
+    // A credential the run supplies is the run's, never the runner's shell's.
+    expect(inheritable('GIT_TOKEN', extra)).toBe(false);
+  });
+
+  test('a step sees the allowlisted variables and the run’s own, and none of the runner’s secrets', async () => {
+    const leaky = processHost({
+      root,
+      now: () => clock,
+      env: {
+        PATH: process.env.PATH,
+        HOME: process.env.HOME,
+        SESSION_SECRET: 'the-web-apps-session-secret',
+        SECRET_ENCRYPTION_KEY: 'the-key-that-seals-every-credential',
+        RUNNER_AUTH_TOKEN: 'the-runners-own-token',
+      },
+    });
+    const id = await leaky.create(spec);
+    const printed = await leaky.exec(id, ['sh', '-c', 'env']);
+    expect(printed.stdout).toContain('GIT_TOKEN=glpat-from-the-run');
+    expect(printed.stdout).toMatch(/^PATH=/m);
+    expect(printed.stdout).not.toContain('SESSION_SECRET');
+    expect(printed.stdout).not.toContain('SECRET_ENCRYPTION_KEY');
+    expect(printed.stdout).not.toContain('RUNNER_AUTH_TOKEN');
+    await leaky.destroy(id);
+  });
+});
+
+describe('a workspace path that leaves the workspace', () => {
+  test('is refused before it touches the machine', async () => {
+    const id = await host.create(spec);
+    await expect(host.writeFile(id, '/work/../../escaped.txt', 'x')).rejects.toThrow(
+      /leaves the workspace/,
+    );
+    await expect(host.readFile(id, '/work/../../../etc/hostname')).rejects.toThrow(
+      /leaves the workspace/,
+    );
+    expect(existsSync(join(root, 'escaped.txt'))).toBe(false);
+    // A path that stays inside, however it is spelt, is fine.
+    await host.writeFile(id, '/work/docs/../notes.md', 'ok');
+    expect(await host.readFile(id, '/work/notes.md')).toBe('ok');
+    await host.destroy(id);
+  });
+});

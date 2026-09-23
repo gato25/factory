@@ -308,3 +308,75 @@ describe('who a step’s container runs as', () => {
     expect(argv).toContain('HOME=/tmp/factory-home-1001');
   });
 });
+
+describe('the step containers a workspace has alive', () => {
+  /** An exec whose `docker run` does not return until the test says. */
+  function hanging() {
+    const calls: string[][] = [];
+    let release: ((r: ExecResult) => void) | null = null;
+    const exec = async (_command: string, argv: string[]): Promise<ExecResult> => {
+      calls.push(argv);
+      if (argv[0] === 'run') {
+        return new Promise<ExecResult>((resolve) => {
+          release = resolve;
+        });
+      }
+      return { exitCode: 0, stdout: '', stderr: '' };
+    };
+    return {
+      calls,
+      exec: exec as never,
+      release: () => release?.({ exitCode: 137, stdout: '', stderr: '' }),
+    };
+  }
+
+  test('destroying the workspace removes a step container still running over it', async () => {
+    const spy = hanging();
+    const base = Object.assign(new FakeHost(), { root: '/runs' }) as FakeHost & { root: string };
+    const host = isolatingHost({ base, image: 'img', exec: spy.exec });
+    const id = await host.create(spec);
+    const step = host.execIsolated?.(id, ['claude', '-p', 'x']);
+    await new Promise((resolve) => setTimeout(resolve, 5));
+
+    await host.destroy(id);
+    // The container was named before `docker run`, so destroy could find it.
+    const removed = spy.calls.find((argv) => argv[0] === 'rm');
+    expect(removed).toEqual(['rm', '--force', `factory-${id}-1`]);
+    expect(base.destroyed).toEqual([id]);
+    spy.release();
+    await step;
+  });
+
+  test('quiescing the workspace stops the step container first, and counts it', async () => {
+    const spy = hanging();
+    const base = Object.assign(new FakeHost(), { root: '/runs' }) as FakeHost & { root: string };
+    base.leftover = 2;
+    const host = isolatingHost({ base, image: 'img', exec: spy.exec });
+    const id = await host.create(spec);
+    const step = host.execIsolated?.(id, ['claude', '-p', 'x']);
+    await new Promise((resolve) => setTimeout(resolve, 5));
+
+    const { stopped } = (await host.quiesce?.(id)) ?? { stopped: 0 };
+    expect(stopped).toBe(3);
+    expect(spy.calls.some((argv) => argv[0] === 'rm' && argv.at(-1) === `factory-${id}-1`)).toBe(
+      true,
+    );
+    expect(base.quiesced).toEqual([id]);
+    spy.release();
+    await step;
+  });
+
+  test('a step that finished is not removed again later', async () => {
+    const calls: string[][] = [];
+    const exec = async (_c: string, argv: string[]): Promise<ExecResult> => {
+      calls.push(argv);
+      return { exitCode: 0, stdout: '', stderr: '' };
+    };
+    const base = Object.assign(new FakeHost(), { root: '/runs' }) as FakeHost & { root: string };
+    const host = isolatingHost({ base, image: 'img', exec: exec as never });
+    const id = await host.create(spec);
+    await host.execIsolated?.(id, ['claude', '-p', 'x']);
+    await host.destroy(id);
+    expect(calls.filter((argv) => argv[0] === 'rm')).toEqual([]);
+  });
+});

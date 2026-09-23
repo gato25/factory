@@ -174,3 +174,48 @@ describe('a lock on the same machine', () => {
     expect(processIsAlive(2 ** 22 - 7)).toBe(false);
   });
 });
+
+describe('who may read the lock and the state', () => {
+  test.skipIf(process.platform === 'win32')(
+    'the lock file is private to the runner’s user',
+    async () => {
+      const lock = await acquireInstanceLock(dir, { pid: 100, host: 'alpha', log: quiet });
+      expect((await stat(join(dir, LOCK_FILE))).mode & 0o777).toBe(0o600);
+      await lock.release();
+    },
+  );
+
+  test.skipIf(process.platform === 'win32')(
+    'a state file — which carries the run’s resume secret — is private too',
+    async () => {
+      const { fileStateStore } = await import('../../src/orchestrate/state');
+      const { readdir } = await import('node:fs/promises');
+      const stateDir = join(dir, 'state');
+      await fileStateStore(stateDir).set({
+        runId: 'r-1',
+        snapshot: { run_id: 'r-1', resume_secret: 'the-secret' } as never,
+        sandbox: {
+          image: 'x',
+          cpu: 1,
+          memoryMb: 1,
+          wallClockMinutes: 1,
+          networkDuringImplement: true,
+        },
+        index: 0,
+        facts: {},
+        spentUsd: 0,
+        designScreens: [],
+        returningTo: null,
+        feedback: null,
+        paused: false,
+        phase: 'starting',
+        startedAt: 'now',
+        updatedAt: 'now',
+      });
+      expect((await stat(stateDir)).mode & 0o777).toBe(0o700);
+      for (const name of await readdir(stateDir)) {
+        expect((await stat(join(stateDir, name))).mode & 0o777).toBe(0o600);
+      }
+    },
+  );
+});

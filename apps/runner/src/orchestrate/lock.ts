@@ -2,6 +2,7 @@ import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { hostname } from 'node:os';
 import { join } from 'node:path';
 import { log as runnerLog } from '../errors';
+import { PRIVATE_DIR, PRIVATE_FILE } from './state';
 
 /**
  * Two things checked before this service takes a single request, because
@@ -45,8 +46,8 @@ export const LOCK_HEARTBEAT_MS = 30_000;
 export async function assertWritable(dir: string): Promise<void> {
   const probe = join(dir, `.write-probe-${process.pid}`);
   try {
-    await mkdir(dir, { recursive: true });
-    await writeFile(probe, new Date().toISOString());
+    await mkdir(dir, { recursive: true, mode: PRIVATE_DIR });
+    await writeFile(probe, new Date().toISOString(), { mode: PRIVATE_FILE });
     await rm(probe, { force: true });
   } catch (error) {
     throw new Error(
@@ -95,7 +96,7 @@ export async function acquireInstanceLock(
   const log = options.log ?? runnerLog;
   const path = join(dir, LOCK_FILE);
 
-  await mkdir(dir, { recursive: true });
+  await mkdir(dir, { recursive: true, mode: PRIVATE_DIR });
   const existing = await readLock(path);
   if (existing) {
     const age = now() - Date.parse(existing.heartbeatAt);
@@ -133,7 +134,7 @@ export async function acquireInstanceLock(
       heartbeatAt: new Date(now()).toISOString(),
     };
     const temporary = `${path}.${pid}.tmp`;
-    await writeFile(temporary, JSON.stringify(record, null, 2));
+    await writeFile(temporary, JSON.stringify(record, null, 2), { mode: PRIVATE_FILE });
     await rename(temporary, path);
   };
   await write();

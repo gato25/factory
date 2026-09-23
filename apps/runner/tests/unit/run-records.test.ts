@@ -92,3 +92,18 @@ describe('the file-backed run store', () => {
     expect(await fileRunStore(dir).get('nobody')).toBeUndefined();
   });
 });
+
+describe('who may read the files', () => {
+  test.skipIf(process.platform === 'win32')(
+    'the directory is private to the runner’s user, and so is every record',
+    async () => {
+      const { stat } = await import('node:fs/promises');
+      const store = fileRunStore(dir);
+      await store.set(snapshot.run_id, { snapshot, sandbox, credentials, containerId: 'c-1' });
+      // The snapshot in a record carries the run's resume secret.
+      expect((await stat(dir)).mode & 0o777).toBe(0o700);
+      const [file] = await readdir(dir);
+      expect((await stat(join(dir, file as string))).mode & 0o777).toBe(0o600);
+    },
+  );
+});
