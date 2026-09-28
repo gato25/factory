@@ -243,147 +243,6 @@ export async function artifactContent(database: Database, artifactId: string) {
 }
 
 /**
- * The four dashboard tiles (FR-071).
- *
- * Each carries a second line, as the design's tiles do: a bare number tells
- * you how many, and the line under it tells you enough to decide whether to
- * look. "6" is a fact; "2 GitLab · 4 GitHub" is the beginning of an answer.
- */
-export async function dashboardTiles(database: Database) {
-  const weekAgo = new Date(Date.now() - 7 * 24 * 3_600_000);
-
-  const byProvider = await database
-    .select({ provider: repositories.provider, n: count() })
-    .from(repositories)
-    .where(eq(repositories.status, 'connected'))
-    .groupBy(repositories.provider);
-
-  const runningRows = await database
-    .select({ repositoryId: tickets.repositoryId })
-    .from(tickets)
-    .where(inArray(tickets.status, ['queued', 'running']));
-
-  const [awaiting] = await database
-    .select({ n: count() })
-    .from(tickets)
-    .where(eq(tickets.status, 'waiting_approval'));
-
-  const doneThisWeek = await database
-    .select({ mergeRequestUrl: tickets.mergeRequestUrl })
-    .from(tickets)
-    .where(and(eq(tickets.status, 'done'), gte(tickets.updatedAt, weekAgo)));
-
-  const gitlab = byProvider.find((row) => row.provider === 'gitlab')?.n ?? 0;
-  const github = byProvider.find((row) => row.provider === 'github')?.n ?? 0;
-  // A merge request that was opened but has no address is one the provider
-  // never confirmed, and counting it as merged would overstate the week.
-  const opened = doneThisWeek.filter((row) => row.mergeRequestUrl !== null).length;
-
-  return {
-    repositoriesConnected: gitlab + github,
-    repositoriesByProvider: { gitlab, github },
-    ticketsRunning: runningRows.length,
-    ticketsRunningAcrossRepositories: new Set(runningRows.map((row) => row.repositoryId)).size,
-    awaitingApproval: awaiting?.n ?? 0,
-    mergeRequestsThisWeek: doneThisWeek.length,
-    mergeRequestsOpened: opened,
-  };
-}
-
-/** Every active run, with its progress through the pipeline (FR-072). */
-export async function activeRuns(database: Database) {
-  const rows = await database
-    .select({
-      runId: runs.id,
-      status: runs.status,
-      currentStepIndex: runs.currentStepIndex,
-      costUsd: runs.costUsd,
-      snapshot: runs.snapshot,
-      ticketId: tickets.id,
-      reference: tickets.reference,
-      title: tickets.title,
-      ticketStatus: tickets.status,
-      // The artboards name a repository, not its whole path.
-      repository: repositories.name,
-    })
-    .from(runs)
-    .innerJoin(tickets, eq(tickets.id, runs.ticketId))
-    .leftJoin(repositories, eq(repositories.id, tickets.repositoryId))
-    .where(inArray(runs.status, ['queued', 'running', 'waiting_approval', 'opening_mr']))
-    .orderBy(desc(runs.createdAt));
-
-  // The list covers the same statuses the queue does, so one pass over the
-  // queue answers "where is it?" for every waiting run here. Asking per row
-  // would be the same work repeated once per run, and "queued" on its own
-  // tells the reader nothing they can act on (FR-082).
-  const queue = await queueState(database);
-
-  return rows.map((row) => {
-    const snapshot = row.snapshot as PipelineSnapshot;
-    return {
-      runId: row.runId,
-      ticketId: row.ticketId,
-      reference: row.reference,
-      title: row.title,
-      repository: row.repository ?? '',
-      pipeline: snapshot.pipeline.name,
-      status: row.status,
-      costUsd: row.costUsd,
-      stepCount: snapshot.pipeline.steps.length,
-      currentStepIndex: row.currentStepIndex,
-      queuePosition: queue.entries.find((entry) => entry.runId === row.runId)?.position ?? null,
-      stepLabels: snapshot.pipeline.steps.map(
-        (step) => snapshot.agents.find((a) => a.id === step.agent_id)?.name ?? labelFor(step.type),
-      ),
-    };
-  });
-}
-
-/**
- * The activity feed, derived from the rows that already record what happened
- * rather than duplicated into a table of its own (FR-073).
- */
-export async function recentActivity(database: Database, limit = 20) {
-  const rows = await database
-    .select({
-      runId: runs.id,
-      status: runs.status,
-      finishedAt: runs.finishedAt,
-      createdAt: runs.createdAt,
-      failureReason: runs.failureReason,
-      attempt: runs.attempt,
-      reference: tickets.reference,
-      title: tickets.title,
-      ticketId: tickets.id,
-      mergeRequestUrl: tickets.mergeRequestUrl,
-    })
-    .from(runs)
-    .innerJoin(tickets, eq(tickets.id, runs.ticketId))
-    .orderBy(desc(sql`coalesce(${runs.finishedAt}, ${runs.createdAt})`))
-    .limit(limit);
-
-  return rows.map((row) => ({
-    runId: row.runId,
-    ticketId: row.ticketId,
-    reference: row.reference,
-    title: row.title,
-    at: row.finishedAt ?? row.createdAt,
-    kind:
-      row.status === 'done'
-        ? ('mr_opened' as const)
-        : row.status === 'failed'
-          ? ('run_failed' as const)
-          : row.status === 'waiting_approval'
-            ? ('gate_reached' as const)
-            : row.status === 'cancelled'
-              ? ('run_cancelled' as const)
-              : ('ticket_created' as const),
-    detail: row.status === 'failed' ? row.failureReason : row.mergeRequestUrl,
-    attempt: row.attempt,
-  }));
-}
-
-/**
  * The tickets board, with the status strip each card shows: whichever of the
  * running step, the pending gate, the merge request, or the failure applies
  * (FR-023, FR-023a).
@@ -402,6 +261,17 @@ export interface BoardTicket {
   mergeRequestUrl: string | null;
   hasUi: boolean | null;
   strip: { kind: 'step' | 'gate' | 'merge_request' | 'failure' | 'none'; text: string };
+  /**
+   * Its progress through the pipeline its run pinned — or, before it has a
+   * run, the version the ticket pinned (specs/004-bento-redesign FR-018).
+   */
+  steps: StepShape;
+  /**
+   * While it waits at a checkpoint: the step the checkpoint gates, under its
+   * stored name, and since when — the moment the run paused, which is also
+   * what a gate's timeout counts from. The approvals tile says both (FR-011).
+   */
+  gate: { step: string | null; since: string } | null;
 }
 
 export async function board(database: Database): Promise<BoardTicket[]> {
@@ -423,8 +293,11 @@ export async function board(database: Database): Promise<BoardTicket[]> {
       runId: runs.id,
       runStatus: runs.status,
       currentStepIndex: runs.currentStepIndex,
+      failureStepIndex: runs.failureStepIndex,
       failureReason: runs.failureReason,
+      runUpdatedAt: runs.updatedAt,
       snapshot: runs.snapshot,
+      pipelineVersion: tickets.pipelineVersion,
     })
     .from(tickets)
     .leftJoin(repositories, eq(repositories.id, tickets.repositoryId))
@@ -432,6 +305,21 @@ export async function board(database: Database): Promise<BoardTicket[]> {
     .leftJoin(users, eq(users.id, tickets.createdBy))
     .leftJoin(runs, eq(runs.id, tickets.currentRunId))
     .orderBy(desc(tickets.createdAt));
+
+  // Every card's bar in two queries, not two per card (research D3).
+  const shapes = await stepShapes(
+    database,
+    rows.map((row) => ({
+      ticketId: row.id,
+      pipelineId: row.pipelineId,
+      pipelineVersion: row.pipelineVersion,
+      runId: row.runId,
+      runStatus: row.runStatus as RunStatus | null,
+      currentStepIndex: row.currentStepIndex,
+      failureStepIndex: row.failureStepIndex,
+      snapshot: row.snapshot as PipelineSnapshot | null,
+    })),
+  );
 
   return rows.map((row) => {
     const snapshot = row.snapshot as PipelineSnapshot | null;
@@ -489,6 +377,11 @@ export async function board(database: Database): Promise<BoardTicket[]> {
       mergeRequestUrl: row.mergeRequestUrl,
       hasUi: row.hasUi,
       strip,
+      steps: shapes.get(row.id) as StepShape,
+      gate:
+        row.runStatus === 'waiting_approval' && row.runUpdatedAt
+          ? { step: gatedLabel, since: row.runUpdatedAt.toISOString() }
+          : null,
     };
   });
 }

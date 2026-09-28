@@ -148,18 +148,66 @@ export const mn = {
   },
 
   dashboard: {
-    glance: 'Ажлын талбарын тойм',
     loading: 'Ачаалж байна…',
-    connectedRepos: 'Холбогдсон репозитори',
-    reposByProvider: (gitlab: number, github: number) => `${gitlab} GitLab · ${github} GitHub`,
-    ticketsRunning: 'Ажиллаж буй даалгавар',
-    acrossRepos: (repositories: number) => `${repositories} репозиторид`,
-    waitingForApproval: 'Баталгаажуулалт хүлээж буй',
-    nothingToReview: 'хянах зүйл байхгүй',
-    needsYourReview: 'таны хяналт шаардлагатай',
-    mergeRequestsThisWeek: 'Долоо хоногийн нэгтгэлт',
-    mergeRequests: (opened: number, withoutAddress: number) =>
-      `${opened} нээгдсэн · ${withoutAddress} хаяггүй`,
+    /** The ticket list tile (artboard 01, "Tile · Даалгавар"). */
+    ticketsTitle: 'Даалгаврууд',
+    ticketsSub: 'Даалгавар бүр өөрийн дамжлагаар явна — зурвас бүр тэр дамжлагын нэг алхам',
+    viewAll: 'Бүгдийг харах →',
+    groups: {
+      inProgress: 'Ажиллаж буй',
+      needsAttention: 'Анхаарал хэрэгтэй',
+      queued: 'Дараалалд',
+      done: 'Дууссан',
+    },
+    groupCount: (group: string, n: number) => `${group}: ${n}`,
+    more: (n: number) => `Өөр ${n} — самбарыг нээх →`,
+    nothing: 'Одоогоор ажиллаж буй, хүлээгдэж буй даалгавар алга.',
+    /** A row's state in words, beside its bar (FR-006, FR-010). */
+    status: {
+      running: (phrase: string, elapsed: string | null) =>
+        elapsed ? `${phrase} · ${elapsed}` : phrase,
+      openingMergeRequest: 'Нэгтгэх хүсэлт нээж байна',
+      waiting: 'Таны батлалт хүлээж байна',
+      failed: (reason: string) => `${reason} · шалтгааныг харах`,
+      failedNoReason: 'Амжилтгүй болсон',
+      /** 001 FR-082: never the bare word "queued". */
+      queuedAt: (position: number) => `Дараалалд · ${position}-р байр`,
+      queuedNext: 'Дараалалд · удахгүй эхэлнэ',
+      mergeRequestOpened: (reference: string) => `MR ${reference} нээгдлээ · хүн шийднэ`,
+      done: 'Дууссан · хүн шийднэ',
+    },
+    /** How long a step has been running: "4 мин", "1 ц 12 мин". */
+    elapsed: (minutes: number) =>
+      minutes < 1
+        ? 'дөнгөж эхэлсэн'
+        : minutes < 60
+          ? `${minutes} мин`
+          : `${Math.floor(minutes / 60)} ц ${minutes % 60} мин`,
+    /** The first-attempt tile (FR-012). */
+    firstAttempt: {
+      label: 'Эхний оролдлогоор амжилттай',
+      counted: (successes: number, counted: number) =>
+        `сүүлийн 30 хоног · ${counted} даалгавраас ${successes}`,
+      nothing: 'Хэмжих зүйл алга',
+      nothingYet: 'сүүлийн 30 хоногт үр дүн нь тодорхой болсон даалгавар хараахан алга',
+    },
+    /** The week tile (FR-013). */
+    week: {
+      title: 'Нэгтгэх хүсэлт',
+      sub: 'энэ 7 хоногт нээсэн',
+      /** Sunday first, as `Date.getDay()` counts. */
+      weekdays: ['Ня', 'Да', 'Мя', 'Лх', 'Пү', 'Ба', 'Бя'],
+      today: 'өнөөдөр',
+      day: (weekday: string, n: number) => `${weekday}: ${n} нэгтгэх хүсэлт`,
+      costToday: 'Өнөөдрийн зардал',
+      costNote: 'бүртгэгдсэн зардал',
+    },
+    /** What `readiness()` finds missing, as the notice names it. */
+    missing: {
+      'the runner address': 'гүйцэтгэх үйлчилгээний хаяг',
+      'a model credential': 'загварын нэвтрэх түлхүүр',
+      'a connected repository': 'холбогдсон репозитори',
+    } as Record<string, string>,
     /** Joins a list the way a person reads one, not with a bare comma. */
     listJoin: ', ',
     listLast: ' ба ',
@@ -176,36 +224,12 @@ export const mn = {
       'Администратортаа хандаарай — ажлын талбарын холболт, хадгалсан мэдээллийг зөвхөн тэд тохируулна (FR-004).',
   },
 
-  activeRuns: {
-    heading: 'Идэвхтэй ажиллагаа',
-    viewAll: 'Бүх даалгавар →',
-    loading: 'Ачаалж байна…',
-    nothingRunning: 'Ажиллаж байгаа зүйл байхгүй.',
-    progress: 'явц',
-    live: 'ажиллаж байна',
-    queuePosition: (position: number) => `дараалалд ${position}-рт`,
-    needsApproval: 'баталгаажуулалт хэрэгтэй',
-  },
-
-  activity: {
-    heading: 'Сүүлийн үйл ажиллагаа',
-    loading: 'Ачаалж байна…',
-    empty: 'Одоогоор юу ч болоогүй.',
-    /**
-     * The verb follows the ticket it happened to, because that is the order
-     * Mongolian reads in and the order the artboard draws.
-     */
-    mrOpened: '— нэгтгэх хүсэлт нээгдлээ',
-    runFailed: '— ажиллагаа амжилтгүй',
-    gateReached: '— хяналтын цэгт хүрлээ',
-    runCancelled: '— ажиллагаа цуцлагдлаа',
-    ticketCreated: '— даалгавар үүслээ',
-    attempt: (n: number) => `${n}-р оролдлого`,
-  },
-
   approvals: {
-    heading: 'Таны баталгаажуулалт',
-    review: 'Хянах',
+    heading: 'Таны батлалт хэрэгтэй',
+    sub: 'Агент ажлаа дуусгаад таныг хүлээж байна',
+    approve: 'Батлах',
+    review: (reference: string, title: string) => `${reference} ${title}-г хянах`,
+    ready: (ago: string) => `${ago} бэлэн болсон`,
   },
 
   /** The words for a merge request, which the provider decides. */
@@ -1157,5 +1181,4 @@ export const mn = {
     or: 'эсвэл имэйлээр',
     signInNote: 'Нэвтэрснээр юу ч холбогдохгүй. Репозиториео дараагийн алхамд нэмнэ.',
   },
-
 };

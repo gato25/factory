@@ -2,16 +2,9 @@ import { notAuthorised } from '@factory/shared';
 import * as v from 'valibot';
 import { getRequestEvent, query } from '$app/server';
 import { db } from '$lib/db';
-import {
-  activeRuns,
-  artifactContent,
-  dashboardTiles,
-  queuePosition,
-  recentActivity,
-  runView,
-  stepLog,
-} from '$lib/services/run-view';
 import { m } from '$lib/i18n';
+import * as dashboard from '$lib/services/dashboard';
+import { artifactContent, queuePosition, runView, stepLog } from '$lib/services/run-view';
 
 /** Anyone in the workspace may watch; deciding is what is restricted (FR-064). */
 function requireUser() {
@@ -57,19 +50,20 @@ export const artifact = query(v.pipe(v.string(), v.uuid()), async (id) => {
   };
 });
 
-export const tiles = query(async () => {
+/**
+ * The dashboard's ticket list: in progress, needs attention, queued and done
+ * this week, each with a step bar sized to the ticket's own pipeline
+ * (specs/004-bento-redesign FR-009, FR-010).
+ */
+export const dashboardTickets = query(async () => {
   requireUser();
-  return dashboardTiles(db());
+  return dashboard.dashboardTickets(db());
 });
 
-export const active = query(async () => {
+/** First-attempt rate, merge requests per day and today's cost (FR-012, FR-013). */
+export const dashboardFigures = query(async () => {
   requireUser();
-  return activeRuns(db());
-});
-
-export const activity = query(async () => {
-  requireUser();
-  return recentActivity(db());
+  return dashboard.dashboardFigures(db());
 });
 
 export const position = query(v.pipe(v.string(), v.uuid()), async (runId) => {

@@ -1,44 +1,57 @@
 <script lang="ts">
   import Icon from '$components/Icon.svelte';
+  import { stepName } from '$lib/default-names';
+  import { ago } from '$lib/format';
   import { m } from '$lib/i18n';
   import { ticketBoard } from '$lib/remote/tickets.remote';
 
   /**
-   * Every run waiting for a person, as the most prominent call to action on
-   * the page (FR-059). A paused run is the only thing on a dashboard that
-   * cannot make progress on its own, so it is shown above everything else.
+   * Every run waiting for a person, each with the action that reviews it
+   * (FR-011, 001 FR-059). A paused run is the only thing on the dashboard that
+   * cannot make progress on its own, so it gets the one tinted tile.
    *
-   * Built to `design.pen`: a header with an amber hand, the title and a count,
-   * then one plain row per run with an amber dot and a blue Review button. An
-   * earlier version put each row in an amber block inside the card — a
-   * coloured box inside a bordered box on a grey page — and the whole column
-   * shouted. Amber now appears exactly twice per row, on things that mean
-   * "waiting"; blue appears once, on the thing to press.
+   * One entry per waiting RUN, read from the board: a gate that several people
+   * may decide — the creator among them — is still one thing to decide.
+   *
+   * Built to artboard 01's "Tile · Батлалт": the golden tile, its count large,
+   * and per run the reference and what it gates, the title, how long it has
+   * been ready, and "Батлах".
    */
-  let { heading = m.approvals.heading }: { heading?: string } = $props();
-
   const board = $derived(ticketBoard());
   const waiting = $derived(
-    board.ready ? board.current.filter((row) => row.status === 'waiting_approval') : []
+    board.ready ? board.current.filter((row) => row.status === 'waiting_approval') : [],
   );
 </script>
 
 {#if waiting.length > 0}
-  <section class="approvals" aria-label={heading}>
-    <header>
-      <Icon name="hand" size={16} />
-      <h2>{heading}</h2>
-      <span class="count">{waiting.length}</span>
+  <section class="tile tile--approval approvals" aria-labelledby="approvals-heading">
+    <header class="head">
+      <div>
+        <h2 id="approvals-heading" class="title">{m.approvals.heading}</h2>
+        <p class="sub">{m.approvals.sub}</p>
+      </div>
+      <span class="n">{waiting.length}</span>
     </header>
     <ul>
       {#each waiting as ticket (ticket.id)}
-        <li>
-          <span class="dot"></span>
+        <li class="item">
           <span class="text">
-            <span class="title"><span class="id">{ticket.reference}</span> {ticket.title}</span>
-            <span class="sub">{ticket.repository} &middot; {ticket.strip.text}</span>
+            <span class="meta"
+              >{ticket.reference}{#if ticket.gate?.step}&nbsp;· {stepName(ticket.gate.step)}{/if}</span
+            >
+            <span class="item-title" title={ticket.title}>{ticket.title}</span>
+            <span class="when">
+              {#if ticket.gate}{m.approvals.ready(ago(ticket.gate.since))}{:else}{ticket.repository}{/if}
+            </span>
           </span>
-          <a class="review" href="/tickets/{ticket.id}/approve">{m.approvals.review}</a>
+          <a
+            class="approve"
+            href="/tickets/{ticket.id}/approve"
+            aria-label={m.approvals.review(ticket.reference, ticket.title)}
+          >
+            {m.approvals.approve}
+            <Icon name="arrow-right" size={14} />
+          </a>
         </li>
       {/each}
     </ul>
@@ -47,98 +60,92 @@
 
 <style>
   .approvals {
-    padding: 16px 20px;
-    background: var(--surface);
-    border: 1px solid var(--card-border);
-    border-radius: var(--r-lg);
-    box-shadow: 0 1px 2px #0f172a0a;
-  }
-  header {
     display: flex;
-    align-items: center;
-    gap: 8px;
-    padding-bottom: 6px;
-    color: var(--warning);
+    flex-direction: column;
+    gap: 16px;
   }
-  h2 {
+  .head {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .title {
     margin: 0;
     font-family: var(--font-head);
-    font-size: 15px;
+    font-size: 19px;
     font-weight: 600;
-    letter-spacing: -0.01em;
-    color: var(--text);
+    letter-spacing: -0.3px;
+    color: #4a3a00;
   }
-  .count {
-    padding: 2px 8px;
-    border-radius: 999px;
-    background: var(--surface-2);
-    font-family: var(--font-mono);
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text-2);
+  .sub {
+    margin: 4px 0 0;
+    font-size: var(--type-caption);
+    color: #7a6310;
   }
-
+  .n {
+    font-family: var(--font-head);
+    font-size: 44px;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -1.5px;
+    color: var(--warning-text);
+  }
   ul {
-    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
     margin: 0;
     padding: 0;
+    list-style: none;
   }
-  li {
+  .item {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 10px 0;
-    border-top: 1px solid var(--surface-2);
-  }
-  li:first-child {
-    border-top: 0;
-  }
-  .dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 999px;
-    background: var(--warning);
-    flex: none;
+    padding: 14px 14px 14px 16px;
+    border-radius: 16px;
+    background: #fffbeab3;
+    box-shadow: 0 4px 12px #b8700f14;
   }
   .text {
     display: flex;
-    flex-direction: column;
-    gap: 2px;
     flex: 1;
+    flex-direction: column;
+    gap: 3px;
     min-width: 0;
   }
-  .title {
-    font-size: 13px;
+  .meta {
+    font-size: var(--type-caption);
     font-weight: 600;
-    color: var(--text);
+    color: var(--warning-text);
+  }
+  .item-title {
     overflow: hidden;
+    font-size: var(--type-body);
+    font-weight: 600;
     text-overflow: ellipsis;
     white-space: nowrap;
+    color: var(--on-amber);
   }
-  .id {
-    font-family: var(--font-mono);
-    font-weight: 500;
-    color: var(--text-3);
+  .when {
+    font-size: var(--type-caption);
+    color: #7a6310;
   }
-  .sub {
-    font-size: 12px;
-    color: var(--text-2);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .review {
+  .approve {
+    display: inline-flex;
     flex: none;
-    padding: 7px 12px;
-    border-radius: var(--r-sm);
-    background: var(--accent);
-    color: var(--text-inv);
-    font-size: 13px;
-    font-weight: 600;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 14px;
+    border-radius: 11px;
+    font-size: var(--type-body);
+    font-weight: 700;
     text-decoration: none;
-    white-space: nowrap;
+    color: var(--on-amber);
+    background: linear-gradient(180deg, var(--amber), #d9a200);
+    box-shadow: 0 4px 10px #d9a2004d;
   }
-  .review:hover {
-    background: var(--accent-text);
+  .approve:hover {
+    filter: brightness(1.04);
   }
 </style>

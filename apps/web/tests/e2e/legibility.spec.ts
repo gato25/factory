@@ -75,6 +75,22 @@ const SCREENS: Screen[] = [
     within: '.top-nav',
     primary: ['.section', 'input', '.btn'],
   },
+  {
+    name: '01 Dashboard',
+    path: () => '/',
+    signedIn: true,
+    // Titles of things, the approvals' titles and actions, the figures' labels.
+    primary: [
+      '.row-title',
+      '.item-title',
+      '.approve',
+      '.link',
+      '.more',
+      '.ring-tile .label',
+      '.cost .l',
+      '.notice',
+    ],
+  },
 ];
 
 async function seed(): Promise<Seeded> {

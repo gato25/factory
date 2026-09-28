@@ -2,6 +2,7 @@ import { createHmac, randomUUID } from 'node:crypto';
 import type { BrowserContext } from '@playwright/test';
 import { expect, test } from '@playwright/test';
 import postgres from 'postgres';
+import { m } from '../../src/lib/i18n';
 
 /**
  * User Story 8's Independent Test (quickstart.md scenario H): set the
@@ -251,11 +252,20 @@ test.describe('setting up and governing the workspace', () => {
 
     // And the dashboard says the same thing, rather than the bare word
     // "queued" that a reader can do nothing with (FR-082).
+    // The "Active runs" card left the dashboard; its successor for a waiting
+    // run is the "queued" group (specs/004-bento-redesign research D12).
     await page.goto('/');
-    const waiting = page.locator('.card', { hasText: 'Active runs' });
-    await expect(waiting).toContainText('position 3 in the queue');
-    await expect(waiting).toContainText('position 1 in the queue');
-    await expect(waiting).not.toContainText('queued');
+    const queued = page.getByRole('region', {
+      name: new RegExp(`^${m.dashboard.groups.queued}: \\d+$`),
+    });
+    const row = (index: number) => queued.locator(`[data-ticket="${seeded.ticketIds[index]}"]`);
+    await expect(row(4)).toContainText(m.dashboard.status.queuedAt(3));
+    await expect(row(2)).toContainText(m.dashboard.status.queuedAt(1));
+    // Every waiting run says where it is — never the bare word alone.
+    for (const index of [2, 3, 4]) {
+      await expect(row(index).locator('.status')).toHaveText(/\d/);
+      await expect(row(index)).not.toContainText(m.dashboard.status.queuedNext);
+    }
   });
 
   test('an administrator sees the whole queue, in order', async ({ page, context }) => {

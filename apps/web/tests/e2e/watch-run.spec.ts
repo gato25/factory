@@ -1,6 +1,7 @@
 import { createHmac, randomUUID } from 'node:crypto';
 import { expect, test } from '@playwright/test';
 import postgres from 'postgres';
+import { m } from '../../src/lib/i18n';
 
 /**
  * User Story 2's Independent Test (quickstart.md scenario B): from the ticket
@@ -199,7 +200,7 @@ test.describe('watching a run', () => {
     });
   });
 
-  test('the dashboard lists the run and its progress (FR-071, FR-072)', async ({
+  test('the dashboard lists the run under its state, and moves it live (FR-009, FR-014)', async ({
     page,
     context,
   }) => {
@@ -215,10 +216,29 @@ test.describe('watching a run', () => {
         sameSite: 'Lax',
       },
     ]);
+    const callback = (body: Record<string, unknown>) =>
+      page.request.post('http://localhost:5173/api/hooks/orchestrator', {
+        headers: { authorization: `Bearer ${seeded.secret}` },
+        data: { run_id: seeded.runId, attempt: 1, ...body },
+      });
 
+    // The "tickets running" tile and the "Active runs" list left the
+    // dashboard (specs/004-bento-redesign research D12); their successor is
+    // the grouped list, whose "in progress" heading and row are asserted here.
     await page.goto('/');
-    await expect(page.getByText('tickets running')).toBeVisible();
-    await expect(page.getByText('Active runs')).toBeVisible();
-    await expect(page.getByText(/Add Google OAuth sign-in/).first()).toBeVisible();
+    const row = page.locator(`[data-ticket="${seeded.ticketId}"]`);
+    const group = (name: string) =>
+      page.getByRole('region', { name: new RegExp(`^${name}: \\d+$`) });
+    await expect(group(m.dashboard.groups.queued).locator(row)).toBeVisible();
+    await expect(row).toContainText('Add Google OAuth sign-in');
+
+    // The run starts: its row moves under "in progress" without a reload.
+    await callback({ step_index: 0, event: 'started', container_id: 'container-e2e' });
+    await callback({ step_index: 0, event: 'step_started' });
+    await expect(group(m.dashboard.groups.inProgress).locator(row)).toBeVisible({
+      timeout: 5_000,
+    });
+    // Four segments: three steps and the merge request, the first one current.
+    await expect(row.getByRole('img', { name: m.stepBar.label(1, 4) })).toBeVisible();
   });
 });

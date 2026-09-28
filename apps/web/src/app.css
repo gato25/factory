@@ -500,7 +500,7 @@ body {
   min-height: 100vh;
   font: var(--type-body) / 1.5 var(--font);
   color: var(--text);
-  background: linear-gradient(180deg, var(--ground-from), var(--ground-to)) fixed var(--bg);
+  background: linear-gradient(180deg, var(--ground-from), var(--ground-to)) fixed var(--ground-to);
   -webkit-font-smoothing: antialiased;
 }
 

@@ -121,19 +121,59 @@ export const en: Messages = {
   },
 
   dashboard: {
-    glance: 'Workspace at a glance',
     loading: 'Loading…',
-    connectedRepos: 'Connected repos',
-    reposByProvider: (gitlab: number, github: number) => `${gitlab} GitLab · ${github} GitHub`,
-    ticketsRunning: 'Tickets running',
-    acrossRepos: (repositories: number) =>
-      `across ${repositories} ${repositories === 1 ? 'repo' : 'repos'}`,
-    waitingForApproval: 'Waiting for approval',
-    nothingToReview: 'nothing to review',
-    needsYourReview: 'needs your review',
-    mergeRequestsThisWeek: 'Merge requests this week',
-    mergeRequests: (opened: number, withoutAddress: number) =>
-      `${opened} opened · ${withoutAddress} without an address`,
+    ticketsTitle: 'Tickets',
+    ticketsSub: 'Every ticket runs its own pipeline — each segment is one step of it',
+    viewAll: 'View all →',
+    groups: {
+      inProgress: 'In progress',
+      needsAttention: 'Needs attention',
+      queued: 'Queued',
+      done: 'Done',
+    },
+    groupCount: (group: string, n: number) => `${group}: ${n}`,
+    more: (n: number) => `${n} more — open the board →`,
+    nothing: 'Nothing is running or waiting right now.',
+    status: {
+      running: (phrase: string, elapsed: string | null) =>
+        elapsed ? `${phrase} · ${elapsed}` : phrase,
+      openingMergeRequest: 'Opening the merge request',
+      waiting: 'Waiting for your approval',
+      failed: (reason: string) => `${reason} · see why`,
+      failedNoReason: 'Failed',
+      queuedAt: (position: number) => `Queued · position ${position}`,
+      queuedNext: 'Queued · starting shortly',
+      mergeRequestOpened: (reference: string) => `MR ${reference} opened · a person decides`,
+      done: 'Done · a person decides',
+    },
+    elapsed: (minutes: number) =>
+      minutes < 1
+        ? 'just started'
+        : minutes < 60
+          ? `${minutes} min`
+          : `${Math.floor(minutes / 60)} h ${minutes % 60} min`,
+    firstAttempt: {
+      label: 'Succeeded on the first attempt',
+      counted: (successes: number, counted: number) =>
+        `last 30 days · ${successes} of ${counted} tickets`,
+      nothing: 'Nothing to measure yet',
+      nothingYet: 'no ticket of the last 30 days has a known outcome yet',
+    },
+    week: {
+      title: 'Merge requests',
+      sub: 'opened in the last 7 days',
+      weekdays: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'],
+      today: 'today',
+      day: (weekday: string, n: number) =>
+        `${weekday}: ${n} ${n === 1 ? 'merge request' : 'merge requests'}`,
+      costToday: "Today's cost",
+      costNote: 'recorded cost',
+    },
+    missing: {
+      'the runner address': 'the runner address',
+      'a model credential': 'a model credential',
+      'a connected repository': 'a connected repository',
+    } as Record<string, string>,
     listJoin: ', ',
     listLast: ' and ',
     notReady: (missing: string) => `Nothing can run yet: this workspace still needs ${missing}.`,
@@ -143,32 +183,12 @@ export const en: Messages = {
       'Ask an administrator — workspace connections and credentials are theirs to set (FR-004).',
   },
 
-  activeRuns: {
-    heading: 'Active runs',
-    viewAll: 'View all tickets →',
-    loading: 'Loading…',
-    nothingRunning: 'Nothing running.',
-    progress: 'progress',
-    live: 'live',
-    queuePosition: (position: number) => `position ${position} in the queue`,
-    needsApproval: 'needs approval',
-  },
-
-  activity: {
-    heading: 'Recent activity',
-    loading: 'Loading…',
-    empty: 'Nothing has happened yet.',
-    mrOpened: '— merge request opened',
-    runFailed: '— run failed',
-    gateReached: '— checkpoint reached',
-    runCancelled: '— run cancelled',
-    ticketCreated: '— ticket created',
-    attempt: (n: number) => `attempt ${n}`,
-  },
-
   approvals: {
-    heading: 'Waiting for your approval',
-    review: 'Review',
+    heading: 'Your approval is needed',
+    sub: 'An agent finished its work and is waiting for you',
+    approve: 'Approve',
+    review: (reference: string, title: string) => `Review ${reference} ${title}`,
+    ready: (ago: string) => `ready ${ago}`,
   },
 
   provider: {
@@ -1094,5 +1114,4 @@ export const en: Messages = {
     or: 'or with email',
     signInNote: 'Signing in connects nothing. You add your repositories in the next step.',
   },
-
 };
