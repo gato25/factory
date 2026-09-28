@@ -3,13 +3,13 @@ import * as v from 'valibot';
 import { command, form, getRequestEvent, query } from '$app/server';
 import { db } from '$lib/db';
 import { formBoolean, formInteger } from '$lib/forms';
+import { m } from '$lib/i18n';
 import { keyRingFromEnv } from '$lib/secrets/store';
 import { requireAdmin } from '$lib/services/authz';
-import { readiness, testEverything } from '$lib/services/connections';
+import { readiness, runnerSummary, testEverything } from '$lib/services/connections';
 import { invite, listMembers, remove, setRole } from '$lib/services/members';
 import { queueState } from '$lib/services/queue';
 import { getWorkspace, storeCredential, updateWorkspace } from '$lib/services/workspace';
-import { m } from '$lib/i18n';
 
 /**
  * Workspace settings. Every one of these checks the administrator rule
@@ -35,7 +35,13 @@ async function attempt<T extends object>(work: () => Promise<T>): Promise<T | { 
 export const settings = query(async () => {
   const user = requireUser();
   requireAdmin(user);
-  return { workspace: await getWorkspace(db()), readiness: await readiness(db()) };
+  return {
+    workspace: await getWorkspace(db()),
+    readiness: await readiness(db()),
+    // Whether the execution service's credential is configured — never any
+    // part of it (research D13).
+    runner: runnerSummary(process.env),
+  };
 });
 
 /**
@@ -131,7 +137,7 @@ export const inviteMember = form(InviteSchema, async (input) => {
   return attempt(async () => {
     const created = await invite(db(), input, user);
     await members().refresh();
-    return { id: created.id, message: `${input.email} can sign in now.` };
+    return { id: created.id, message: m.settings.invited(input.email) };
   });
 });
 
@@ -145,7 +151,7 @@ export const changeRole = command(
     return attempt(async () => {
       await setRole(db(), userId, role, user);
       await members().refresh();
-      return { role, message: `Now ${role === 'admin' ? 'an administrator' : 'a member'}.` };
+      return { role, message: m.settings.nowRole(role === 'admin') };
     });
   },
 );
@@ -155,21 +161,9 @@ export const removeMember = command(v.pipe(v.string(), v.uuid()), async (userId)
   return attempt(async () => {
     const { ticketsKept, ownedTransferred } = await remove(db(), userId, user);
     await members().refresh();
-    const parts = ['Access revoked.'];
-    if (ticketsKept > 0) {
-      parts.push(
-        `${ticketsKept} ticket${ticketsKept === 1 ? '' : 's'} they created stay${
-          ticketsKept === 1 ? 's' : ''
-        }: that is the record of what happened.`,
-      );
-    }
-    if (ownedTransferred > 0) {
-      parts.push(
-        `${ownedTransferred} pipeline${ownedTransferred === 1 ? '' : 's'}, agent${
-          ownedTransferred === 1 ? '' : 's'
-        } or skill${ownedTransferred === 1 ? '' : 's'} they owned are now yours.`,
-      );
-    }
+    const parts = [m.settings.accessRevoked];
+    if (ticketsKept > 0) parts.push(m.settings.ticketsStay(ticketsKept));
+    if (ownedTransferred > 0) parts.push(m.settings.ownedTransferred(ownedTransferred));
     return { message: parts.join(' ') };
   });
 });

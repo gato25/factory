@@ -58,3 +58,12 @@ test('pipelines is still a query in pipelines.remote.ts, now carrying each step 
 test('repositories is still a query in repositories.remote.ts, now carrying each latest ticket', () => {
   expect(declaration('repositories.remote.ts', 'repositories')?.kind).toBe('query');
 });
+
+test('settings() says whether the runner token is set, reading it only through runnerSummary', () => {
+  const source = read('settings.remote.ts');
+  expect(declaration('settings.remote.ts', 'settings')?.kind).toBe('query');
+  expect(source).toContain('runner: runnerSummary(');
+  // The token is never read here directly, so nothing but the boolean can
+  // reach the page (research D13, Constitution V).
+  expect(source).not.toContain('RUNNER_AUTH_TOKEN');
+});

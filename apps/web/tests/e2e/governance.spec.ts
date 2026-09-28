@@ -154,6 +154,14 @@ async function signIn(context: BrowserContext, userId: string) {
   ]);
 }
 
+/**
+ * The workspace form's own save, in the cost-limits tile. Scoped, because the
+ * credential tiles each have a store button with the same word on it.
+ */
+async function saveWorkspace(page: import('@playwright/test').Page) {
+  await page.locator('#limits').getByRole('button', { name: m.settings.save }).click();
+}
+
 test.describe('setting up and governing the workspace', () => {
   test.skip(
     !SESSION_SECRET,
@@ -169,17 +177,16 @@ test.describe('setting up and governing the workspace', () => {
     await page.goto('/settings');
 
     // The ceilings that make unattended execution financially safe.
-    await page.getByLabel('Most a run may spend, in dollars').fill('2.5000');
-    await page.getByLabel('Longest a run may take, in minutes').fill('30');
-    await page.getByLabel('Runs that may execute at once').fill('3');
-    await page.getByLabel('Lifetime, in minutes').fill('120');
-    await page.getByLabel("Keep a failed run's sandbox for, in hours").fill('6');
-    await page.getByRole('button', { name: 'Save', exact: true }).click();
+    await page.getByLabel(m.settings.maxSpend).fill('2.5000');
+    await page.getByLabel(m.settings.maxTime).fill('30');
+    await page.getByLabel(m.settings.maxConcurrent).fill('3');
+    await page.getByLabel(m.settings.lifetimeMinutes, { exact: true }).fill('120');
+    await page.getByLabel(m.settings.retainFailedHours).fill('6');
+    await saveWorkspace(page);
 
-    await expect(page.getByRole('main')).toContainText(
-      'Runs already in flight keep the ceilings they started with',
-      { timeout: 15_000 },
-    );
+    await expect(page.getByRole('main')).toContainText(m.notice.settingsSaved, {
+      timeout: 15_000,
+    });
 
     const [w] = await sql`
       select default_cost_ceiling_usd, default_time_ceiling_minutes, max_concurrent_runs,
@@ -190,20 +197,21 @@ test.describe('setting up and governing the workspace', () => {
     expect(w!.sandbox_wall_clock_minutes).toBe(120);
     expect(w!.retain_failed_sandboxes_hours).toBe(6);
 
-    // A connection test reports each dependency separately (FR-005a). This
-    // seed configured none of them, so each must say so rather than "ok" —
-    // and none may claim to have had a credential accepted, since none was
-    // ever presented.
-    await page.getByRole('button', { name: 'Test connection' }).click();
-    const results = page.locator('.results li');
-    await expect(results).toHaveCount(3, { timeout: 20_000 });
-    await expect(page.locator('.results')).toContainText('Orchestration service');
-    await expect(page.locator('.results')).toContainText('Container host');
-    await expect(page.locator('.results')).toContainText('Design service');
-    await expect(page.locator('.results')).not.toContainText('Reachable, and it accepted');
+    // A connection test reports each dependency separately, on its own tile
+    // (FR-005a). This seed configured neither, so each must say so rather
+    // than "ok" — and neither may claim to have had a credential accepted,
+    // since none was ever presented.
+    await page.getByRole('button', { name: m.settings.testAll }).click();
+    const runner = page.locator('#runner');
+    const design = page.locator('#design');
     // "Not configured yet" is a step not taken, and the screen must not
     // dress it up as a fault an administrator should go looking for.
-    await expect(results.filter({ hasText: 'Not configured yet.' })).toHaveCount(2);
+    await expect(runner.locator('.tests')).toContainText(m.connection.unconfigured, {
+      timeout: 20_000,
+    });
+    await expect(runner.locator('.pill')).toHaveText(m.settings.state.unconfigured as string);
+    await expect(design).toContainText(m.connection.noDesignCredential);
+    await expect(page.getByRole('main')).not.toContainText(m.connection.reachable);
   });
 
   test('a ceiling of zero is refused, because it would stop every run', async ({
@@ -214,12 +222,11 @@ test.describe('setting up and governing the workspace', () => {
     await signIn(context, seeded.adminId);
     await page.goto('/settings');
 
-    await page.getByLabel('Most a run may spend, in dollars').fill('0');
-    await page.getByRole('button', { name: 'Save', exact: true }).click();
-    await expect(page.getByRole('main')).toContainText(
-      'A cost ceiling of zero would stop every run before it began',
-      { timeout: 15_000 },
-    );
+    await page.getByLabel(m.settings.maxSpend).fill('0');
+    await saveWorkspace(page);
+    await expect(page.getByRole('main')).toContainText(m.form.zeroCostCeiling, {
+      timeout: 15_000,
+    });
 
     const [w] = await sql`select default_cost_ceiling_usd from workspaces`;
     expect(w!.default_cost_ceiling_usd).toBe('5.0000');
@@ -273,21 +280,20 @@ test.describe('setting up and governing the workspace', () => {
     // Scoped to the queue: the members list on the same screen is also a
     // `.people`, so an unscoped locator would number the wrong rows.
     const queue = page.locator('.queue');
-    await expect(queue).toContainText('executing', { timeout: 15_000 });
+    await expect(queue).toContainText(m.settings.executing, { timeout: 15_000 });
 
     // An interpolated number is its own text node, so assert on the region.
-    await expect(queue).toContainText('2 of 2 executing');
-    await expect(queue).toContainText('2 waiting');
+    await expect(queue).toContainText(m.settings.queueSummary(2, 2, 2));
 
     const rows = queue.locator('.people li');
     await expect(rows).toHaveCount(4);
     // Holders first, then waiters numbered from one: what makes the list
     // readable as a queue rather than a set.
     await expect(rows.nth(0)).toContainText(seeded.references[0] as string);
-    await expect(rows.nth(0)).toContainText('executing');
-    await expect(rows.nth(1)).toContainText('executing');
-    await expect(rows.nth(2)).toContainText('position 1');
-    await expect(rows.nth(3)).toContainText('position 2');
+    await expect(rows.nth(0)).toContainText(m.settings.executing);
+    await expect(rows.nth(1)).toContainText(m.settings.executing);
+    await expect(rows.nth(2)).toContainText(m.settings.position(1));
+    await expect(rows.nth(3)).toContainText(m.settings.position(2));
     await expect(rows.nth(3)).toContainText(seeded.references[3] as string);
   });
 
@@ -300,14 +306,12 @@ test.describe('setting up and governing the workspace', () => {
     await page.goto('/settings');
 
     // The screen says why, and says what is NOT restricted.
-    await expect(page.getByRole('main')).toContainText(
-      'Workspace settings — credentials, connections, ceilings and membership — are for',
-    );
-    await expect(page.getByRole('main')).toContainText('anyone can make their own');
+    await expect(page.getByRole('main')).toContainText(m.settings.adminOnly);
 
     // Nothing to change.
-    await expect(page.getByLabel('Most a run may spend, in dollars')).toHaveCount(0);
-    await expect(page.getByRole('button', { name: 'Test connection' })).toHaveCount(0);
+    await expect(page.getByLabel(m.settings.maxSpend)).toHaveCount(0);
+    await expect(page.getByRole('button', { name: m.settings.testAll })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: m.settings.testConnection })).toHaveCount(0);
 
     // And the rule is not merely hidden: the remote function refuses too.
     const refused = await page.request.post('http://localhost:5173/settings', {
@@ -326,13 +330,14 @@ test.describe('setting up and governing the workspace', () => {
 
     // Store one through the interface.
     await page.goto('/settings');
-    await page.getByLabel('Model credential').fill('sk-ant-supersecret-abcdefghij');
-    await page.getByRole('button', { name: 'Store', exact: true }).click();
-    // The success message, not the card's standing copy: a card that always
+    await page.getByLabel(m.settings.modelCredential).fill('sk-ant-supersecret-abcdefghij');
+    await page.locator('#keys').getByRole('button', { name: m.settings.store }).click();
+    // The success message, not the tile's standing copy: a tile that always
     // says "never shown again" would make this assertion prove nothing.
-    await expect(page.getByRole('status').last()).toContainText('encrypted at rest', {
-      timeout: 15_000,
-    });
+    await expect(page.locator('#keys').getByRole('status')).toContainText(
+      m.notice.credentialStored,
+      { timeout: 15_000 },
+    );
 
     // What is stored is not the value.
     const stored = await sql`
@@ -345,7 +350,7 @@ test.describe('setting up and governing the workspace', () => {
     expect(body).not.toContain('supersecret');
     expect(body).not.toContain('sk-ant');
     // The screen says one exists, which is the most it may say.
-    await expect(page.getByRole('main')).toContainText('One is stored');
+    await expect(page.getByRole('main')).toContainText(m.settings.oneIsStored);
   });
 
   test("an administrator changes somebody else's role, and the change lands", async ({
@@ -360,10 +365,10 @@ test.describe('setting up and governing the workspace', () => {
     // demoted depends on how many administrators the workspace has, which
     // every other spec is also seeding. That invariant is asserted in
     // tests/integration/members.test.ts, where the database is emptied first.
-    await page.getByLabel(`Role for Member ${seeded.tag}`).selectOption('admin');
+    await page.getByLabel(m.settings.roleFor(`Member ${seeded.tag}`)).selectOption('admin');
     // The select would show 'admin' from the click alone, so the assertion is
     // on the message, which only the server produces.
-    await expect(page.getByRole('status').first()).toContainText('Now an administrator', {
+    await expect(page.getByRole('status').first()).toContainText(m.settings.nowRole(true), {
       timeout: 15_000,
     });
 
@@ -376,9 +381,10 @@ test.describe('setting up and governing the workspace', () => {
     await signIn(context, seeded.adminId);
     await page.goto('/settings');
 
-    await page.locator('form.invite').getByLabel('Name').fill(`Invited ${seeded.tag}`);
-    await page.locator('form.invite').getByLabel('Email').fill(`invited-${seeded.tag}@x.dev`);
-    await page.locator('form.invite').getByRole('button', { name: 'Invite' }).click();
+    const invite = page.locator('form.invite');
+    await invite.getByLabel(m.settings.name).fill(`Invited ${seeded.tag}`);
+    await invite.getByLabel(m.settings.email).fill(`invited-${seeded.tag}@x.dev`);
+    await invite.getByRole('button', { name: m.settings.invite }).click();
 
     await expect(page.getByRole('main')).toContainText(`invited-${seeded.tag}@x.dev`, {
       timeout: 15_000,

@@ -228,6 +228,22 @@ const SCREENS: Screen[] = [
     signedIn: true,
     primary: ['h1', '.lede', '.sk .n', '.search input', '.f input', '.btn'],
   },
+  {
+    name: '12 Settings',
+    path: () => '/settings',
+    signedIn: true,
+    primary: [
+      'h1',
+      '.lede',
+      '.menu a',
+      '.th h2',
+      '.f input',
+      '.value',
+      '.opt .t',
+      '.who strong',
+      '.btn',
+    ],
+  },
 ];
 
 async function seed(): Promise<Seeded> {

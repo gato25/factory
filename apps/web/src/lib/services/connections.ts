@@ -2,6 +2,7 @@ import type { Database } from '@factory/db';
 import { repositories } from '@factory/db/schema';
 import { createLogger } from '@factory/shared';
 import { eq } from 'drizzle-orm';
+import { m } from '$lib/i18n';
 import type { SessionUser } from './auth';
 import { requireAdmin } from './authz';
 import { getWorkspace } from './workspace';
@@ -42,11 +43,11 @@ export interface ConnectionResult {
 }
 
 const STATE_TEXT: Record<ConnectionState, string> = {
-  unconfigured: 'Not configured yet.',
-  reachable: 'Reachable, and it accepted our credential.',
-  unreachable: 'Nothing answered at that address. Check the address, and that it is running.',
-  unauthorised: 'It answered but refused our credential. Replace the credential.',
-  wrong_shape: 'Something answered, but not this service. Check the address.',
+  unconfigured: m.connection.unconfigured,
+  reachable: m.connection.reachable,
+  unreachable: m.connection.unreachable,
+  unauthorised: m.connection.unauthorised,
+  wrong_shape: m.connection.wrongShape,
 };
 
 export interface ProbeDeps {
@@ -96,7 +97,7 @@ async function probe(
       return {
         what,
         state: 'unreachable',
-        detail: `It answered ${response.status}. ${STATE_TEXT.unreachable}`,
+        detail: `${m.connection.answered(response.status)} ${STATE_TEXT.unreachable}`,
         status: response.status,
         ms,
       };
@@ -127,13 +128,24 @@ async function probe(
       what,
       state: 'unreachable',
       detail: aborted
-        ? `Nothing answered within ${deps.timeoutMs ?? 5000}ms. ${STATE_TEXT.unreachable}`
+        ? `${m.connection.timedOut(deps.timeoutMs ?? 5000)} ${STATE_TEXT.unreachable}`
         : STATE_TEXT.unreachable,
       ms,
     };
   } finally {
     clearTimeout(timeout);
   }
+}
+
+/**
+ * What the settings page may know about the execution service's credential:
+ * whether one is configured, never any part of it (research D13,
+ * Constitution V). Pure, and the only way the settings query reads the
+ * token, so its return value is everything that can reach a page — a
+ * boolean, with no length, hash or masked form that could narrow a guess.
+ */
+export function runnerSummary(config: Record<string, string | undefined>): { tokenSet: boolean } {
+  return { tokenSet: (config.RUNNER_AUTH_TOKEN ?? '').trim().length > 0 };
 }
 
 export async function testRunner(
@@ -184,9 +196,7 @@ export async function testDesign(
     return {
       what: 'design',
       state: 'unconfigured',
-      detail:
-        'No design credential yet. That is only a problem for a pipeline containing a design ' +
-        'step, which would fail at that step and say so.',
+      detail: m.connection.noDesignCredential,
     };
   }
   const base = deps.baseUrl ?? 'https://api.pen.dev';

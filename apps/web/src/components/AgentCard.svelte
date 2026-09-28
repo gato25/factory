@@ -67,7 +67,9 @@
       class="orb"
       class:orb--pen={design}
       class:custom={!design && !agent.isDefault}
-      aria-hidden="true"
+      role="img"
+      aria-label={design ? m.agentCard.penCli : m.agentCard.claudeCli}
+      title={design ? m.agentCard.penCli : m.agentCard.claudeCli}
     >
       <Icon name={agent.icon ?? (design ? 'pen-tool' : 'bot')} size={20} />
     </span>

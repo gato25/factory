@@ -1,5 +1,6 @@
 import { afterAll, beforeEach, expect, test } from 'bun:test';
 import { users, workspaces } from '@factory/db/schema';
+import { m } from '../../src/lib/i18n';
 import type { SessionUser } from '../../src/lib/services/auth';
 import {
   readiness,
@@ -63,7 +64,7 @@ test('nothing configured reports unconfigured, not a fault', async () => {
   expect(result.state).toBe('unconfigured');
   // An unconfigured connection is a step not yet taken, and saying "failed"
   // would send an administrator looking for a problem that is not there.
-  expect(result.detail).toBe('Not configured yet.');
+  expect(result.detail).toBe(m.connection.unconfigured);
 });
 
 test('the runner probe sends the credential, so a wrong one can be refused', async () => {
@@ -90,7 +91,7 @@ test('a refused credential is unauthorised, not unreachable', async () => {
     const probe = host(() => new Response('unauthorised', { status }));
     const result = await testRunner(db, admin, { fetch: probe.fetch, authToken: 'wrong' });
     expect(result.state).toBe('unauthorised');
-    expect(result.detail).toMatch(/refused our credential\. Replace the credential\./);
+    expect(result.detail).toBe(m.connection.unauthorised);
   }
 });
 
@@ -101,7 +102,7 @@ test('something else listening on the port is wrong_shape, not reachable', async
   // 200 and authorised is still not proof it is the Runner.
   const result = await testRunner(db, admin, { fetch: probe.fetch });
   expect(result.state).toBe('wrong_shape');
-  expect(result.detail).toMatch(/not this service/);
+  expect(result.detail).toBe(m.connection.wrongShape);
 });
 
 test('nothing answering is unreachable, and a timeout says how long it waited', async () => {
@@ -123,7 +124,7 @@ test('nothing answering is unreachable, and a timeout says how long it waited', 
   });
   const timedOut = await testRunner(db, admin, { fetch: slow.fetch, timeoutMs: 20 });
   expect(timedOut.state).toBe('unreachable');
-  expect(timedOut.detail).toMatch(/within 20ms/);
+  expect(timedOut.detail).toContain(m.connection.timedOut(20));
 });
 
 test('a degraded runner still counts as reachable, because the credential worked', async () => {
@@ -150,13 +151,13 @@ test('an unexpected status names the status rather than guessing', async () => {
   const probe = host(() => new Response('gateway', { status: 502 }));
   const result = await testRunner(db, admin, { fetch: probe.fetch });
   expect(result.state).toBe('unreachable');
-  expect(result.detail).toMatch(/It answered 502/);
+  expect(result.detail).toContain(m.connection.answered(502));
 });
 
 test('the design service is only a problem for a pipeline that needs it', async () => {
   const result = await testDesign(db, admin);
   expect(result.state).toBe('unconfigured');
-  expect(result.detail).toMatch(/only a problem for a pipeline containing a design step/);
+  expect(result.detail).toBe(m.connection.noDesignCredential);
 });
 
 test('testing everything reports both, whatever each one says', async () => {

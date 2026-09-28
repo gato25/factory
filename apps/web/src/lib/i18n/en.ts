@@ -693,6 +693,47 @@ export const en: Messages = {
   },
 
   settings: {
+    heading: 'Settings',
+    lede: 'Workspace configuration. Only an administrator changes it.',
+    loading: 'Loading settings…',
+    testAll: 'Test every connection',
+    runner: 'Runner',
+    runnerLede:
+      'The runner executes every ticket run and keeps its own queue. The app stores the data and shows the progress.',
+    runnerAddress: 'Runner address',
+    runnerToken: 'Access token',
+    tokenHint: 'Used to start runs and to continue after a wait',
+    tokenSetMasked: 'set · its value is never shown',
+    tokenMissing: 'Not set — set it in the RUNNER_AUTH_TOKEN environment variable',
+    callback: 'Callback (runner → app)',
+    testHint:
+      'A test tells reachable-and-authorised apart from unreachable and from refused, because those three need different fixes.',
+    state: {
+      reachable: 'Connected',
+      unconfigured: 'Not set up',
+      unreachable: 'Unreachable',
+      unauthorised: 'Refused',
+      wrong_shape: 'Another service',
+    } as Record<string, string>,
+    modelCredentialHint:
+      "An API key, billed per use to an Anthropic Console account — or a Claude subscription token from `claude setup-token`, which draws on that subscription's own allowance instead. A subscription's limits are shaped around one person working, so watch them if several runs execute at once.",
+    designStepNote:
+      "A design step's model and export settings belong to the step, not here — set them on the step in the pipeline builder.",
+    loadingMembers: 'Loading…',
+    ticketsCreated: (n: number) => `${n} ticket${n === 1 ? '' : 's'}`,
+    you: 'you',
+    queueSummary: (executing: number, cap: number, waiting: number) =>
+      `${executing} of ${cap} executing${waiting > 0 ? ` · ${waiting} waiting` : ''}`,
+    unknownAuthor: 'unknown',
+    executing: 'executing',
+    position: (n: number) => `position ${n}`,
+    invited: (email: string) => `${email} can sign in now.`,
+    nowRole: (admin: boolean) => (admin ? 'Now an administrator.' : 'Now a member.'),
+    accessRevoked: 'Access revoked.',
+    ticketsStay: (n: number) =>
+      `${n} ticket${n === 1 ? '' : 's'} they created stay${n === 1 ? 's' : ''}: that is the record of what happened.`,
+    ownedTransferred: (n: number) =>
+      `${n} pipeline${n === 1 ? '' : 's'}, agent${n === 1 ? '' : 's'} or skill${n === 1 ? '' : 's'} they owned are now yours.`,
     sections: 'Settings sections',
     workspace: 'Workspace',
     sandboxDocker: 'Sandbox (Docker)',
@@ -759,7 +800,7 @@ export const en: Messages = {
     approversNote:
       "A checkpoint decides who may approve it — anyone in the workspace, the ticket's author, or named people — on the step itself, in the pipeline builder. When a run reaches one, those people are resolved and recorded, and the notice is written to the application log.",
     notifyStepNote:
-      "To send it somewhere a person will see, add a Notify step to the pipeline: it goes out through n8n, which is where this deployment's Slack, email and webhook connections live.",
+      "A pipeline's Notify step sends nothing yet: the run records it and carries on.",
     runsNow: 'Runs now',
   },
 
@@ -1005,6 +1046,7 @@ export const en: Messages = {
     engine: 'Engine',
     output: 'Output',
     penCli: 'pen.dev CLI',
+    claudeCli: 'Claude CLI',
     designOutput: 'ui.pen + PNG screens',
     noTools: 'none — it can read nothing and write nothing',
     usage: (pipelines: number, runs: number) =>
@@ -1244,6 +1286,19 @@ export const en: Messages = {
     Bash: 'Run a shell command — including the repository’s tests',
     WebFetch: 'Fetch a URL',
     GitPush: 'Push the branch when done',
+  },
+
+  /** What a connection check found, in words that say what to do (FR-005a). */
+  connection: {
+    unconfigured: 'Not configured yet.',
+    reachable: 'Reachable, and it accepted our credential.',
+    unreachable: 'Nothing answered at that address. Check the address, and that it is running.',
+    unauthorised: 'It answered but refused our credential. Replace the credential.',
+    wrongShape: 'Something answered, but not this service. Check the address.',
+    answered: (status: number) => `It answered ${status}.`,
+    timedOut: (ms: number) => `Nothing answered within ${ms}ms.`,
+    noDesignCredential:
+      'No design credential yet. That is only a problem for a pipeline containing a design step, which would fail at that step and say so.',
   },
 
   vocabulary: {
