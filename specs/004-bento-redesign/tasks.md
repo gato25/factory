@@ -213,11 +213,11 @@ artboard.
 
 ### 02 and 03 — repositories
 
-- [ ] T065 [US6] Write `apps/web/tests/integration/repositories.test.ts` first: `listRepositories` returns `latest: { reference, title, at } | null` — the repository's most recently updated ticket, `null` when it has none — in one query, not one per repository
-- [ ] T066 [US6] Add `latest` to `listRepositories` in `apps/web/src/lib/services/repository.ts`; `repositories()` returns it (contract); add to `bento-ui-data.test.ts` that `repositories` is still a `query` in `repositories.remote.ts`. T065 passes
-- [ ] T067 [US6] Rebuild 02 in `apps/web/src/routes/(app)/repositories/+page.svelte`: a tile per repository with name, path, provider, connection state in words, default branch, default pipeline, the latest ticket and when, active and done counts; every existing action reachable from the tile; an expired token tints the tile red and offers replacing it there (FR-015, FR-016); a long name or path truncates with the full text on hover
-- [ ] T068 [US6] Rebuild 03 in `apps/web/src/components/ConnectRepository.svelte`: a bento dialog over the blurred repositories page, its four numbered steps and behaviour unchanged (FR-017)
-- [ ] T069 [US6] Verify 02 and 03 against the definition of done
+- [X] T065 [US6] Write `apps/web/tests/integration/repositories.test.ts` first: `listRepositories` returns `latest: { reference, title, at } | null` — the repository's most recently updated ticket, `null` when it has none — in one query, not one per repository
+- [X] T066 [US6] Add `latest` to `listRepositories` in `apps/web/src/lib/services/repository.ts`; `repositories()` returns it (contract); add to `bento-ui-data.test.ts` that `repositories` is still a `query` in `repositories.remote.ts`. T065 passes
+- [X] T067 [US6] Rebuild 02 in `apps/web/src/routes/(app)/repositories/+page.svelte`: a tile per repository with name, path, provider, connection state in words, default branch, default pipeline, the latest ticket and when, active and done counts; every existing action reachable from the tile; an expired token tints the tile red and offers replacing it there (FR-015, FR-016); a long name or path truncates with the full text on hover
+- [X] T068 [US6] Rebuild 03 in `apps/web/src/components/ConnectRepository.svelte`: a bento dialog over the blurred repositories page, its four numbered steps and behaviour unchanged (FR-017)
+- [X] T069 [US6] Verify 02 and 03 against the definition of done
 
 ### 08 — pipelines
 

@@ -183,6 +183,20 @@ const SCREENS: Screen[] = [
       '.side-tile .quiet',
     ],
   },
+  {
+    name: '02 Repositories',
+    path: () => '/repositories',
+    signedIn: true,
+    primary: ['h1', '.lede', '.stat .l', '.name', '.last .t', '.btn', '.menu button'],
+  },
+  {
+    name: '03 Connect Repository',
+    path: () => '/repositories',
+    signedIn: true,
+    click: '.page-head .btn',
+    within: '.modal',
+    primary: ['h2', '.tx p', '.step-title', '.provider-name', 'input', 'select', '.btn'],
+  },
 ];
 
 async function seed(): Promise<Seeded> {

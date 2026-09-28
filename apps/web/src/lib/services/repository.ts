@@ -1,7 +1,8 @@
 import type { Database } from '@factory/db';
 import { credentials, pipelines, repositories, tickets } from '@factory/db/schema';
 import { FactoryError, invalidInput, notFound } from '@factory/shared';
-import { count, eq, inArray } from 'drizzle-orm';
+import { count, desc, eq, inArray } from 'drizzle-orm';
+import { m } from '$lib/i18n';
 import { type KeyRing, seal } from '$lib/secrets/store';
 import {
   type AccessCheck,
@@ -10,7 +11,6 @@ import {
   type ProviderClient,
   parseRepositoryUrl,
 } from './providers';
-import { m } from '$lib/i18n';
 
 /**
  * Connecting a repository. The verification in FR-008 happens before anything
@@ -203,13 +203,31 @@ export async function listRepositories(database: Database) {
   // the name has to travel with the row (design.pen, 02 Repositories).
   const named = await database.select({ id: pipelines.id, name: pipelines.name }).from(pipelines);
 
-  return rows.map((repository) => ({
-    ...repository,
-    ticketsRunning: countOf(running, repository.id),
-    ticketsDone: countOf(done, repository.id),
-    defaultPipelineName:
-      named.find((pipeline) => pipeline.id === repository.defaultPipelineId)?.name ?? null,
-  }));
+  // The ticket worked on most recently on each repository, for its tile
+  // (specs/004-bento-redesign FR-015) — one read for every repository.
+  const latest = await database
+    .selectDistinctOn([tickets.repositoryId], {
+      repositoryId: tickets.repositoryId,
+      reference: tickets.reference,
+      title: tickets.title,
+      at: tickets.updatedAt,
+    })
+    .from(tickets)
+    .orderBy(tickets.repositoryId, desc(tickets.updatedAt));
+
+  return rows.map((repository) => {
+    const last = latest.find((row) => row.repositoryId === repository.id);
+    return {
+      ...repository,
+      ticketsRunning: countOf(running, repository.id),
+      ticketsDone: countOf(done, repository.id),
+      defaultPipelineName:
+        named.find((pipeline) => pipeline.id === repository.defaultPipelineId)?.name ?? null,
+      latest: last
+        ? { reference: last.reference, title: last.title, at: last.at.toISOString() }
+        : null,
+    };
+  });
 }
 
 /**
@@ -254,8 +272,7 @@ export async function setRunSettings(
   input: { command: string | null; port: number | null },
 ): Promise<{ runCommand: string | null; runPort: number | null }> {
   const command = input.command?.trim() || null;
-  if (command && command.length > 500)
-    throw invalidInput(m.form.startCommandLength);
+  if (command && command.length > 500) throw invalidInput(m.form.startCommandLength);
   if (
     input.port !== null &&
     !(Number.isInteger(input.port) && input.port > 0 && input.port < 65536)

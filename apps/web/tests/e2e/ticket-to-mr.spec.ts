@@ -159,19 +159,19 @@ test.describe('the whole journey', () => {
 
   test('a ticket becomes an open merge request', async ({ page }) => {
     await page.goto('/repositories');
-    await page.getByRole('button', { name: 'Connect repository' }).click();
-    await page.getByLabel(/Repository URL/).fill(E2E_REPO_URL as string);
-    await page.getByLabel(/Access token/).fill(E2E_REPO_TOKEN as string);
-    await page.getByRole('button', { name: 'Test & connect' }).click();
-    await expect(page.getByText('Connected')).toBeVisible({ timeout: 30_000 });
+    await page.getByRole('button', { name: m.connect.open }).click();
+    await page.getByLabel(m.connect.stepUrl).fill(E2E_REPO_URL as string);
+    await page.getByLabel(m.connect.stepToken).fill(E2E_REPO_TOKEN as string);
+    await page.getByRole('button', { name: m.connect.testAndConnect }).click();
+    await expect(page.getByText(m.repositories.connected).first()).toBeVisible({ timeout: 30_000 });
 
     await page.goto('/tickets/new');
-    await page.getByLabel(/Repository/).selectOption({ index: 1 });
-    await page.getByLabel(/Title/).fill('Add a health endpoint');
+    await page.getByLabel(m.newTicket.repository, { exact: true }).selectOption({ index: 1 });
+    await page.getByLabel(m.newTicket.title, { exact: true }).fill('Add a health endpoint');
     await page
-      .getByLabel(/Acceptance criteria/)
+      .getByLabel(m.newTicket.acceptance, { exact: true })
       .fill('GET /health returns 200\nThe existing test suite still passes');
-    await page.getByRole('button', { name: /Create & start pipeline/ }).click();
+    await page.getByRole('button', { name: m.newTicket.createAndStart }).click();
 
     // The run page shows a merge request once the pipeline finishes.
     await expect(page.getByText(/merge request/i)).toBeVisible({ timeout: 20 * 60_000 });
@@ -180,10 +180,10 @@ test.describe('the whole journey', () => {
   test('a token missing a permission is refused, naming which one (FR-009)', async ({ page }) => {
     test.skip(!process.env.E2E_READONLY_TOKEN, 'Needs E2E_READONLY_TOKEN — a read-only token.');
     await page.goto('/repositories');
-    await page.getByRole('button', { name: 'Connect repository' }).click();
-    await page.getByLabel(/Repository URL/).fill(E2E_REPO_URL as string);
-    await page.getByLabel(/Access token/).fill(process.env.E2E_READONLY_TOKEN as string);
-    await page.getByRole('button', { name: 'Test & connect' }).click();
+    await page.getByRole('button', { name: m.connect.open }).click();
+    await page.getByLabel(m.connect.stepUrl).fill(E2E_REPO_URL as string);
+    await page.getByLabel(m.connect.stepToken).fill(process.env.E2E_READONLY_TOKEN as string);
+    await page.getByRole('button', { name: m.connect.testAndConnect }).click();
     await expect(page.getByRole('alert')).toContainText(/missing (write_repository|Contents)/);
   });
 });
@@ -195,10 +195,10 @@ test.describe('the refusals', () => {
     page,
   }) => {
     await page.goto('/repositories');
-    await page.getByRole('button', { name: 'Connect repository' }).click();
-    await page.getByLabel(/Repository URL/).fill('https://git.internal.example/team/thing');
-    await page.getByLabel(/Access token/).fill('irrelevant');
-    await page.getByRole('button', { name: 'Test & connect' }).click();
+    await page.getByRole('button', { name: m.connect.open }).click();
+    await page.getByLabel(m.connect.stepUrl).fill('https://git.internal.example/team/thing');
+    await page.getByLabel(m.connect.stepToken).fill('irrelevant');
+    await page.getByRole('button', { name: m.connect.testAndConnect }).click();
     await expect(page.getByRole('alert')).toContainText(/git\.internal\.example is not supported/);
   });
 });

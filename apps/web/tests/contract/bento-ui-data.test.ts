@@ -54,3 +54,7 @@ test('the dashboard parts it superseded are gone: no remote file exports tiles, 
 test('pipelines is still a query in pipelines.remote.ts, now carrying each step count', () => {
   expect(declaration('pipelines.remote.ts', 'pipelines')?.kind).toBe('query');
 });
+
+test('repositories is still a query in repositories.remote.ts, now carrying each latest ticket', () => {
+  expect(declaration('repositories.remote.ts', 'repositories')?.kind).toBe('query');
+});
