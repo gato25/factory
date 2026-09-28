@@ -3,6 +3,7 @@ import {
   artifacts,
   logChunks,
   pipelines,
+  pipelineVersions,
   repositories,
   runs,
   stepResults,
@@ -12,8 +13,9 @@ import {
 } from '@factory/db/schema';
 import { CONDITION_DESCRIPTION, notFound, type PipelineSnapshot, type Step } from '@factory/shared';
 import { and, count, desc, eq, gte, inArray, sql } from 'drizzle-orm';
-import { queueState } from './queue';
 import { m } from '$lib/i18n';
+import { type RunStatus, type StepShape, shapeOf } from '$lib/step-shape';
+import { queueState } from './queue';
 
 /**
  * Everything the run page and the dashboard read. The stream carries changes;
@@ -489,6 +491,82 @@ export async function board(database: Database): Promise<BoardTicket[]> {
       strip,
     };
   });
+}
+
+/**
+ * What a step bar needs to know about one ticket — its current run if it has
+ * one, and the pipeline version it pinned either way.
+ */
+export interface ShapeSource {
+  ticketId: string;
+  pipelineId: string | null;
+  pipelineVersion: number | null;
+  runId: string | null;
+  runStatus: RunStatus | null;
+  currentStepIndex: number | null;
+  failureStepIndex: number | null;
+  snapshot: PipelineSnapshot | null;
+}
+
+/**
+ * Each ticket's step shape (specs/004-bento-redesign research D3).
+ *
+ * The steps come from the run's snapshot, which is what the run pinned; a
+ * ticket that has no run yet is drawn from the pipeline VERSION it pinned,
+ * never the pipeline's current one — a pipeline edited after the ticket was
+ * created must not redraw it (Constitution IV). Two queries for any number of
+ * tickets: one for skipped steps, one for pinned versions.
+ */
+export async function stepShapes(
+  database: Database,
+  sources: ShapeSource[],
+): Promise<Map<string, StepShape>> {
+  const runIds = sources.flatMap((source) => (source.runId ? [source.runId] : []));
+  const skippedRows =
+    runIds.length === 0
+      ? []
+      : await database
+          .select({ runId: stepResults.runId, stepIndex: stepResults.stepIndex })
+          .from(stepResults)
+          .where(and(inArray(stepResults.runId, runIds), eq(stepResults.status, 'skipped')));
+  const skippedByRun = new Map<string, number[]>();
+  for (const row of skippedRows) {
+    skippedByRun.set(row.runId, [...(skippedByRun.get(row.runId) ?? []), row.stepIndex]);
+  }
+
+  const unstarted = sources.filter((source) => !source.snapshot && source.pipelineId);
+  const pipelineIds = [...new Set(unstarted.map((source) => source.pipelineId as string))];
+  const versionRows =
+    pipelineIds.length === 0
+      ? []
+      : await database
+          .select({
+            pipelineId: pipelineVersions.pipelineId,
+            version: pipelineVersions.version,
+            steps: pipelineVersions.steps,
+          })
+          .from(pipelineVersions)
+          .where(inArray(pipelineVersions.pipelineId, pipelineIds));
+  const pinned = new Map(versionRows.map((row) => [`${row.pipelineId}@${row.version}`, row.steps]));
+
+  const shapes = new Map<string, StepShape>();
+  for (const source of sources) {
+    const steps =
+      source.snapshot?.pipeline.steps ??
+      pinned.get(`${source.pipelineId}@${source.pipelineVersion}`) ??
+      [];
+    shapes.set(
+      source.ticketId,
+      shapeOf({
+        steps,
+        runStatus: source.snapshot ? source.runStatus : null,
+        currentStepIndex: source.currentStepIndex,
+        failureStepIndex: source.failureStepIndex,
+        skipped: source.runId ? skippedByRun.get(source.runId) : [],
+      }),
+    );
+  }
+  return shapes;
 }
 
 /** Position in the queue when the concurrency ceiling is full (FR-082). */

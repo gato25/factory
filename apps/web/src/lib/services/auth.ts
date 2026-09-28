@@ -47,7 +47,7 @@ export async function signInWithPassword(
   if (!found || !ok || !stored) {
     // The one miss an operator needs a hint for: an account created while
     // the application ran on Bun, now running on Node, whose hash this
-    // runtime cannot check. The screen still says "do not match" — that is
+    // runtime cannot check. The screen still says the two do not match — that is
     // deliberate — so the reason goes here.
     if (stored && isUnverifiableLegacy(stored)) {
       log.warn('a stored password hash was made by the Bun runtime and cannot be verified here', {
@@ -55,7 +55,7 @@ export async function signInWithPassword(
         remedy: 'reset the password; the new hash is portable',
       });
     }
-    throw new FactoryError('not_authorised', 'that email address and password do not match');
+    throw new FactoryError('not_authorised', m.error.credentialsDoNotMatch);
   }
   // A hash written by `Bun.password`, or at an older cost, is re-made the
   // first time it verifies, so it stops depending on the runtime or the
@@ -133,10 +133,7 @@ export async function registerFirstUser(
 ): Promise<SessionUser> {
   const email = normaliseEmail(input.email);
   if (input.password.length < MIN_PASSWORD_LENGTH) {
-    throw new FactoryError(
-      'invalid_input',
-      `Use at least ${MIN_PASSWORD_LENGTH} characters. This account can read every credential the workspace stores.`,
-    );
+    throw new FactoryError('invalid_input', m.error.passwordTooShort(MIN_PASSWORD_LENGTH));
   }
   if (await hasAnyUser(database)) {
     throw new FactoryError(
@@ -156,7 +153,7 @@ export async function registerFirstUser(
     .returning();
 
   const created = inserted[0];
-  if (!created) throw new FactoryError('conflict', 'could not create the account');
+  if (!created) throw new FactoryError('conflict', m.error.couldNotCreateAccount);
   return toSessionUser(created);
 }
 

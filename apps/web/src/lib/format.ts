@@ -8,16 +8,18 @@
  * somebody is actually comparing two events.
  */
 
-import { DEFAULT_LOCALE, m } from './i18n';
+import { DEFAULT_LOCALE, type Messages, m } from './i18n';
+import type { TimeUnit } from './i18n/mn';
 
 /**
- * `Intl` already speaks the language, so a distance needs no catalogue entry:
- * `mn` gives "1 цагийн өмнө", which is the phrase the artboard draws. Only the
- * two ends of the scale it has no unit for are words of ours.
+ * How long ago, in the catalogue's words — "4 мин өмнө", "5 өдрийн өмнө".
+ *
+ * This leaned on `Intl.RelativeTimeFormat('mn')` and read "12 minutes ago" on
+ * every Mongolian screen: neither Node nor the browser here carries Mongolian
+ * locale data, and `Intl` falls back to English without saying so. The
+ * catalogue owns the phrase instead (specs/004-bento-redesign FR-026).
  */
-const RELATIVE = new Intl.RelativeTimeFormat(DEFAULT_LOCALE, { numeric: 'auto' });
-
-const STEPS: [Intl.RelativeTimeFormatUnit, number][] = [
+const STEPS: [TimeUnit, number][] = [
   ['year', 365 * 24 * 60 * 60 * 1000],
   ['month', 30 * 24 * 60 * 60 * 1000],
   ['week', 7 * 24 * 60 * 60 * 1000],
@@ -26,17 +28,20 @@ const STEPS: [Intl.RelativeTimeFormatUnit, number][] = [
   ['minute', 60 * 1000],
 ];
 
-export function ago(when: Date | string, now: Date = new Date()): string {
+export function ago(when: Date | string, now: Date = new Date(), words: Messages = m): string {
   const then = typeof when === 'string' ? new Date(when) : when;
   const elapsed = now.getTime() - then.getTime();
-  if (!Number.isFinite(elapsed)) return m.time.unknown;
+  if (!Number.isFinite(elapsed)) return words.time.unknown;
 
   for (const [unit, size] of STEPS) {
-    const n = Math.round(elapsed / size);
-    // Rounding, so 36 hours reads "2 days ago" rather than "1 day ago".
-    if (Math.abs(n) >= 1) return RELATIVE.format(-n, unit);
+    // The largest unit that has wholly passed, so five days is "5 days ago"
+    // and not a rounded-up week — then rounded within it, so 36 hours reads
+    // "2 days ago" rather than "1 day ago".
+    if (Math.abs(elapsed) < size) continue;
+    const n = Math.round(Math.abs(elapsed) / size);
+    return elapsed >= 0 ? words.time.ago(n, unit) : words.time.in(n, unit);
   }
-  return m.time.justNow;
+  return words.time.justNow;
 }
 
 export function exact(when: Date | string): string {

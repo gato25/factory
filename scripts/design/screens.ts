@@ -27,39 +27,64 @@ export interface Screen {
 
 const APP = 'apps/web/src/routes/(app)';
 const UI = 'apps/web/src/components';
+/** Where the words live: every screen takes its copy from the Mongolian catalogue. */
+const MN = 'apps/web/src/lib/i18n/mn.ts';
 
 export const SCREENS: Screen[] = [
   {
     artboard: '00 Login',
-    files: ['apps/web/src/routes/login/+page.svelte'],
+    files: ['apps/web/src/routes/login/+page.svelte', MN],
     takes: [
-      'Sign in',
-      'Continue with',
+      'Code Factory',
+      'Даалгавраас нэгтгэх хүсэлт хүртэл — автоматаар',
+      'Агентууд тодорхойлолт бичиж, интерфейсийг pen.dev дээр зурж, төлөвлөөд хэрэгжүүлж, нэгтгэх хүсэлт нээнэ.',
+      'Даалгавар',
+      'Тодорхойлолт',
+      'Дизайн · pen.dev',
+      'Төлөвлөгөө',
+      'Хөгжүүлэлт',
+      'Нэвтрэх',
+      'Ажлын бүртгэлээрээ үргэлжлүүлнэ үү.',
+      '-аар үргэлжлүүлэх',
       'GitLab',
       'GitHub',
-      'Password',
-      'Ticket',
-      'Spec',
-      'Plan',
-      'Tasks',
-      'Implement',
+      'эсвэл имэйлээр',
+      'Ажлын имэйл',
+      'Нууц үг',
+      'Нэвтэрснээр юу ч холбогдохгүй. Репозиториео дараагийн алхамд нэмнэ.',
+      'Netgroup · Claude CLI ба pen.dev дээр ажилладаг',
+    ],
+    omits: [
+      {
+        label: '92%',
+        why: 'A figure on the sign-in page is either invented or the workspace record shown to someone not yet signed in; the hero says what the product does instead.',
+      },
+      {
+        label: 'pen.dev дизайн батлагдсан',
+        why: 'The second floating widget names a real ticket (#142) and its review; before sign-in that is either made up or somebody else work, so it is not drawn.',
+      },
     ],
   },
   {
-    // The frame every screen sits in: the sidebar and the top bar.
+    // The frame every signed-in screen opens with: the floating top bar.
     artboard: '01 Dashboard',
-    files: [`${APP}/+layout.svelte`],
+    files: [`${UI}/TopNav.svelte`, `${APP}/+layout.svelte`, MN],
     takes: [
       'Code Factory',
-      'Dashboard',
-      'Repositories',
-      'Tickets',
-      'Pipelines',
-      'Agents',
-      'Skills',
-      'Settings',
-      'Search tickets, repos...',
-      'New ticket',
+      'Хяналт',
+      'Даалгавар',
+      'Репозитори',
+      'Дамжлага',
+      'Агент',
+      'Ур чадвар',
+      'Хайх',
+      'Шинэ даалгавар',
+    ],
+    omits: [
+      {
+        label: '⌘K',
+        why: 'The search field hints at a key binding the product does not have; a shortcut hint that does nothing is a promise the screen cannot keep.',
+      },
     ],
   },
   {

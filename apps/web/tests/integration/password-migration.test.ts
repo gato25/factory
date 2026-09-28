@@ -1,6 +1,7 @@
 import { beforeEach, expect, test } from 'bun:test';
 import { users } from '@factory/db/schema';
 import { eq } from 'drizzle-orm';
+import { m } from '../../src/lib/i18n';
 import { registerFirstUser, signInWithPassword } from '../../src/lib/services/auth';
 import { needsRehash } from '../../src/lib/services/password';
 import { connect, reset } from '../fixtures';
@@ -47,7 +48,7 @@ test('a wrong password against a Bun-era hash is refused and nothing is rewritte
   const legacy = await Bun.password.hash(account.password);
   await db.update(users).set({ passwordHash: legacy }).where(eq(users.id, user.id));
 
-  await expect(signInWithPassword(db, account.email, 'not-it')).rejects.toThrow(/do not match/);
+  await expect(signInWithPassword(db, account.email, 'not-it')).rejects.toThrow(m.error.credentialsDoNotMatch);
 
   // The upgrade happens only after a successful check — the plaintext must
   // be the right one before it is hashed and stored.

@@ -171,28 +171,30 @@ A design step produces one `design_file` artifact and one `screen` artifact per 
 
 ## 4. Screens
 
-Every application screen shares the same frame: a white left sidebar (Dashboard, Repositories, Tickets, Pipelines, Agents, Skills, Settings, current user) and a top bar with the page title, global search, notifications and one primary action. Screen numbers match the artboard names in `design.pen`.
+Every application screen except sign-in shares the same frame: one floating top navigation bar holding the product mark, the six sections (Dashboard, Tickets, Repositories, Pipelines, Agents, Skills), global search, the one primary action to create a ticket, settings and the current user's avatar. There is no left sidebar. The current section is marked, including on pages nested under it. Screen numbers match the artboard names in `design.pen`.
+
+Content is grouped into soft tiles on a warm light ground, and each colour keeps one meaning on every screen: the accent for work in progress and primary actions, golden yellow for waiting on a person's approval, green for finished or connected, red for failed or needing attention, blue for work done in the design service. A state shown by colour is always written in words beside it. Because the product is presented on a projector in a lit room, no text is smaller than 12px, primary content is at least 14px, and text keeps a contrast of at least 4.5:1 (3:1 at 20px and above). The UI kit pages `Kit · 00`–`Kit · 12` of `design.pen` name every colour, size and component. (Amended by `specs/004-bento-redesign`, which replaced a white left sidebar and a separate top bar.)
 
 ### 00 Login
 **Purpose:** sign in.
-Left panel explains the product in one sentence and shows the flow Ticket → Spec → Plan → Tasks → Implement → MR. Right panel offers "Continue with GitLab", "Continue with GitHub", or email and password.
+A hero tile explains the product in one sentence and shows the flow Ticket → Spec → Design (pen.dev) → Plan → Tasks → Implement → MR. A sign-in tile offers "Continue with GitLab", "Continue with GitHub", or email and password.
 **Behavior:** first successful sign-in creates the user in the workspace. No repositories are connected at this point.
 
 ### 01 Dashboard
 **Purpose:** answer "what is happening right now and what needs me".
-- Four stat tiles: connected repos, tickets running, waiting for approval, merge requests this week.
-- **Active runs** list: ticket id, title, repo, a four-segment progress bar (Spec, Plan, Tasks, Implement) coloured by state, and a status badge.
-- **Waiting for your approval** panel with a Review button per item. This is the most important call to action on the page.
-- **Recent activity** feed: MR merged, run completed, run failed, checkpoint reached, ticket created.
-**Behavior:** everything is live; the page updates as callbacks arrive from n8n.
+- **Tickets**, grouped under four headings with counts: in progress (running or waiting for approval), needs attention (failed), queued, and done (finished in the last 7 days). Each row shows the title, reference, repository, pipeline name, a step bar with one segment per step of the pipeline its run pinned, its position as "current of total", and its state in words, with elapsed time while running. A queued run states its place in the queue. Each group shows the most recent first and says how many more there are, with a link to the board.
+- **Waiting for approval** tile with a Review button per run waiting for a person. This is the most important call to action on the page.
+- **First-attempt success**: of the tickets created in the last 30 days that have acceptance criteria and a known outcome, the share that reached a merge request on attempt 1 with no artifact of that attempt edited by a person, with the number of tickets counted — the same count the first-attempt audit makes. With nothing to count, it says so instead of showing 0%.
+- **Merge requests, 7 days**: a bar per day with today marked, the week's total, and today's recorded cost.
+**Behavior:** everything is live; the page updates as callbacks arrive from the execution service. When the workspace is not set up, a notice naming what is missing comes first. (Amended by `specs/004-bento-redesign`: the four stat tiles and the recent-activity feed were replaced; the connected-repository count is on 02.)
 
 ### 02 Repositories
 **Purpose:** see and manage connected repos.
-Table columns: repository (name and path), provider, default branch, default pipeline, tickets (running · done), status (Connected / Token expired), overflow menu.
-**Behavior:** clicking a row opens the repo; the overflow menu allows editing the default pipeline, rotating the token and disconnecting. A repo with `token_expired` blocks new tickets until fixed.
+A tile per repository: name and path, provider, connection state in words (Connected / Token expired), default branch, default pipeline, the latest ticket worked on and when, and its active and done ticket counts. Every repository action is reachable from its tile: editing the default pipeline, how it starts, rotating the token and disconnecting.
+**Behavior:** a repo with `token_expired` blocks new tickets until fixed; its tile is marked as needing attention and offers replacing the token directly. (Amended by `specs/004-bento-redesign`: a table became tiles, and the latest ticket was added.)
 
 ### 03 Connect Repository (modal)
-**Purpose:** connect a repo in four steps.
+**Purpose:** connect a repo in four steps, in a dialog over the repositories page.
 1. Choose provider: GitLab, GitHub, Self-hosted Git.
 2. Repository URL.
 3. Access token, with the required scopes listed (`api, read_repository, write_repository` for GitLab). Stored encrypted.
@@ -203,12 +205,12 @@ Primary action **Test & connect**.
 ### 04 Tickets Board
 **Purpose:** overview of all tickets across repos.
 Filters: repository, pipeline, creator. Toggle between board and list.
-Columns: **Backlog**, **Running**, **Waiting approval**, **Done**, **Failed**. Each card shows ticket id, creator avatar, title, repo, pipeline, and a status strip: current step ("Implement · step 4 of 4"), the pending checkpoint ("Plan needs your approval"), the MR result ("MR !91 opened") or the failure reason ("Tests failed at Implement").
+Columns, each with a count: **Queued**, **Running**, **Waiting approval**, **Done**, **Failed**. Each card shows ticket id, creator avatar, title, repo, pipeline, a step bar with one segment per step of the ticket's own pipeline, and a status strip: current step ("Implement · step 4 of 4"), the pending checkpoint ("Plan needs your approval"), the MR result ("MR !91 opened") or the failure reason ("Tests failed at Implement").
 **Behavior:** cards move automatically as run status changes. Clicking a card opens 06 or 07.
 
 ### 05 Create Ticket
 **Purpose:** describe the change well enough for agents to succeed.
-Fields: repository (required), title (required), description, acceptance criteria (one per line), pipeline choice (Standard / Review-heavy / Quick fix) with a one-line explanation of each.
+Fields: repository (required), title (required), description, acceptance criteria (one per line), pipeline choice (Standard / Review-heavy / Quick fix) with a one-line explanation and the number of steps of each.
 Right panel **What will happen** lists every step of the chosen pipeline with the agent and model, ending in "Open merge request". Conditional steps are shown greyed with the condition stated, for example "Design, only if this ticket changes the interface". A tip explains that acceptance criteria are the biggest quality lever.
 Footer shows an estimated cost and duration. Actions: **Save as draft**, **Create & start pipeline**.
 **Behavior:** on create, the ticket is stored with the pipeline version pinned, status becomes `queued`, and the webhook fires (see §5). The user does not declare whether the ticket has UI work; the Spec agent decides that at the first step (§8.6).
@@ -219,7 +221,7 @@ Footer shows an estimated cost and duration. Actions: **Save as draft**, **Creat
 - **Pipeline steps** tracker: Spec, Design, Plan, Tasks, Implement, Merge request. Each shows done (green check), running (blue), upcoming (grey) or skipped (grey, struck through, with the reason "no UI change"), plus duration and cost.
 - **Live log**: streamed terminal output of the current step, with the exact command shown in the header. This is the Claude CLI for agent steps and the pen.dev CLI for design steps.
 - **Artifacts**: `spec.md`, the design screens, `plan.md`, `tasks.md`, commits on the branch, and the merge request once it exists. Documents open in a viewer. Screens appear as a row of thumbnails that opens the gallery (14).
-- **Run details**: pipeline, attempt, sandbox image, n8n execution id (deep link), budget used of cap.
+- **Run details**, in their own tab beside the log: pipeline, attempt, sandbox image, budget used of cap. (Amended by `specs/004-bento-redesign`: the n8n execution link was removed with n8n, and the details moved into a tab.)
 **Behavior:** the page is the visual form of the run state machine (§6). When the run finishes, the MR link appears and the ticket closes. When it fails, the failed step is highlighted, the log shows the error, and a **Retry** action creates a new attempt.
 
 ### 07 Approval Checkpoint
@@ -232,7 +234,7 @@ Footer shows an estimated cost and duration. Actions: **Save as draft**, **Creat
 
 ### 08 Pipeline Builder
 **Purpose:** define the order of steps and where humans intervene.
-Vertical flow from **Trigger: ticket created** to **Open merge request → close ticket**. Each node is an agent step (blue), a design step (pink), a checkpoint (amber), or a custom agent (purple). Nodes can be dragged to reorder, and each connector has a + to insert a step.
+Vertical flow from **Trigger: ticket created** to **Open merge request → close ticket**. Each node is a step card whose colour and label say what it is: an agent step, a design step, a checkpoint, a custom agent, a shell command or a notify step, in the colours of the UI kit. Nodes can be dragged to reorder, and each connector has a + to insert a step.
 A step carrying a condition shows a **Conditional** badge and the condition in words, for example "Runs only if the ticket changes the interface".
 Right palette: **Human checkpoint**, **Agent step**, **Design step**, **Shell command**, **Notify**, and a list of the workspace's agents to drop in.
 Header actions: **Duplicate**, **Test run**, **Save pipeline**. A badge shows how many repos use the pipeline.
@@ -258,18 +260,18 @@ Left: searchable list of skills with description and how many agents use each. R
 **Behavior:** skills are copied into `.claude/skills/<name>/SKILL.md` for every run of an agent that references them.
 
 ### 12 Settings
-Sections: Workspace, **Orchestration (n8n)**, **Sandbox (Docker)**, Claude CLI & keys, **Design (pen.dev)**, Cost limits, Members, Notifications.
-- **n8n**: base URL, API key, the workflow used for ticket pipelines, the callback webhook URL, connection health and **Test connection**.
+A settings menu, and a tile per section: Workspace, **Execution service**, **Sandbox (Docker)**, Claude CLI & keys, **Design (pen.dev)**, Cost limits, Members, Notifications.
+- **Execution service**: its address, its credential (masked; never shown in full), the callback address it posts step results and approvals to, connection health and **Test connection**. (Amended by `specs/004-bento-redesign`: this replaces the Orchestration (n8n) section, since n8n was removed and orchestration is a module of the execution service.)
 - **Docker**: runner image, Docker host, CPU and memory per container, max wall time, parallel containers, network access during Implement, destroy container after MR.
 - **pen.dev**: account credential, default design model, export format and scale, default output paths for the `.pen` file and the screens, connection health and **Test connection**. Required only if any pipeline contains a design step.
 
 ### 13 System Architecture
-Diagram artboard for the team, not an application screen. Shows User → Factory App → n8n → Runner + Docker → Git provider and the eight-step ticket lifecycle.
+Diagram artboard for the team, not an application screen. Shows User → Factory App → execution service (orchestrator, runner and Docker) → Git provider and the eight-step ticket lifecycle.
 
 ### 14 Design Review
 **Purpose:** look at the screens the Design step produced and decide whether to build them.
 Reached when a checkpoint follows a design step, and openable read-only at any later point from the run's artifacts.
-- Banner naming the checkpoint and stating that no code has been written yet.
+- Banner naming the checkpoint as design work done in pen.dev and stating that no code has been written yet.
 - **Screen gallery**: every exported image as a large thumbnail with its screen name. Clicking one opens it full size with next and previous.
 - Side panel: the ticket's acceptance criteria, so the reviewer can check the screens against them, and the Spec agent's reason for classifying the ticket as UI work.
 - Actions: **Approve & continue**, **Request changes** with a feedback box, **Open in pen.dev** (link to the committed `.pen` file), **Cancel run**.

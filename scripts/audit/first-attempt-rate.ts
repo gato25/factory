@@ -28,6 +28,11 @@
  */
 
 import { createClient } from '@factory/db';
+import {
+  firstAttemptOf,
+  firstAttemptRows,
+  type Miss,
+} from '../../apps/web/src/lib/services/first-attempt';
 import { type Finding, report, since } from './report';
 
 const { iso, label } = since(Bun.argv, '30d');
@@ -46,53 +51,40 @@ const excluded = new Set(
         .filter(Boolean),
 );
 
-const { sql } = createClient();
+const { db, sql } = createClient();
 
-const rows = await sql`
-  select
-    t.id,
-    t.reference,
-    t.title,
-    t.status,
-    t.merge_request_url,
-    coalesce(array_length(t.acceptance_criteria, 1), 0) as criteria,
-    (select max(attempt) from runs where ticket_id = t.id) as attempts,
-    (select count(*)::int from artifacts a
-       join runs r on r.id = a.run_id
-      where r.ticket_id = t.id and r.attempt = 1 and a.created_by is not null) as edited_on_first,
-    (select status from runs where ticket_id = t.id and attempt = 1) as first_status
-  from tickets t
-  where t.created_at >= ${iso}
-    and t.status <> 'draft'
-  order by t.created_at`;
+// The counting is the dashboard's, so the two report the same number by
+// construction (specs/004-bento-redesign SC-004). What stays here is what only
+// the audit does: the hand exclusions, the target, and saying why each miss
+// missed.
+const rows = await firstAttemptRows(db, new Date(iso));
+const {
+  noCriteria,
+  excluded: byHand,
+  undecided,
+  decided,
+  successes: firstAttemptSuccesses,
+  missed,
+  rate: measured,
+} = firstAttemptOf(rows, { exclude: excluded });
+const population = [...undecided, ...decided];
+const rate = measured ?? 0;
 
 const findings: Finding[] = [];
 const notes: string[] = [];
 
-// A ticket with no criteria cannot be judged against a criterion about
-// tickets with complete criteria, so it is not in the population.
-const noCriteria = rows.filter((row) => (row.criteria as number) === 0);
-const byHand = rows.filter((row) => excluded.has(row.reference as string));
-const population = rows.filter(
-  (row) => (row.criteria as number) > 0 && !excluded.has(row.reference as string),
-);
-
-// Still running, so the outcome is not yet known either way. Counting these
-// as failures would make the rate a function of when the audit was run.
-const undecided = population.filter((row) =>
-  ['queued', 'running', 'waiting_approval'].includes(row.status as string),
-);
-const decided = population.filter((row) => !undecided.includes(row));
-
-const firstAttemptSuccesses = decided.filter(
-  (row) =>
-    row.merge_request_url !== null &&
-    (row.attempts as number | null) === 1 &&
-    row.first_status === 'done' &&
-    (row.edited_on_first as number) === 0,
-);
-
-const rate = decided.length === 0 ? 0 : firstAttemptSuccesses.length / decided.length;
+const said = (why: Miss): string => {
+  switch (why.kind) {
+    case 'no_merge_request':
+      return `no merge request (ticket is ${why.status}, first attempt ${why.firstStatus})`;
+    case 'later_attempt':
+      return `succeeded on attempt ${why.attempts}, not the first`;
+    case 'edited':
+      return `${why.artifacts} artifact(s) on the first attempt were edited by a person`;
+    case 'first_attempt_ended':
+      return `first attempt ended ${why.firstStatus}`;
+  }
+};
 
 if (decided.length > 0 && rate < target) {
   findings.push({
@@ -104,17 +96,8 @@ if (decided.length > 0 && rate < target) {
 
   // Naming why each of the rest missed is the useful half: a rate on its own
   // says nothing about what to fix.
-  for (const row of decided) {
-    if (firstAttemptSuccesses.includes(row)) continue;
-    const why =
-      row.merge_request_url === null
-        ? `no merge request (ticket is ${row.status}, first attempt ${row.first_status})`
-        : (row.attempts as number) > 1
-          ? `succeeded on attempt ${row.attempts}, not the first`
-          : (row.edited_on_first as number) > 0
-            ? `${row.edited_on_first} artifact(s) on the first attempt were edited by a person`
-            : `first attempt ended ${row.first_status}`;
-    findings.push({ where: `  ${row.reference} ${row.title}`, detail: why });
+  for (const { row, why } of missed) {
+    findings.push({ where: `  ${row.reference} ${row.title}`, detail: said(why) });
   }
 }
 

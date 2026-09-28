@@ -9,16 +9,30 @@
  * translating. Generated rather than hand-written so the set cannot drift
  * from the file; re-run it after the design changes.
  *
- *   bun scripts/design/icons.ts
+ *   bun scripts/design/icons.ts            # add what the design now uses
+ *   bun scripts/design/icons.ts --prune    # and drop what it no longer does
+ *
+ * Adding is the default and dropping is asked for, because a redesign lands
+ * one screen at a time: the design stops drawing an icon the moment its
+ * artboard changes, but the screen that still names it is rebuilt later, and
+ * an unknown name renders nothing without failing anything. So the names
+ * already here are kept until `--prune`, run once every screen follows the
+ * new design (specs/004-bento-redesign T089).
  */
 
-import { existsSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { artboards, icons, load } from './resolve';
 
 const ROOT = resolve(import.meta.dir, '../..');
+const OUT = `${ROOT}/apps/web/src/components/Icon.svelte`;
 const used = new Set<string>();
 for (const board of artboards(load())) for (const icon of icons(board)) used.add(icon);
+if (!Bun.argv.includes('--prune') && existsSync(OUT)) {
+  for (const [, name] of readFileSync(OUT, 'utf8').matchAll(/^ {4}'([a-z0-9-]+)':/gm)) {
+    used.add(name as string);
+  }
+}
 const names = [...used].sort();
 
 // Lucide dropped the brand marks over trademark, so these two are drawn here.

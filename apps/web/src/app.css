@@ -114,14 +114,63 @@
   unicode-range:
     U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
+/* The Cyrillic subset above stops at U+045F, and Mongolian needs four letters
+ * past it — Ө ө Ү ү (U+04E8, U+04E9, U+04AE, U+04AF) — which appear in almost
+ * every label. Without this they fall back to another face mid-word, which on
+ * a projector reads as broken type. One variable file covers every weight, as
+ * for Inter Tight below (specs/004-bento-redesign research D8). */
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("/fonts/inter-cyrillic-ext.woff2") format("woff2");
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* Inter Tight, the heading face: one variable file per subset covers both
+   weights. It carries cyrillic-ext as well, because Mongolian Ө ө Ү ү live
+   there (U+04E8, U+04E9, U+04AE, U+04AF) and not in the cyrillic subset. */
+@font-face {
+  font-family: "Inter Tight";
+  font-style: normal;
+  font-weight: 600 700;
+  font-display: swap;
+  src: url("/fonts/inter-tight-cyrillic-ext.woff2") format("woff2");
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+@font-face {
+  font-family: "Inter Tight";
+  font-style: normal;
+  font-weight: 600 700;
+  font-display: swap;
+  src: url("/fonts/inter-tight-cyrillic.woff2") format("woff2");
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: "Inter Tight";
+  font-style: normal;
+  font-weight: 600 700;
+  font-display: swap;
+  src: url("/fonts/inter-tight-latin-ext.woff2") format("woff2");
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "Inter Tight";
+  font-style: normal;
+  font-weight: 600 700;
+  font-display: swap;
+  src: url("/fonts/inter-tight-latin.woff2") format("woff2");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
 @font-face {
   font-family: "Manrope";
   font-style: normal;
   font-weight: 600;
   font-display: swap;
   src: url("/fonts/manrope-600-cyrillic.woff2") format("woff2");
-  unicode-range:
-    U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
 }
 @font-face {
   font-family: "Manrope";
@@ -147,8 +196,7 @@
   font-weight: 700;
   font-display: swap;
   src: url("/fonts/manrope-700-cyrillic.woff2") format("woff2");
-  unicode-range:
-    U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
 }
 @font-face {
   font-family: "Manrope";
@@ -174,8 +222,7 @@
   font-weight: 800;
   font-display: swap;
   src: url("/fonts/manrope-800-cyrillic.woff2") format("woff2");
-  unicode-range:
-    U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
 }
 @font-face {
   font-family: "Manrope";
@@ -250,60 +297,68 @@
 
 :root {
   /* Surfaces */
-  --bg:#f6f7f9;
+  --bg: #f1f0ee;
   --surface: #ffffff;
-  --surface-2: #f3f4f7;
+  --surface-2: #f4f2ef;
   --sidebar: #ffffff;
-  --sidebar-hover:#edf1fe;
-  --border:#e9ebf0;
+  --sidebar-hover: #feebdd;
+  --border: #e4e0da;
 
   /* Text */
-  --text:#0b1220;
-  --text-2:#5a6478;
-  --text-3:#98a1b0;
+  --text: #16140f;
+  --text-2: #56524a;
+  --text-3: #666159;
   --text-inv: #ffffff;
-  --text-inv-2: #94a3b8;
-  --nav-text:#5a6478;
-  --nav-text-active:#1b3fc4;
+  --text-inv-2: #f0cdb4;
+  --nav-text: #56524a;
+  --nav-text-active: #16140f;
 
   /* Accent */
-  --accent:#2450e6;
-  --accent-soft:#edf1fe;
-  --accent-text:#1b3fc4;
+  --accent: #f26b1d;
+  --accent-soft: #feebdd;
+  --accent-text: #a3400a;
 
   /* State */
   --success: #16a34a;
-  --success-soft: #e8f8ee;
-  --warning: #c77700;
-  --warning-soft: #fff4e0;
+  --success-soft: #e6f6ec;
+  --warning: #b98a00;
+  --warning-soft: #fff3c4;
   --danger: #dc2626;
-  --danger-soft: #fdecec;
+  --danger-soft: #fce1e2;
+  /* A state's colour as TEXT. The state colours above are for dots, bars and
+     edges; as words on their own soft tint they measured 2.9–4.5:1, under
+     the 4.5:1 a projector needs (specs/004-bento-redesign FR-008). */
+  --success-text: #0f7035;
+  --warning-text: #7a5a00;
+  --danger-text: #a12a2e;
 
   /* Step kinds — the pipeline builder colours a node by what it is */
-  --purple: #7c3aed;
-  --purple-soft: #f1ebff;
-  --design: #db2777;
-  --design-soft: #fce7f3;
+  --purple: #2f6fdb;
+  --purple-soft: #e3ecfb;
+  --design: #d6409f;
+  --design-soft: #fbe3f1;
+  --pen-text: #1f4fa8;
+  --design-text: #a3287a;
 
   /* A card's hairline, which design.pen draws but never named: #E6E8EE
      appears as a literal stroke 51 times, against the `border` variable's
      #ECEEF2 used on the frame. Tokenised here under a name of its own rather
      than collapsed into `border`, because collapsing them would be a
      decision the design did not take. */
-  --card-border: #e6e8ee;
+  --card-border: #d8d3cc;
 
   /* The scrim behind a modal: #0F172A at half weight, as design.pen 03
      draws it. */
-  --scrim: #0f172a80;
+  --scrim: #16140f80;
 
   /* The builder's canvas. design.pen draws these and never names them:
      #CBD2DC is the flow line and every grip (47 uses), #FDE68A and #F59E0B
      the chip and edge of a checkpoint. #FBBF24 marks attention without
      failure — the trigger's lightning, a warning line in a log. */
-  --flow-line: #cbd2dc;
-  --warning-chip: #fde68a;
-  --warning-edge: #f59e0b;
-  --amber: #fbbf24;
+  --flow-line: #f0cdb4;
+  --warning-chip: #fff3c4;
+  --warning-edge: #e0a800;
+  --amber: #f5c518;
 
   /*
    * The live log's own palette, for a dark ground.
@@ -320,43 +375,112 @@
    * at about 7:1, the text at about 15:1, and none of the three states
    * below 7:1.
    */
-  --log-bg: #0b1220;
-  --log-text: #e2e8f0;
-  --log-muted: #94a3b8;
-  --log-accent: #93c5fd;
-  --log-design: #f9a8d4;
-  --log-ok: #4ade80;
-  --log-warn: #fbbf24;
-  --log-bad: #f87171;
+  --log-bg: #1e1b18;
+  --log-text: #f2eee8;
+  --log-muted: #b8afa3;
+  --log-accent: #f8b98f;
+  --log-design: #f5a3d3;
+  --log-ok: #5ee0aa;
+  --log-warn: #fdd34d;
+  --log-bad: #ff8a8a;
   /* The ground under a tool-call chip, a fold and a Markdown table head. */
-  --log-chip: #1e293b;
+  --log-chip: #36302a;
   /* Row grounds: dark enough to stay behind their text, distinct enough to
      find while scanning. */
-  --log-ok-soft: #10271c;
-  --log-warn-soft: #2a2110;
-  --log-bad-soft: #2c1518;
+  --log-ok-soft: #1c3a2a;
+  --log-warn-soft: #3b3326;
+  --log-bad-soft: #3f1f1f;
 
   /* The code surface. design.pen draws the skill editor and the run log on a
      dark ground it never named: #0B1220 behind, #E2E8F0 text, #475569 line
      numbers, #93C5FD for a Markdown heading. Literals in the file, tokenised
      here because more than one screen stands on them. */
-  --code-bg: #0b1220;
-  --code-text: #e2e8f0;
-  --code-line: #475569;
-  --code-accent: #93c5fd;
-  --code-edge: #1e293b;
+  --code-bg: #1e1b18;
+  --code-text: #f2eee8;
+  --code-line: #9c9286;
+  --code-accent: #f8b98f;
+  --code-edge: #36302a;
 
   /* Radii */
-  --r-sm: 8px;
-  --r-md: 12px;
-  --r-lg: 16px;
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 18px;
   /* The panel radius. design.pen names it and draws the Live Output and the
      reference cards with it; nothing smaller is the same shape. */
-  --r-xl: 20px;
+  --r-xl: 24px;
+  /* The UI kit's two ends of the scale: a chip's corner, and a pill — which
+     design.pen draws as 999 sixty times before it had a name for it. */
+  --r-xs: 6px;
+  --r-pill: 999px;
+
+  /* Spacing, from design.pen's UI kit (Kit · 03 Зай ба булан). A 4px
+     step, skipping the sizes the screens never use. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* The type scale, from design.pen's UI kit (Kit · 02 Типографи). Body is
+     14px and nothing is under 12px: the smallest sizes a projector in a lit
+     room still carries (specs/004-bento-redesign FR-007). */
+  --type-caption: 12px;
+  --type-small: 13px;
+  --type-body: 14px;
+  --type-body-lg: 15px;
+  --type-title: 16px;
+  --type-h3: 20px;
+  --type-h2: 24px;
+  --type-h1: 28px;
+  --type-display: 36px;
+
+  /* The bento layer, from design.pen's UI kit. A tile is a soft gradient
+     from --tile-from to --tile-to with a --highlight edge and the two
+     shadows below; an accent fill is --accent-from to --accent-to. Colour
+     separates things here, never a hairline. */
+  --ground-from: #f1f0ee;
+  --ground-to: #e6e3de;
+  --tile-from: #ffffff;
+  --tile-to: #fbfaf9;
+  --highlight: #ffffffb3;
+  --accent-from: #ff8a3d;
+  --accent-to: #d9560e;
+  --amber-from: #fdd34d;
+  --amber-to: #e0a800;
+  --mint-from: #4ade80;
+  --mint-to: #16a34a;
+  --red-from: #ff8a8a;
+  --red-to: #e5484d;
+  --pen-from: #6f9bef;
+  --pen-to: #2f6fdb;
+  --approval-from: #fff8db;
+  --approval-to: #fdefb5;
+  --on-amber: #3a2e00;
+  --on-mint: #ffffff;
+  --shadow-soft: #3a2a1a0f;
+  --shadow-depth: #3a2a1a1a;
+  --glow-accent: #f26b1d66;
+  /* The fill of anything that carries white text — a primary, danger or
+     pen.dev button, a numbered step, the sign-in hero. The bright gradients
+     above measured 1.9–2.4:1 under white; these clear 4.5:1 at their lighter
+     end. Dots, bars, orbs and tints keep the bright ones. */
+  --accent-deep-from: #c4530f;
+  --accent-deep-to: #a0400a;
+  --red-deep-from: #d23a40;
+  --red-deep-to: #ae2a30;
+  --pen-deep-from: #2f6fdb;
+  --pen-deep-to: #1f4fa8;
+  --mint-deep-from: #15803d;
+  --mint-deep-to: #0f6a33;
 
   /* Typefaces */
   --font: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --font-head: "Manrope", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-head: "Inter Tight", "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
 }
 
@@ -369,12 +493,14 @@
   box-sizing: border-box;
 }
 
+/* The page ground: the warm gradient every artboard stands on, fixed so a
+   long page does not stretch it into a stripe. */
 body {
   margin: 0;
-  /* 13px is the design's dominant body size; headings step up from it. */
-  font: 13px / 1.5 var(--font);
+  min-height: 100vh;
+  font: var(--type-body) / 1.5 var(--font);
   color: var(--text);
-  background: var(--bg);
+  background: linear-gradient(180deg, var(--ground-from), var(--ground-to)) fixed var(--bg);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -454,4 +580,301 @@ h2.section {
   font-weight: 600;
   letter-spacing: -0.01em;
   color: var(--text);
+}
+
+/* =====================================================================
+ * The bento layer — the surfaces of design.pen's UI kit (Kit · 05–12),
+ * one class each, so no screen re-derives a gradient or a shadow
+ * (specs/004-bento-redesign research D1). Colour separates things here,
+ * never a hairline: a tile is lighter than the ground by itself, and its
+ * shadow only adds depth (FR-004).
+ * ===================================================================== */
+
+/* Tints, as the design draws them and never names them. */
+:root {
+  --tint-danger-from: #fdebec;
+  --tint-danger-to: #f9dadc;
+  --tint-done-from: #e3f6ee;
+  --tint-done-to: #d5f0e4;
+  --tint-design-from: #eaf1fc;
+  --tint-design-to: #dce7fa;
+  --tint-queue-from: #f4f3f2;
+  --tint-queue-to: #eeecea;
+  --tint-run-from: #ffffff;
+  --tint-run-to: #f0eeeb;
+  --pill-queue: #f2f0ec;
+  --pill-queue-dot: #a39d93;
+  --focus-ring: 0 0 0 3px var(--surface), 0 0 0 5px var(--accent);
+}
+
+/* A tile: 24px corners, a soft top-to-bottom gradient, a highlight edge that
+   fades out down the sides, and two shadows — a tight one for contact and a
+   wide one for depth. The edge is a second background on the border box, so
+   it needs no extra element. */
+.tile {
+  --tile-a: var(--tile-from);
+  --tile-b: var(--tile-to);
+  position: relative;
+  padding: var(--space-6);
+  border: 1px solid transparent;
+  border-radius: var(--r-xl);
+  background:
+    linear-gradient(180deg, var(--tile-a), var(--tile-b)) padding-box,
+    linear-gradient(180deg, var(--highlight), #ffffff00) border-box;
+  box-shadow:
+    0 1px 2px var(--shadow-soft),
+    0 14px 36px var(--shadow-depth);
+}
+.tile--approval {
+  --tile-a: var(--approval-from);
+  --tile-b: var(--approval-to);
+}
+.tile--danger {
+  --tile-a: var(--tint-danger-from);
+  --tile-b: var(--tint-danger-to);
+}
+.tile--done {
+  --tile-a: var(--tint-done-from);
+  --tile-b: var(--tint-done-to);
+}
+.tile--design {
+  --tile-a: var(--tint-design-from);
+  --tile-b: var(--tint-design-to);
+}
+.tile--queue {
+  --tile-a: var(--tint-queue-from);
+  --tile-b: var(--tint-queue-to);
+}
+.tile--run {
+  --tile-a: var(--tint-run-from);
+  --tile-b: var(--tint-run-to);
+}
+
+/* A tile's name, and the line under it. */
+.tile-title,
+.section-title {
+  margin: 0;
+  font-family: var(--font-head);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+.tile-sub {
+  margin: 2px 0 0;
+  font-size: var(--type-small);
+  color: var(--text-2);
+}
+
+/* An orb: a round, lit gradient holding one icon. The tone says what kind
+   of thing it stands for — the accent for work, pen.dev blue for design,
+   amber for a decision by a person, mint for done, red for a failure. */
+.orb {
+  --orb-a: var(--accent-from);
+  --orb-b: var(--accent-to);
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border: 1.5px solid transparent;
+  border-radius: var(--r-pill);
+  color: var(--text-inv);
+  background:
+    linear-gradient(180deg, var(--orb-a), var(--orb-b)) padding-box,
+    linear-gradient(180deg, var(--highlight), #ffffff00) border-box;
+  box-shadow:
+    0 6px 14px var(--glow-accent),
+    inset 0 2px 3px #ffffff59;
+}
+.orb--sm {
+  width: 32px;
+  height: 32px;
+}
+.orb--pen {
+  --orb-a: var(--pen-from);
+  --orb-b: var(--pen-to);
+}
+.orb--amber {
+  --orb-a: var(--amber-from);
+  --orb-b: var(--amber-to);
+  color: var(--on-amber);
+}
+.orb--mint {
+  --orb-a: var(--mint-from);
+  --orb-b: var(--mint-to);
+}
+.orb--red {
+  --orb-a: var(--red-from);
+  --orb-b: var(--red-to);
+}
+
+/* A status pill: a dot and words, never colour alone (FR-006). */
+.pill {
+  --pill-bg: var(--accent-soft);
+  --pill-dot: var(--accent);
+  --pill-text: var(--accent-text);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 7px 12px;
+  border-radius: var(--r-pill);
+  font-size: var(--type-caption);
+  font-weight: 600;
+  line-height: 1.3;
+  white-space: nowrap;
+  color: var(--pill-text);
+  background: var(--pill-bg);
+}
+.pill::before {
+  content: "";
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--r-pill);
+  background: var(--pill-dot);
+}
+.pill--live::before {
+  box-shadow: 0 0 6px var(--glow-accent);
+}
+.pill--wait {
+  --pill-bg: var(--warning-soft);
+  --pill-dot: var(--warning);
+  --pill-text: var(--warning-text);
+}
+.pill--done {
+  --pill-bg: var(--success-soft);
+  --pill-dot: var(--success);
+  --pill-text: var(--success-text);
+}
+.pill--fail {
+  --pill-bg: var(--danger-soft);
+  --pill-dot: var(--danger);
+  --pill-text: var(--danger-text);
+}
+.pill--pen {
+  --pill-bg: var(--purple-soft);
+  --pill-dot: var(--purple);
+  --pill-text: var(--pen-text);
+}
+.pill--queue {
+  --pill-bg: var(--pill-queue);
+  --pill-dot: var(--pill-queue-dot);
+  --pill-text: var(--text-2);
+}
+
+/* Buttons. A filled button carries white text on the DEEP gradient, which
+   is what clears 4.5:1 (spec clarification); the bright gradient is for
+   orbs and dots. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: 11px 18px;
+  border: 0;
+  border-radius: 12px;
+  font: 600 var(--type-body) / 1.2 var(--font);
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  color: var(--text-inv);
+  background: linear-gradient(180deg, var(--accent-deep-from), var(--accent-deep-to));
+  box-shadow: 0 6px 14px var(--glow-accent);
+}
+.btn--secondary {
+  padding: 11px 16px;
+  font-weight: 500;
+  color: var(--text);
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+.btn--danger {
+  background: linear-gradient(180deg, var(--red-deep-from), var(--red-deep-to));
+  box-shadow: 0 5px 12px #e5484d4d;
+}
+.btn--pen {
+  background: linear-gradient(180deg, var(--pen-deep-from), var(--pen-deep-to));
+  box-shadow: 0 6px 14px #2f6fdb40;
+}
+.btn--mint {
+  background: linear-gradient(180deg, var(--mint-deep-from), var(--mint-deep-to));
+  box-shadow: 0 6px 14px #16a34a40;
+}
+.btn--ghost {
+  padding: 11px 12px;
+  font-weight: 500;
+  color: var(--text-2);
+  background: transparent;
+  box-shadow: none;
+}
+.btn:disabled,
+.btn[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* Every interactive thing shows where the keyboard is (US2 scenario 5). */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.btn:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+
+/* A form field: its label, the control, and a hint. */
+.field {
+  display: grid;
+  gap: var(--space-2);
+}
+.field > .label {
+  font-size: var(--type-body);
+  font-weight: 600;
+  color: var(--text);
+}
+.field > .hint {
+  font-size: var(--type-caption);
+  color: var(--text-3);
+}
+.input,
+.field :where(input:not([type="checkbox"], [type="radio"], [type="file"]), select, textarea) {
+  width: 100%;
+  padding: 11px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  font: var(--type-body) / 1.4 var(--font);
+  color: var(--text);
+  background: var(--surface-2);
+  box-shadow: inset 0 1px 3px #3a2a1a1a;
+}
+
+/* Segmented tabs: a pill track with the current tab raised out of it. */
+.tabs {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: var(--r-pill);
+  background: var(--surface-2);
+}
+.tabs > :where(a, button) {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border: 0;
+  border-radius: var(--r-pill);
+  font: 500 var(--type-caption) / 1.4 var(--font);
+  text-decoration: none;
+  cursor: pointer;
+  color: var(--text-2);
+  background: transparent;
+}
+.tabs > [aria-selected="true"],
+.tabs > [aria-current="page"] {
+  font-weight: 600;
+  color: var(--text);
+  background: var(--surface);
+  box-shadow: 0 1px 2px #2b190e14;
 }

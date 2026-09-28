@@ -8,7 +8,7 @@
  *    file is a name, not a value. The `variables` block holds the values, and
  *    it is the single source of truth for the token layer.
  *  - **`type: "ref"` nodes.** A reused component appears as a reference to a
- *    node in the `Components` frame. Left unresolved, an artboard looks
+ *    node on one of the UI kit's pages. Left unresolved, an artboard looks
  *    almost empty: the Dashboard has two children, and one of them is the
  *    whole sidebar.
  *  - **`descendants` overrides.** A reference carries a map of paths —
@@ -156,7 +156,17 @@ function resolveNode(
 }
 
 /**
- * Every artboard, resolved. The `Components` frame is not one.
+ * Whether a top-level frame is part of the UI kit rather than a screen: the
+ * `Components` frame, and every page named `Kit · …` — the colours, the type
+ * scale, the component sheets. They document the parts screens are built
+ * from, and nobody navigates to one, so none is an artboard.
+ */
+export function isKitPage(node: PenNode): boolean {
+  return node.name === 'Components' || (node.name?.startsWith('Kit · ') ?? false);
+}
+
+/**
+ * Every artboard, resolved. The UI kit's pages are not artboards.
  *
  * The file is required rather than defaulted to this repository's own: the
  * runner resolves a design it read out of a container, and has no path.
@@ -164,7 +174,7 @@ function resolveNode(
 export function artboards(file: PenFile): Resolved[] {
   const byId = index(file);
   return file.children
-    .filter((child) => child.name !== 'Components')
+    .filter((child) => !isKitPage(child))
     .map((child) => resolveNode(child, byId, file.variables, [], new Set()));
 }
 

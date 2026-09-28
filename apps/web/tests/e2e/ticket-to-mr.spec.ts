@@ -2,6 +2,7 @@ import { createHmac, randomUUID } from 'node:crypto';
 import type { BrowserContext } from '@playwright/test';
 import { expect, test } from '@playwright/test';
 import postgres from 'postgres';
+import { m } from '../../src/lib/i18n';
 
 /**
  * User Story 1's Independent Test (quickstart.md scenario A).
@@ -38,23 +39,27 @@ test.describe('the parts that need no external service', () => {
     // provider with no client id and secret is not offered at all, rather
     // than offered as a link that fails — asserted against the environment
     // directly in tests/integration/oauth.test.ts.
-    const gitlab = page.getByRole('link', { name: /Continue with GitLab/ });
+    const gitlab = page.getByRole('link', { name: m.login.continueWith('GitLab') });
     await expect(gitlab).toBeVisible();
     await expect(gitlab).toHaveAttribute('href', '/login/gitlab');
-    await expect(page.getByRole('link', { name: /Continue with GitHub/ })).toBeVisible();
-    await expect(page.getByText(/Turn a ticket into a reviewable merge request/)).toBeVisible();
-    // The design step is conditional, and the screen says so (FR-032b).
-    await expect(page.getByText(/only when a ticket changes the interface/i)).toBeVisible();
+    await expect(page.getByRole('link', { name: m.login.continueWith('GitHub') })).toBeVisible();
+    await expect(page.getByText(m.login.oneLiner)).toBeVisible();
+    // The flow is drawn, and the design step — the one done in pen.dev — is
+    // the one it lights up (specs/004-bento-redesign 00).
+    const flow = page.getByRole('list', { name: m.login.flowLabel });
+    for (const step of m.login.flow) await expect(flow).toContainText(step);
   });
 
   test('wrong credentials are refused without revealing whether the account exists', async ({
     page,
   }) => {
-    await page.goto('/login');
-    await page.getByLabel('Email').fill('nobody@example.com');
-    await page.getByLabel('Password').fill('definitely-not-right');
-    await page.getByRole('button', { name: 'Sign in' }).click();
-    await expect(page.getByRole('alert')).toContainText(/do not match/);
+    // Typed before the page is live, the fields are reset when it hydrates
+    // and the required email then blocks the submit.
+    await page.goto('/login', { waitUntil: 'networkidle' });
+    await page.getByLabel(m.login.email).fill('nobody@example.com');
+    await page.getByLabel(m.login.password).fill('definitely-not-right');
+    await page.getByRole('button', { name: m.login.signIn }).click();
+    await expect(page.getByRole('alert')).toContainText(m.error.credentialsDoNotMatch);
     // No session was created.
     expect(await page.context().cookies()).not.toContainEqual(
       expect.objectContaining({ name: 'factory_session' }),

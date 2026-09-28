@@ -627,17 +627,25 @@ confirm a run stops at the ceiling and that a run beyond the cap waits and repor
 - **FR-070**: System MUST NOT merge the merge request; merging remains a human action on the
   provider.
 - **FR-070a**: System MUST mark the ticket done, record the run's final cost, and add the outcome to
-  the activity feed once the merge request is open.
+  the activity feed once the merge request is open. *The activity-feed clause is superseded by
+  `specs/004-bento-redesign` (see FR-073): the finished ticket appears under the dashboard's "done"
+  heading (004 FR-009) and in its run's own history.*
 
 #### Visibility
 
-- **FR-071**: System MUST show on the dashboard how many repositories are connected, how many
+- **FR-071**: ~~System MUST show on the dashboard how many repositories are connected, how many
   tickets are running, how many await approval, and how many merge requests were opened in the
-  current week.
+  current week.~~ *Superseded by `specs/004-bento-redesign`*: the running and awaiting counts are the
+  heading counts of the grouped ticket list (004 FR-009) and the approvals (004 FR-011); merge
+  requests opened are the 7-day chart and its total (004 FR-013); connected repositories are shown
+  on the repositories page (004 FR-015).
 - **FR-072**: System MUST list every active run on the dashboard with its ticket, repository,
   progress through the pipeline, and status.
-- **FR-073**: System MUST show a feed of recent events across the workspace, covering at least
-  merge requests merged, runs completed, runs failed, gates reached, and tickets created.
+- **FR-073**: ~~System MUST show a feed of recent events across the workspace, covering at least
+  merge requests merged, runs completed, runs failed, gates reached, and tickets created.~~
+  *Superseded by `specs/004-bento-redesign`*: the workspace-wide feed leaves the dashboard; each
+  run's own history remains on its run and approval pages, and finished work appears under "done"
+  (004 FR-009).
 - **FR-074**: System MUST update the dashboard and any open ticket as a run progresses, without the
   user reloading.
 - **FR-075**: System MUST show, for a run, each step's state, duration and cost, and the total spent

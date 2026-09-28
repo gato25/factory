@@ -18,6 +18,7 @@
  * different glyphs on one screen.
  */
 
+import { type Messages, m } from './i18n';
 import type { StepView } from './services/run-view';
 
 const GLYPH: Record<string, string> = {
@@ -83,11 +84,10 @@ export function toneFor(type: string): 'design' | 'run' {
   return type === 'design' ? 'design' : 'run';
 }
 
-/** "2m 10s", "45s" — the way every artboard writes an elapsed time. */
-export function duration(seconds: number): string {
+/** "2м 10с", "45с" — the way every artboard writes an elapsed time, in the catalogue's units. */
+export function duration(seconds: number, words: Messages = m): string {
   const whole = Math.max(0, Math.round(seconds));
-  const minutes = Math.floor(whole / 60);
-  return minutes > 0 ? `${minutes}m ${String(whole % 60).padStart(2, '0')}s` : `${whole}s`;
+  return words.time.duration(Math.floor(whole / 60), whole % 60);
 }
 
 /**

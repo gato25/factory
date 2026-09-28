@@ -13,21 +13,28 @@
   import Bell from '@lucide/svelte/icons/bell';
   import BookOpen from '@lucide/svelte/icons/book-open';
   import Bot from '@lucide/svelte/icons/bot';
+  import Boxes from '@lucide/svelte/icons/boxes';
+  import Building2 from '@lucide/svelte/icons/building-2';
   import Check from '@lucide/svelte/icons/check';
   import ChevronDown from '@lucide/svelte/icons/chevron-down';
   import ChevronRight from '@lucide/svelte/icons/chevron-right';
   import CircleCheck from '@lucide/svelte/icons/circle-check';
+  import CircleDot from '@lucide/svelte/icons/circle-dot';
   import CircleX from '@lucide/svelte/icons/circle-x';
   import Code from '@lucide/svelte/icons/code';
   import Coins from '@lucide/svelte/icons/coins';
   import Container from '@lucide/svelte/icons/container';
   import Copy from '@lucide/svelte/icons/copy';
+  import Cpu from '@lucide/svelte/icons/cpu';
   import Download from '@lucide/svelte/icons/download';
   import Ellipsis from '@lucide/svelte/icons/ellipsis';
   import EllipsisVertical from '@lucide/svelte/icons/ellipsis-vertical';
   import ExternalLink from '@lucide/svelte/icons/external-link';
+  import Eye from '@lucide/svelte/icons/eye';
   import Factory from '@lucide/svelte/icons/factory';
+  import FileCode from '@lucide/svelte/icons/file-code';
   import FileText from '@lucide/svelte/icons/file-text';
+  import FlaskConical from '@lucide/svelte/icons/flask-conical';
   import FolderGit2 from '@lucide/svelte/icons/folder-git-2';
   import GitBranch from '@lucide/svelte/icons/git-branch';
   import GitCommitHorizontal from '@lucide/svelte/icons/git-commit-horizontal';
@@ -48,6 +55,7 @@
   import Loader from '@lucide/svelte/icons/loader';
   import Map from '@lucide/svelte/icons/map';
   import MessageSquare from '@lucide/svelte/icons/message-square';
+  import PackageOpen from '@lucide/svelte/icons/package-open';
   import Palette from '@lucide/svelte/icons/palette';
   import Pause from '@lucide/svelte/icons/pause';
   import PenTool from '@lucide/svelte/icons/pen-tool';
@@ -55,6 +63,8 @@
   import Play from '@lucide/svelte/icons/play';
   import Plug from '@lucide/svelte/icons/plug';
   import Plus from '@lucide/svelte/icons/plus';
+  import Radio from '@lucide/svelte/icons/radio';
+  import RefreshCw from '@lucide/svelte/icons/refresh-cw';
   import Rocket from '@lucide/svelte/icons/rocket';
   import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
   import Save from '@lucide/svelte/icons/save';
@@ -68,10 +78,12 @@
   import Terminal from '@lucide/svelte/icons/terminal';
   import Ticket from '@lucide/svelte/icons/ticket';
   import Timer from '@lucide/svelte/icons/timer';
+  import ToggleLeft from '@lucide/svelte/icons/toggle-left';
   import Trash2 from '@lucide/svelte/icons/trash-2';
   import TriangleAlert from '@lucide/svelte/icons/triangle-alert';
   import Undo2 from '@lucide/svelte/icons/undo-2';
   import User from '@lucide/svelte/icons/user';
+  import Users from '@lucide/svelte/icons/users';
   import Workflow from '@lucide/svelte/icons/workflow';
   import X from '@lucide/svelte/icons/x';
   import Zap from '@lucide/svelte/icons/zap';
@@ -93,21 +105,28 @@
     'bell': Bell,
     'book-open': BookOpen,
     'bot': Bot,
+    'boxes': Boxes,
+    'building-2': Building2,
     'check': Check,
     'chevron-down': ChevronDown,
     'chevron-right': ChevronRight,
     'circle-check': CircleCheck,
+    'circle-dot': CircleDot,
     'circle-x': CircleX,
     'code': Code,
     'coins': Coins,
     'container': Container,
     'copy': Copy,
+    'cpu': Cpu,
     'download': Download,
     'ellipsis': Ellipsis,
     'ellipsis-vertical': EllipsisVertical,
     'external-link': ExternalLink,
+    'eye': Eye,
     'factory': Factory,
+    'file-code': FileCode,
     'file-text': FileText,
+    'flask-conical': FlaskConical,
     'folder-git-2': FolderGit2,
     'git-branch': GitBranch,
     'git-commit-horizontal': GitCommitHorizontal,
@@ -128,6 +147,7 @@
     'loader': Loader,
     'map': Map,
     'message-square': MessageSquare,
+    'package-open': PackageOpen,
     'palette': Palette,
     'pause': Pause,
     'pen-tool': PenTool,
@@ -135,6 +155,8 @@
     'play': Play,
     'plug': Plug,
     'plus': Plus,
+    'radio': Radio,
+    'refresh-cw': RefreshCw,
     'rocket': Rocket,
     'rotate-ccw': RotateCcw,
     'save': Save,
@@ -148,10 +170,12 @@
     'terminal': Terminal,
     'ticket': Ticket,
     'timer': Timer,
+    'toggle-left': ToggleLeft,
     'trash-2': Trash2,
     'triangle-alert': TriangleAlert,
     'undo-2': Undo2,
     'user': User,
+    'users': Users,
     'workflow': Workflow,
     'x': X,
     'zap': Zap,

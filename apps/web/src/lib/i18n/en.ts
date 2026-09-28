@@ -10,6 +10,9 @@
  */
 
 import type { Messages } from './index';
+import type { TimeUnit } from './mn';
+
+const ENGLISH_RELATIVE = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
 
 export const en: Messages = {
   app: {
@@ -35,9 +38,86 @@ export const en: Messages = {
     newTicket: 'New ticket',
   },
 
+  topNav: {
+    label: 'Main menu',
+    home: 'Code Factory — to the dashboard',
+    dashboard: 'Dashboard',
+    tickets: 'Tickets',
+    repositories: 'Repositories',
+    pipelines: 'Pipelines',
+    agents: 'Agents',
+    skills: 'Skills',
+    search: 'Search',
+    searchLabel: 'Search tickets',
+    newTicket: 'New ticket',
+    settings: 'Settings',
+    account: (name: string) => `${name} — your account`,
+  },
+
+  stepBar: {
+    label: (at: number, total: number) => `Step ${at} of ${total}`,
+    count: (at: number, total: number) => `${at}/${total} steps`,
+  },
+
+  defaults: {
+    agents: {
+      spec: {
+        name: 'Spec',
+        step: 'Spec',
+        running: 'Writing the specification',
+        description: 'Turns a ticket into a specification.',
+      },
+      design: {
+        name: 'Design',
+        step: 'Design · pen.dev',
+        running: 'Drawing in pen.dev',
+        description: 'Produces screens before any code is planned.',
+      },
+      plan: {
+        name: 'Plan',
+        step: 'Plan',
+        running: 'Planning',
+        description: 'Turns a specification into an approach.',
+      },
+      tasks: {
+        name: 'Tasks',
+        step: 'Tasks',
+        running: 'Breaking the plan into tasks',
+        description: 'Turns a plan into ordered, verifiable tasks.',
+      },
+      implement: {
+        name: 'Implement',
+        step: 'Implement',
+        running: 'Implementing',
+        description: 'Writes the code and leaves the tests passing.',
+      },
+    },
+    pipelines: {
+      quickFix: {
+        name: 'Quick fix',
+        description: 'No checkpoints. For small, well-described changes you trust unattended.',
+      },
+      standard: {
+        name: 'Standard',
+        description: 'One checkpoint, after the plan, before any code is written.',
+      },
+      reviewHeavy: {
+        name: 'Review-heavy',
+        description: 'A checkpoint after the specification, the plan, and the implementation.',
+      },
+    },
+    designRunning: 'Drawing in pen.dev',
+    running: (name: string) => `${name} is running`,
+  },
+
   time: {
     justNow: 'just now',
     unknown: 'at an unknown time',
+    // `Intl` does speak English, so English keeps the phrasing it always had.
+    ago: (n: number, unit: TimeUnit) => ENGLISH_RELATIVE.format(-n, unit),
+    in: (n: number, unit: TimeUnit) => ENGLISH_RELATIVE.format(n, unit),
+    duration: (minutes: number, seconds: number) =>
+      minutes > 0 ? `${minutes}m ${String(seconds).padStart(2, '0')}s` : `${seconds}s`,
   },
 
   dashboard: {
@@ -209,7 +289,8 @@ export const en: Messages = {
     title: 'Title',
     titlePlaceholder: 'Add Apple Sign-In next to Google login',
     description: 'Description',
-    descriptionHint: 'Plain language is fine. The Spec agent will ask itself the clarifying questions.',
+    descriptionHint:
+      'Plain language is fine. The Spec agent will ask itself the clarifying questions.',
     descriptionPlaceholder: 'What should change, and why?',
     acceptance: 'Acceptance criteria',
     acceptanceHint: 'One per line. The Implement agent must make all of these pass.',
@@ -320,8 +401,7 @@ export const en: Messages = {
     noInterfaceChange: 'No interface change',
     run: 'Run',
     attemptOrdinal: (attempt: number) => {
-      const suffix =
-        attempt === 1 ? 'st' : attempt === 2 ? 'nd' : attempt === 3 ? 'rd' : 'th';
+      const suffix = attempt === 1 ? 'st' : attempt === 2 ? 'nd' : attempt === 3 ? 'rd' : 'th';
       return `(${attempt}${suffix} attempt)`;
     },
     notCreated: 'not created',
@@ -414,7 +494,8 @@ export const en: Messages = {
     decidedBySpec: (kind: string) => `Decided by the specification step · classified as ${kind}`,
     interfaceWork: 'interface work',
     notInterfaceWork: 'not interface work',
-    classificationMissing: 'The specification step produced no usable decision about whether this ticket changes the interface, so it was treated as not changing it.',
+    classificationMissing:
+      'The specification step produced no usable decision about whether this ticket changes the interface, so it was treated as not changing it.',
     noReason: 'No reason was recorded.',
     checkAgainst: 'Check the screens against',
     noAcceptance: 'None were given. That is the biggest quality lever there is.',
@@ -425,7 +506,8 @@ export const en: Messages = {
     afterYouApprove: 'After you approve',
     openMergeRequest: 'Open merge request',
     openMergeRequestNote: 'Branch pushed, merge request created, ticket closed',
-    stepCost: (seconds: string | number, costUsd: string | number) => `The design step took ${seconds}s and cost ${costUsd}.`
+    stepCost: (seconds: string | number, costUsd: string | number) =>
+      `The design step took ${seconds}s and cost ${costUsd}.`,
   },
 
   agents: {
@@ -472,7 +554,8 @@ export const en: Messages = {
     loadingHistory: 'Loading history…',
     pickVersion: 'Pick a version to read what it said.',
     current: 'current',
-    noHistory: 'Nothing recorded yet — this skill predates the history, and the next save starts it.',
+    noHistory:
+      'Nothing recorded yet — this skill predates the history, and the next save starts it.',
     content: 'Content (Markdown)',
     source: 'Source',
     preview: 'Preview',
@@ -572,7 +655,8 @@ export const en: Messages = {
     usedBy: (repositories: number) =>
       `Used by ${repositories} repo${repositories === 1 ? '' : 's'}`,
     version: (version: number) => `Version ${version}`,
-    dragHint: 'Drag steps into the order you want. Add a checkpoint anywhere a human should look before the pipeline continues.',
+    dragHint:
+      'Drag steps into the order you want. Add a checkpoint anywhere a human should look before the pipeline continues.',
     someoneElseOwns: 'Someone else owns this pipeline — you can use it, not change it.',
     shippedDefault: 'This is a shipped default — you can use it, not change it.',
     duplicate: 'Duplicate',
@@ -665,7 +749,8 @@ export const en: Messages = {
     changingIsFor: (who: string) => `Changing this one is for ${who}.`,
     anAdministrator: 'an administrator',
     itsOwner: 'its owner',
-    changesApplyNote: 'Changes apply to new runs only. Running tickets keep the version they started with.',
+    changesApplyNote:
+      'Changes apply to new runs only. Running tickets keep the version they started with.',
     resetTitle: 'Discard every change and go back to what shipped',
     alreadyShipped: 'This agent already matches what shipped',
     resetToDefault: 'Reset to default',
@@ -768,24 +853,34 @@ export const en: Messages = {
 
   failure: {
     missingOutputWhat: 'The step finished without producing the document it was supposed to write.',
-    missingOutputNext: 'Usually the ticket did not give the agent enough to work from. Add detail to the description or the acceptance criteria, then retry.',
+    missingOutputNext:
+      'Usually the ticket did not give the agent enough to work from. Add detail to the description or the acceptance criteria, then retry.',
     budgetWhat: 'The run reached the most it was allowed to spend.',
-    budgetNext: 'Either the ticket is larger than the ceiling allows, or it needs narrowing. Split it, or raise the ceiling on the pipeline.',
+    budgetNext:
+      'Either the ticket is larger than the ceiling allows, or it needs narrowing. Split it, or raise the ceiling on the pipeline.',
     timeWhat: 'A step ran for longer than any one step is allowed to take.',
-    timeNext: 'The time ceiling applies to each step separately, so this is one step needing more time rather than the run as a whole. Give that agent a longer limit of its own, narrow the ticket, or raise the ceiling on the pipeline — which raises it for every step.',
+    timeNext:
+      'The time ceiling applies to each step separately, so this is one step needing more time rather than the run as a whole. Give that agent a longer limit of its own, narrow the ticket, or raise the ceiling on the pipeline — which raises it for every step.',
     engineWhat: 'The model could not be reached.',
     retryOnly: 'Nothing is wrong with the ticket. Retry.',
     credentialInvalidWhat: 'A stored credential was rejected.',
-    credentialInvalidNext: 'An administrator needs to replace it in Settings before a retry can get further.',
+    credentialInvalidNext:
+      'An administrator needs to replace it in Settings before a retry can get further.',
     credentialMissingWhat: 'A credential this pipeline needs is not configured.',
-    credentialMissingNext: 'An administrator needs to add it in Settings before a retry can get further.',
-    sandboxLostWhat: 'The sandbox the step was running in disappeared, and the second attempt did not get further.',
-    appUnreachableWhat: 'The execution service could not reach this application to collect something the run needs.',
-    appUnreachableNext: 'Nothing is wrong with the ticket. Check that the execution service can reach the address in PUBLIC_BASE_URL, then retry.',
+    credentialMissingNext:
+      'An administrator needs to add it in Settings before a retry can get further.',
+    sandboxLostWhat:
+      'The sandbox the step was running in disappeared, and the second attempt did not get further.',
+    appUnreachableWhat:
+      'The execution service could not reach this application to collect something the run needs.',
+    appUnreachableNext:
+      'Nothing is wrong with the ticket. Check that the execution service can reach the address in PUBLIC_BASE_URL, then retry.',
     runnerUnreachableWhat: 'This application could not reach the execution service.',
-    runnerUnreachableNext: 'Nothing is wrong with the ticket. Check the runner address in Settings and that the runner is running, then try again.',
+    runnerUnreachableNext:
+      'Nothing is wrong with the ticket. Check the runner address in Settings and that the runner is running, then try again.',
     commandFailedWhat: 'A command the pipeline runs exited with an error.',
-    commandFailedNext: 'Read the step output to see which command and why. If it is the repository, fix that first.',
+    commandFailedNext:
+      'Read the step output to see which command and why. If it is the repository, fix that first.',
     notAuthorisedWhat: 'The run was refused access to something it needed.',
     notAuthorisedNext: 'Check the credential has the permissions the repository requires.',
     conflictWhat: 'Something changed underneath the run.',
@@ -795,9 +890,12 @@ export const en: Messages = {
     invalidInputWhat: 'The run was given something it could not use.',
     invalidInputNext: 'Read the detail below, correct the ticket, then retry.',
     unknownWhat: 'The run stopped without recording why.',
-    unknownNext: 'Retry. If it stops again the same way, the step output is the only place left to look.',
-    gateExpiredWhat: 'Nobody decided the checkpoint before it expired, and the gate was set to fail.',
-    gateExpiredNext: 'Retry, and decide the checkpoint this time — or change the gate to wait indefinitely.',
+    unknownNext:
+      'Retry. If it stops again the same way, the step output is the only place left to look.',
+    gateExpiredWhat:
+      'Nobody decided the checkpoint before it expired, and the gate was set to fail.',
+    gateExpiredNext:
+      'Retry, and decide the checkpoint this time — or change the gate to wait indefinitely.',
     ownSentenceNext: 'Retry, or edit the ticket first if the reason points at the ticket.',
     cancelledWhat: 'The run was cancelled. The branch it had pushed is still there.',
     cancelledNext: 'Retry when you want it to carry on.',
@@ -832,7 +930,8 @@ export const en: Messages = {
     lifetime: 'Set the sandbox lifetime in whole minutes.',
     retention: 'Set the retention in whole hours.',
     skillDescription: 'Say when an agent should apply this skill.',
-    skillDescriptionLong: 'Say when an agent should apply this skill. That sentence is what an agent reads to decide.',
+    skillDescriptionLong:
+      'Say when an agent should apply this skill. That sentence is what an agent reads to decide.',
     skillEmpty: 'A skill with no content gives an agent nothing to apply.',
     documentEmpty: 'The document cannot be emptied.',
     feedbackRequired: 'Say what should change — the feedback is what the agent reads.',
@@ -869,6 +968,10 @@ export const en: Messages = {
   },
 
   error: {
+    credentialsDoNotMatch: 'that email address and password do not match',
+    passwordTooShort: (minimum: number) =>
+      `Use at least ${minimum} characters. This account can read every credential the workspace stores.`,
+    couldNotCreateAccount: 'could not create the account',
     noSuchAgent: 'no such agent',
     noSuchSkill: 'no such skill',
     noSuchTicket: 'no such ticket',
@@ -893,7 +996,8 @@ export const en: Messages = {
     noDefaultPipeline: (repository: string) =>
       `${repository} has no default pipeline. Choose one, or set a default on the repository.`,
     signInRequired: 'you must be signed in',
-    accountNotCreated: 'Could not create the account. The reason is in the application’s own output.',
+    accountNotCreated:
+      'Could not create the account. The reason is in the application’s own output.',
     enterEmailAndPassword: 'Enter an email address and a password.',
     enterYourEmailAndPassword: 'Enter your email address and password.',
     couldNotSignIn: 'Could not sign you in just now.',
@@ -921,21 +1025,25 @@ export const en: Messages = {
   },
 
   validate: {
-    noCodeStepDeclares: 'This pipeline has no step that writes code — every agent step here declares documents it produces.',
+    noCodeStepDeclares:
+      'This pipeline has no step that writes code — every agent step here declares documents it produces.',
     noCodeStep: 'This pipeline has no step that writes code, so it cannot produce a merge request.',
     addAgentStep: 'Add an agent step, and put any verification, gate or notification after it.',
-    noVerification: 'This pipeline has no verification step, so nothing beyond the implementing agent will check the result.',
+    noVerification:
+      'This pipeline has no verification step, so nothing beyond the implementing agent will check the result.',
   },
 
   conflicts: {
-    pipelineSavedElsewhere: 'Someone else saved this pipeline while you were editing. Reload to see their changes.',
+    pipelineSavedElsewhere:
+      'Someone else saved this pipeline while you were editing. Reload to see their changes.',
     noSuchStepToMove: 'there is no such step to move',
     noSuchStepToRemove: 'there is no such step to remove',
     couldNotDuplicatePipeline: 'could not duplicate the pipeline',
     couldNotCreatePipeline: 'could not create the pipeline',
     couldNotDuplicateAgent: 'could not duplicate the agent',
     skillDoesNotExist: 'one of those skills does not exist',
-    notShipped: 'This agent was created here rather than shipped, so there is no shipped configuration to go back to.',
+    notShipped:
+      'This agent was created here rather than shipped, so there is no shipped configuration to go back to.',
     runInProgress: (reference: string) =>
       `${reference} already has a run in progress. Wait for it to finish, or cancel it.`,
     attemptExists: (attempt: number, reference: string) =>
@@ -963,22 +1071,28 @@ export const en: Messages = {
   },
 
   login: {
-    oneLiner: 'Turn a ticket into a reviewable merge request.',
-    flow: ['Ticket', 'Spec', 'Design?', 'Plan', 'Tasks', 'Implement', 'MR'],
-    flowNote: 'Design runs only when a ticket changes the interface.',
+    headline: 'From ticket to merge request — automatically',
+    oneLiner:
+      'Connect your repository and describe the change. Agents write the specification, draw the interface in pen.dev, plan and build it, and open a merge request. Put a checkpoint wherever you want one.',
+    flow: ['Ticket', 'Spec', 'Design · pen.dev', 'Plan', 'Implement', 'MR'],
+    flowDesign: 'Design · pen.dev',
+    flowLabel: 'How a ticket becomes a merge request',
+    foot: (year: number) => `© ${year} Netgroup · Runs on Claude CLI and pen.dev`,
     signIn: 'Sign in',
+    signInLede: 'Continue with your work account.',
     createFirstAccount: 'Create the first account',
     firstAccountLede:
       'Nobody has an account here yet. This first one is the administrator — it can set the connections, store credentials and invite everybody else.',
     yourName: 'Your name',
     optional: 'Optional',
-    email: 'Email',
+    email: 'Work email',
     password: 'Password',
     passwordHint: (minimum: number) =>
       `At least ${minimum} characters — this account can read every stored credential.`,
     createAccountAndSignIn: 'Create account and sign in',
     continueWith: (provider: string) => `Continue with ${provider}`,
-    or: 'or',
-    noAccount: 'No account? An administrator invites you, or sign in with a connected provider.',
+    or: 'or with email',
+    signInNote: 'Signing in connects nothing. You add your repositories in the next step.',
   },
+
 };
