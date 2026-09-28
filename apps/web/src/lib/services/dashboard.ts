@@ -1,11 +1,11 @@
 import type { Database } from '@factory/db';
 import { pipelines, repositories, runs, stepResults, tickets } from '@factory/db/schema';
-import type { PipelineSnapshot, Step, StepType } from '@factory/shared';
+import type { PipelineSnapshot } from '@factory/shared';
 import { and, desc, eq, gte, inArray, or, sql } from 'drizzle-orm';
 import type { RunStatus, StepShape } from '$lib/step-shape';
 import { firstAttempt } from './first-attempt';
-import { queueState } from './queue';
 import { stepShapes } from './run-view';
+import { stateContext, stateOf, type TicketState } from './ticket-state';
 
 /**
  * What the dashboard reads (specs/004-bento-redesign FR-009 to FR-013,
@@ -20,22 +20,11 @@ import { stepShapes } from './run-view';
 /** A group shows this many rows and counts the rest (spec edge case "many tickets"). */
 export const GROUP_ROWS = 6;
 
-export interface DashboardStatus {
-  kind: 'running' | 'waiting' | 'failed' | 'queued' | 'done';
-  /**
-   * The step it is on, under the name the pipeline stored — the screen says
-   * a shipped default's in the catalogue's words (FR-028). For a run waiting
-   * at a checkpoint, the step the checkpoint gates. `null` while the merge
-   * request is being opened, and before anything has started.
-   */
-  step: { name: string; type: StepType } | null;
-  /** When the running step started, so its time can tick without a refetch. */
-  since: string | null;
-  /** Its place in the sandbox queue; `null` when it can start as soon as it is picked up. */
-  queuePosition: number | null;
-  failureReason: string | null;
-  mergeRequestUrl: string | null;
-}
+/**
+ * A row's state, structured (data-model DashboardTicket.status). Shared with
+ * the board's cards, which say the same thing about the same ticket.
+ */
+export type DashboardStatus = TicketState;
 
 export interface DashboardTicket {
   ticketId: string;
@@ -133,28 +122,11 @@ export async function dashboardTickets(
     })),
   );
 
-  // One pass over the queue answers "where is it?" for every queued run, as
-  // the queue itself decides it (001 FR-082): "queued" alone says nothing a
-  // reader can act on.
-  const queue = placed.some(({ group }) => group === 'queued') ? await queueState(database) : null;
-  const positions = new Map(queue?.entries.map((entry) => [entry.runId, entry.position]) ?? []);
-
-  // When each running step started, for the time beside it.
-  const runningIds = placed.flatMap(({ row }) =>
-    row.runStatus === 'running' && row.runId ? [row.runId] : [],
+  // The queue and the running steps' start times, once for the whole list.
+  const context = await stateContext(
+    database,
+    placed.map(({ row }) => row),
   );
-  const started =
-    runningIds.length === 0
-      ? []
-      : await database
-          .select({
-            runId: stepResults.runId,
-            stepIndex: stepResults.stepIndex,
-            startedAt: stepResults.startedAt,
-          })
-          .from(stepResults)
-          .where(and(inArray(stepResults.runId, runningIds), eq(stepResults.status, 'running')));
-  const startedAt = new Map(started.map((r) => [`${r.runId}:${r.stepIndex}`, r.startedAt]));
 
   const groups: DashboardTickets = {
     inProgress: { count: 0, more: 0, rows: [] },
@@ -172,58 +144,6 @@ export async function dashboardTickets(
     }
 
     const snapshot = row.snapshot as PipelineSnapshot | null;
-    const steps = snapshot?.pipeline.steps ?? [];
-    const named = (index: number | null) => stepAt(snapshot, steps, index);
-    const run = row.runStatus as RunStatus | null;
-
-    let status: DashboardStatus;
-    const base = {
-      step: null,
-      since: null,
-      queuePosition: null,
-      failureReason: null,
-      mergeRequestUrl: null,
-    };
-    switch (group) {
-      case 'inProgress':
-        if (run === 'waiting_approval') {
-          status = {
-            ...base,
-            kind: 'waiting',
-            step: named(gatedIndex(steps, row.currentStepIndex)),
-          };
-        } else if (run === 'opening_mr') {
-          status = { ...base, kind: 'running' };
-        } else {
-          const since = startedAt.get(`${row.runId}:${row.currentStepIndex}`);
-          status = {
-            ...base,
-            kind: 'running',
-            step: named(row.currentStepIndex),
-            since: since ? since.toISOString() : null,
-          };
-        }
-        break;
-      case 'needsAttention':
-        status = {
-          ...base,
-          kind: 'failed',
-          step: named(row.failureStepIndex ?? row.currentStepIndex),
-          failureReason: row.failureReason,
-        };
-        break;
-      case 'queued':
-        status = {
-          ...base,
-          kind: 'queued',
-          queuePosition: row.runId ? (positions.get(row.runId) ?? null) : null,
-        };
-        break;
-      case 'done':
-        status = { ...base, kind: 'done', mergeRequestUrl: row.mergeRequestUrl };
-        break;
-    }
-
     target.rows.push({
       ticketId: row.ticketId,
       reference: row.reference,
@@ -231,36 +151,11 @@ export async function dashboardTickets(
       repository: row.repository ?? '',
       pipeline: snapshot?.pipeline.name ?? row.pipelineName,
       steps: shapes.get(row.ticketId) as StepShape,
-      status,
+      status: stateOf(row, context),
     });
   }
 
   return groups;
-}
-
-/** A step as the pipeline names it: its agent's stored name, or what kind of step it is. */
-function stepAt(
-  snapshot: PipelineSnapshot | null,
-  steps: Step[],
-  index: number | null,
-): DashboardStatus['step'] {
-  if (index === null || !steps[index]) return null;
-  const step = steps[index];
-  const agent = snapshot?.agents.find((a) => a.id === step.agent_id);
-  return { name: agent?.name ?? step.command ?? step.type, type: step.type };
-}
-
-/**
- * A checkpoint is named by what it gates — "Төлөвлөгөө" rather than
- * "checkpoint" — as the board's strip names it: the nearest step before it
- * that did work.
- */
-function gatedIndex(steps: Step[], at: number | null): number | null {
-  for (let index = (at ?? 0) - 1; index >= 0; index -= 1) {
-    const type = steps[index]?.type;
-    if (type !== 'checkpoint' && type !== 'notify') return index;
-  }
-  return at;
 }
 
 export interface DashboardFigures {

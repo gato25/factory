@@ -4,6 +4,8 @@
   import Icon from '$components/Icon.svelte';
   import { m } from '$lib/i18n';
   import TicketCard from '$components/TicketCard.svelte';
+  import { pipelineName } from '$lib/default-names';
+  import { stateWords } from '$lib/state-words';
   import { subscribeToRun } from '$lib/events/subscribe';
   import { repositories } from '$lib/remote/repositories.remote';
   import { ticketBoard } from '$lib/remote/tickets.remote';
@@ -18,24 +20,45 @@
   let pipelineId = $state('');
   let createdBy = $state('');
 
-  // Cards move automatically as run status changes (FR-023, FR-074).
-  onMount(() => subscribeToRun({ target: 'dashboard', onEvent: () => void ticketBoard().refresh() }));
+  // Cards move automatically as run status changes (FR-023, FR-074), and the
+  // running times on them tick on their own.
+  let now = $state(Date.now());
+  onMount(() => {
+    const timer = setInterval(() => (now = Date.now()), 20_000);
+    const stop = subscribeToRun({ target: 'dashboard', onEvent: () => void ticketBoard().refresh() });
+    return () => {
+      clearInterval(timer);
+      stop?.();
+    };
+  });
 
-  // The design gives each column a dot in the colour of what that state
-  // means, so the board can be read at a glance rather than by heading.
+  // Five columns, each tinted and dotted in the colour of what its state
+  // means, so the board reads at a glance rather than by heading (FR-018).
+  // Queued holds the drafts too — "ready to start" is the step before the
+  // queue, and the artboard draws both there.
   const COLUMNS = [
-    { id: 'draft', label: m.board.backlog, tone: 'idle' },
-    { id: 'queued,running', label: m.board.running, tone: 'live' },
-    { id: 'waiting_approval', label: m.board.waitingApproval, tone: 'warn' },
-    { id: 'done', label: m.board.done, tone: 'ok' },
-    { id: 'failed', label: m.board.failed, tone: 'bad' },
+    { id: 'draft,queued', label: m.board.backlog, tone: 'idle', tint: 'neutral-queue' },
+    { id: 'running', label: m.board.running, tone: 'live', tint: '' },
+    { id: 'waiting_approval', label: m.board.waitingApproval, tone: 'warn', tint: 'tile--approval' },
+    { id: 'done', label: m.board.done, tone: 'ok', tint: 'tile--done' },
+    { id: 'failed', label: m.board.failed, tone: 'bad', tint: 'tile--danger' },
   ];
 </script>
 
+<header class="page-head">
+  <div>
+    <h1>{m.board.heading}</h1>
+    <p class="lede">
+      {board.ready ? m.board.lede(board.current.filter((t) => t.status !== 'cancelled').length) : ''}
+    </p>
+  </div>
+  <a class="btn" href="/tickets/new"><Icon name="plus" size={15} />{m.board.newTicket}</a>
+</header>
+
 {#if board.error}
-  <p class="card" role="alert">{(board.error as Error).message}</p>
+  <p class="tile" role="alert">{(board.error as Error).message}</p>
 {:else if !board.ready}
-  <p class="card">{m.board.loading}</p>
+  <p class="tile">{m.board.loading}</p>
 {:else}
   {@const rows = board.current}
   {@const filtered = rows.filter(
@@ -51,13 +74,13 @@
 
     <!--
       No approval panel here, as the design has none: this board already has
-      a Waiting approval column, and repeating it above the thing it
+      a waiting-approval column, and repeating it above the thing it
       duplicates makes the screen longer without telling anybody more. The
       panel is on the dashboard, where there is no such column (FR-059).
     -->
     {#if search}
       <!-- An empty board after a search should say why it is empty. -->
-      <p class="searching card">
+      <p class="searching tile">
         {m.board.searchingBefore}<strong>{search}</strong>{m.board.searchingAfter}
         <a href="/tickets">{m.board.clearSearch}</a>
       </p>
@@ -69,7 +92,7 @@
     -->
     <div class="filters">
       <div class="pills">
-        <label class="pill">
+        <label class="choice">
           <Icon name="git-branch" size={14} />
           <span class="sr">{m.board.repository}</span>
           <select bind:value={repositoryId}>
@@ -80,18 +103,19 @@
           </select>
           <Icon name="chevron-down" size={14} />
         </label>
-        <label class="pill">
+        <label class="choice">
           <Icon name="workflow" size={14} />
           <span class="sr">{m.board.pipeline}</span>
           <select bind:value={pipelineId}>
             <option value="">{m.board.anyPipeline}</option>
             {#each [...new Set(rows.map((t) => t.pipelineId).filter(Boolean))] as id (id)}
-              <option value={id}>{rows.find((t) => t.pipelineId === id)?.pipeline}</option>
+              {@const name = rows.find((t) => t.pipelineId === id)?.pipeline}
+              <option value={id}>{name ? pipelineName(name) : ''}</option>
             {/each}
           </select>
           <Icon name="chevron-down" size={14} />
         </label>
-        <label class="pill">
+        <label class="choice">
           <Icon name="user" size={14} />
           <span class="sr">{m.board.creator}</span>
           <select bind:value={createdBy}>
@@ -110,36 +134,36 @@
           class:on={view === 'board'}
           aria-label={m.board.boardView}
           aria-pressed={view === 'board'}
-          onclick={() => (view = 'board')}><Icon name="kanban" size={16} /></button
+          onclick={() => (view = 'board')}><Icon name="kanban" size={15} /></button
         >
         <button
           type="button"
           class:on={view === 'list'}
           aria-label={m.board.listView}
           aria-pressed={view === 'list'}
-          onclick={() => (view = 'list')}><Icon name="list" size={16} /></button
+          onclick={() => (view = 'list')}><Icon name="list" size={15} /></button
         >
       </div>
     </div>
 
     {#if filtered.length === 0}
-      <p class="card">{m.board.noMatch} <a href="/tickets/new">{m.board.createOne}</a>.</p>
+      <p class="tile">{m.board.noMatch} <a href="/tickets/new">{m.board.createOne}</a>.</p>
     {:else if view === 'board'}
       <div class="board">
         {#each COLUMNS as column (column.id)}
           {@const inColumn = filtered.filter((t) => column.id.split(',').includes(t.status))}
-          <section>
-            <div class="col-head">
-              <span class="dot {column.tone}"></span>
+          <section class="tile column {column.tint}" aria-label={m.board.column(column.label, inColumn.length)}>
+            <h2 class="col-head">
+              <span class="dot {column.tone}" aria-hidden="true"></span>
               <span class="col-title">{column.label}</span>
               <span class="count">{inColumn.length}</span>
-            </div>
+            </h2>
             <div class="cards">
               {#each inColumn as ticket (ticket.id)}
-                <TicketCard {ticket} />
+                <TicketCard {ticket} {now} />
               {/each}
-              {#if column.id === 'draft'}
-                <!-- The design puts the way in at the foot of Backlog. -->
+              {#if column.id.startsWith('draft')}
+                <!-- The design puts the way in at the foot of the first column. -->
                 <a class="add" href="/tickets/new">
                   <Icon name="plus" size={14} />
                   <span>{m.board.newTicket}</span>
@@ -150,33 +174,55 @@
         {/each}
       </div>
     {:else}
-      <table class="card">
-        <thead>
-          <tr
-            ><th>{m.board.colTicket}</th><th>{m.board.colRepository}</th><th
-              >{m.board.colPipeline}</th
-            ><th>{m.board.colStatus}</th></tr
-          >
-        </thead>
-        <tbody>
-          {#each filtered as ticket (ticket.id)}
-            <tr>
-              <td><a href="/tickets/{ticket.id}">{ticket.reference} {ticket.title}</a></td>
-              <td>{ticket.repository}</td>
-              <td>{ticket.pipeline ?? '—'}</td>
-              <td>{ticket.strip.text}</td>
-            </tr>
-          {/each}
-        </tbody>
-      </table>
+      <div class="tile list">
+        <table>
+          <thead>
+            <tr
+              ><th>{m.board.colTicket}</th><th>{m.board.colRepository}</th><th
+                >{m.board.colPipeline}</th
+              ><th>{m.board.colStatus}</th></tr
+            >
+          </thead>
+          <tbody>
+            {#each filtered as ticket (ticket.id)}
+              <tr>
+                <td><a href="/tickets/{ticket.id}">{ticket.reference} {ticket.title}</a></td>
+                <td>{ticket.repository}</td>
+                <td>{ticket.pipeline ? pipelineName(ticket.pipeline) : '—'}</td>
+                <td>{stateWords(ticket.state, 'card', now).text}</td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      </div>
   {/if}
 {/if}
 
 <style>
+  .page-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 20px;
+    padding: 8px 4px 0;
+  }
+  h1 {
+    margin: 0;
+    font-size: 30px;
+    font-weight: 600;
+    letter-spacing: -0.6px;
+  }
+  .lede {
+    margin: 6px 0 0;
+    color: var(--text-2);
+  }
+
   .searching {
     display: flex;
     gap: 10px;
     align-items: baseline;
+    margin: 0 0 20px;
     padding: 12px 16px;
   }
 
@@ -187,43 +233,41 @@
     justify-content: space-between;
     gap: 16px;
     flex-wrap: wrap;
-    margin-bottom: 28px;
+    margin-bottom: 20px;
   }
   .pills {
     display: flex;
     gap: 10px;
     flex-wrap: wrap;
   }
-  .pill {
+  .choice {
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 5px 10px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--r-sm);
+    gap: 8px;
+    padding: 9px 14px;
+    border-radius: 12px;
     color: var(--text-2);
+    background: #ffffffcc;
+    box-shadow: 0 2px 6px var(--shadow-soft);
     cursor: pointer;
   }
-  .pill:focus-within {
-    border-color: var(--accent);
+  .choice:focus-within {
+    box-shadow: var(--focus-ring);
   }
-  .pill select {
-    border: 0;
+  .choice select {
     padding: 0;
-    background: none;
-    font: inherit;
-    font-size: 13px;
-    font-weight: 500;
+    border: 0;
+    font: 500 var(--type-body) / 1.3 var(--font);
     color: var(--text);
+    background: none;
     cursor: pointer;
     /* The design draws one chevron; the native one would make two. */
     appearance: none;
   }
-  .pill select:focus {
+  .choice select:focus {
     outline: none;
   }
-  .pill :global(svg:last-child) {
+  .choice :global(svg:last-child) {
     color: var(--text-3);
   }
 
@@ -231,117 +275,141 @@
     display: flex;
     gap: 4px;
     padding: 4px;
-    background: var(--surface-2);
-    border-radius: var(--r-sm);
+    border-radius: 12px;
+    background: var(--accent-soft);
   }
   .views button {
     display: grid;
     place-items: center;
-    padding: 6px;
+    width: 36px;
+    height: 30px;
     border: 0;
-    border-radius: 4px;
-    background: none;
+    border-radius: 9px;
     color: var(--text-3);
+    background: none;
     cursor: pointer;
   }
   .views button.on {
-    background: var(--surface);
     color: var(--text);
+    background: var(--surface);
+    box-shadow: 0 2px 6px var(--shadow-depth);
   }
 
   .board {
     display: grid;
-    grid-template-columns: repeat(5, minmax(200px, 1fr));
+    grid-template-columns: repeat(5, minmax(220px, 1fr));
     gap: 16px;
-    align-items: start;
+    align-items: stretch;
     overflow-x: auto;
+    padding-bottom: 4px;
   }
-
+  .column {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 0;
+    min-height: 480px;
+    padding: 14px;
+  }
   .col-head {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 4px 4px 8px;
+    margin: 0;
+    padding: 4px 6px 2px;
   }
   .col-title {
-    font-size: 13px;
+    flex: 1;
+    font-family: var(--font-head);
+    font-size: var(--type-body);
     font-weight: 600;
     color: var(--text);
   }
   .dot {
+    flex: none;
     width: 8px;
     height: 8px;
-    border-radius: 999px;
-    flex: none;
+    border-radius: var(--r-pill);
   }
   .dot.idle {
-    background: var(--text-3);
+    background: var(--pill-queue-dot);
   }
   .dot.live {
     background: var(--accent);
   }
   .dot.warn {
-    background: var(--warning);
+    background: #d9a200;
   }
   .dot.ok {
     background: var(--success);
   }
   .dot.bad {
-    background: var(--danger);
+    background: var(--red-to);
   }
   .count {
-    padding: 1px 7px;
-    border-radius: 999px;
-    background: var(--surface-2);
-    font-size: 11px;
-    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: var(--r-pill);
+    font-family: var(--font-head);
+    font-size: var(--type-caption);
+    font-weight: 700;
     color: var(--text-2);
+    background: #ffffff66;
   }
 
   .cards {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 12px;
   }
   .add {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
-    padding: 10px;
-    border: 1px dashed var(--border);
-    border-radius: var(--r-md);
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: 14px;
+    font-size: var(--type-body);
+    font-weight: 600;
     text-decoration: none;
-    font-size: 13px;
     color: var(--text-2);
+    background: #ffffff4d;
   }
   .add:hover {
-    border-color: var(--accent);
     color: var(--accent-text);
+    background: #ffffff99;
   }
 
+  .list {
+    padding: 8px 12px;
+  }
   table {
     width: 100%;
     border-collapse: collapse;
   }
   th,
   td {
+    padding: 12px;
     text-align: left;
-    padding: 10px 12px;
-    border-bottom: 1px solid var(--border);
+  }
+  tbody tr + tr td {
+    border-top: 1px solid var(--surface-2);
   }
   th {
-    font-size: 12px;
+    font-size: var(--type-caption);
+    font-weight: 600;
     color: var(--text-2);
-    font-weight: 500;
+  }
+  td {
+    font-size: var(--type-body);
   }
   td a {
+    font-weight: 600;
     color: inherit;
   }
 
-  @media (max-width: 900px) {
+  @media (max-width: 1100px) {
     .board {
-      grid-template-columns: repeat(5, 220px);
+      grid-template-columns: repeat(5, 240px);
     }
   }
 </style>

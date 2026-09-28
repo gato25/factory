@@ -91,6 +91,30 @@ const SCREENS: Screen[] = [
       '.notice',
     ],
   },
+  {
+    name: '04 Tickets Board',
+    path: () => '/tickets',
+    signedIn: true,
+    primary: ['h1', '.lede', '.title', '.col-title', '.choice select', '.add', '.btn'],
+  },
+  {
+    name: '05 Create Ticket',
+    path: () => '/tickets/new',
+    signedIn: true,
+    primary: [
+      'h1',
+      '.label',
+      'input',
+      'textarea',
+      'select',
+      '.pick .n',
+      '.tx .n',
+      '.btn',
+      '.quiet',
+      '.banner',
+      '.tip',
+    ],
+  },
 ];
 
 async function seed(): Promise<Seeded> {

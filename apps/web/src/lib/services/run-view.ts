@@ -15,7 +15,7 @@ import { CONDITION_DESCRIPTION, notFound, type PipelineSnapshot, type Step } fro
 import { and, count, desc, eq, gte, inArray, sql } from 'drizzle-orm';
 import { m } from '$lib/i18n';
 import { type RunStatus, type StepShape, shapeOf } from '$lib/step-shape';
-import { queueState } from './queue';
+import { stateContext, stateOf, type TicketState } from './ticket-state';
 
 /**
  * Everything the run page and the dashboard read. The stream carries changes;
@@ -272,6 +272,8 @@ export interface BoardTicket {
    * what a gate's timeout counts from. The approvals tile says both (FR-011).
    */
   gate: { step: string | null; since: string } | null;
+  /** What it is doing now, structured, as the dashboard's rows say it (FR-018). */
+  state: TicketState;
 }
 
 export async function board(database: Database): Promise<BoardTicket[]> {
@@ -319,6 +321,11 @@ export async function board(database: Database): Promise<BoardTicket[]> {
       failureStepIndex: row.failureStepIndex,
       snapshot: row.snapshot as PipelineSnapshot | null,
     })),
+  );
+
+  const states = await stateContext(
+    database,
+    rows.map((row) => ({ ...row, ticketStatus: row.status })),
   );
 
   return rows.map((row) => {
@@ -382,6 +389,7 @@ export async function board(database: Database): Promise<BoardTicket[]> {
         row.runStatus === 'waiting_approval' && row.runUpdatedAt
           ? { step: gatedLabel, since: row.runUpdatedAt.toISOString() }
           : null,
+      state: stateOf({ ...row, ticketStatus: row.status }, states),
     };
   });
 }

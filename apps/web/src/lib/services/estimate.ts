@@ -27,6 +27,13 @@ export interface StepPreview {
   conditional: boolean;
   /** The condition in words, never as a code (FR-032f). */
   conditionText?: string;
+  /**
+   * The condition itself and the engine the step's agent runs on, so a screen
+   * can say both in its own language (specs/004-bento-redesign FR-019,
+   * FR-026) — "Интерфейс өөрчлөгдөх бол", "pen.dev · Claude Opus 5".
+   */
+  condition: Step['condition'];
+  engine?: 'claude_cli' | 'design_cli';
 }
 
 export type Estimate =
@@ -86,6 +93,8 @@ export async function previewRun(
       model: agent?.model,
       conditional: step.condition !== 'always',
       conditionText: CONDITION_DESCRIPTION[step.condition],
+      condition: step.condition,
+      engine: agent?.engine,
     };
   });
 

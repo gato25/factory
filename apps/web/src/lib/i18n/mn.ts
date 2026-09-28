@@ -302,6 +302,9 @@ export const mn = {
   },
 
   board: {
+    heading: 'Даалгаврууд',
+    lede: (n: number) => `${n} даалгавар · төлөв бүрээр. Даалгавар бүр өөрийн дамжлагаар явна.`,
+    column: (column: string, n: number) => `${column}: ${n}`,
     loading: 'Даалгавруудыг ачаалж байна…',
     /** The searched text is emphasised, so the sentence is two halves. */
     searchingBefore: '',
@@ -332,6 +335,13 @@ export const mn = {
   ticketCard: {
     unknown: 'тодорхойгүй',
     changesInterface: 'Интерфейсийг өөрчилнө',
+    /** A card's state, shorter than a dashboard row's (artboard 04). */
+    approve: (step: string) => `${step} батлуулах`,
+    mergeRequestOpened: (reference: string) => `MR ${reference} нээгдлээ`,
+    done: 'Дууссан',
+    cancelled: 'Цуцлагдсан',
+    readyToStart: 'Эхлүүлэхэд бэлэн',
+    createdBy: (name: string) => `Үүсгэсэн: ${name}`,
   },
 
   /** The one line a ticket carries on the board, from `run-view.ts`. */
@@ -346,7 +356,8 @@ export const mn = {
   },
 
   newTicket: {
-    heading: 'Юу бүтээхийг хүсэж байгаагаа тайлбарлана уу',
+    heading: 'Юу хийлгэхээ бичнэ үү',
+    crumb: 'Та хаана байна',
     repository: 'Репозитори',
     required: 'Заавал',
     chooseRepository: 'Репозитори сонгоно уу…',
@@ -355,17 +366,29 @@ export const mn = {
     titlePlaceholder: 'Google-ийн хажууд Apple нэвтрэлт нэмэх',
     description: 'Тайлбар',
     descriptionHint:
-      'Ярианы хэлээр бичиж болно. Тодорхойлолт агент тодруулах асуултуудыг өөрөө тавина.',
+      'Энгийн үгээр бичсэн ч болно. Тодорхойлолт агент тодруулах асуултаа өөрөө асууна.',
     descriptionPlaceholder: 'Юу өөрчлөгдөх ёстой, яагаад?',
     acceptance: 'Хүлээн авах шалгуур',
-    acceptanceHint: 'Мөр бүрд нэг. Хөгжүүлэлт агент бүгдийг нь биелүүлэх ёстой.',
+    acceptanceHint: 'Мөр бүрд нэг. Хөгжүүлэлт агент бүгдийг нь биелүүлнэ.',
     acceptancePlaceholder:
       'Бүх хэрэглэгчид /login дээр Apple товч харагдана\nАмжилттай нэвтрэхэд хэрэглэгч үүснэ эсвэл холбогдоно',
     files: 'Шаардлагын баримт',
     filesHint:
       'Заавал биш. Текст, Markdown эсвэл CSV — агент алхам бүр эдгээрийг заавар болгон уншина.',
     pipeline: 'Дамжлага',
-    pipelineHint: 'Зөвхөн энэ даалгаврын алхмуудыг байгуулагч дээр өөрчилж болно.',
+    pipelineHint: 'Зөвхөн энэ даалгаврын алхмуудыг өөрчилнө',
+    /** A pipeline card's count: its steps and the merge request (FR-019). */
+    stepCount: (n: number) => `${n} алхам`,
+    pipelineSteps: (pipeline: string, n: number) => `${pipeline} дамжлага · ${n} алхам`,
+    /** A conditional step's condition, in words (FR-019a, FR-032f). */
+    condition: {
+      always: '',
+      ticket_has_ui: 'Интерфейс өөрчлөгдөх бол',
+      ticket_has_no_ui: 'Интерфейс өөрчлөгдөхгүй бол',
+    },
+    onPen: (model: string) => `pen.dev · ${model}`,
+    noVerification:
+      'Энэ дамжлагад шалгах алхам алга: хөгжүүлэлт агентаас өөр юу ч үр дүнг шалгахгүй. Тестээ ажиллуулах shell алхам нэмбэл өөрчлөгдөнө.',
     defaultFor: (repository: string) => `${repository}-ийн үндсэн`,
     version: (version: number) => `${version}-р хувилбар`,
     queuedNotStartedBefore: (reference: string) => `${reference} үүсгэгдэж дараалалд орсон боловч `,
@@ -381,14 +404,14 @@ export const mn = {
     estimateUnknown: 'Зардлыг харахын тулд репозитори, дамжлага сонгоно уу.',
     saveAsDraft: 'Ноороглох',
     creating: 'Үүсгэж байна…',
-    createAndStart: 'Үүсгээд дамжлагыг эхлүүлэх',
+    createAndStart: 'Үүсгээд эхлүүлэх',
     whatWillHappen: 'Юу болох вэ',
     chooseToSeeSteps: 'Ажиллах алхмуудыг харахын тулд репозитори, дамжлага сонгоно уу.',
     workingOutSteps: 'Алхмуудыг тооцоолж байна…',
     openMergeRequest: 'Нэгтгэх хүсэлт нээх',
-    openMergeRequestNote: 'Салбар түлхэгдэж, нэгтгэх хүсэлт нээгдэж, даалгавар хаагдана',
+    openMergeRequestNote: 'Салбар түлхэгдэж, хүсэлт нээгдэж, даалгавар хаагдана',
     testsBeforeMr: 'Энэ дамжлага нэгтгэх хүсэлт нээхээсээ өмнө таны тестүүдийг ажиллуулна.',
-    tip: 'Энэ даалгавар интерфейсийг хөндөж байгаа эсэхийг Тодорхойлолт агент шийднэ. Хэрэв тийм бол Дизайн алхам ажиллаж, код бичихээс өмнө та дэлгэцүүдийг хянана.',
+    tip: 'Энэ даалгавар интерфейс өөрчилж байгаа эсэхийг Тодорхойлолт агент шийднэ. Хэрэв тийм бол Дизайн агент pen.dev дээр зурж, код бичихээс өмнө та дэлгэцүүдийг хянана.',
   },
 
   run: {

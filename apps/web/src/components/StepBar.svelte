@@ -64,8 +64,11 @@
     border-radius: 4px;
     background: var(--border);
   }
+  .sm .segments {
+    gap: 3px;
+  }
   .sm .segment {
-    height: 6px;
+    height: 5px;
     border-radius: 3px;
   }
   .done {

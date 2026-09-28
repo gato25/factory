@@ -1,28 +1,22 @@
 <script lang="ts">
   import Icon from '$components/Icon.svelte';
+  import StepBar from '$components/StepBar.svelte';
+  import { pipelineName } from '$lib/default-names';
   import { m } from '$lib/i18n';
   import type { BoardTicket } from '$lib/services/run-view';
+  import { stateWords } from '$lib/state-words';
 
   /**
-   * One board card, built to `design.pen`'s Card: the reference and the
-   * author's avatar on one row, the title, the repository and pipeline, then
-   * a full-width status strip.
+   * One board card, built to artboard 04's Card: the reference and the
+   * author on one row, the title, the repository and pipeline, then the step
+   * bar of the ticket's OWN pipeline and its state in words (FR-018).
    *
-   * The strip is the point of the card. Whichever applies — the running step,
-   * the pending gate, the merge request, the failure reason — is what tells
-   * you whether this ticket needs you, and it is coloured so a column can be
-   * scanned without reading (FR-023a).
+   * The state line is the point of the card: whether this ticket needs you.
+   * It is in words as well as colour (FR-006), and a long title, repository or
+   * pipeline truncates with the whole of it on hover rather than pushing the
+   * bar or the state out of the card.
    */
-
-  let { ticket }: { ticket: BoardTicket } = $props();
-
-  const STRIP: Record<BoardTicket['strip']['kind'], { tone: string; icon: string }> = {
-    step: { tone: 'live', icon: 'loader' },
-    gate: { tone: 'warn', icon: 'hand' },
-    merge_request: { tone: 'ok', icon: 'git-pull-request' },
-    failure: { tone: 'bad', icon: 'circle-x' },
-    none: { tone: '', icon: 'circle-check' },
-  };
+  let { ticket, now = Date.now() }: { ticket: BoardTicket; now?: number } = $props();
 
   const initials = $derived(
     (ticket.createdByName ?? '?')
@@ -32,35 +26,37 @@
       .map((part) => part[0]?.toUpperCase() ?? '')
       .join(''),
   );
+  const meta = $derived(
+    `${ticket.repository}${ticket.pipeline ? ` · ${pipelineName(ticket.pipeline)}` : ''}`,
+  );
+  const state = $derived(stateWords(ticket.state, 'card', now));
 </script>
 
-<a class="ticket" href="/tickets/{ticket.id}">
-  <div class="top">
+<a class="ticket" href="/tickets/{ticket.id}" data-ticket={ticket.id}>
+  <span class="top">
     <span class="id">{ticket.reference}</span>
-    <span class="who" title={ticket.createdByName ?? m.ticketCard.unknown}>{initials}</span>
-  </div>
+    <span
+      class="who"
+      title={m.ticketCard.createdBy(ticket.createdByName ?? m.ticketCard.unknown)}
+      aria-label={m.ticketCard.createdBy(ticket.createdByName ?? m.ticketCard.unknown)}
+      >{initials}</span
+    >
+  </span>
 
-  <h3>{ticket.title}</h3>
+  <span class="title" title={ticket.title}>{ticket.title}</span>
 
-  <div class="meta">
+  <span class="meta">
     <Icon name="folder-git-2" size={12} />
-    <span>{ticket.repository}</span>
-    {#if ticket.pipeline}
-      <span class="dot">&middot;</span>
-      <span>{ticket.pipeline}</span>
-    {/if}
-  </div>
+    <span class="meta-text" title={meta}>{meta}</span>
+  </span>
 
-  {#if ticket.strip.kind !== 'none'}
-    <div class="strip {STRIP[ticket.strip.kind].tone}">
-      <Icon name={STRIP[ticket.strip.kind].icon} size={13} />
-      <span>{ticket.strip.text}</span>
-    </div>
-  {/if}
-
-  {#if ticket.hasUi === true}
-    <p class="ui small muted">{m.ticketCard.changesInterface}</p>
-  {/if}
+  <span class="status">
+    <StepBar shape={ticket.steps} size="sm" />
+    <span class="line {state.tone}" class:live={state.live}>
+      <span class="dot" aria-hidden="true"></span>
+      <span class="line-text" title={state.text}>{state.text}</span>
+    </span>
+  </span>
 </a>
 
 <style>
@@ -69,14 +65,22 @@
     flex-direction: column;
     gap: 10px;
     padding: 14px;
-    background: var(--surface);
-    border: 1px solid var(--card-border);
+    border: 1px solid transparent;
     border-radius: var(--r-lg);
     text-decoration: none;
     color: inherit;
+    background:
+      linear-gradient(180deg, #fffffff2, #ffffffe6) padding-box,
+      linear-gradient(180deg, var(--highlight), #ffffff00) border-box;
+    box-shadow: 0 6px 14px var(--shadow-depth);
   }
   .ticket:hover {
-    border-color: var(--accent);
+    box-shadow:
+      0 0 0 2px var(--accent-soft),
+      0 6px 14px var(--shadow-depth);
+  }
+  .ticket:hover .title {
+    text-decoration: underline;
   }
 
   .top {
@@ -86,29 +90,35 @@
     gap: 8px;
   }
   .id {
-    font-size: 11px;
+    font-family: var(--font-head);
+    font-size: var(--type-caption);
+    font-weight: 700;
     color: var(--text-3);
   }
   .who {
     display: grid;
-    place-items: center;
-    width: 22px;
-    height: 22px;
-    border-radius: 999px;
-    background: var(--purple-soft);
-    color: var(--purple);
-    font-size: 9px;
-    font-weight: 700;
     flex: none;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    border-radius: var(--r-pill);
+    font-family: var(--font-head);
+    font-size: var(--type-caption);
+    font-weight: 700;
+    color: #5a2a0a;
+    background: linear-gradient(180deg, #ffc9a3, #f59a5b);
   }
 
-  h3 {
-    margin: 0;
-    font-family: var(--font);
-    font-size: 14px;
+  .title {
+    display: -webkit-box;
+    overflow: hidden;
+    font-size: var(--type-body);
     font-weight: 600;
     line-height: 1.35;
     color: var(--text);
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
   }
 
   .meta {
@@ -116,56 +126,75 @@
     align-items: center;
     gap: 6px;
     min-width: 0;
-    font-size: 12px;
-    color: var(--text-2);
+    color: var(--text-3);
   }
   .meta :global(svg) {
-    color: var(--text-3);
     flex: none;
   }
-  .meta span {
+  .meta-text,
+  .line-text {
     overflow: hidden;
+    min-width: 0;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  .meta .dot {
-    color: var(--text-3);
-    flex: none;
+  .meta-text {
+    font-size: var(--type-caption);
+    color: var(--text-2);
   }
 
-  /* Full width, so a column of them lines up and can be read down. */
-  .strip {
+  .status {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+  .line {
     display: flex;
     align-items: center;
     gap: 6px;
-    padding: 8px 10px;
-    border-radius: var(--r-sm);
-    font-size: 12px;
-    font-weight: 500;
-    background: var(--surface-2);
+    min-width: 0;
+    font-size: var(--type-caption);
+    font-weight: 600;
     color: var(--text-2);
   }
-  .strip :global(svg) {
+  .dot {
     flex: none;
+    width: 7px;
+    height: 7px;
+    border-radius: var(--r-pill);
+    background: var(--text-3);
   }
-  .strip.live {
-    background: var(--accent-soft);
-    color: var(--accent);
+  .run {
+    color: var(--accent-text);
   }
-  .strip.warn {
-    background: var(--warning-soft);
-    color: var(--warning);
+  .run .dot {
+    background: var(--accent);
   }
-  .strip.ok {
-    background: var(--success-soft);
-    color: var(--success);
+  .pen {
+    color: var(--pen-text);
   }
-  .strip.bad {
-    background: var(--danger-soft);
-    color: var(--danger);
+  .pen .dot {
+    background: var(--purple);
   }
-
-  .ui {
-    margin: 0;
+  .wait {
+    color: var(--warning-text);
+  }
+  .wait .dot {
+    background: #d9a200;
+  }
+  .done {
+    color: var(--success-text);
+  }
+  .done .dot {
+    background: var(--success);
+  }
+  .fail {
+    color: var(--danger-text);
+  }
+  .fail .dot {
+    background: var(--red-to);
+  }
+  .live .dot {
+    box-shadow: 0 0 6px var(--glow-accent);
   }
 </style>

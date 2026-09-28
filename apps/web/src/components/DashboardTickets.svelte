@@ -1,9 +1,10 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import StepBar from '$components/StepBar.svelte';
-  import { pipelineName, runningPhrase } from '$lib/default-names';
+  import { pipelineName } from '$lib/default-names';
   import { m } from '$lib/i18n';
-  import type { DashboardStatus, DashboardTickets } from '$lib/services/dashboard';
+  import type { DashboardTickets } from '$lib/services/dashboard';
+  import { stateWords } from '$lib/state-words';
   import { position } from '$lib/step-shape';
 
   /**
@@ -34,58 +35,6 @@
 
   const empty = $derived(ORDER.every(({ key }) => groups[key].count === 0));
 
-  /** "!88" on GitLab, "#88" on GitHub — the provider's own way of naming one. */
-  function requestReference(url: string): string {
-    const number = url.match(/(\d+)\/?$/)?.[1];
-    if (!number) return '';
-    return url.includes('/pull/') ? `#${number}` : `!${number}`;
-  }
-
-  function said(status: DashboardStatus): { tone: string; text: string; live: boolean } {
-    switch (status.kind) {
-      case 'running': {
-        if (!status.step) return { tone: 'run', text: m.dashboard.status.openingMergeRequest, live: true };
-        const minutes = status.since
-          ? Math.max(0, Math.floor((now - new Date(status.since).getTime()) / 60_000))
-          : null;
-        return {
-          tone: status.step.type === 'design' ? 'pen' : 'run',
-          text: m.dashboard.status.running(
-            runningPhrase(status.step.name, status.step.type),
-            minutes === null ? null : m.dashboard.elapsed(minutes),
-          ),
-          live: true,
-        };
-      }
-      case 'waiting':
-        return { tone: 'wait', text: m.dashboard.status.waiting, live: true };
-      case 'failed':
-        return {
-          tone: 'fail',
-          text: status.failureReason
-            ? m.dashboard.status.failed(status.failureReason)
-            : m.dashboard.status.failedNoReason,
-          live: false,
-        };
-      case 'queued':
-        return {
-          tone: 'queue',
-          text:
-            status.queuePosition === null
-              ? m.dashboard.status.queuedNext
-              : m.dashboard.status.queuedAt(status.queuePosition),
-          live: false,
-        };
-      case 'done':
-        return {
-          tone: 'done',
-          text: status.mergeRequestUrl
-            ? m.dashboard.status.mergeRequestOpened(requestReference(status.mergeRequestUrl))
-            : m.dashboard.status.done,
-          live: false,
-        };
-    }
-  }
 </script>
 
 <section class="tile tickets" aria-labelledby="dashboard-tickets">
@@ -112,7 +61,7 @@
         </h3>
         <ul>
           {#each group.rows as row (row.ticketId)}
-            {@const state = said(row.status)}
+            {@const state = stateWords(row.status, 'row', now)}
             {@const meta = `${row.reference} · ${row.repository}${row.pipeline ? ` · ${pipelineName(row.pipeline)}` : ''}`}
             <li class="row" data-ticket={row.ticketId}>
               <a class="text" href="/tickets/{row.ticketId}">

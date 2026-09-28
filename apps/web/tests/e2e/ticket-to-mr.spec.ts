@@ -122,17 +122,21 @@ test.describe('the ticket form', () => {
 
     await page.goto('/tickets/new');
     await page
-      .getByLabel('Repository')
+      .getByLabel(m.newTicket.repository, { exact: true })
       .selectOption({ label: `shop-${tag} · netgroup/shop-${tag}` });
-    await page.getByLabel('Title').fill(`Paginate the list ${tag}`);
-    await page.getByLabel('Acceptance criteria').fill('The list pages\nTests still pass');
+    await page.getByLabel(m.newTicket.title, { exact: true }).fill(`Paginate the list ${tag}`);
+    await page
+      .getByLabel(m.newTicket.acceptance, { exact: true })
+      .fill('The list pages\nTests still pass');
     // Choosing the pipeline shows what would happen before anything does.
     await page.getByText(`Standard ${tag}`, { exact: true }).click();
     await expect(page.getByText(`Builder ${tag}`)).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByText('Open merge request')).toBeVisible();
+    await expect(page.getByText(m.newTicket.openMergeRequest, { exact: true })).toBeVisible();
 
-    await page.getByRole('button', { name: 'Save as draft' }).click();
-    await expect(page.getByRole('status')).toContainText('saved as a draft', { timeout: 15_000 });
+    await page.getByRole('button', { name: m.newTicket.saveAsDraft }).click();
+    await expect(page.getByRole('status')).toContainText(m.newTicket.savedAsDraft('').trim(), {
+      timeout: 15_000,
+    });
 
     const [saved] = await sql`
       select status, current_run_id, acceptance_criteria, pipeline_id from tickets

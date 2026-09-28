@@ -1,16 +1,19 @@
 <script lang="ts">
   import FilePicker from '$components/FilePicker.svelte';
   import Icon from '$components/Icon.svelte';
+  import { agentDescription, agentName, pipelineDescription, pipelineName } from '$lib/default-names';
+  import { modelName } from '$lib/format';
   import { m } from '$lib/i18n';
   import { pipelines } from '$lib/remote/pipelines.remote';
   import { repositories } from '$lib/remote/repositories.remote';
   import { create, preview } from '$lib/remote/tickets.remote';
 
   /**
-   * Screen 05 — Create Ticket, built to `design.pen`: one form card with a
-   * hint beside every label, the pipeline chosen as cards rather than hidden
-   * in a select, and beside it what will actually happen if you press the
-   * button (FR-019).
+   * Screen 05 — Create Ticket, built to artboard 05: one form tile with a
+   * hint beside every label, the pipeline chosen as cards that each show how
+   * many steps it has, and beside it what will actually happen if you press
+   * the button — every step with its agent and engine, a conditional one
+   * marked with its condition (specs/004-bento-redesign FR-019).
    *
    * The preview is the point of the screen. Nothing starts until someone
    * presses Create, and by then they have read the steps, which of them are
@@ -39,13 +42,42 @@
   const shown = $derived(plan?.ready ? plan.current : null);
 
   const KIND: Record<string, { icon: string; tone: string }> = {
-    agent: { icon: 'bot', tone: 'accent' },
-    design: { icon: 'palette', tone: 'design' },
-    checkpoint: { icon: 'hand', tone: 'gate' },
-    shell: { icon: 'terminal', tone: 'plain' },
-    notify: { icon: 'bell', tone: 'purple' },
+    agent: { icon: 'bot', tone: '' },
+    design: { icon: 'pen-tool', tone: 'orb--pen' },
+    checkpoint: { icon: 'hand', tone: 'orb--amber' },
+    shell: { icon: 'terminal', tone: '' },
+    notify: { icon: 'bell', tone: '' },
   };
+
+  type Previewed = NonNullable<typeof shown>['steps'][number];
+
+  /** A step as a person reads it: a shipped agent in the catalogue's words (FR-028). */
+  function nameOf(step: Previewed): string {
+    if (step.type === 'agent' || step.type === 'design') return agentName(step.label);
+    if (step.type === 'shell') return step.label;
+    return m.stepKind[step.type];
+  }
+  function detailOf(step: Previewed): string | null {
+    if (step.type === 'agent' || step.type === 'design') {
+      return agentDescription(step.label, step.description ?? null);
+    }
+    return m.stepKind[`${step.type}Detail`];
+  }
+  /** "pen.dev · Claude Opus 5" for a design step, the model alone otherwise. */
+  function engineOf(step: Previewed): string | null {
+    if (!step.model) return null;
+    return step.engine === 'design_cli' ? m.newTicket.onPen(modelName(step.model)) : modelName(step.model);
+  }
 </script>
+
+<header class="page-head">
+  <nav class="crumb" aria-label={m.newTicket.crumb}>
+    <a href="/tickets">{m.board.heading}</a>
+    <Icon name="chevron-right" size={13} />
+    <span aria-current="page">{m.frame.newTicket}</span>
+  </nav>
+  <h1>{m.newTicket.heading}</h1>
+</header>
 
 <div class="wrap">
   <!--
@@ -55,19 +87,16 @@
     about rather than silently allowing. It goes after the spread so it is not
     overwritten by it.
   -->
-  <form {...create} enctype="multipart/form-data" class="card form">
-    <h1>{m.newTicket.heading}</h1>
-
+  <form {...create} enctype="multipart/form-data" class="tile form">
     <div class="field">
       <div class="label-row">
-        <label for="repositoryId">{m.newTicket.repository}</label>
+        <label class="label" for="repositoryId">{m.newTicket.repository}</label>
         <span class="hint">{m.newTicket.required}</span>
       </div>
       <div class="select">
-        {#if repo}<Icon name={repo.provider} size={16} />{:else}<Icon
-            name="folder-git-2"
-            size={16}
-          />{/if}
+        <span class="mini-orb" aria-hidden="true">
+          <Icon name={repo ? repo.provider : 'folder-git-2'} size={14} />
+        </span>
         <select id="repositoryId" name="repositoryId" bind:value={repositoryId} required>
           <option value="" disabled>{m.newTicket.chooseRepository}</option>
           {#each repos.ready ? repos.current : [] as row (row.id)}
@@ -80,13 +109,13 @@
             </option>
           {/each}
         </select>
-        <Icon name="chevron-down" size={16} />
+        <Icon name="chevron-down" size={15} />
       </div>
     </div>
 
     <div class="field">
       <div class="label-row">
-        <label for="title">{m.newTicket.title}</label>
+        <label class="label" for="title">{m.newTicket.title}</label>
         <span class="hint">{m.newTicket.required}</span>
       </div>
       <input id="title" name="title" required placeholder={m.newTicket.titlePlaceholder} />
@@ -94,33 +123,33 @@
 
     <div class="field">
       <div class="label-row">
-        <label for="description">{m.newTicket.description}</label>
+        <label class="label" for="description">{m.newTicket.description}</label>
         <span class="hint">{m.newTicket.descriptionHint}</span>
       </div>
       <textarea
         id="description"
         name="description"
-        rows="6"
+        rows="4"
         placeholder={m.newTicket.descriptionPlaceholder}
       ></textarea>
     </div>
 
     <div class="field">
       <div class="label-row">
-        <label for="acceptanceCriteria">{m.newTicket.acceptance}</label>
+        <label class="label" for="acceptanceCriteria">{m.newTicket.acceptance}</label>
         <span class="hint">{m.newTicket.acceptanceHint}</span>
       </div>
       <textarea
         id="acceptanceCriteria"
         name="acceptanceCriteria"
-        rows="4"
+        rows="3"
         placeholder={m.newTicket.acceptancePlaceholder}
       ></textarea>
     </div>
 
     <div class="field">
       <div class="label-row">
-        <label for="files">{m.newTicket.files}</label>
+        <label class="label" for="files">{m.newTicket.files}</label>
         <span class="hint">{m.newTicket.filesHint}</span>
       </div>
       <FilePicker />
@@ -128,25 +157,30 @@
 
     <div class="field">
       <div class="label-row">
-        <span class="as-label">{m.newTicket.pipeline}</span>
+        <span class="label" id="pipeline-label">{m.newTicket.pipeline}</span>
         <span class="hint">{m.newTicket.pipelineHint}</span>
       </div>
-      <div class="picks">
+      <div class="picks" role="radiogroup" aria-labelledby="pipeline-label">
         {#each pipes.ready ? pipes.current : [] as row (row.id)}
           <!-- The repository's default is this same card, submitting an empty
                value: one card per pipeline, and picking the default keeps
                meaning "whatever this repository is set to". -->
           {@const isDefault = repo?.defaultPipelineId === row.id}
           {@const value = isDefault ? '' : row.id}
-          <label class="pick" class:on={pipelineId === value}>
+          {@const segments = row.stepCount + 1}
+          <label class="pick" class:on={pipelineId === value} data-pipeline={row.id}>
             <input type="radio" name="pipelineId" {value} bind:group={pipelineId} />
             <span class="t">
-              <span class="n">{row.name}</span>
-              {#if isDefault}<span class="tag">{m.newTicket.defaultFor(repo?.name ?? '')}</span>{/if}
-              <span class="grow"></span>
-              {#if pipelineId === value}<Icon name="circle-check" size={16} />{/if}
+              <span class="n">{pipelineName(row.name)}</span>
+              <span class="c" data-steps={segments}>{m.newTicket.stepCount(segments)}</span>
             </span>
-            <span class="d">{row.description ?? m.newTicket.version(row.currentVersion)}</span>
+            <span class="bar" aria-hidden="true">
+              {#each Array.from({ length: segments }) as _, i (i)}<span class="seg"></span>{/each}
+            </span>
+            <span class="d">
+              {pipelineDescription(row.name, row.description) ?? m.newTicket.version(row.currentVersion)}
+            </span>
+            {#if isDefault}<span class="tag">{m.newTicket.defaultFor(repo?.name ?? '')}</span>{/if}
           </label>
         {/each}
       </div>
@@ -174,6 +208,7 @@
 
     <footer>
       <span class="note">
+        <Icon name="coins" size={15} />
         {#if shown?.estimate.kind === 'measured'}
           {m.newTicket.estimateMeasured(shown.estimate.costUsd, shown.estimate.minutes)}
         {:else if shown}
@@ -186,25 +221,29 @@
         {/if}
       </span>
       <span class="btns">
-        <button class="secondary" type="submit" name="start" value="false"
+        <button class="btn btn--secondary" type="submit" name="start" value="false"
           disabled={create.pending > 0}
         >
-          <Icon name="file-text" size={16} />
-          <span>{m.newTicket.saveAsDraft}</span>
+          {m.newTicket.saveAsDraft}
         </button>
-        <button class="primary" type="submit" name="start" value="true"
+        <button class="btn" type="submit" name="start" value="true"
           disabled={create.pending > 0}
         >
-          <Icon name="rocket" size={16} />
-          <span>{create.pending > 0 ? m.newTicket.creating : m.newTicket.createAndStart}</span>
+          {create.pending > 0 ? m.newTicket.creating : m.newTicket.createAndStart}
+          <Icon name="arrow-right" size={15} />
         </button>
       </span>
     </footer>
   </form>
 
   <aside class="side">
-    <section class="card">
-      <h2>{m.newTicket.whatWillHappen}</h2>
+    <section class="tile happen" aria-labelledby="what-will-happen">
+      <header class="happen-head">
+        <h2 id="what-will-happen">{m.newTicket.whatWillHappen}</h2>
+        {#if chosen}
+          <p class="sub">{m.newTicket.pipelineSteps(pipelineName(chosen.name), chosen.stepCount + 1)}</p>
+        {/if}
+      </header>
       {#if !chosen}
         <p class="quiet">{m.newTicket.chooseToSeeSteps}</p>
       {:else if !shown}
@@ -213,168 +252,207 @@
         <ol class="steps">
           {#each shown.steps as step (step.index)}
             {@const kind = KIND[step.type] ?? KIND.agent}
-            <li>
-              <span class="line">
-                <span class="ic {kind?.tone}">
+            {@const engine = engineOf(step)}
+            {@const detail = detailOf(step)}
+            <li data-step-type={step.type}>
+              <span class="rail">
+                <span class="orb orb--sm {kind?.tone}" aria-hidden="true">
                   <Icon name={step.icon ?? kind?.icon ?? 'bot'} size={15} />
                 </span>
                 <span class="v"></span>
               </span>
               <span class="tx">
                 <span class="tr">
-                  <span class="n">{step.label}</span>
+                  <span class="n">{nameOf(step)}</span>
                   <!-- Conditional steps state their condition in words
                        (FR-019a, FR-032f) -->
-                  {#if step.conditionText}
-                    <span class="cond">{step.conditionText}</span>
+                  {#if step.condition !== 'always'}
+                    <span class="cond">{m.newTicket.condition[step.condition]}</span>
                   {/if}
                 </span>
-                {#if step.description}<span class="d">{step.description}</span>{/if}
-                {#if step.model}<span class="m">{step.model}</span>{/if}
+                {#if detail}<span class="d">{detail}</span>{/if}
+                {#if engine}
+                  <span class="e" class:pen={step.engine === 'design_cli'}>{engine}</span>
+                {/if}
               </span>
             </li>
           {/each}
-          <li class="last">
-            <span class="line"><span class="ic ok"><Icon name="git-pull-request" size={15} /></span
-              ></span>
+          <li class="last" data-step-type="merge_request">
+            <span class="rail">
+              <span class="orb orb--sm orb--mint" aria-hidden="true">
+                <Icon name="git-pull-request" size={15} />
+              </span>
+            </span>
             <span class="tx">
               <span class="tr"><span class="n">{m.newTicket.openMergeRequest}</span></span>
-              <span class="m">{m.newTicket.openMergeRequestNote}</span>
+              <span class="d">{m.newTicket.openMergeRequestNote}</span>
             </span>
           </li>
         </ol>
 
         <!-- SC-016: you can tell whether the pipeline verifies the result -->
-        {#if shown.warning}
-          <p class="banner warn">{shown.warning}</p>
+        {#if !shown.verifies}
+          <p class="banner warn">{m.newTicket.noVerification}</p>
         {:else}
           <p class="quiet">{m.newTicket.testsBeforeMr}</p>
         {/if}
       {/if}
     </section>
 
-    <p class="tip">
-      <Icon name="lightbulb" size={16} />
+    <p class="tile tile--design tip">
+      <span class="orb orb--sm orb--pen tip-orb" aria-hidden="true"><Icon name="lightbulb" size={15} /></span>
       <span>{m.newTicket.tip}</span>
     </p>
   </aside>
 </div>
 
 <style>
-  .wrap {
-    display: flex;
-    align-items: flex-start;
-    gap: 24px;
-  }
-  .card {
-    background: var(--surface);
-    border: 1px solid var(--card-border);
-    border-radius: var(--r-lg);
-    box-shadow: 0 1px 2px #0f172a0a;
-    padding: 20px;
-  }
-  .form {
+  .page-head {
     display: flex;
     flex-direction: column;
-    gap: 18px;
-    flex: 1;
-    min-width: 0;
+    gap: 6px;
+    margin-bottom: 20px;
+    padding: 8px 4px 0;
+  }
+  .crumb {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-3);
+  }
+  .crumb a {
+    color: var(--text-3);
+    text-decoration: none;
+  }
+  .crumb a:hover {
+    text-decoration: underline;
+  }
+  .crumb [aria-current] {
+    font-weight: 600;
+    color: var(--text-2);
   }
   h1 {
     margin: 0;
-    font-family: var(--font-head);
-    font-size: 18px;
+    font-size: 30px;
     font-weight: 600;
-    color: var(--text);
+    letter-spacing: -0.6px;
+  }
+
+  .wrap {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+  }
+  .form {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 20px;
+    min-width: 0;
   }
 
   .field {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 8px;
   }
   .label-row {
     display: flex;
-    align-items: baseline;
+    align-items: flex-end;
     justify-content: space-between;
-    gap: 16px;
+    gap: 12px;
   }
-  label,
-  .as-label {
-    font-size: 12px;
+  .label {
+    font-size: var(--type-body);
     font-weight: 600;
     color: var(--text);
   }
   .hint {
-    font-size: 11px;
-    color: var(--text-3);
+    font-size: var(--type-caption);
     text-align: right;
+    color: var(--text-3);
   }
 
   input,
-  textarea {
-    padding: 10px 12px;
-    border: 1px solid var(--border);
-    border-radius: var(--r-sm);
-    background: var(--surface);
-    font: inherit;
-    font-size: 13px;
-    color: var(--text);
+  textarea,
+  .select {
     width: 100%;
+    padding: 12px 14px;
+    border: 0;
+    border-radius: 12px;
+    font: var(--type-body) / 1.45 var(--font);
+    color: var(--text);
+    background: var(--surface-2);
+    box-shadow: inset 0 1px 3px #3a2a1a1a;
+  }
+  textarea {
     resize: vertical;
   }
-  input:focus,
-  textarea:focus,
-  select:focus {
-    outline: 2px solid var(--accent-soft);
-    border-color: var(--accent);
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--text-3);
   }
-
   .select {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 0 12px;
-    border: 1px solid var(--border);
-    border-radius: var(--r-sm);
-    background: var(--surface);
+    color: var(--text-3);
   }
-  .select :global(svg) {
-    color: var(--text-2);
-    flex: none;
+  .select:focus-within {
+    box-shadow: var(--focus-ring);
   }
   .select select {
     flex: 1;
     min-width: 0;
-    padding: 10px 0;
+    padding: 0;
     border: 0;
-    background: none;
     font: inherit;
-    font-size: 13px;
     color: var(--text);
+    background: none;
     appearance: none;
   }
+  .select select:focus {
+    outline: none;
+    box-shadow: none;
+  }
+  .mini-orb {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+    color: var(--text-inv);
+    background: linear-gradient(180deg, var(--accent-from), var(--accent-to));
+  }
 
-  /* The pipeline is a choice between named things, so it is shown as one. */
   .picks {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+  }
+  .pick {
+    position: relative;
     display: flex;
     flex-direction: column;
     gap: 8px;
-  }
-  .pick {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    padding: 10px 12px;
-    border: 1px solid var(--border);
-    border-radius: var(--r-sm);
+    padding: 14px;
+    border-radius: 16px;
+    background: var(--surface-2);
+    box-shadow: inset 0 0 0 2px transparent;
     cursor: pointer;
+  }
+  .pick:focus-within {
+    box-shadow: var(--focus-ring);
+  }
+  .pick.on {
+    background: var(--accent-soft);
+    box-shadow: inset 0 0 0 2px var(--accent);
   }
   .pick input {
     position: absolute;
-    width: 1px;
-    height: 1px;
     opacity: 0;
+    pointer-events: none;
   }
   .pick .t {
     display: flex;
@@ -383,39 +461,69 @@
     gap: 8px;
   }
   .pick .n {
-    font-size: 13px;
-    font-weight: 600;
+    font-size: var(--type-body);
+    font-weight: 700;
     color: var(--text);
   }
-  .grow {
-    flex: 1;
-  }
-  .tag {
-    padding: 2px 8px;
-    border-radius: 999px;
-    background: var(--surface-2);
-    font-size: 11px;
-    color: var(--text-3);
-  }
-  .pick.on .tag {
-    background: var(--surface);
-    color: var(--accent-text);
-  }
-  .pick .d {
-    font-size: 12px;
+  .pick .c {
+    flex: none;
+    font-family: var(--font-head);
+    font-size: var(--type-caption);
+    font-weight: 600;
     color: var(--text-2);
   }
-  .pick:hover {
-    border-color: var(--accent);
+  .bar {
+    display: flex;
+    gap: 3px;
   }
-  .pick.on {
-    background: var(--accent-soft);
-    border-color: var(--accent-soft);
+  .seg {
+    flex: 1;
+    height: 5px;
+    border-radius: 3px;
+    background: var(--text-inv-2);
   }
-  .pick.on .n,
-  .pick.on .d,
-  .pick.on :global(svg) {
+  .pick.on .seg {
+    background: linear-gradient(90deg, var(--accent-from), var(--accent-to));
+  }
+  .pick .d {
+    font-size: var(--type-caption);
+    line-height: 1.4;
+    color: var(--text-2);
+  }
+  .tag {
+    align-self: flex-start;
+    padding: 2px 8px;
+    border-radius: var(--r-pill);
+    font-size: var(--type-caption);
+    font-weight: 600;
     color: var(--accent-text);
+    background: var(--surface);
+  }
+
+  .errors {
+    margin: 0;
+    padding: 12px 16px 12px 32px;
+    border-radius: 12px;
+    color: var(--danger-text);
+    background: var(--danger-soft);
+  }
+  .banner {
+    margin: 0;
+    padding: 12px 16px;
+    border-radius: 12px;
+    font-size: var(--type-body);
+  }
+  .banner.good {
+    color: var(--success-text);
+    background: var(--success-soft);
+  }
+  .banner.bad {
+    color: var(--danger-text);
+    background: var(--danger-soft);
+  }
+  .banner.warn {
+    color: var(--warning-text);
+    background: var(--warning-soft);
   }
 
   footer {
@@ -427,210 +535,130 @@
     padding-top: 4px;
   }
   .note {
-    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-2);
+  }
+  .note :global(svg) {
+    flex: none;
     color: var(--text-3);
   }
   .btns {
     display: flex;
-    align-items: center;
     gap: 10px;
   }
-  button {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 16px;
-    border-radius: var(--r-sm);
-    font: inherit;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-  }
-  .secondary {
-    border: 1px solid var(--border);
-    background: var(--surface);
-    color: var(--text);
-  }
-  .secondary :global(svg) {
-    color: var(--text-2);
-  }
-  .secondary:hover:not(:disabled) {
-    border-color: var(--accent);
-  }
-  .primary {
-    border: 1px solid var(--accent);
-    background: var(--accent);
-    color: var(--text-inv);
-    font-weight: 600;
-  }
-  button:disabled {
-    opacity: 0.55;
-    cursor: not-allowed;
-  }
 
-  /* ---- the preview ---- */
   .side {
     display: flex;
-    flex-direction: column;
-    gap: 16px;
-    width: 340px;
     flex: none;
-  }
-  .side .card {
-    display: flex;
     flex-direction: column;
-    gap: 12px;
-    padding: 16px;
+    gap: 20px;
+    width: 420px;
+  }
+  .happen-head {
+    padding-bottom: 18px;
   }
   h2 {
     margin: 0;
-    font-family: var(--font-head);
-    font-size: 15px;
+    font-size: 19px;
     font-weight: 600;
-    color: var(--text);
+    letter-spacing: -0.3px;
   }
-
-  .steps {
-    list-style: none;
+  .sub {
+    margin: 4px 0 0;
+    font-size: var(--type-caption);
+    color: var(--text-2);
+  }
+  .quiet {
     margin: 0;
+    color: var(--text-2);
+  }
+  .steps {
+    margin: 0 0 16px;
     padding: 0;
-    display: flex;
-    flex-direction: column;
+    list-style: none;
   }
   .steps li {
     display: flex;
-    gap: 12px;
+    gap: 14px;
   }
-  .line {
+  .rail {
     display: flex;
+    flex: none;
     flex-direction: column;
     align-items: center;
-    flex: none;
+    width: 34px;
   }
-  .ic {
-    display: grid;
-    place-items: center;
-    width: 30px;
-    height: 30px;
-    border-radius: 6px;
-    flex: none;
-    background: var(--surface-2);
-    color: var(--text-2);
-  }
-  .ic.accent {
-    background: var(--accent-soft);
-    color: var(--accent-text);
-  }
-  .ic.design {
-    background: var(--design-soft);
-    color: var(--design);
-  }
-  .ic.gate {
-    background: var(--warning-soft);
-    color: var(--warning);
-  }
-  .ic.purple {
-    background: var(--purple-soft);
-    color: var(--purple);
-  }
-  .ic.ok {
-    background: var(--success-soft);
-    color: var(--success);
+  .rail .orb {
+    width: 34px;
+    height: 34px;
   }
   .v {
     flex: 1;
     width: 2px;
-    min-height: 14px;
-    background: var(--border);
+    min-height: 16px;
+    background: var(--text-inv-2);
   }
   .tx {
     display: flex;
     flex-direction: column;
-    gap: 2px;
-    padding-bottom: 12px;
+    gap: 3px;
     min-width: 0;
-  }
-  .steps li.last .tx {
-    padding-bottom: 0;
+    padding: 2px 0 16px;
   }
   .tr {
     display: flex;
     align-items: center;
-    gap: 8px;
     flex-wrap: wrap;
+    gap: 8px;
   }
-  .steps .n {
-    font-size: 13px;
-    font-weight: 600;
+  .tx .n {
+    font-size: var(--type-body);
+    font-weight: 700;
     color: var(--text);
-  }
-  .steps .d {
-    font-size: 12px;
-    color: var(--text-2);
   }
   .cond {
     padding: 2px 8px;
-    border-radius: 999px;
-    background: var(--design-soft);
-    font-size: 11px;
-    color: var(--design);
+    border-radius: var(--r-pill);
+    font-size: var(--type-caption);
+    font-weight: 700;
+    color: var(--pen-text);
+    background: var(--purple-soft);
   }
-  .steps .m {
-    font-size: 11px;
+  .tx .d {
+    font-size: var(--type-caption);
+    line-height: 1.4;
+    color: var(--text-2);
+  }
+  .e {
+    font-family: var(--font-head);
+    font-size: var(--type-caption);
+    font-weight: 600;
     color: var(--text-3);
+  }
+  .e.pen {
+    color: var(--pen-text);
   }
 
   .tip {
     display: flex;
     align-items: flex-start;
-    gap: 10px;
+    gap: 12px;
     margin: 0;
-    padding: 12px 14px;
-    border-radius: var(--r-md);
-    background: var(--accent-soft);
-    font-size: 12px;
-    color: var(--accent-text);
+    color: var(--pen-text);
   }
-  .tip :global(svg) {
-    flex: none;
-  }
-
-  .quiet {
-    margin: 0;
-    font-size: 12px;
-    color: var(--text-2);
-  }
-  .banner {
-    margin: 0;
-    padding: 10px 14px;
-    border-radius: var(--r-md);
-    font-size: 13px;
-  }
-  .banner.good {
-    background: var(--success-soft);
-    color: var(--success);
-  }
-  .banner.bad {
-    background: var(--danger-soft);
-    color: var(--danger);
-  }
-  .banner.warn {
-    background: var(--warning-soft);
-    color: var(--warning);
-  }
-  .errors {
-    margin: 0;
-    padding-left: 18px;
-    color: var(--danger);
+  .tip-orb {
+    border-radius: 10px;
   }
 
   @media (max-width: 1100px) {
     .wrap {
       flex-direction: column;
+      align-items: stretch;
     }
     .side {
-      width: auto;
-      align-self: stretch;
+      width: 100%;
     }
   }
 </style>

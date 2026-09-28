@@ -592,14 +592,20 @@ h2.section {
 
 /* Tints, as the design draws them and never names them. */
 :root {
-  --tint-danger-from: #fdebec;
-  --tint-danger-to: #f9dadc;
-  --tint-done-from: #e3f6ee;
-  --tint-done-to: #d5f0e4;
+  /* The done and failed tints are a step deeper than the artboards draw them:
+     at the design's #E3F6EE and #FDEBEC they measured ΔE 9.8 and 8.5 from the
+     ground, under the 10 FR-004 asks of a tinted tile. */
+  --tint-danger-from: #fce3e5;
+  --tint-danger-to: #f7d2d5;
+  --tint-done-from: #dcf3e9;
+  --tint-done-to: #cdeddf;
   --tint-design-from: #eaf1fc;
   --tint-design-to: #dce7fa;
-  --tint-queue-from: #f4f3f2;
-  --tint-queue-to: #eeecea;
+  /* The queued column is neutral, not tinted (FR-004 names only the approval,
+     done and failed ones), so it has to be lighter than the ground: the
+     design's #F4F3F2 measured 1.05:1, under 1.1:1. */
+  --tint-queue-from: #fbfaf9;
+  --tint-queue-to: #f6f5f3;
   --tint-run-from: #ffffff;
   --tint-run-to: #f0eeeb;
   --pill-queue: #f2f0ec;
@@ -641,7 +647,7 @@ h2.section {
   --tile-a: var(--tint-design-from);
   --tile-b: var(--tint-design-to);
 }
-.tile--queue {
+.tile.neutral-queue {
   --tile-a: var(--tint-queue-from);
   --tile-b: var(--tint-queue-to);
 }

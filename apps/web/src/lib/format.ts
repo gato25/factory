@@ -48,3 +48,16 @@ export function exact(when: Date | string): string {
   const then = typeof when === 'string' ? new Date(when) : when;
   return Number.isNaN(then.getTime()) ? '' : then.toLocaleString(DEFAULT_LOCALE);
 }
+
+/**
+ * A model identifier as a person reads it — "claude-sonnet-5" is "Claude
+ * Sonnet 5", as the artboards write it. Anything that is not a Claude
+ * identifier is shown as it is: it is an identifier, not prose.
+ */
+export function modelName(model: string): string {
+  const parts = model.split('-');
+  if (parts[0] !== 'claude' || parts.length < 3) return model;
+  const version = parts.slice(2).filter((part) => !/^\d{8}$/.test(part));
+  const family = parts[1] ?? '';
+  return `Claude ${family.charAt(0).toUpperCase()}${family.slice(1)} ${version.join('.')}`.trim();
+}

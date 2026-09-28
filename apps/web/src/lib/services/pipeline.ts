@@ -2,10 +2,10 @@ import type { Database } from '@factory/db';
 import { pipelines, pipelineVersions, repositories, runs, tickets } from '@factory/db/schema';
 import { conflict, invalidInput, notFound, type Step } from '@factory/shared';
 import { and, desc, eq, inArray, sql } from 'drizzle-orm';
+import { m } from '$lib/i18n';
 import type { SessionUser } from './auth';
 import { requireOwnerOrAdmin } from './authz';
 import { assertSavable, conditionWords, problemsWith } from './pipeline-validate';
-import { m } from '$lib/i18n';
 
 /**
  * A pipeline is an ordered list of steps held as data (FR-024). Nothing here
@@ -125,7 +125,27 @@ export async function getPipeline(
 }
 
 export async function listPipelines(database: Database) {
-  const rows = await database.select().from(pipelines).orderBy(pipelines.name);
+  // Each pipeline with the length of its CURRENT version, which is the
+  // version a ticket created now pins (specs/004-bento-redesign FR-019) —
+  // joined in, so the list is one query however many pipelines there are.
+  const rows = await database
+    .select({
+      id: pipelines.id,
+      name: pipelines.name,
+      description: pipelines.description,
+      ownerId: pipelines.ownerId,
+      currentVersion: pipelines.currentVersion,
+      stepCount: sql<number>`coalesce(jsonb_array_length(${pipelineVersions.steps}), 0)::int`,
+    })
+    .from(pipelines)
+    .leftJoin(
+      pipelineVersions,
+      and(
+        eq(pipelineVersions.pipelineId, pipelines.id),
+        eq(pipelineVersions.version, pipelines.currentVersion),
+      ),
+    )
+    .orderBy(pipelines.name);
   const usage = await database
     .select({
       pipelineId: repositories.defaultPipelineId,
@@ -140,6 +160,7 @@ export async function listPipelines(database: Database) {
     description: row.description,
     ownerId: row.ownerId,
     currentVersion: row.currentVersion,
+    stepCount: row.stepCount,
     repositoriesUsing: usage.find((u) => u.pipelineId === row.id)?.count ?? 0,
   }));
 }

@@ -259,6 +259,10 @@ export const en: Messages = {
   },
 
   board: {
+    heading: 'Tickets',
+    lede: (n: number) =>
+      `${n} ${n === 1 ? 'ticket' : 'tickets'} · by state. Every ticket runs its own pipeline.`,
+    column: (column: string, n: number) => `${column}: ${n}`,
     loading: 'Loading tickets…',
     searchingBefore: 'Showing tickets matching ',
     searchingAfter: '.',
@@ -273,7 +277,7 @@ export const en: Messages = {
     listView: 'List view',
     noMatch: 'No tickets match.',
     createOne: 'Create one',
-    backlog: 'Backlog',
+    backlog: 'Queued',
     running: 'Running',
     waitingApproval: 'Waiting approval',
     done: 'Done',
@@ -288,6 +292,12 @@ export const en: Messages = {
   ticketCard: {
     unknown: 'unknown',
     changesInterface: 'Changes the interface',
+    approve: (step: string) => `${step} needs approval`,
+    mergeRequestOpened: (reference: string) => `MR ${reference} opened`,
+    done: 'Done',
+    cancelled: 'Cancelled',
+    readyToStart: 'Ready to start',
+    createdBy: (name: string) => `Created by ${name}`,
   },
 
   strip: {
@@ -302,6 +312,7 @@ export const en: Messages = {
 
   newTicket: {
     heading: 'Describe what you want built',
+    crumb: 'You are here',
     repository: 'Repository',
     required: 'Required',
     chooseRepository: 'Choose a repository…',
@@ -319,7 +330,17 @@ export const en: Messages = {
     files: 'Requirement documents',
     filesHint: 'Optional. Text, Markdown or CSV — every agent step reads them as the brief.',
     pipeline: 'Pipeline',
-    pipelineHint: 'You can change its steps for this ticket only, in the builder.',
+    pipelineHint: 'Changes the steps of this ticket only',
+    stepCount: (n: number) => `${n} ${n === 1 ? 'step' : 'steps'}`,
+    pipelineSteps: (pipeline: string, n: number) => `${pipeline} pipeline · ${n} steps`,
+    condition: {
+      always: '',
+      ticket_has_ui: 'If the interface changes',
+      ticket_has_no_ui: 'If the interface does not change',
+    },
+    onPen: (model: string) => `pen.dev · ${model}`,
+    noVerification:
+      'This pipeline has no verification step, so nothing beyond the implementing agent will check the result. Add a shell step running your tests to change that.',
     defaultFor: (repository: string) => `${repository}'s default`,
     version: (version: number) => `Version ${version}`,
     queuedNotStartedBefore: (reference: string) =>

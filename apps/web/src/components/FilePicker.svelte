@@ -112,25 +112,37 @@
     gap: 8px;
   }
 
+  /* The bento field: the inset surface every input on the form sits in, and
+     the browser's own button drawn as the kit's secondary one. */
   input[type='file'] {
-    padding: 10px 12px;
-    border: 1px dashed var(--border);
-    border-radius: var(--r-sm);
-    background: var(--surface);
-    font: inherit;
-    font-size: 13px;
-    color: var(--text-2);
     width: 100%;
+    padding: 10px 12px;
+    border: 0;
+    border-radius: 12px;
+    font: var(--type-body) / 1.4 var(--font);
+    color: var(--text-2);
+    background: var(--surface-2);
+    box-shadow: inset 0 1px 3px #3a2a1a1a;
   }
-  input[type='file']:focus {
-    outline: 2px solid var(--accent-soft);
-    border-color: var(--accent);
+  input[type='file']::file-selector-button {
+    margin-right: 12px;
+    padding: 7px 14px;
+    border: 0;
+    border-radius: 10px;
+    font: 600 var(--type-body) / 1.2 var(--font);
+    color: var(--text);
+    background: var(--surface);
+    box-shadow: 0 1px 2px var(--shadow-depth);
+    cursor: pointer;
+  }
+  input[type='file']:focus-visible {
+    box-shadow: var(--focus-ring);
   }
 
   .picked {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 6px;
     margin: 0;
     padding: 0;
     list-style: none;
@@ -139,15 +151,14 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 6px 10px;
-    border: 1px solid var(--border);
-    border-radius: var(--r-sm);
+    padding: 8px 12px;
+    border-radius: 12px;
+    font-size: var(--type-body);
     background: var(--surface-2);
-    font-size: 12px;
   }
   .picked :global(svg) {
-    color: var(--text-2);
     flex: none;
+    color: var(--text-2);
   }
   .picked .n {
     flex: 1;
@@ -158,26 +169,27 @@
     color: var(--text);
   }
   .picked .s {
-    color: var(--text-3);
     flex: none;
+    font-size: var(--type-caption);
+    color: var(--text-3);
   }
   .picked button {
     display: flex;
-    padding: 2px;
+    padding: 4px;
     border: 0;
-    border-radius: 4px;
-    background: none;
+    border-radius: 8px;
     color: var(--text-3);
+    background: none;
     cursor: pointer;
   }
   .picked button:hover {
+    color: var(--danger-text);
     background: var(--danger-soft);
-    color: var(--danger);
   }
 
   .total {
     margin: 0;
-    font-size: 11px;
+    font-size: var(--type-caption);
     color: var(--text-3);
   }
 
@@ -186,8 +198,8 @@
     align-items: center;
     gap: 6px;
     margin: 0;
-    font-size: 12px;
-    color: var(--danger);
+    font-size: var(--type-caption);
+    color: var(--danger-text);
   }
   .problem :global(svg) {
     flex: none;
