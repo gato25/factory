@@ -8,7 +8,6 @@
    * translating: the artboard says `icon=git-branch` and so does the markup.
    */
   import Activity from '@lucide/svelte/icons/activity';
-  import Apple from '@lucide/svelte/icons/apple';
   import ArrowRight from '@lucide/svelte/icons/arrow-right';
   import Bell from '@lucide/svelte/icons/bell';
   import BookOpen from '@lucide/svelte/icons/book-open';
@@ -38,9 +37,7 @@
   import FolderGit2 from '@lucide/svelte/icons/folder-git-2';
   import GitBranch from '@lucide/svelte/icons/git-branch';
   import GitCommitHorizontal from '@lucide/svelte/icons/git-commit-horizontal';
-  import GitMerge from '@lucide/svelte/icons/git-merge';
   import GitPullRequest from '@lucide/svelte/icons/git-pull-request';
-  import Globe from '@lucide/svelte/icons/globe';
   import GripVertical from '@lucide/svelte/icons/grip-vertical';
   import Hand from '@lucide/svelte/icons/hand';
   import History from '@lucide/svelte/icons/history';
@@ -52,7 +49,6 @@
   import Link from '@lucide/svelte/icons/link';
   import List from '@lucide/svelte/icons/list';
   import ListChecks from '@lucide/svelte/icons/list-checks';
-  import Loader from '@lucide/svelte/icons/loader';
   import Map from '@lucide/svelte/icons/map';
   import MessageSquare from '@lucide/svelte/icons/message-square';
   import PackageOpen from '@lucide/svelte/icons/package-open';
@@ -61,22 +57,16 @@
   import PenTool from '@lucide/svelte/icons/pen-tool';
   import Pencil from '@lucide/svelte/icons/pencil';
   import Play from '@lucide/svelte/icons/play';
-  import Plug from '@lucide/svelte/icons/plug';
   import Plus from '@lucide/svelte/icons/plus';
   import Radio from '@lucide/svelte/icons/radio';
   import RefreshCw from '@lucide/svelte/icons/refresh-cw';
-  import Rocket from '@lucide/svelte/icons/rocket';
   import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
-  import Save from '@lucide/svelte/icons/save';
   import Search from '@lucide/svelte/icons/search';
   import Server from '@lucide/svelte/icons/server';
-  import Settings from '@lucide/svelte/icons/settings';
   import Settings2 from '@lucide/svelte/icons/settings-2';
   import ShieldCheck from '@lucide/svelte/icons/shield-check';
   import Sparkles from '@lucide/svelte/icons/sparkles';
-  import SquareCheck from '@lucide/svelte/icons/square-check';
   import Terminal from '@lucide/svelte/icons/terminal';
-  import Ticket from '@lucide/svelte/icons/ticket';
   import Timer from '@lucide/svelte/icons/timer';
   import ToggleLeft from '@lucide/svelte/icons/toggle-left';
   import Trash2 from '@lucide/svelte/icons/trash-2';
@@ -100,7 +90,6 @@
 
   const LUCIDE: Record<string, Component<IconProps>> = {
     'activity': Activity,
-    'apple': Apple,
     'arrow-right': ArrowRight,
     'bell': Bell,
     'book-open': BookOpen,
@@ -130,9 +119,7 @@
     'folder-git-2': FolderGit2,
     'git-branch': GitBranch,
     'git-commit-horizontal': GitCommitHorizontal,
-    'git-merge': GitMerge,
     'git-pull-request': GitPullRequest,
-    'globe': Globe,
     'grip-vertical': GripVertical,
     'hand': Hand,
     'history': History,
@@ -144,7 +131,6 @@
     'link': Link,
     'list': List,
     'list-checks': ListChecks,
-    'loader': Loader,
     'map': Map,
     'message-square': MessageSquare,
     'package-open': PackageOpen,
@@ -153,22 +139,16 @@
     'pen-tool': PenTool,
     'pencil': Pencil,
     'play': Play,
-    'plug': Plug,
     'plus': Plus,
     'radio': Radio,
     'refresh-cw': RefreshCw,
-    'rocket': Rocket,
     'rotate-ccw': RotateCcw,
-    'save': Save,
     'search': Search,
     'server': Server,
-    'settings': Settings,
     'settings-2': Settings2,
     'shield-check': ShieldCheck,
     'sparkles': Sparkles,
-    'square-check': SquareCheck,
     'terminal': Terminal,
-    'ticket': Ticket,
     'timer': Timer,
     'toggle-left': ToggleLeft,
     'trash-2': Trash2,

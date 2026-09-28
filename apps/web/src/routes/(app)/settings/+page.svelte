@@ -63,7 +63,7 @@
     unconfigured: 'queue',
     unreachable: 'fail',
     unauthorised: 'fail',
-    wrong_shape: 'wait',
+    wrong_shape: 'fail',
   };
   const WHAT: Record<string, string> = {
     runner: m.settings.runner,
@@ -72,7 +72,13 @@
 
   /** What a tile's pill says: the last test if there was one, else whether
    *  it is configured at all. */
-  function stateOf(what: string, configured: boolean, configuredLabel = m.settings.configured) {
+  function stateOf(
+    what: string,
+    configured: boolean,
+    configuredLabel = m.settings.configured,
+    // Red where a run cannot start without it; neutral where nothing needs it yet.
+    missingTone = 'fail',
+  ) {
     const result = tested?.find((row) => row.what === what);
     if (result) {
       return {
@@ -82,7 +88,7 @@
     }
     return configured
       ? { label: configuredLabel, tone: 'done' }
-      : { label: m.settings.notSetUp, tone: 'wait' };
+      : { label: m.settings.notSetUp, tone: missingTone };
   }
   const runnerResult = $derived(tested?.find((row) => row.what === 'runner') ?? null);
 
@@ -161,7 +167,7 @@
         <section class="tile" id="workspace">
           {@render head('building-2', '', m.settings.workspace, m.settings.workspaceLede, {
             label: r.ready ? m.settings.readyToRun : m.settings.notReady,
-            tone: r.ready ? 'done' : 'wait',
+            tone: r.ready ? 'done' : 'fail',
           })}
           <div class="grid">
             <label class="f">
@@ -284,7 +290,7 @@
         </section>
 
         <section class="tile" id="limits">
-          {@render head('coins', 'amber', m.settings.costLimits, m.settings.costLimitsLede)}
+          {@render head('coins', 'grey', m.settings.costLimits, m.settings.costLimitsLede)}
           <div class="grid three">
             <label class="f">
               <span>{m.settings.maxSpend}</span>
@@ -326,7 +332,7 @@
           {/if}
           <div class="end">
             <button class="btn" type="submit" disabled={saveWorkspace.pending > 0}>
-              <Icon name="save" size={14} />{m.settings.save}
+              <Icon name="check" size={14} />{m.settings.save}
             </button>
           </div>
         </section>
@@ -336,7 +342,7 @@
       <section class="tile" id="keys">
         {@render head('key-round', '', m.settings.claudeCliAndKeys, m.settings.keysLede, {
           label: w.hasModelCredential ? m.settings.oneIsStored : m.settings.noneYet,
-          tone: w.hasModelCredential ? 'done' : 'wait',
+          tone: w.hasModelCredential ? 'done' : 'fail',
         })}
         <form {...modelKey} class="grid key">
           <input type="hidden" name="kind" value="model" />
@@ -384,7 +390,7 @@
           'pen',
           m.settings.designHeading,
           m.settings.designLede,
-          stateOf('design', w.hasDesignCredential, m.settings.signedIn),
+          stateOf('design', w.hasDesignCredential, m.settings.signedIn, 'queue'),
         )}
         <form {...designKey} class="grid key">
           <input type="hidden" name="kind" value="design" />
@@ -500,7 +506,7 @@
       </section>
 
       <section class="tile" id="notifications">
-        {@render head('bell', 'mint', m.settings.notifications, m.settings.notificationsLede, {
+        {@render head('bell', 'grey', m.settings.notifications, m.settings.notificationsLede, {
           label: m.settings.nothingToConfigure,
           tone: 'queue',
         })}
@@ -533,7 +539,7 @@
                   </a>
                   <span class="quiet">{entry.authorName ?? m.settings.unknownAuthor}</span>
                 </span>
-                <span class="pill {entry.position === null ? 'pill--live' : 'pill--wait'}">
+                <span class="pill {entry.position === null ? 'pill--live' : 'pill--queue'}">
                   {entry.position === null ? m.settings.executing : m.settings.position(entry.position)}
                 </span>
               </li>
@@ -659,13 +665,6 @@
   .sq.grey {
     background: linear-gradient(180deg, #b9b2a9, #6a635a);
   }
-  .sq.amber {
-    color: var(--on-amber);
-    background: linear-gradient(180deg, var(--amber-from), var(--amber-to));
-  }
-  .sq.mint {
-    background: linear-gradient(180deg, var(--mint-from), var(--mint-to));
-  }
   .th .tx {
     display: flex;
     flex: 1;
@@ -740,8 +739,8 @@
     white-space: nowrap;
   }
   .value.missing {
-    color: var(--warning-text);
-    background: var(--warning-soft);
+    color: var(--danger-text);
+    background: var(--danger-soft);
     white-space: normal;
   }
   .mono {
@@ -833,10 +832,6 @@
   .tests.fail {
     color: var(--danger-text);
     background: var(--danger-soft);
-  }
-  .tests.wait {
-    color: var(--warning-text);
-    background: var(--warning-soft);
   }
   .chip-btn {
     display: inline-flex;
@@ -934,8 +929,8 @@
     background: var(--success-soft);
   }
   .banner.warn {
-    color: var(--warning-text);
-    background: var(--warning-soft);
+    color: var(--danger-text);
+    background: var(--danger-soft);
   }
   .end {
     display: flex;

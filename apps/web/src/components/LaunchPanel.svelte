@@ -83,7 +83,7 @@
   });
 </script>
 
-<section class="card run" aria-label={m.launch.heading}>
+<section class="tile run" aria-label={m.launch.heading}>
   <header>
     <span class="ic"><Icon name="play" size={15} /></span>
     <h2>{m.launch.heading}</h2>
@@ -131,7 +131,7 @@
     {#if current?.from}<p class="small muted">Command from {current.from}.</p>{/if}
     <pre class="log">{(current?.log ?? []).join('\n') || 'Waiting for output…'}</pre>
     <button type="button" class="secondary" disabled={working} onclick={() => act(() => stop({ ticketId, launchId: launch.id }))}>
-      <Icon name="square-check" size={14} />
+      <Icon name="circle-check" size={14} />
       Stop
     </button>
   {:else}
@@ -160,7 +160,7 @@
     {/if}
 
     <button type="button" class="secondary" disabled={working} onclick={() => act(() => stop({ ticketId, launchId: launch.id }))}>
-      <Icon name="square-check" size={14} />
+      <Icon name="circle-check" size={14} />
       Stop
     </button>
   {/if}
@@ -173,11 +173,7 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
-    padding: 16px 20px;
-    background: var(--surface);
-    border: 1px solid var(--card-border);
-    border-radius: var(--r-lg);
-    box-shadow: 0 1px 2px #0f172a0a;
+    padding: 20px 22px;
   }
   header {
     display: flex;

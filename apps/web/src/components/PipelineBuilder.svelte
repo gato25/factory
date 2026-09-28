@@ -447,8 +447,8 @@
     background: var(--danger-soft);
   }
   .banner.warn {
-    color: var(--warning-text);
-    background: var(--warning-soft);
+    color: var(--danger-text);
+    background: var(--danger-soft);
   }
 
   /* ---- the palette ---- */

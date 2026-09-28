@@ -53,9 +53,9 @@
   }
 </script>
 
-<section class="card editor">
+<section class="tile editor">
   <header>
-    <h2 class="section">{m.stepEditor.heading(index + 1, STEP_KIND_LABEL[step.type])}</h2>
+    <h2 class="tile-title">{m.stepEditor.heading(index + 1, STEP_KIND_LABEL[step.type])}</h2>
     {#if onClose}
       <button type="button" class="close" onclick={onClose} aria-label={m.stepEditor.close(index + 1)}>
         <Icon name="x" size={16} />
@@ -248,11 +248,7 @@
     display: flex;
     flex-direction: column;
     gap: 12px;
-    padding: 16px;
-    background: var(--surface);
-    border: 1px solid var(--card-border);
-    border-radius: var(--r-md);
-    box-shadow: 0 1px 3px #0f172a14;
+    padding: 20px;
   }
   header {
     display: flex;

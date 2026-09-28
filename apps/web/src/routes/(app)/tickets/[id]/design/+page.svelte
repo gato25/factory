@@ -534,7 +534,7 @@
     color: var(--text-2);
   }
   .warn-text {
-    color: var(--warning-text);
+    color: var(--danger-text);
   }
   .foot {
     padding: 0 6px;

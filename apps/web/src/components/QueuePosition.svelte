@@ -10,7 +10,7 @@
 </script>
 
 {#if position !== null}
-  <p class="pill pill--wait queued">{m.queue.position(position, cap ?? null)}</p>
+  <p class="pill pill--queue queued">{m.queue.position(position, cap ?? null)}</p>
 {/if}
 
 <style>

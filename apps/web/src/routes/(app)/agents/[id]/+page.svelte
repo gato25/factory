@@ -179,7 +179,7 @@
         {/if}
         {#if a.mayChange}
           <button class="btn" type="submit" disabled={save.pending > 0}>
-            <Icon name="save" size={14} />{save.pending > 0
+            <Icon name="check" size={14} />{save.pending > 0
               ? m.agentEditor.saving
               : m.agentEditor.saveChanges}
           </button>
@@ -614,6 +614,8 @@
     flex: none;
     max-width: 50%;
   }
+  /* The artboard draws these blue; blue is the design service's alone
+     (FR-005), so they take the kit's neutral chip. */
   .var,
   .more summary {
     padding: 4px 9px;
@@ -621,8 +623,8 @@
     font-family: var(--font-mono);
     font-size: var(--type-caption);
     font-weight: 600;
-    color: var(--pen-text);
-    background: #e3ecfb;
+    color: var(--text-2);
+    background: #f4f2ef;
   }
   .more {
     position: relative;
@@ -897,11 +899,11 @@
   }
   .chip-skill {
     font-family: var(--font-mono);
-    color: var(--pen-text);
-    background: #e3ecfb;
+    color: var(--text);
+    background: #f4f2ef;
   }
   .chip-skill :global(svg) {
-    color: var(--pen-to);
+    color: var(--accent);
   }
   .chip-skill button {
     display: grid;
@@ -909,15 +911,15 @@
     padding: 0;
     border: 0;
     background: none;
-    color: var(--pen-to);
+    color: var(--text-2);
     cursor: pointer;
   }
   .add {
     position: relative;
   }
   .add > button {
-    border: 0;
-    background: #f4f2ef;
+    border: 1px dashed #d8d3cc;
+    background: none;
     font-family: inherit;
     color: var(--text-2);
     cursor: pointer;

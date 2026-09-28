@@ -67,7 +67,7 @@
 
   {#if view.ticket.classificationMissing}
     <!-- FR-102: the warning is a field on the run, not a log line -->
-    <p class="badge warn">
+    <p class="note">
       {m.runDetails.classificationMissing}
     </p>
   {:else if view.ticket.hasUi !== null}
@@ -114,9 +114,14 @@
     font-size: inherit;
     background: var(--surface-2);
   }
-  p.badge {
-    display: block;
+  /* Needing attention, so red (FR-005), and said in words beside it. */
+  .note {
     margin: 0;
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-size: var(--type-body);
     line-height: 1.5;
+    color: var(--danger-text);
+    background: var(--danger-soft);
   }
 </style>

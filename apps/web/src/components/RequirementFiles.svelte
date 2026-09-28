@@ -40,7 +40,7 @@
   }
 </script>
 
-<section class="card">
+<section class="tile req">
   <header>
     <Icon name="book-open" size={15} />
     <h2>{m.files.heading}</h2>
@@ -92,14 +92,11 @@
 </section>
 
 <style>
-  .card {
+  .req {
     display: flex;
     flex-direction: column;
     gap: 12px;
-    padding: 16px;
-    border: 1px solid var(--card-border);
-    border-radius: var(--r-md);
-    background: var(--surface);
+    padding: 22px;
   }
 
   header {

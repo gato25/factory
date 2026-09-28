@@ -188,10 +188,10 @@
         <span class="nm">{title}</span>
         {#if condition}
           <!-- Marked as conditional, in words (FR-032f) -->
-          <span class="badge conditional">{condition}</span>
+          <span class="flag conditional">{condition}</span>
         {/if}
         {#if custom}
-          <span class="badge custom">{m.stepNode.custom}</span>
+          <span class="flag custom">{m.stepNode.custom}</span>
         {/if}
       </span>
       {#if description}<span class="d">{description}</span>{/if}
@@ -393,7 +393,7 @@
     color: var(--danger-text);
   }
 
-  .badge {
+  .flag {
     padding: 2px 8px;
     border-radius: var(--r-pill);
     font-size: var(--type-caption);
@@ -401,11 +401,11 @@
     color: var(--pen-text);
     background: var(--purple-soft);
   }
-  .node.gate .badge.conditional {
+  .node.gate .flag.conditional {
     color: var(--warning-text);
     background: #fffbea;
   }
-  .badge.custom {
+  .flag.custom {
     color: var(--accent-text);
     background: var(--accent-soft);
   }

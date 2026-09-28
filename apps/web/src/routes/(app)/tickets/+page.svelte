@@ -407,9 +407,12 @@
     color: inherit;
   }
 
+  /* Narrower than five columns fit, the columns wrap into rows — stacked,
+     never scrolled sideways past the edge (spec edge case, 1024px). */
   @media (max-width: 1100px) {
     .board {
-      grid-template-columns: repeat(5, 240px);
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      overflow-x: visible;
     }
   }
 </style>

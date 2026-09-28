@@ -170,7 +170,7 @@
 
 <section class="log {tone}" aria-label={m.liveLog.liveOutput(stepTitle(step))}>
   <header>
-    <span class="badge" aria-hidden="true">{glyphFor(step.type)}</span>
+    <span class="glyph" aria-hidden="true">{glyphFor(step.type)}</span>
     <span class="titles">
       <span class="t">{stepTitle(step)}</span>
       <code>{command}</code>
@@ -303,7 +303,7 @@
     gap: 11px;
     padding: 16px 18px 13px;
   }
-  .badge {
+  .glyph {
     display: flex;
     align-items: center;
     justify-content: center;

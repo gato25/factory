@@ -501,8 +501,9 @@
     color: var(--text-inv);
     background: linear-gradient(180deg, var(--accent-from), var(--accent-to));
   }
+  /* Not the artboard's blue: blue is the design service's alone (FR-005). */
   .orb-sq.pen {
-    background: linear-gradient(180deg, var(--pen-from), var(--pen-to));
+    background: linear-gradient(180deg, #b9b2a9, #6a635a);
   }
   .orb-sq.idle {
     opacity: 0.5;

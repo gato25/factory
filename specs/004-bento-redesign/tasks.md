@@ -254,9 +254,9 @@ artboard.
 **Independent Test**: the fidelity check passes; removing one fixed phrase from a screen alone makes
 it fail and name the screen and phrase.
 
-- [ ] T082 [US7] Finish `scripts/design/screens.ts` (each screen's entry was written in its own task): every screen artboard 00–14 covered (13 and 15 are references, not screens, and are marked so), each entry's `files` including `apps/web/src/lib/i18n/mn.ts`, the "omits" entries re-checked against the new artboards (14 now draws "pen.dev дээр нээх" and ".pen татах"), each omission with its reason (research D9)
-- [ ] T083 [US7] Run `bun test scripts/design/tests/screens.test.ts` — all tests pass, including the two that failed at baseline
-- [ ] T084 [US7] Prove the check bites: remove one fixed phrase from one screen's source only, run the test, confirm it fails naming the screen and phrase, then restore the phrase (SC-006)
+- [X] T082 [US7] Finish `scripts/design/screens.ts` (each screen's entry was written in its own task): every screen artboard 00–14 covered (13 and 15 are references, not screens, and are marked so), each entry's `files` including `apps/web/src/lib/i18n/mn.ts`, the "omits" entries re-checked against the new artboards (14 now draws "pen.dev дээр нээх" and ".pen татах"), each omission with its reason (research D9)
+- [X] T083 [US7] Run `bun test scripts/design/tests/screens.test.ts` — all tests pass, including the two that failed at baseline
+- [X] T084 [US7] Prove the check bites: remove one fixed phrase from one screen's source only, run the test, confirm it fails naming the screen and phrase, then restore the phrase (SC-006)
 
 **Checkpoint**: design and code are bound again.
 
@@ -264,12 +264,12 @@ it fail and name the screen and phrase.
 
 ## Phase 10: Polish and cross-cutting
 
-- [ ] T085 Switch on every screen in `apps/web/tests/e2e/legibility.spec.ts` (none left off) and run it: 100% of text meets FR-007 and FR-008, every tile FR-004 (SC-002)
-- [ ] T086 Check every colour-coded state on every screen is also in words (FR-006), and that each colour keeps its one meaning across screens (FR-005)
-- [ ] T087 At a 1024px-wide window, open every screen: tiles stack rather than overflow, and no text falls below 12px (spec edge case)
-- [ ] T088 Switch the deployment's catalogue to English and open every screen: no missing key, every new string has its English form (FR-026)
-- [ ] T089 Remove the old code nothing uses any more (plan: "removed code"): run `bun scripts/design/icons.ts --prune` so `Icon.svelte` holds exactly the icons the design draws, then check no screen names one it dropped; the old `.card`, `.badge` and `h2.section` rules from `apps/web/src/app.css` once a search finds no user, updating any e2e selector that still names them; remove the Manrope `@font-face` rules and files from `apps/web/static/fonts/` if no design variable names Manrope any more
-- [ ] T090 Search `apps/web/src` for "n8n" in copy shown to a person (e.g. the notify-step note on the settings page in `mn.ts` and `en.ts`) and replace it with the execution service, as artboard 12 says (FR-024, SC-007)
+- [X] T085 Switch on every screen in `apps/web/tests/e2e/legibility.spec.ts` (none left off) and run it: 100% of text meets FR-007 and FR-008, every tile FR-004 (SC-002)
+- [X] T086 Check every colour-coded state on every screen is also in words (FR-006), and that each colour keeps its one meaning across screens (FR-005)
+- [X] T087 At a 1024px-wide window, open every screen: tiles stack rather than overflow, and no text falls below 12px (spec edge case)
+- [X] T088 Switch the deployment's catalogue to English and open every screen: no missing key, every new string has its English form (FR-026)
+- [X] T089 Remove the old code nothing uses any more (plan: "removed code"): run `bun scripts/design/icons.ts --prune` so `Icon.svelte` holds exactly the icons the design draws, then check no screen names one it dropped; the old `.card`, `.badge` and `h2.section` rules from `apps/web/src/app.css` once a search finds no user, updating any e2e selector that still names them; remove the Manrope `@font-face` rules and files from `apps/web/static/fonts/` if no design variable names Manrope any more
+- [X] T090 Search `apps/web/src` for "n8n" in copy shown to a person (e.g. the notify-step note on the settings page in `mn.ts` and `en.ts`) and replace it with the execution service, as artboard 12 says (FR-024, SC-007)
 - [ ] T091 Run `bun run lint` and fix what this feature introduced; compare with the baseline (T001) for what was already there
 - [ ] T092 Run `bun run verify` — lint, typecheck, offline and browser audits, all unit and integration tests — and compare with the baseline: nothing that passed before fails (SC-005)
 - [ ] T093 Run `bun run e2e` — every browser test passes, including frame, legibility, dashboard and board (SC-005)

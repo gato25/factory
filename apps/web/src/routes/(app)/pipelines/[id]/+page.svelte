@@ -442,4 +442,8 @@
       align-items: flex-start;
     }
   }
+  /* Needing attention is red, whatever else is near it (FR-005). */
+  .warn-text {
+    color: var(--danger-text);
+  }
 </style>

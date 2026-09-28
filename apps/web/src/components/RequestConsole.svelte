@@ -35,10 +35,10 @@
     response === null
       ? ''
       : response.status < 300
-        ? 'ok'
+        ? 'pill--done'
         : response.status < 400
-          ? 'warn'
-          : 'bad'
+          ? 'pill--queue'
+          : 'pill--fail'
   );
 
   async function go(event: SubmitEvent) {
@@ -98,7 +98,7 @@
   {#if response}
     <div class="response">
       <div class="status">
-        <span class="badge {tone}">{response.status} {response.statusText}</span>
+        <span class="pill {tone} status">{response.status} {response.statusText}</span>
         <span class="ms">{response.ms} ms</span>
         <button type="button" class="link" onclick={() => (showHeaders = !showHeaders)}>
           {showHeaders ? 'Hide' : 'Show'} {response.headers.length} response headers
@@ -213,7 +213,7 @@
     align-items: center;
     gap: 10px;
   }
-  .badge {
+  .status {
     font-family: var(--font-mono);
     font-size: 12px;
     font-weight: 600;
