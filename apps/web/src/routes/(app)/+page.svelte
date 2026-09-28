@@ -49,7 +49,7 @@
   nothing else on this page can ever be non-empty (FR-014).
 -->
 {#if s.ready && !s.current.ready}
-  <p class="tile tile--approval notice" role="status">
+  <p class="tile tile--danger notice" role="status">
     {m.dashboard.notReady(listed(s.current.missing.map((item) => m.dashboard.missing[item] ?? item)))}
     {#if s.current.canFix}
       {@const needsRepository = s.current.missing.includes('a connected repository')}
@@ -86,15 +86,16 @@
 </div>
 
 <style>
+  /* Nothing can run: that needs attention, which is red (FR-005). */
   .notice {
     margin: 0 0 20px;
     padding: 16px 20px;
     font-size: var(--type-body);
-    color: var(--on-amber);
+    color: var(--danger-text);
   }
   .notice a {
     font-weight: 600;
-    color: var(--on-amber);
+    color: var(--danger-text);
   }
 
   .row {

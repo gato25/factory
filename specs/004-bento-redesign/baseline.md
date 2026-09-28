@@ -91,4 +91,88 @@ spec asserted, the assertion moves to its successor (research D12).
 
 ## After
 
-_Filled in at T094 (final visual review) and T091–T092 (verify, e2e)._
+Recorded on 2026-09-28 in the cloud container this feature was finished in (Linux, LF working copy,
+Bun 1.3.11), after T001–T094. Where a result differs from the baseline above, the reason is given.
+
+### Lint — `bun run lint` (T091)
+
+29 errors, 333 warnings, 3 infos (baseline: 202, 222, 3). Every error is one of the baseline's own
+kinds — 24 `assist/source/organizeImports` and 5 `format` — and none is in a file this feature
+touched; each file the feature changed was formatted and its imports ordered. The
+warnings are the baseline's `noNonNullAssertion`, now also in the specs this feature wrote in the
+same style as their neighbours.
+
+### Typecheck and audits (T092)
+
+`bun run check`: 0 errors, 0 warnings (the baseline's unused `.f small` selector went with the settings
+rebuild). `bun run audit:offline` and `bun run audit:browser`: pass.
+
+### Unit and integration tests (T092)
+
+Run file by file with a 180-second limit, as at the baseline: **122 files, 1198 pass, 27 fail, 0
+time out.** Nothing that passed at the baseline fails:
+
+- `scripts/design/tests/screens.test.ts` now passes in full (baseline: 2 failing) — every screen
+  artboard 00–14 is covered, and removing one fixed phrase fails it naming the screen and phrase
+  (T084: "09 Agents: Хараахан ашиглаагүй").
+- `approval`, `authz`, `defaults`, `first-account` (self-registration), `ownership`, `retry` and
+  `start-draft` fail exactly the tests they failed at the baseline.
+- `members.test.ts` now finishes instead of timing out, and fails the three tests the baseline
+  listed for it; the other four files that timed out now pass in full.
+- `password.test.ts` (4) and six `apps/runner` files (`execution-host`, `runner-image`,
+  `sandbox-images`, `hardening`, `labels`, `open-design`) fail identically on `origin/main` in this
+  container — no Node binary, no Docker, root user — so they describe the machine, not this feature.
+  The baseline machine had them passing; they are not regressions.
+- `first-account.test.ts` asserted an English word in a message the catalogue had already moved
+  to Mongolian; it now reads the catalogue.
+
+### Browser tests — `bun run e2e` (T093)
+
+**84 tests: 79 passed, 2 failed, 3 skipped (5.0 min)** in one run (baseline: 42 tests, 1 passed, 38
+failed). The two failures, and what they were:
+
+- `dashboard.spec.ts` "3: … equal the audit (SC-004)": the spec read the audit through
+  `execFileSync`, which throws when the audit exits non-zero — and it does whenever the rate is under
+  its 70% criterion, which the shared database (the specs' own rows included) now was. The spec reads
+  the audit's output whatever its exit code; it passes.
+- `recover.spec.ts` "editing and retrying is one action": the retry takes about 33 seconds, and ran
+  past its 60-second wait while the same machine was running the integration suite and screen
+  captures. Run again on its own, all five recover tests pass.
+
+### Visual review, per screen (T095)
+
+Captured at 1440px on the demo data and compared with each artboard's tree (`scripts/design/report.ts`)
+for tiles, order, copy and colour meaning. The copy is also held by the fidelity check; each
+deliberate omission is in `scripts/design/screens.ts` with its reason. At 1024px no screen overflows
+and no text is under 12px (the board's five columns wrap into rows); in English (`DEFAULT_LOCALE =
+'en'`) every screen renders with no missing word — what stays Mongolian is the demo data.
+
+| Screen | Matches | Deliberate divergences |
+|---|---|---|
+| 00 Login | yes | the two floating widgets (a figure, a named ticket) are not drawn before sign-in |
+| Frame | yes | — |
+| 01 Dashboard | yes | the "nothing can run yet" notice is red, not golden: it needs attention (FR-005) |
+| 02 Repositories | yes | — |
+| 03 Connect Repository | yes | — |
+| 04 Tickets Board | yes | the backlog column is neutral; tints are the design's deepest in each hue (ΔE ≥ 10) |
+| 05 Create Ticket | yes | the file field's "Choose Files" is the browser's own control, in the browser's language; the no-verification caution is red |
+| 06 Ticket Run | yes | the task document is named by what it is for, not its task count |
+| 07 Approval Checkpoint | yes | the timeline names a decision, not who made it |
+| 08 Pipeline Builder | yes | a checkpoint is titled by kind, not purpose; a condition in the form's words; a custom agent's step takes the deep accent, not blue |
+| 08 Pipelines list | no artboard | built from the kit's tiles and chips |
+| 09 Agents | yes | a custom agent's orb and badge take the deep accent, not blue: blue is the design service's alone (FR-005) |
+| 10 Agent Editor | yes | no "Sandbox-д турших" (nothing behind it); Edit and Write are separate switches; prompt variables and skill chips are neutral, not blue |
+| 11 Skills | yes | skill orbs are neutral, not blue, except the one open, in the accent |
+| 12 Settings | yes | sections ordered by the one form they share (limits before keys); no Docker host, sandbox status, removal toggle, workspace design model or export — none is a setting the application has; the limits and notifications orbs are neutral |
+| 14 Design Review | yes | the design step's own time and cost are beside the screens, not in the head |
+
+### Human checks (T096) — waiting on people
+
+Neither can be stood in for by a test; both need the presentation room, its projector with the
+lights on, and people seeing the screens for the first time.
+
+- **SC-001**: show the dashboard to 5 people who have not seen it; pass if at least 4 say within 5
+  seconds which tickets need them. _Result: not yet run._
+- **SC-003**: 3 viewers at 6 metres in the lit room read every ticket title and state on the
+  dashboard, the board and a running ticket. _Result: not yet run._
+

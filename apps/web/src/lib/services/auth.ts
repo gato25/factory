@@ -3,8 +3,8 @@ import type { Database } from '@factory/db';
 import { users } from '@factory/db/schema';
 import { createLogger, FactoryError, MIN_PASSWORD_LENGTH, type Role } from '@factory/shared';
 import { eq } from 'drizzle-orm';
-import { hashPassword, isUnverifiableLegacy, needsRehash, verifyPassword } from './password';
 import { m } from '$lib/i18n';
+import { hashPassword, isUnverifiableLegacy, needsRehash, verifyPassword } from './password';
 
 /**
  * Three ways in: a GitLab account, a GitHub account, or an email address and
@@ -136,10 +136,7 @@ export async function registerFirstUser(
     throw new FactoryError('invalid_input', m.error.passwordTooShort(MIN_PASSWORD_LENGTH));
   }
   if (await hasAnyUser(database)) {
-    throw new FactoryError(
-      'not_authorised',
-      m.conflicts.accountExists,
-    );
+    throw new FactoryError('not_authorised', m.conflicts.accountExists);
   }
 
   const inserted = await database

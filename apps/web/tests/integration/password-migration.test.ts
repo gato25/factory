@@ -48,7 +48,9 @@ test('a wrong password against a Bun-era hash is refused and nothing is rewritte
   const legacy = await Bun.password.hash(account.password);
   await db.update(users).set({ passwordHash: legacy }).where(eq(users.id, user.id));
 
-  await expect(signInWithPassword(db, account.email, 'not-it')).rejects.toThrow(m.error.credentialsDoNotMatch);
+  await expect(signInWithPassword(db, account.email, 'not-it')).rejects.toThrow(
+    m.error.credentialsDoNotMatch,
+  );
 
   // The upgrade happens only after a successful check — the plaintext must
   // be the right one before it is hashed and stored.

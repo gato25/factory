@@ -270,13 +270,13 @@ it fail and name the screen and phrase.
 - [X] T088 Switch the deployment's catalogue to English and open every screen: no missing key, every new string has its English form (FR-026)
 - [X] T089 Remove the old code nothing uses any more (plan: "removed code"): run `bun scripts/design/icons.ts --prune` so `Icon.svelte` holds exactly the icons the design draws, then check no screen names one it dropped; the old `.card`, `.badge` and `h2.section` rules from `apps/web/src/app.css` once a search finds no user, updating any e2e selector that still names them; remove the Manrope `@font-face` rules and files from `apps/web/static/fonts/` if no design variable names Manrope any more
 - [X] T090 Search `apps/web/src` for "n8n" in copy shown to a person (e.g. the notify-step note on the settings page in `mn.ts` and `en.ts`) and replace it with the execution service, as artboard 12 says (FR-024, SC-007)
-- [ ] T091 Run `bun run lint` and fix what this feature introduced; compare with the baseline (T001) for what was already there
-- [ ] T092 Run `bun run verify` — lint, typecheck, offline and browser audits, all unit and integration tests — and compare with the baseline: nothing that passed before fails (SC-005)
-- [ ] T093 Run `bun run e2e` — every browser test passes, including frame, legibility, dashboard and board (SC-005)
-- [ ] T094 Walk `specs/004-bento-redesign/quickstart.md` end to end on the demo data (seed, every screen, the audit comparison, the checks) and correct the quickstart wherever it no longer matches
-- [ ] T095 Final visual review: capture all 14 screens and compare each with its artboard side by side for tiles, order, copy and colour meaning; record the result per screen in `specs/004-bento-redesign/baseline.md` under "after" (SC-007)
+- [X] T091 Run `bun run lint` and fix what this feature introduced; compare with the baseline (T001) for what was already there
+- [X] T092 Run `bun run verify` — lint, typecheck, offline and browser audits, all unit and integration tests — and compare with the baseline: nothing that passed before fails (SC-005)
+- [X] T093 Run `bun run e2e` — every browser test passes, including frame, legibility, dashboard and board (SC-005)
+- [X] T094 Walk `specs/004-bento-redesign/quickstart.md` end to end on the demo data (seed, every screen, the audit comparison, the checks) and correct the quickstart wherever it no longer matches
+- [X] T095 Final visual review: capture all 14 screens and compare each with its artboard side by side for tiles, order, copy and colour meaning; record the result per screen in `specs/004-bento-redesign/baseline.md` under "after" (SC-007)
 - [ ] T096 Hand the two human checks to the user, who runs them — they need the room, the projector and people, which no test can stand in for: SC-001 (5 people shown the dashboard for the first time; 4 say within 5 seconds which tickets need them) and SC-003 (3 viewers at 6 metres in the lit room read every ticket title and state on the dashboard, the board and the run page). Record the results in `specs/004-bento-redesign/baseline.md` when they are given
-- [ ] T097 Reconcile the plan's file map in `specs/004-bento-redesign/plan.md` with what was actually built, and mark every task here done
+- [X] T097 Reconcile the plan's file map in `specs/004-bento-redesign/plan.md` with what was actually built, and mark every task here done
 
 ---
 

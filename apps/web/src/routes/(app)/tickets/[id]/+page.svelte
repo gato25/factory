@@ -300,7 +300,7 @@
 
     <!-- FR-102: a run whose ticket was never classified says so on the run itself. -->
     {#if loaded.ticket.classificationMissing}
-      <p class="tile tile--approval notice warn" role="status">{m.runDetails.classificationMissing}</p>
+      <p class="tile tile--danger notice warn" role="status">{m.runDetails.classificationMissing}</p>
     {/if}
 
     {#if loaded.run.pauseRequestedAt && inFlight}
@@ -465,8 +465,9 @@
     margin: 0 0 20px;
     padding: 14px 20px;
   }
+  /* Needing attention, so red (FR-005). */
   .notice.warn {
-    color: var(--on-amber);
+    color: var(--danger-text);
   }
   .failure {
     margin: 0 0 20px;

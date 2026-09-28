@@ -1,6 +1,7 @@
 import { afterAll, beforeEach, describe, expect, test } from 'bun:test';
 import { users } from '@factory/db/schema';
-import { FactoryError } from '@factory/shared';
+import { FactoryError, MIN_PASSWORD_LENGTH } from '@factory/shared';
+import { m } from '../../src/lib/i18n';
 import {
   hasAnyUser,
   registerFirstUser,
@@ -140,8 +141,8 @@ describe('the password the first account is given', () => {
     }
     expect(thrown).toBeInstanceOf(FactoryError);
     // The reason, not just the rule: this account can read every credential
-    // the workspace stores.
-    expect((thrown as FactoryError).message).toContain('credential');
+    // the workspace stores. In the catalogue's words, as the screen says it.
+    expect((thrown as FactoryError).message).toBe(m.error.passwordTooShort(MIN_PASSWORD_LENGTH));
     expect(await hasAnyUser(db)).toBe(false);
   });
 

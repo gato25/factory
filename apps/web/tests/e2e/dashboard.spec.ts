@@ -1,4 +1,4 @@
-import { execFileSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { createHmac, randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
 import type { BrowserContext, Page } from '@playwright/test';
@@ -280,11 +280,15 @@ test.describe('the dashboard (US1)', () => {
     await page.goto('/', { waitUntil: 'networkidle' });
 
     // The audit, run without exclusions over the same window, prints "N of M".
-    const audit = execFileSync(
+    // It exits non-zero whenever the rate is under its 70% criterion, which
+    // is its verdict on the figure, not a failure to compute it — so read
+    // what it printed whatever its exit code.
+    const run = spawnSync(
       'bun',
       [resolve(process.cwd(), '../../scripts/audit/first-attempt-rate.ts'), '--since', '30d'],
       { env: { ...process.env, DATABASE_URL }, encoding: 'utf8' },
     );
+    const audit = `${run.stdout}${run.stderr}`;
     const [, successes, counted] = audit.match(/(\d+) of (\d+) on the first attempt/) ?? [];
     expect(counted, audit).toBeDefined();
     const rate = Math.round((Number(successes) / Number(counted)) * 100);

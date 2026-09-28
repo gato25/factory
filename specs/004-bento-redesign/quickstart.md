@@ -11,8 +11,12 @@
 ## 1. Fill a workspace with every state
 
 ```bash
-bun scripts/demo/seed.ts            # idempotent; --reset empties the demo rows first
+bun scripts/demo/seed.ts            # idempotent; `--reset` removes the demo rows and stops
 ```
+
+Re-seeding replaces the demo users, so sign in again afterwards. The browser tests write their own
+rows into the same database; they do not disturb the demo rows, but the figures in step 3 then count
+them too.
 
 It creates the design's sample data: repositories on GitLab and GitHub (one with an expired token),
 pipelines of 3, 6 and 8 steps, and tickets in every state — running, waiting for approval, failed,
@@ -35,6 +39,11 @@ bun scripts/design/report.ts "01 Dashboard"   # the artboard's tree, copy and va
 ```
 
 Expected: the same tiles in the same order, the same copy, the same colour meanings (spec SC-007).
+Where a screen departs from its artboard on purpose, the reason is in `scripts/design/screens.ts`
+(`omits`) or in `baseline.md` under "After".
+
+Then at a 1024px-wide window: the tiles stack or wrap rather than run past the edge (the board's five
+columns wrap into rows), and no text is under 12px.
 
 ## 3. Check the dashboard's figures against their sources
 
@@ -50,11 +59,19 @@ steps finished today.
 ## 4. Run the checks
 
 ```bash
-bun run verify                      # lint, typecheck, unit + integration, token + fidelity checks
+bun run verify                      # lint, typecheck, audits, unit + integration, token + fidelity
+set -a; . ./.env; set +a            # the browser specs need SESSION_SECRET from .env
 bun run e2e                         # browser tests, including legibility.spec.ts
 ```
 
-Expected: everything passes. `legibility.spec.ts` fails naming the screen, the element, its size and
+`bun run verify` stops at its first step while the lint findings recorded in `baseline.md` remain —
+CRLF line endings and import order in files this feature did not touch — so run the steps after it
+directly: `bun run check`, `bun run audit:offline`, `bun run audit:browser`, and the tests. Run the
+tests file by file (`bun test <file>`): as one process `bun run test` stalls on the files that await
+`expect(...).rejects` on a database call, as `baseline.md` explains. Where Playwright's own browser is
+not installed, point it at one with `PLAYWRIGHT_CHROMIUM_PATH`.
+
+Expected: everything this feature touched passes, and nothing that passed at the baseline fails. `legibility.spec.ts` fails naming the screen, the element, its size and
 its contrast when any text is under 12px (14px for primary content) or under 4.5:1 (FR-007, FR-008).
 The fidelity check fails naming the screen and phrase if any fixed phrase exists on only one side
 (FR-027).
