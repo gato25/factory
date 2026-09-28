@@ -114,12 +114,12 @@
   h2 {
     flex: 1;
     margin: 0;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 600;
     color: var(--text);
   }
   .count {
-    font-size: 11px;
+    font-size: 12px;
     color: var(--text-3);
   }
 
@@ -203,7 +203,7 @@
   .note,
   .notice {
     margin: 0;
-    font-size: 11px;
+    font-size: 12px;
     color: var(--text-3);
     line-height: 1.5;
   }

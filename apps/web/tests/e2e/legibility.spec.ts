@@ -50,6 +50,8 @@ interface Screen {
   primary: string[];
   /** Measure only inside this element — the frame, on a screen not rebuilt yet. */
   within?: string;
+  /** Pressed before measuring: a tab or a dialog that is part of the screen. */
+  click?: string;
 }
 
 const SCREENS: Screen[] = [
@@ -114,6 +116,39 @@ const SCREENS: Screen[] = [
       '.banner',
       '.tip',
     ],
+  },
+  {
+    name: '06 Ticket Run',
+    path: (seeded) => `/tickets/${seeded.tickets.running}`,
+    signedIn: true,
+    primary: ['h1', '.cell .n', '.run-tabs button', '.results .t', '.btn', '.log .t', '.note'],
+  },
+  {
+    name: '06 Ticket Run, failed',
+    path: (seeded) => `/tickets/${seeded.tickets.failed}`,
+    signedIn: true,
+    primary: ['h1', '.cell .n', '.failure h2', '.failure p', '.btn'],
+  },
+  {
+    name: '06 Ticket Run, artifacts',
+    path: (seeded) => `/tickets/${seeded.tickets.waiting}`,
+    signedIn: true,
+    click: '.run-tabs button:nth-child(2)',
+    primary: ['h1', '.viewer .n', '.btn'],
+  },
+  {
+    name: '06 Ticket Run, details',
+    path: (seeded) => `/tickets/${seeded.tickets.waiting}`,
+    signedIn: true,
+    click: '.run-tabs button:nth-child(5)',
+    primary: ['h1', 'dd', 'dt', '.btn'],
+  },
+  {
+    name: '06 Ticket Run, launch',
+    path: (seeded) => `/tickets/${seeded.tickets.done}`,
+    signedIn: true,
+    click: '.run-tabs button:nth-child(3)',
+    primary: ['h1', '.btn'],
   },
 ];
 
@@ -494,6 +529,10 @@ test.describe('every screen can be read from the back of a lit room', () => {
       const seeded = await seed();
       if (screen.signedIn) await signIn(context, seeded.userId);
       await page.goto(screen.path(seeded), { waitUntil: 'networkidle' });
+      if (screen.click) {
+        await page.locator(screen.click).first().click();
+        await page.waitForLoadState('networkidle');
+      }
       const findings = await measured(page, screen);
       expect(findings, `${screen.name}:\n${findings.join('\n')}`).toEqual([]);
     });

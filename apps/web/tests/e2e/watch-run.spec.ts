@@ -1,6 +1,7 @@
 import { createHmac, randomUUID } from 'node:crypto';
 import { expect, test } from '@playwright/test';
 import postgres from 'postgres';
+import { stepTitle } from '../../src/lib/default-names';
 import { m } from '../../src/lib/i18n';
 
 /**
@@ -144,13 +145,16 @@ test.describe('watching a run', () => {
 
     await page.goto(`/tickets/${seeded.ticketId}`);
     await expect(page.getByRole('heading', { name: /Add Google OAuth sign-in/ })).toBeVisible();
-    await expect(page.getByText('Queued')).toBeVisible();
+    await expect(page.locator('.title-row .pill')).toHaveText(m.run.statusQueued);
     // Three steps plus the implicit merge request.
-    await expect(page.getByText('Merge request').first()).toBeVisible();
+    await expect(page.locator('.track > li.step')).toHaveCount(4);
+    await expect(page.getByText(m.stepTracker.mergeRequest, { exact: true }).first()).toBeVisible();
 
     // --- the run starts; the page must follow without a reload ---
     await callback({ step_index: 0, event: 'started', container_id: 'container-e2e' });
-    await expect(page.getByText('Running').first()).toBeVisible({ timeout: 5_000 });
+    await expect(page.locator('.title-row .pill')).toContainText(m.run.statusRunning, {
+      timeout: 5_000,
+    });
 
     await callback({ step_index: 0, event: 'step_started' });
 
@@ -173,11 +177,16 @@ test.describe('watching a run', () => {
       cost_usd: '0.4200',
       artifacts: [{ kind: 'document', path: 'docs/spec.md', version: 1 }],
     });
-    await expect(page.getByText('$0.4200').first()).toBeVisible({ timeout: 5_000 });
-    await expect(page.getByText('14s')).toBeVisible();
+    await expect(page.getByText('$0.42').first()).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByText(m.time.duration(0, 14)).first()).toBeVisible();
 
     // --- what the last agent produced is readable in the application (FR-077) ---
-    await expect(page.getByText('docs/spec.md').first()).toBeVisible();
+    // The results tile names it as the artboard does, by its file name.
+    await expect(
+      page
+        .getByRole('region', { name: m.runResults.heading })
+        .getByText('spec.md', { exact: true }),
+    ).toBeVisible();
 
     // --- a skipped step is shown WITH its reason, not omitted (FR-075a) ---
     await callback({
@@ -185,7 +194,14 @@ test.describe('watching a run', () => {
       event: 'step_skipped',
       condition_not_met: 'ticket has no UI change',
     });
-    await expect(page.getByText(/skipped — ticket has no UI change/)).toBeVisible({
+    await expect(
+      page.getByText(
+        m.stepTracker.skippedBecause(
+          stepTitle({ type: 'design', label: 'Design' }),
+          'ticket has no UI change',
+        ),
+      ),
+    ).toBeVisible({
       timeout: 5_000,
     });
 

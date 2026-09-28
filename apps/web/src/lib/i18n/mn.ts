@@ -415,11 +415,17 @@ export const mn = {
   },
 
   run: {
+    stepDidNotFinish: (step: string, n: number) => `${step} — ${n}-р алхам дууссангүй`,
+    runDidNotFinish: 'Энэ ажиллагаа дууссангүй',
+    spentOfCeiling: (spent: string, ceiling: string) =>
+      `$${ceiling} хязгаараас $${spent} зарцуулсан.`,
+    producedStillReadable: (paths: string) =>
+      `Дахин ажиллуулахад даалгавраас дахин эхэлнэ, гэхдээ энэ оролдлогын гаргасныг унших боломжтой хэвээр: ${paths}.`,
     tabOutput: 'Гаралт',
     tabArtifacts: 'Артефакт',
-    tabLaunch: 'Ажиллуулж үзэх',
+    tabLaunch: 'Ажиллуулах',
     tabRequirements: 'Шаардлага',
-    tabDetails: 'Ажиллагааны мэдээлэл',
+    tabDetails: 'Мэдээлэл',
     runView: 'Ажиллагааны харагдац',
     loading: 'Ажиллагааг ачаалж байна…',
     notStarted: 'Энэ даалгавар одоохондоо эхлээгүй байна.',
@@ -448,7 +454,7 @@ export const mn = {
     continueRunTitle:
       'Хэсэг хугацаанд юу ч болоогүй бол ажиллагааг дуусаагүй эхний алхмаас дахин хөдөлгөнө. Дууссан алхмууд ба тэдний зардал хадгалагдана. Зөвхөн гацсан ажиллагаанд: ажиллаж байгаа алхам хоёр удаа ажиллах болно.',
     continueRun: 'Ажиллагааг үргэлжлүүлэх',
-    cancelRun: 'Ажиллагааг цуцлах',
+    cancelRun: 'Цуцлах',
     continueFromFailedTitle:
       'Амжилтгүй болсон алхмаас дахин ажиллуулна. Дууссан алхмууд ба тэдний зардал хадгалагдана.',
     continueFromFailed: 'Амжилтгүй алхмаас үргэлжлүүлэх',
@@ -456,13 +462,48 @@ export const mn = {
   },
 
   ticketHead: {
-    tickets: 'Даалгавар',
+    tickets: 'Даалгаврууд',
+    where: 'Та хаана байна',
+    noBranch: 'салбар хараахан алга',
+    createdBy: (name: string) => `${name} үүсгэсэн`,
+    started: (ago: string) => `${ago} эхэлсэн`,
+    soFar: (dollars: string) => `одоогоор ${dollars}`,
+    elapsed: 'хугацаа',
+    spent: 'зарцуулсан',
+    spentOf: (budget: string) => `зарцуулсан · төсөв ${budget}`,
+    pipeline: (pipeline: string, steps: number) => `${pipeline} · ${steps} алхам`,
+  },
+
+  runResults: {
+    heading: 'Үр дүн',
+    count: (n: number) => `${n} гаралт`,
+    screens: (n: number) => `${n} дэлгэц`,
+    screensFrom: 'ui.pen + exports · pen.dev',
+    commits: (n: number) => `${n} commit`,
+    mergeRequest: (reference: string) => `Нэгтгэх хүсэлт ${reference}`,
+    mergeRequestOpened: 'нээгдсэн · хүн шийднэ',
+    mergeRequestPending: 'хүлээгдэж · хүн шийднэ',
+  },
+
+  /** A run held by the concurrency cap, on its own page (FR-082). */
+  queue: {
+    position: (position: number, cap: number | null) =>
+      `Чөлөөтэй орчин хүлээж байна — дараалалд ${position}-р байр${cap ? `, нэг дор ${cap} ажиллана` : ''}.`,
   },
 
   stepTracker: {
+    label: (n: number) => `Ажиллагааны ${n} алхам`,
+    stepLabel: (n: number, name: string, detail: string) => `${n}-р алхам — ${name}, ${detail}`,
     mergeRequest: 'Нэгтгэх хүсэлт',
     opened: 'нээгдсэн',
     waiting: 'хүлээгдэж',
+    done: 'дууссан',
+    running: 'ажиллаж буй',
+    runningFor: (took: string) => `${took} · ажиллаж буй`,
+    waitingForYou: 'таны батлалт',
+    skipped: 'алгассан',
+    failed: 'амжилтгүй',
+    skippedBecause: (step: string, reason: string) => `${step} алгассан — ${reason}.`,
   },
 
   liveLog: {
@@ -505,7 +546,7 @@ export const mn = {
     loadingCheckpoint: 'Хяналтын цэгийг ачаалж байна…',
     waitingForYourApproval: 'Таны баталгаажуулалтыг хүлээж буй',
     decided: 'Шийдэгдсэн',
-    cancelRun: 'Ажиллагааг цуцлах',
+    cancelRun: 'Цуцлах',
     backToTheRun: 'Ажиллагаа руу буцах',
     /**
      * "Хяналтын цэг: <юуг> код бичихээс өмнө хянана". Mongolian puts the verb
@@ -563,7 +604,7 @@ export const mn = {
     notStarted: 'Энэ даалгавар эхлээгүй байна.',
     waitingForDesignApproval: 'Дизайны баталгаажуулалтыг хүлээж буй',
     decided: 'Шийдэгдсэн',
-    cancelRun: 'Ажиллагааг цуцлах',
+    cancelRun: 'Цуцлах',
     backToTheRun: 'Ажиллагаа руу буцах',
     producedScreens: (screens: number) =>
       `Дизайн алхам pen.dev CLI-ээр ${screens} дэлгэц гаргалаа.`,
@@ -890,11 +931,16 @@ export const mn = {
   },
 
   artifacts: {
+    loading: 'Ачаалж байна…',
+    emptyDocument: '(хоосон)',
+    documentLine: (purpose: string, version: number, step: number) =>
+      `${purpose} · v${version} · ${step}-р алхам`,
+    committed: (path: string) => `${path} commit хийгдсэн`,
     heading: 'Артефакт',
     couldNotOpen: 'Үүнийг нээж чадсангүй.',
     empty: 'Одоогоор юу ч гараагүй.',
     purposeSpec: 'Шаардлага',
-    purposePlan: 'Архитектур ба өөрчлөх файлууд',
+    purposePlan: 'Арга барил',
     purposeTasks: 'Дараалсан ажлууд',
     purposeOther: 'Ажиллагаа гаргасан',
     screens: 'Дэлгэцүүд',
@@ -1058,6 +1104,17 @@ export const mn = {
   },
 
   notice: {
+    continuingFrom: (step: string, n: number) =>
+      `${step}-ээс (${n}-р алхам) үргэлжилж байна. Дууссан алхмууд хадгалагдана.`,
+    couldNotHandBack: (detail: string) =>
+      `Ажиллагааг гүйцэтгэх үйлчилгээнд буцааж өгч чадсангүй: ${detail}`,
+    attemptStarted: (attempt: number) => `${attempt}-р оролдлого эхэллээ.`,
+    attemptNotBegun: (attempt: number, detail: string) =>
+      `${attempt}-р оролдлого дараалалд орсон ч эхлээгүй: ${detail}. Дахин оролдоно.`,
+    updatedAttemptStarted: (attempt: number) =>
+      `Даалгавар шинэчлэгдэж, ${attempt}-р оролдлого эхэллээ.`,
+    updatedAttemptNotBegun: (attempt: number, detail: string) =>
+      `Даалгавар шинэчлэгдлээ. ${attempt}-р оролдлого дараалалд орсон ч эхлээгүй: ${detail}.`,
     agentSaved: 'Хадгалагдлаа. Ажиллаж байгаа ажиллагаанд хамаарахгүй.',
     agentReset: 'Энэ агент нийлүүлэгдсэн тохиргоо руугаа буцлаа.',
     settingsSaved: 'Хадгалагдлаа. Ажиллаж байгаа ажиллагаанууд эхэлсэн хязгаараа хадгална.',

@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { m } from '$lib/i18n';
+
   /**
    * A run waiting on the concurrency cap sees where it is (FR-082). The
    * number matters more than the wait: "third in line" is actionable, "still
@@ -8,12 +10,13 @@
 </script>
 
 {#if position !== null}
-  <p class="badge warn queued">
-    Waiting for a free sandbox — position {position} in the queue{#if cap}, which holds {cap} at
-      once{/if}.
-  </p>
+  <p class="pill pill--wait queued">{m.queue.position(position, cap ?? null)}</p>
 {/if}
 
 <style>
-  .queued { display: inline-block; }
+  .queued {
+    margin: 0;
+    font-size: var(--type-body);
+    white-space: normal;
+  }
 </style>

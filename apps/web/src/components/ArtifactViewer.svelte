@@ -71,7 +71,7 @@
   const purposeOf = (path: string) => PURPOSE[path] ?? m.artifacts.purposeOther;
 </script>
 
-<section class="card">
+<section class="tile viewer">
   <h2>{m.artifacts.heading}</h2>
 
   {#if artifacts.length === 0 && !mergeRequestUrl}
@@ -88,15 +88,15 @@
       <Icon name="file-text" size={16} />
       <span class="tx">
         <span class="n">{doc.path}</span>
-        <span class="s">{purposeOf(doc.path)} · v{doc.version} · step {doc.stepIndex + 1}</span>
+        <span class="s">{m.artifacts.documentLine(purposeOf(doc.path), doc.version, doc.stepIndex + 1)}</span>
       </span>
       <Icon name={openId === doc.id ? 'chevron-down' : 'chevron-right'} size={14} />
     </button>
     {#if openId === doc.id}
       {#if opened?.ready}
-        <pre>{opened.current.content ?? '(empty)'}</pre>
+        <pre>{opened.current.content ?? m.artifacts.emptyDocument}</pre>
       {:else}
-        <p class="empty">Loading…</p>
+        <p class="empty">{m.artifacts.loading}</p>
       {/if}
     {/if}
   {/each}
@@ -106,7 +106,7 @@
       <div class="head">
         <Icon name="images" size={16} />
         <span class="tx">
-          <span class="n">{screens.length} screen{screens.length === 1 ? '' : 's'}</span>
+          <span class="n">{m.runResults.screens(screens.length)}</span>
           <span class="s">docs/design/screens</span>
         </span>
       </div>
@@ -114,7 +114,7 @@
       {#each designFiles as source (source.id)}
         <p class="foot">
           <Icon name="pen-tool" size={12} />
-          <span>{source.path} committed</span>
+          <span>{m.artifacts.committed(source.path)}</span>
           {#if runId}
             <button
               type="button"
@@ -167,15 +167,11 @@
 </section>
 
 <style>
-  .card {
+  .viewer {
     display: flex;
     flex-direction: column;
-    gap: 7px;
-    padding: 16px;
-    background: var(--surface);
-    border: 1px solid var(--card-border);
-    border-radius: var(--r-lg);
-    box-shadow: 0 1px 2px #0f172a0a;
+    gap: 8px;
+    padding: 22px;
   }
   h2 {
     margin: 0 0 3px;
@@ -226,12 +222,12 @@
     min-width: 0;
   }
   .n {
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 500;
     color: var(--text);
   }
   .s {
-    font-size: 11px;
+    font-size: 12px;
     color: var(--text-3);
   }
   .tx span {
@@ -266,7 +262,7 @@
     align-items: center;
     gap: 6px;
     margin: 0;
-    font-size: 11px;
+    font-size: 12px;
     color: var(--accent-text);
   }
   .foot :global(svg) {
@@ -282,7 +278,7 @@
     background: var(--surface);
     color: var(--text-1);
     font: inherit;
-    font-size: 11px;
+    font-size: 12px;
     cursor: pointer;
   }
   .open:hover:not(:disabled) {

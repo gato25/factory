@@ -368,6 +368,11 @@ export const en: Messages = {
   },
 
   run: {
+    stepDidNotFinish: (step: string, n: number) => `${step} — step ${n} did not finish`,
+    runDidNotFinish: 'This run did not finish',
+    spentOfCeiling: (spent: string, ceiling: string) => `Spent $${spent} of a $${ceiling} ceiling.`,
+    producedStillReadable: (paths: string) =>
+      `A retry starts again from the ticket, but what this attempt produced is still readable: ${paths}.`,
     tabOutput: 'Output',
     tabArtifacts: 'Artifacts',
     tabLaunch: 'Run it',
@@ -409,12 +414,46 @@ export const en: Messages = {
 
   ticketHead: {
     tickets: 'Tickets',
+    where: 'You are here',
+    noBranch: 'no branch yet',
+    createdBy: (name: string) => `Created by ${name}`,
+    started: (ago: string) => `Started ${ago}`,
+    soFar: (dollars: string) => `${dollars} so far`,
+    elapsed: 'elapsed',
+    spent: 'spent',
+    spentOf: (budget: string) => `spent · budget ${budget}`,
+    pipeline: (pipeline: string, steps: number) => `${pipeline} · ${steps} steps`,
+  },
+
+  runResults: {
+    heading: 'Results',
+    count: (n: number) => `${n} ${n === 1 ? 'output' : 'outputs'}`,
+    screens: (n: number) => `${n} ${n === 1 ? 'screen' : 'screens'}`,
+    screensFrom: 'ui.pen + exports · pen.dev',
+    commits: (n: number) => `${n} ${n === 1 ? 'commit' : 'commits'}`,
+    mergeRequest: (reference: string) => `Merge request ${reference}`,
+    mergeRequestOpened: 'opened · a person decides',
+    mergeRequestPending: 'waiting · a person decides',
+  },
+
+  queue: {
+    position: (position: number, cap: number | null) =>
+      `Waiting for a free sandbox — position ${position} in the queue${cap ? `, which holds ${cap} at once` : ''}.`,
   },
 
   stepTracker: {
+    label: (n: number) => `The run's ${n} steps`,
+    stepLabel: (n: number, name: string, detail: string) => `Step ${n} — ${name}, ${detail}`,
     mergeRequest: 'Merge request',
     opened: 'opened',
     waiting: 'waiting',
+    done: 'done',
+    running: 'running',
+    runningFor: (took: string) => `${took} · running`,
+    waitingForYou: 'your approval',
+    skipped: 'skipped',
+    failed: 'failed',
+    skippedBecause: (step: string, reason: string) => `${step} skipped — ${reason}.`,
   },
 
   liveLog: {
@@ -840,6 +879,11 @@ export const en: Messages = {
   },
 
   artifacts: {
+    loading: 'Loading…',
+    emptyDocument: '(empty)',
+    documentLine: (purpose: string, version: number, step: number) =>
+      `${purpose} · v${version} · step ${step}`,
+    committed: (path: string) => `${path} committed`,
     heading: 'Artifacts',
     couldNotOpen: 'It could not be opened.',
     empty: 'Nothing produced yet.',
@@ -992,6 +1036,16 @@ export const en: Messages = {
   },
 
   notice: {
+    continuingFrom: (step: string, n: number) =>
+      `Continuing from ${step} (step ${n}). Steps already finished are kept.`,
+    couldNotHandBack: (detail: string) =>
+      `Could not hand the run back to the execution service: ${detail}`,
+    attemptStarted: (attempt: number) => `Attempt ${attempt} started.`,
+    attemptNotBegun: (attempt: number, detail: string) =>
+      `Attempt ${attempt} is queued but has not begun: ${detail}. It will be retried.`,
+    updatedAttemptStarted: (attempt: number) => `Ticket updated, and attempt ${attempt} started.`,
+    updatedAttemptNotBegun: (attempt: number, detail: string) =>
+      `Ticket updated. Attempt ${attempt} is queued but has not begun: ${detail}.`,
     agentSaved: 'Saved. Runs already in flight are unaffected.',
     agentReset: 'Back to the configuration this agent shipped with.',
     settingsSaved: 'Saved. Runs already in flight keep the ceilings they started with.',

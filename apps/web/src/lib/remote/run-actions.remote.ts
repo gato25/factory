@@ -3,6 +3,8 @@ import * as v from 'valibot';
 import { command, getRequestEvent, query } from '$app/server';
 import { loadWebConfig } from '$lib/config';
 import { db } from '$lib/db';
+import { stepTitle } from '$lib/default-names';
+import { m } from '$lib/i18n';
 import { continueRun } from '$lib/services/continue';
 import { attemptsOf, failureOf } from '$lib/services/failure';
 import { handOver, orchestratorAccess } from '$lib/services/orchestrator';
@@ -15,7 +17,6 @@ import {
   retryRun,
 } from '$lib/services/run';
 import { runForTicket } from './runs.remote';
-import { m } from '$lib/i18n';
 
 /**
  * Retry, edit-and-retry, pause and cancel are `command`s rather than `form`s:
@@ -86,8 +87,8 @@ export const retry = command(TicketId, async (ticketId) => {
       runId: run.id,
       attempt: run.attempt,
       message: delivered.delivered
-        ? `Attempt ${run.attempt} started.`
-        : `Attempt ${run.attempt} is queued but has not begun: ${delivered.detail}. It will be retried.`,
+        ? m.notice.attemptStarted(run.attempt)
+        : m.notice.attemptNotBegun(run.attempt, delivered.detail ?? ''),
     };
   });
 });
@@ -124,8 +125,8 @@ export const editRetry = command(EditAndRetry, async (input) => {
       runId: run.id,
       attempt: run.attempt,
       message: delivered.delivered
-        ? `Ticket updated, and attempt ${run.attempt} started.`
-        : `Ticket updated. Attempt ${run.attempt} is queued but has not begun: ${delivered.detail}.`,
+        ? m.notice.updatedAttemptStarted(run.attempt)
+        : m.notice.updatedAttemptNotBegun(run.attempt, delivered.detail ?? ''),
     };
   });
 });
@@ -140,9 +141,7 @@ export const pause = command(RunId, async (runId) => {
     return {
       ok: true,
       runId,
-      message: alreadyRequested
-        ? m.notice.alreadyPausing
-        : m.notice.pausing,
+      message: alreadyRequested ? m.notice.alreadyPausing : m.notice.pausing,
     };
   });
 });
@@ -171,9 +170,7 @@ export const cancel = command(RunId, async (runId) => {
     return {
       ok: cancelled,
       runId,
-      message: cancelled
-        ? m.notice.cancelled
-        : m.notice.alreadyFinished,
+      message: cancelled ? m.notice.cancelled : m.notice.alreadyFinished,
     };
   });
 });
@@ -196,8 +193,8 @@ export const continueFrom = command(RunId, async (runId) => {
       ok: delivered.delivered,
       runId,
       message: delivered.delivered
-        ? `Continuing from ${stepName} (step ${index + 1}). Steps already finished are kept.`
-        : `Could not hand the run back to the orchestrator: ${delivered.detail}`,
+        ? m.notice.continuingFrom(stepTitle({ type: 'agent', label: stepName }), index + 1)
+        : m.notice.couldNotHandBack(delivered.detail ?? ''),
     };
   });
 });

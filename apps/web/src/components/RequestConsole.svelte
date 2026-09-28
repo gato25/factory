@@ -144,7 +144,7 @@
   input,
   textarea {
     font: inherit;
-    font-size: 13px;
+    font-size: 14px;
     color: var(--text);
     background: var(--surface);
     border: 1px solid var(--border);
@@ -171,10 +171,10 @@
     padding: 7px 14px;
     border: 0;
     border-radius: var(--r-sm);
-    background: var(--accent);
+    background: linear-gradient(180deg, var(--accent-deep-from), var(--accent-deep-to));
     color: var(--text-inv);
     font: inherit;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 600;
     cursor: pointer;
   }
@@ -238,7 +238,7 @@
     gap: 2px 12px;
     margin: 0;
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: 12px;
   }
   .headers dt {
     color: var(--text-2);

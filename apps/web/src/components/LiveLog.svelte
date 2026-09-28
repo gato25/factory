@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { stepTitle } from '$lib/default-names';
   import Icon from '$components/Icon.svelte';
   import Markdown from '$components/Markdown.svelte';
   import { m } from '$lib/i18n';
@@ -167,11 +168,11 @@
   });
 </script>
 
-<section class="log {tone}" aria-label={m.liveLog.liveOutput(step.label)}>
+<section class="log {tone}" aria-label={m.liveLog.liveOutput(stepTitle(step))}>
   <header>
     <span class="badge" aria-hidden="true">{glyphFor(step.type)}</span>
     <span class="titles">
-      <span class="t">{step.label}</span>
+      <span class="t">{stepTitle(step)}</span>
       <code>{command}</code>
     </span>
     <span class="right">
@@ -334,7 +335,7 @@
      across the panel it read as a second, unrelated column. */
   header code {
     font-family: var(--font-mono);
-    font-size: 10px;
+    font-size: 12px;
     color: var(--text-3);
     overflow: hidden;
     text-overflow: ellipsis;
@@ -348,7 +349,7 @@
   }
   .meta {
     font-family: var(--font-mono);
-    font-size: 10.5px;
+    font-size: 12px;
     color: var(--text-3);
   }
   .live {
@@ -358,15 +359,15 @@
     padding: 3px 9px;
     border-radius: 999px;
     background: var(--success-soft);
-    color: var(--success);
-    font-size: 10px;
+    color: var(--success-text);
+    font-size: 12px;
     font-weight: 700;
   }
   .live .d {
     width: 6px;
     height: 6px;
     border-radius: 999px;
-    background: currentcolor;
+    background: var(--success);
   }
 
   /* The console. The head above it stays white; this is the one dark
@@ -401,7 +402,7 @@
     opacity: 0.85;
   }
   .empty .msg {
-    font-size: 11px;
+    font-size: 12px;
     line-height: 1.45;
     color: var(--log-muted);
   }
@@ -413,7 +414,7 @@
     padding: 3px 0;
     border-radius: 10px;
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: 12px;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
   }
@@ -453,7 +454,7 @@
   .ts {
     flex: none;
     min-width: 46px;
-    font-size: 10px;
+    font-size: 12px;
     line-height: 1.5;
     text-align: right;
     white-space: nowrap;
@@ -475,7 +476,7 @@
     border-radius: 6px;
     background: var(--log-chip);
     color: var(--body-tone);
-    font-size: 10.5px;
+    font-size: 12px;
     font-weight: 600;
     letter-spacing: 0.01em;
   }
@@ -489,7 +490,7 @@
     border-radius: 999px;
     background: var(--log-chip);
     color: var(--log-muted);
-    font-size: 10px;
+    font-size: 12px;
     font-weight: 600;
   }
 
@@ -581,7 +582,7 @@
   }
   .row.info .m,
   .row.noise .m {
-    font-size: 10.5px;
+    font-size: 12px;
     color: var(--log-muted);
     opacity: 0.85;
   }
@@ -601,7 +602,7 @@
   .row.warn .m,
   .row.bad .m {
     font-family: var(--font);
-    font-size: 11.5px;
+    font-size: 12px;
     font-weight: 600;
   }
   .row.ok {
@@ -633,7 +634,7 @@
     border-radius: 999px;
     background: var(--log-chip);
     color: var(--log-muted);
-    font-size: 10px;
+    font-size: 12px;
     cursor: pointer;
     user-select: none;
     list-style: none;
@@ -651,7 +652,7 @@
     background: var(--log-chip);
     color: var(--log-text);
     font-family: var(--font-mono);
-    font-size: 10.5px;
+    font-size: 12px;
     line-height: 1.55;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
@@ -673,7 +674,7 @@
     background: var(--log-text);
     color: var(--log-bg);
     font: inherit;
-    font-size: 11.5px;
+    font-size: 12px;
     font-weight: 600;
     cursor: pointer;
     box-shadow: 0 3px 10px #00000066;

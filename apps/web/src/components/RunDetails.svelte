@@ -1,5 +1,6 @@
 <script lang="ts">
   import QueuePosition from '$components/QueuePosition.svelte';
+  import { pipelineName } from '$lib/default-names';
   import { position } from '$lib/remote/runs.remote';
   import { m } from '$lib/i18n';
   import type { RunView } from '$lib/services/run-view';
@@ -9,11 +10,11 @@
   const place = $derived(view.run.status === 'queued' ? position(view.run.id) : null);
 </script>
 
-<section class="card">
+<section class="tile details">
   <h2>{m.runDetails.heading}</h2>
   <dl>
     <dt>{m.runDetails.pipeline}</dt>
-    <dd>{view.pipeline.name} <span class="muted small">v{view.pipeline.version}</span></dd>
+    <dd>{pipelineName(view.pipeline.name)} <span class="muted">v{view.pipeline.version}</span></dd>
 
     <dt>{m.runDetails.run}</dt>
     <dd>
@@ -78,15 +79,11 @@
 </section>
 
 <style>
-  .card {
+  .details {
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    padding: 16px;
-    background: var(--surface);
-    border: 1px solid var(--card-border);
-    border-radius: var(--r-lg);
-    box-shadow: 0 1px 2px #0f172a0a;
+    gap: 12px;
+    padding: 22px;
   }
   h2 {
     margin: 0;
@@ -98,9 +95,9 @@
   dl {
     display: grid;
     grid-template-columns: auto 1fr;
-    gap: 8px 16px;
+    gap: 10px 16px;
     margin: 0;
-    font-size: 12px;
+    font-size: var(--type-body);
   }
   dt {
     color: var(--text-2);
@@ -112,10 +109,10 @@
     overflow-wrap: anywhere;
   }
   code {
+    padding: 1px 6px;
+    border-radius: 6px;
+    font-size: inherit;
     background: var(--surface-2);
-    padding: 1px 5px;
-    border-radius: 4px;
-    font-size: 11px;
   }
   p.badge {
     display: block;

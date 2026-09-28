@@ -237,7 +237,7 @@
     font-size: 12px;
   }
   .ended {
-    font-size: 13px;
+    font-size: 14px;
     color: var(--text);
   }
   .ended.bad {
@@ -265,13 +265,13 @@
     padding: 8px 14px;
     border-radius: var(--r-sm);
     font: inherit;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 600;
     cursor: pointer;
   }
   .primary {
     border: 0;
-    background: var(--accent);
+    background: linear-gradient(180deg, var(--accent-deep-from), var(--accent-deep-to));
     color: var(--text-inv);
   }
   .primary:disabled {
@@ -304,7 +304,7 @@
   }
 
   .address {
-    font-size: 13px;
+    font-size: 14px;
     color: var(--text);
   }
   .address a {

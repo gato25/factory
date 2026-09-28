@@ -258,4 +258,43 @@ test.describe('a ticket drawn against its own pipeline (US4)', () => {
     await expect(steps).toHaveCount(3);
     await expect(happen.locator('.cond')).toHaveCount(0);
   });
+
+  test('the run page: its own track, a skipped design step and why, the details in a tab', async ({
+    page,
+    context,
+  }) => {
+    const seeded = await seed();
+    await signIn(context, seeded.userId);
+
+    for (const [ticket, count] of [
+      [seeded.tickets.three, 3],
+      [seeded.tickets.six, 6],
+      [seeded.tickets.eight, 8],
+    ] as const) {
+      await page.goto(`/tickets/${ticket}`, { waitUntil: 'networkidle' });
+      await expect(page.locator('.track > li.step')).toHaveCount(count);
+    }
+
+    // The six-step ticket skipped its design step: it says so, and why.
+    await page.goto(`/tickets/${seeded.tickets.skipped}`, { waitUntil: 'networkidle' });
+    const design = page.locator('.track > li.step').nth(1);
+    await expect(design).toHaveAttribute('data-step-state', 'skipped');
+    await expect(design).toContainText(m.stepTracker.skipped);
+    await expect(page.locator('.notes')).toContainText(
+      m.stepTracker.skippedBecause(
+        seeded.agents.drawer,
+        'the ticket does not change the interface',
+      ),
+    );
+
+    // The run's details are a tab of their own: the pipeline, the attempt,
+    // the budget used of its cap — and no link to an orchestration service.
+    await page.getByRole('tab', { name: m.run.tabDetails }).click();
+    const details = page.getByRole('tabpanel');
+    await expect(details).toContainText(seeded.pipelines.six.name);
+    await expect(details).toContainText(m.runDetails.attemptOrdinal(1));
+    await expect(details).toContainText(m.runDetails.budgetOf('0.0000', '5.0000'));
+    await expect(details.getByRole('link')).toHaveCount(0);
+    await expect(page.locator('a[href*="n8n"], a[href*="orchestrat"]')).toHaveCount(0);
+  });
 });

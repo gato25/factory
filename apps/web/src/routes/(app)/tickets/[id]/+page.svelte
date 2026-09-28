@@ -6,10 +6,13 @@
   import Icon from '$components/Icon.svelte';
   import LaunchPanel from '$components/LaunchPanel.svelte';
   import LiveLog from '$components/LiveLog.svelte';
+  import QueuePosition from '$components/QueuePosition.svelte';
   import RequirementFiles from '$components/RequirementFiles.svelte';
   import RunDetails from '$components/RunDetails.svelte';
+  import RunResults from '$components/RunResults.svelte';
   import StepTracker from '$components/StepTracker.svelte';
   import TicketHead from '$components/TicketHead.svelte';
+  import { pipelineName, stepName, stepTitle } from '$lib/default-names';
   import { subscribeToRun } from '$lib/events/subscribe';
   import {
     cancel,
@@ -20,20 +23,17 @@
     retry,
     unpause
   } from '$lib/remote/run-actions.remote';
-  import { log, run, runForTicket } from '$lib/remote/runs.remote';
+  import { log, position, run, runForTicket } from '$lib/remote/runs.remote';
 
   /**
-   * Screen 06 — Ticket Run, built to `design.pen`: a crumb, the title with
-   * where the run is, a meta row carrying the branch, the author, how long
-   * it has been going and what it has cost, then the horizontal tracker, and
-   * below it the live log beside a 360px column of artifacts and details.
+   * Screen 06 — Ticket Run, built to artboard 06 (specs/004-bento-redesign
+   * FR-020): one head tile — where the ticket is, its state, how long and how
+   * much, the actions — with the run's own step track across it; below, the
+   * live log in its tabs beside the results the run has produced. The run's
+   * details are a tab of their own, with no orchestration link: there is no
+   * orchestration service any more.
    */
 
-  /**
-   * The run view is one shell: the log fills it, and everything that used to
-   * sit in a 360px column beside it is a tab on the same panel. Artifacts and
-   * details are reference — worth a click, not worth a third of the width.
-   */
   const TABS = [
     { id: 'output', label: m.run.tabOutput },
     { id: 'artifacts', label: m.run.tabArtifacts },
@@ -120,370 +120,412 @@
 
   const STATUS: Record<string, { label: string; tone: string }> = {
     queued: { label: m.run.statusQueued, tone: '' },
-    running: { label: m.run.statusRunning, tone: 'live' },
-    waiting_approval: { label: m.run.statusWaitingApproval, tone: 'warn' },
-    opening_mr: { label: m.run.statusOpeningMr, tone: 'live' },
-    done: { label: m.run.statusDone, tone: 'ok' },
-    failed: { label: m.run.statusFailed, tone: 'bad' },
+    running: { label: m.run.statusRunning, tone: 'run' },
+    waiting_approval: { label: m.run.statusWaitingApproval, tone: 'wait' },
+    opening_mr: { label: m.run.statusOpeningMr, tone: 'run' },
+    done: { label: m.run.statusDone, tone: 'done' },
+    failed: { label: m.run.statusFailed, tone: 'fail' },
     cancelled: { label: m.run.statusCancelled, tone: '' }
   };
+
+  const nameOfStep = stepTitle;
 </script>
 
 {#if view.error}
-  <p class="card failure" role="alert">{(view.error as Error).message}</p>
+  <p class="tile failure" role="alert">{(view.error as Error).message}</p>
 {:else if !view.ready}
-  <p class="card">{m.run.loading}</p>
+  <p class="tile">{m.run.loading}</p>
 {:else}
   {@const loaded = view.current}
   {#if !loaded}
-    <p class="card">{m.run.notStarted}</p>
+    <p class="tile">{m.run.notStarted}</p>
   {:else}
-      {@const status = STATUS[loaded.run.status] ?? { label: loaded.run.status, tone: '' }}
-      {@const step = loaded.steps[selected ?? loaded.run.currentStepIndex ?? 0]}
-      {@const inFlight = ['queued', 'running', 'waiting_approval', 'opening_mr'].includes(
-        loaded.run.status
-      )}
-      {@const retryable = loaded.run.status === 'failed' || loaded.run.status === 'cancelled'}
+    {@const status = STATUS[loaded.run.status] ?? { label: loaded.run.status, tone: '' }}
+    {@const step = loaded.steps[selected ?? loaded.run.currentStepIndex ?? 0]}
+    {@const current = loaded.steps[loaded.run.currentStepIndex ?? -1]}
+    {@const inFlight = ['queued', 'running', 'waiting_approval', 'opening_mr'].includes(
+      loaded.run.status
+    )}
+    {@const retryable = loaded.run.status === 'failed' || loaded.run.status === 'cancelled'}
 
-      <div class="run">
-        <div class="main">
-          {#if notice}
-            <p class="card notice" role="status">{notice}</p>
+    <TicketHead
+      {ticketId}
+      repositoryName={loaded.repository.name}
+      reference={loaded.ticket.reference}
+      title={loaded.ticket.title}
+      branchName={loaded.ticket.branchName}
+      createdByName={loaded.ticket.createdByName}
+      startedAt={loaded.run.startedAt}
+      costUsd={loaded.run.costUsd}
+      costCeilingUsd={loaded.run.costCeilingUsd}
+      elapsedS={loaded.steps.reduce((total, s) => total + (s.durationS ?? 0), 0)}
+      pipeline={m.ticketHead.pipeline(pipelineName(loaded.pipeline.name), loaded.steps.length + 1)}
+      variant="run"
+      status={{
+        label:
+          loaded.run.status === 'running' && current
+            ? m.run.statusAtStep(status.label, nameOfStep(current))
+            : status.label,
+        tone: status.tone,
+      }}
+    >
+      {#snippet actions()}
+        {#if connection !== 'live' && loaded.run.status === 'running'}
+          <span class="reconnecting" title={m.run.reconnectingTitle}>
+            {connection === 'retrying' ? m.run.reconnecting : m.run.connecting}
+          </span>
+        {/if}
+        {#if loaded.run.status === 'waiting_approval'}
+          <a class="btn btn--amber" href="/tickets/{ticketId}/approve">
+            <Icon name="hand" size={14} />
+            {m.run.review}
+          </a>
+        {/if}
+
+        <!-- Pause lets the current step conclude (FR-096); cancel releases
+             the sandbox and leaves the branch alone (FR-097). -->
+        {#if inFlight}
+          {#if loaded.run.pauseRequestedAt}
+            <button
+              type="button"
+              class="btn btn--secondary"
+              disabled={working}
+              onclick={() => act(() => unpause(loaded.run.id))}
+            >
+              <Icon name="play" size={14} />
+              {m.run.continue}
+            </button>
+          {:else}
+            <button
+              type="button"
+              class="btn btn--secondary"
+              disabled={working}
+              onclick={() => act(() => pause(loaded.run.id), { announce: false })}
+            >
+              <Icon name="pause" size={14} />
+              {m.run.pause}
+            </button>
           {/if}
-
-          {#if loaded.run.pauseRequestedAt && inFlight}
-            <p class="card notice" role="status">
-              Pausing. The step running now will finish, and nothing further will start.
-            </p>
+          <!-- A run nothing is driving any more picks up at its first
+               unfinished step, keeping what finished and what it cost. A
+               person decides it is stuck; the application cannot see an
+               execution die. -->
+          {#if !loaded.run.pauseRequestedAt && (loaded.run.status === 'queued' || loaded.run.status === 'running')}
+            <button
+              type="button"
+              class="btn btn--secondary"
+              disabled={working}
+              title={m.run.continueRunTitle}
+              onclick={() => act(() => continueFrom(loaded.run.id))}
+            >
+              <Icon name="rotate-ccw" size={14} />
+              {m.run.continueRun}
+            </button>
           {/if}
-
+          <button
+            type="button"
+            class="btn btn--danger-soft"
+            disabled={working}
+            onclick={() => act(() => cancel(loaded.run.id))}
+          >
+            <Icon name="circle-x" size={14} />
+            {m.run.cancelRun}
+          </button>
+        {:else if retryable}
           <!--
-            Which step failed and why, in language that does not require reading
-            raw output (FR-087, SC-008). The engine's own words are below it, for
-            whoever wants them, rather than instead of it.
+            Offered before Retry, and only for a failed run, because it is
+            almost always the cheaper of the two. Retry starts again from the
+            ticket and pays for every finished step a second time; this picks
+            up at the step that failed and keeps what the run already produced
+            and spent. A cancelled run is not offered it: somebody stopped
+            that one on purpose.
           -->
-          {#if failed?.ready && failed.current}
-            {@const f = failed.current}
-            <section class="card failure" role="alert">
-              <h2>
-                {#if f.stepLabel}{f.stepLabel} — step {(f.stepIndex ?? 0) + 1}{:else}This run{/if}
-                did not finish
-              </h2>
-              <p>{f.what}</p>
-              <p class="next">{f.next}</p>
-              {#if f.stoppedByACeiling}
-                <p class="small muted">Spent ${f.spentUsd} of a ${f.ceilingUsd} ceiling.</p>
-              {/if}
-              {#if f.produced.length > 0}
-                <p class="small muted">
-                  A retry starts again from the ticket, but what this attempt produced is still
-                  readable: {f.produced.map((d) => d.path).join(', ')}.
-                </p>
-              {/if}
-              {#if f.detail}
-                <details>
-                  <summary class="small">{m.run.whatTheStepReported}</summary>
-                  <pre>{f.detail}</pre>
-                </details>
-              {/if}
-            </section>
-          {:else if loaded.run.failureReason}
-            <p class="card failure" role="alert">{loaded.run.failureReason}</p>
+          {#if loaded.run.status === 'failed'}
+            <button
+              type="button"
+              class="btn"
+              disabled={working}
+              title={m.run.continueFromFailedTitle}
+              onclick={() => act(() => continueFrom(loaded.run.id))}
+            >
+              <Icon name="play" size={14} />
+              {m.run.continueFromFailed}
+            </button>
           {/if}
+          <button
+            type="button"
+            class={loaded.run.status === 'failed' ? 'btn btn--secondary' : 'btn'}
+            disabled={working}
+            onclick={() => act(() => retry(ticketId))}
+          >
+            <Icon name="rotate-ccw" size={14} />
+            {m.run.retry}
+          </button>
+          <button
+            type="button"
+            class="btn btn--secondary"
+            disabled={working}
+            onclick={() => startEditing(loaded)}
+          >
+            <Icon name="pencil" size={14} />
+            {m.run.editAndRetry}
+          </button>
+        {/if}
+      {/snippet}
 
-          <!-- Editing and retrying is ONE action, not an edit then a retry (FR-089) -->
-          {#if editing}
-            <section class="card editor">
-              <h2>{m.run.editAndRetry}</h2>
-              <label>
-                <span class="small muted">{m.run.title}</span>
-                <input bind:value={draftTitle} />
-              </label>
-              <label>
-                <span class="small muted">{m.run.description}</span>
-                <textarea bind:value={draftDescription} rows="4"></textarea>
-              </label>
-              <label>
-                <span class="small muted">{m.run.acceptanceOnePerLine}</span>
-                <textarea bind:value={draftCriteria} rows="4"></textarea>
-              </label>
-              <div class="row">
-                <button type="button" onclick={() => (editing = false)}>{m.run.discard}</button>
-                <button
-                  type="button"
-                  class="primary"
-                  disabled={working}
-                  onclick={async () => {
-                    await act(() =>
-                      editRetry({
-                        ticketId,
-                        title: draftTitle,
-                        description: draftDescription,
-                        acceptanceCriteria: draftCriteria
-                      })
-                    );
-                    editing = false;
-                  }}
-                >
-                  {m.run.saveAndRetry}
-                </button>
-              </div>
-            </section>
-          {/if}
+      <StepTracker
+        steps={loaded.steps}
+        run={loaded.run}
+        selected={selected ?? loaded.run.currentStepIndex ?? 0}
+        onSelect={(index) => {
+          selected = index;
+          tab = 'output';
+        }}
+      />
+    </TicketHead>
 
-          <nav class="tabs" aria-label={m.run.runView}>
-            <div class="seg">
-              {#each TABS as t (t.id)}
-                {@const n = t.id === 'artifacts' ? loaded.artifacts.length : 0}
-                <button type="button" class:on={tab === t.id} onclick={() => (tab = t.id)}>
-                  {t.label}{#if n > 0}<span class="n">{n}</span>{/if}
-                </button>
-              {/each}
-            </div>
-          </nav>
+    {#if notice}
+      <p class="tile notice" role="status">{notice}</p>
+    {/if}
 
-          <!-- One panel, filling the shell. Only its own body scrolls. -->
-          <div class="panel">
-            {#if tab === 'output'}
-              {#if step}
-                <LiveLog
-                  runId={loaded.run.id}
-                  {step}
-                  live={loaded.run.status === 'running' && step.state === 'running'}
-                />
-              {/if}
-            {:else}
-              <div class="scroll">
-                {#if tab === 'artifacts'}
-                  <ArtifactViewer
-                    artifacts={loaded.artifacts}
-                    mergeRequestUrl={loaded.ticket.mergeRequestUrl}
-                    branchName={loaded.ticket.branchName}
-                    runId={loaded.run.id}
-                  />
-                {:else if tab === 'launch'}
-                  <LaunchPanel
-                    ticketId={loaded.ticket.id}
-                    status={loaded.ticket.status}
-                    branchName={loaded.ticket.branchName}
-                    hasUi={loaded.ticket.hasUi}
-                  />
-                {:else if tab === 'requirements'}
-                  <RequirementFiles ticketId={loaded.ticket.id} hasRun={true} />
-                {:else}
-                  <RunDetails view={loaded} />
-                {/if}
-              </div>
-            {/if}
-          </div>
-        </div>
+    {#if loaded.run.status === 'queued'}
+      {@const place = position(loaded.run.id)}
+      {#if place.ready && place.current !== null}
+        <div class="tile notice"><QueuePosition position={place.current} /></div>
+      {/if}
+    {/if}
 
-        <!-- The rail: who this run is, what it has spent, and where it is. -->
-        <aside class="rail">
-          <TicketHead
-            {ticketId}
-            repositoryName={loaded.repository.name}
-            reference={loaded.ticket.reference}
-            title={loaded.ticket.title}
-            branchName={loaded.ticket.branchName}
-            createdByName={loaded.ticket.createdByName}
-            startedAt={loaded.run.startedAt}
-            costUsd={loaded.run.costUsd}
-            elapsedS={loaded.steps.reduce((total, s) => total + (s.durationS ?? 0), 0)}
-            variant="rail"
-            status={{
-              label:
-                loaded.run.status === 'running' && step
-                  ? m.run.statusAtStep(status.label, step.label)
-                  : status.label,
-              tone: status.tone,
+    {#if loaded.run.pauseRequestedAt && inFlight}
+      <p class="tile notice" role="status">{m.notice.pausing}</p>
+    {/if}
+
+    <!--
+      Which step failed and why, in language that does not require reading
+      raw output (FR-087, SC-008). The engine's own words are below it, for
+      whoever wants them, rather than instead of it.
+    -->
+    {#if failed?.ready && failed.current}
+      {@const f = failed.current}
+      <section class="tile tile--danger failure" role="alert">
+        <h2>
+          {f.stepLabel
+            ? m.run.stepDidNotFinish(stepName(f.stepLabel), (f.stepIndex ?? 0) + 1)
+            : m.run.runDidNotFinish}
+        </h2>
+        <p>{f.what}</p>
+        <p class="next">{f.next}</p>
+        {#if f.stoppedByACeiling}
+          <p class="small-note">{m.run.spentOfCeiling(f.spentUsd, f.ceilingUsd)}</p>
+        {/if}
+        {#if f.produced.length > 0}
+          <p class="small-note">{m.run.producedStillReadable(f.produced.map((d) => d.path).join(', '))}</p>
+        {/if}
+        {#if f.detail}
+          <details>
+            <summary>{m.run.whatTheStepReported}</summary>
+            <pre>{f.detail}</pre>
+          </details>
+        {/if}
+      </section>
+    {:else if loaded.run.failureReason}
+      <p class="tile tile--danger failure" role="alert">{loaded.run.failureReason}</p>
+    {/if}
+
+    <!-- Editing and retrying is ONE action, not an edit then a retry (FR-089) -->
+    {#if editing}
+      <section class="tile editor">
+        <h2>{m.run.editAndRetry}</h2>
+        <label class="field">
+          <span class="label">{m.run.title}</span>
+          <input bind:value={draftTitle} />
+        </label>
+        <label class="field">
+          <span class="label">{m.run.description}</span>
+          <textarea bind:value={draftDescription} rows="4"></textarea>
+        </label>
+        <label class="field">
+          <span class="label">{m.run.acceptanceOnePerLine}</span>
+          <textarea bind:value={draftCriteria} rows="4"></textarea>
+        </label>
+        <div class="row">
+          <button type="button" class="btn btn--secondary" onclick={() => (editing = false)}
+            >{m.run.discard}</button
+          >
+          <button
+            type="button"
+            class="btn"
+            disabled={working}
+            onclick={async () => {
+              await act(() =>
+                editRetry({
+                  ticketId,
+                  title: draftTitle,
+                  description: draftDescription,
+                  acceptanceCriteria: draftCriteria
+                })
+              );
+              editing = false;
             }}
           >
-            {#snippet actions()}
-              {#if connection !== 'live' && loaded.run.status === 'running'}
-                <span class="reconnecting" title={m.run.reconnectingTitle}>
-                  {connection === 'retrying' ? m.run.reconnecting : m.run.connecting}
-                </span>
-              {/if}
-              {#if loaded.run.status === 'waiting_approval'}
-                <a class="review" href="/tickets/{ticketId}/approve">
-                  <Icon name="hand" size={16} />
-                  <span>{m.run.review}</span>
-                </a>
-              {/if}
+            {m.run.saveAndRetry}
+          </button>
+        </div>
+      </section>
+    {/if}
 
-              <!-- Pause lets the current step conclude (FR-096); cancel releases
-                   the sandbox and leaves the branch alone (FR-097). -->
-              {#if inFlight}
-                {#if loaded.run.pauseRequestedAt}
-                  <button
-                    type="button"
-                    class="secondary"
-                    disabled={working}
-                    onclick={() => act(() => unpause(loaded.run.id))}
-                  >
-                    <Icon name="play" size={16} />
-                    <span>{m.run.continue}</span>
-                  </button>
-                {:else}
-                  <button
-                    type="button"
-                    class="secondary"
-                    disabled={working}
-                    onclick={() => act(() => pause(loaded.run.id), { announce: false })}
-                  >
-                    <Icon name="pause" size={16} />
-                    <span>{m.run.pause}</span>
-                  </button>
-                {/if}
-                <!-- A run nothing is driving any more — the orchestrator's
-                     execution died — picks up at its first unfinished step,
-                     keeping what finished and what it cost. A person decides it
-                     is stuck; the application cannot see an execution die. -->
-                {#if !loaded.run.pauseRequestedAt && (loaded.run.status === 'queued' || loaded.run.status === 'running')}
-                  <button
-                    type="button"
-                    class="secondary"
-                    disabled={working}
-                    title={m.run.continueRunTitle}
-                    onclick={() => act(() => continueFrom(loaded.run.id))}
-                  >
-                    <Icon name="rotate-ccw" size={16} />
-                    <span>{m.run.continueRun}</span>
-                  </button>
-                {/if}
-                <button
-                  type="button"
-                  class="secondary"
-                  disabled={working}
-                  onclick={() => act(() => cancel(loaded.run.id))}
-                >
-                  <Icon name="circle-x" size={16} />
-                  <span>{m.run.cancelRun}</span>
-                </button>
-              {:else if retryable}
-                <!--
-                  Offered before Retry, and only for a failed run, because it
-                  is almost always the cheaper of the two. Retry starts again
-                  from the ticket and pays for every finished step a second
-                  time; this picks up at the step that failed and keeps what
-                  the run already produced and spent. A cancelled run is not
-                  offered it: somebody stopped that one on purpose.
-                -->
-                {#if loaded.run.status === 'failed'}
-                  <button
-                    type="button"
-                    class="primary"
-                    disabled={working}
-                    title={m.run.continueFromFailedTitle}
-                    onclick={() => act(() => continueFrom(loaded.run.id))}
-                  >
-                    <Icon name="play" size={16} />
-                    <span>{m.run.continueFromFailed}</span>
-                  </button>
-                {/if}
-                <button
-                  type="button"
-                  class={loaded.run.status === 'failed' ? 'secondary' : 'primary'}
-                  disabled={working}
-                  onclick={() => act(() => retry(ticketId))}
-                >
-                  <Icon name="rotate-ccw" size={16} />
-                  <span>{m.run.retry}</span>
-                </button>
-                <button
-                  type="button"
-                  class="secondary"
-                  disabled={working}
-                  onclick={() => startEditing(loaded)}
-                >
-                  <Icon name="pencil" size={16} />
-                  <span>{m.run.editAndRetry}</span>
-                </button>
+    <div class="lower">
+      <div class="main">
+        <div class="run-tabs" role="tablist" aria-label={m.run.runView}>
+          {#each TABS as t (t.id)}
+            {@const n = t.id === 'artifacts' ? loaded.artifacts.length : 0}
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === t.id}
+              class:on={tab === t.id}
+              onclick={() => (tab = t.id)}
+            >
+              {t.label}{#if n > 0}<span class="n">{n}</span>{/if}
+            </button>
+          {/each}
+        </div>
+
+        <!-- One panel, filling the shell. Only its own body scrolls. -->
+        <div class="panel" role="tabpanel">
+          {#if tab === 'output'}
+            {#if step}
+              <LiveLog
+                runId={loaded.run.id}
+                {step}
+                live={loaded.run.status === 'running' && step.state === 'running'}
+              />
+            {/if}
+          {:else}
+            <div class="scroll">
+              {#if tab === 'artifacts'}
+                <ArtifactViewer
+                  artifacts={loaded.artifacts}
+                  mergeRequestUrl={loaded.ticket.mergeRequestUrl}
+                  branchName={loaded.ticket.branchName}
+                  runId={loaded.run.id}
+                />
+              {:else if tab === 'launch'}
+                <LaunchPanel
+                  ticketId={loaded.ticket.id}
+                  status={loaded.ticket.status}
+                  branchName={loaded.ticket.branchName}
+                  hasUi={loaded.ticket.hasUi}
+                />
+              {:else if tab === 'requirements'}
+                <RequirementFiles ticketId={loaded.ticket.id} hasRun={true} />
+              {:else}
+                <RunDetails view={loaded} />
               {/if}
-            {/snippet}
-          </TicketHead>
-          <StepTracker
-            steps={loaded.steps}
-            run={loaded.run}
-            selected={selected ?? loaded.run.currentStepIndex ?? 0}
-            onSelect={(index) => (selected = index)}
-          />
-        </aside>
+            </div>
+          {/if}
+        </div>
       </div>
+
+      <aside class="side">
+        <RunResults view={loaded} onOpen={() => (tab = 'artifacts')} />
+      </aside>
+    </div>
   {/if}
 {/if}
 
 <style>
-  /* The buttons the head takes as a snippet, styled here because this is
-     where they live. */
-  .review,
-  button.secondary,
-  button.primary {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 16px;
-    border-radius: var(--r-sm);
-    font: inherit;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    text-decoration: none;
+  .reconnecting {
+    align-self: center;
+    font-size: var(--type-caption);
+    color: var(--text-3);
   }
-  .secondary {
-    border: 1px solid var(--border);
-    background: var(--surface);
-    color: var(--text);
+  /* The design's Cancel: a red word on a red tint, lighter than the filled
+     danger button a destructive confirmation would use. */
+  :global(.btn.btn--danger-soft) {
+    padding: 10px 14px;
+    color: var(--danger-text);
+    background: var(--danger-soft);
+    box-shadow: none;
   }
-  .secondary :global(svg) {
-    color: var(--text-2);
+  :global(.btn.btn--amber) {
+    color: var(--on-amber);
+    background: linear-gradient(180deg, var(--amber), #d9a200);
+    box-shadow: 0 4px 10px #d9a2004d;
   }
-  .secondary:hover:not(:disabled) {
-    border-color: var(--accent);
+
+  .notice {
+    margin: 0 0 20px;
+    padding: 14px 20px;
   }
-  button.primary,
-  .review {
-    border: 1px solid var(--accent);
-    background: var(--accent);
-    color: var(--text-inv);
+  .failure {
+    margin: 0 0 20px;
+    color: var(--danger-text);
+  }
+  .failure h2,
+  .editor h2 {
+    margin: 0 0 8px;
+    font-size: 18px;
     font-weight: 600;
   }
-  button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
+  .failure p {
+    margin: 0 0 6px;
+    color: var(--text);
   }
-  .reconnecting {
-    font-size: 12px;
-    color: var(--text-3);
+  .failure .next {
+    color: var(--text-2);
+  }
+  .small-note {
+    font-size: var(--type-caption);
+  }
+  .failure details {
+    margin-top: 8px;
+  }
+  .failure summary {
+    cursor: pointer;
+    color: var(--text-2);
+  }
+  .failure pre {
+    max-height: 240px;
+    margin: 8px 0 0;
+    padding: 12px;
+    overflow: auto;
+    border-radius: 12px;
+    font: 12px/1.6 var(--font-mono);
+    white-space: pre-wrap;
+    color: var(--code-text);
+    background: var(--code-bg);
+  }
+
+  .editor {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+  .row {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
   }
 
   /*
-   * One shell, one scroll region.
-   *
-   * The page used to grow with its content and scroll in the window, while
-   * the log scrolled inside itself against a height measured from the
-   * viewport. Two nested scrollbars, and a log always taller than the room
-   * left for it. Here the run view is told its height once, the rail and
-   * the panel divide it, and the only thing that scrolls is whichever body
-   * the reader is actually reading.
-   *
-   * 72px is the app header; 56px is the padding `main` puts above and
-   * below. `min-height` is the floor at which giving up and letting the
-   * window scroll beats crushing the log.
+   * One shell, one scroll region: the log fills what the head leaves, the
+   * results tile beside it, and the only thing that scrolls is whichever body
+   * the reader is actually reading. `min-height` is the floor at which
+   * letting the window scroll beats crushing the log.
    */
-  .run {
+  .lower {
     display: flex;
     align-items: stretch;
     gap: 20px;
-    height: calc(100vh - 128px);
+    height: calc(100vh - 120px);
     min-height: 520px;
   }
   .main {
     display: flex;
-    flex-direction: column;
-    gap: 10px;
     flex: 1;
+    flex-direction: column;
+    gap: 12px;
     min-width: 0;
     min-height: 0;
   }
@@ -492,172 +534,73 @@
     flex: 1;
     min-height: 0;
   }
-  /* Every tab but the log is an ordinary card that scrolls as a whole. */
+  /* Every tab but the log is an ordinary tile that scrolls as a whole. */
   .scroll {
     flex: 1;
     min-width: 0;
     overflow-y: auto;
   }
-
-  .rail {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    width: 320px;
+  .side {
     flex: none;
+    width: 400px;
     overflow-y: auto;
-    padding: 14px 18px;
-    background: var(--surface);
-    border: 1px solid var(--card-border);
-    border-radius: var(--r-lg);
-    box-shadow: 0 1px 2px #0f172a0a;
   }
 
-  /* A segmented control, as design.pen draws it: one track, the active tab
-     a raised white pill. */
-  .tabs {
+  /* The design's tabs: an accent track, the current tab raised in white. */
+  .run-tabs {
     display: flex;
-    flex: none;
+    align-self: flex-start;
+    gap: 4px;
+    padding: 4px;
+    border-radius: 14px;
+    background: var(--accent-soft);
   }
-  .seg {
-    display: flex;
-    align-items: center;
-    gap: 2px;
-    padding: 3px;
-    border-radius: 999px;
-    background: var(--surface-2);
-  }
-  .seg button {
+  .run-tabs button {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 5px 12px;
+    padding: 8px 14px;
     border: 0;
-    border-radius: 999px;
+    border-radius: 10px;
+    font: 500 var(--type-body) / 1.2 var(--font);
+    color: var(--text-2);
     background: none;
-    font: inherit;
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--text-2);
     cursor: pointer;
   }
-  .seg button:hover {
+  .run-tabs button:hover {
     color: var(--text);
   }
-  .seg button.on {
+  .run-tabs button.on {
+    font-weight: 700;
+    color: var(--text);
     background: var(--surface);
-    font-weight: 600;
-    color: var(--text);
-    box-shadow: 0 1px 2px #0f172a14;
+    box-shadow: 0 2px 6px var(--shadow-depth);
   }
-  .seg .n {
-    padding: 1px 6px;
-    border-radius: 999px;
-    font-family: var(--font-mono);
-    font-size: 10px;
-    font-weight: 600;
-    color: var(--text-3);
-  }
-  .seg button.on .n {
-    background: var(--accent-soft);
+  .run-tabs .n {
+    padding: 1px 7px;
+    border-radius: var(--r-pill);
+    font-family: var(--font-head);
+    font-size: var(--type-caption);
+    font-weight: 700;
     color: var(--accent-text);
+    background: var(--accent-soft);
+  }
+  .run-tabs button.on .n {
+    background: var(--accent-soft);
   }
 
-  .notice {
-    border-left: 3px solid var(--accent);
-    margin: 0 0 16px;
-    padding: 12px 16px;
-  }
-  .failure {
-    border-left: 3px solid var(--danger);
-    margin: 0 0 16px;
-  }
-  .failure h2 {
-    margin: 0 0 6px;
-    font-size: 15px;
-  }
-  .failure p {
-    margin: 0 0 6px;
-  }
-  .failure .next {
-    color: var(--text-2);
-  }
-  .failure details {
-    margin-top: 8px;
-  }
-  .failure summary {
-    cursor: pointer;
-    color: var(--text-3);
-  }
-  .failure pre {
-    margin: 8px 0 0;
-    padding: 10px;
-    background: var(--surface-2);
-    border-radius: var(--r-sm);
-    font: 12px/1.6 var(--font-mono);
-    white-space: pre-wrap;
-    max-height: 240px;
-    overflow: auto;
-  }
-
-  .editor {
-    margin-bottom: 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-  .editor h2 {
-    margin: 0;
-    font-size: 15px;
-  }
-  .editor label {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-  .editor input,
-  .editor textarea {
-    padding: 9px 12px;
-    border: 1px solid var(--border);
-    border-radius: var(--r-sm);
-    font: inherit;
-    width: 100%;
-    resize: vertical;
-  }
-  .editor button {
-    padding: 9px 14px;
-    border: 1px solid var(--border);
-    border-radius: var(--r-sm);
-    background: var(--surface);
-    font: inherit;
-    cursor: pointer;
-  }
-  .editor button.primary {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: var(--text-inv);
-    font-weight: 600;
-  }
-  .row {
-    display: flex;
-    gap: 8px;
-    justify-content: flex-end;
-  }
-
-  /* Below this the rail cannot hold a stepper and a log side by side, so
-     the shell gives up its fixed height and the window scrolls again. */
-  @media (max-width: 1000px) {
-    .run {
+  @media (max-width: 1100px) {
+    .lower {
       flex-direction: column;
       height: auto;
       min-height: 0;
     }
-    .rail {
-      width: auto;
-      overflow: visible;
-    }
     .panel {
       min-height: 70vh;
+    }
+    .side {
+      width: auto;
+      overflow: visible;
     }
   }
 </style>

@@ -109,3 +109,22 @@ const ENGLISH_PIPELINE_DESCRIPTIONS: Record<PipelineKey, string> = {
   standard: 'One checkpoint, after the plan, before any code is written.',
   reviewHeavy: 'A checkpoint after the specification, the plan, and the implementation.',
 };
+
+/**
+ * A step of a run as a person reads it: a shipped agent's step in the
+ * catalogue's words, a checkpoint or a notification by what it is, a shell
+ * step by its command. The run stores the agent's name, or an English word
+ * for a step with no agent; neither is what a Mongolian screen should show.
+ */
+export function stepTitle(step: { type: string; label: string }, m: Messages = current): string {
+  switch (step.type) {
+    case 'agent':
+    case 'design':
+      return stepName(step.label, m);
+    case 'checkpoint':
+    case 'notify':
+      return m.stepKind[step.type];
+    default:
+      return step.label;
+  }
+}

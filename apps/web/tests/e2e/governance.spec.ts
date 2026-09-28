@@ -55,7 +55,6 @@ async function seed(options: { tickets?: number; cap?: number } = {}): Promise<S
   await sql`update workspaces set max_concurrent_runs = ${options.cap ?? 2},
               default_cost_ceiling_usd = '5.0000', default_time_ceiling_minutes = 45,
               model_credential_id = null, design_credential_id = null,
-              orchestrator_base_url = null, orchestrator_workflow_id = null,
               runner_base_url = null`;
 
   const [admin] = await sql`
@@ -237,14 +236,12 @@ test.describe('setting up and governing the workspace', () => {
     // On their own ticket, the author sees which one they are — a number,
     // because "still queued" is not actionable and a number is.
     await page.goto(`/tickets/${seeded.ticketIds[4]}`);
-    await expect(page.locator('.queued')).toContainText(
-      'Waiting for a free sandbox — position 3 in the queue',
-    );
+    await expect(page.locator('.queued')).toContainText(m.queue.position(3, null).slice(0, -1));
 
     // And the third in line sees position 1, not "queued": first come, first
     // served, so the number follows creation order.
     await page.goto(`/tickets/${seeded.ticketIds[2]}`);
-    await expect(page.locator('.queued')).toContainText('position 1 in the queue');
+    await expect(page.locator('.queued')).toContainText(m.queue.position(1, null).slice(0, -1));
 
     // A run holding a sandbox shows no position at all.
     await page.goto(`/tickets/${seeded.ticketIds[0]}`);

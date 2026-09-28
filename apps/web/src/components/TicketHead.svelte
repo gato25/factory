@@ -6,21 +6,17 @@
   import { duration } from '$lib/step-kind';
 
   /**
-   * The head `design.pen` puts on a ticket screen. Two shapes, because two
-   * screens need it differently:
+   * The head of a ticket screen, in the two shapes the artboards draw:
    *
-   *   - `wide` (the default) is the full-width header screen 07 draws: the
-   *     crumb, the title beside its status, a row of meta, actions on the
-   *     right.
-   *   - `rail` is what screen 06 became. The run view is now a fixed-height
-   *     shell with the log filling it, and this is the 320px column beside
-   *     it, so everything stacks: crumb, title, badge, then the two figures
-   *     worth a glance as a pair of stat cells, the remaining meta as quiet
-   *     lines, and the actions across the bottom.
+   *   - `run` (artboard 06): one tile holding the crumb, the title beside its
+   *     state, the branch, the pipeline and when it started, the two figures
+   *     somebody watching a run looks at — how long, and how much of the
+   *     budget — the actions, and under it all the step track.
+   *   - `wide` (artboards 07 and 14): the same crumb, title and state on the
+   *     ground above the checkpoint's own tiles, the meta as pills, and the
+   *     actions on the right.
    *
-   * The stat cells exist because elapsed and spend were a single unlabelled
-   * line of small monospace text buried in the meta, which is no way to
-   * show the two numbers somebody watching a run actually looks at.
+   * The state is a pill of dot and words, never colour alone (FR-006).
    */
   let {
     ticketId,
@@ -31,10 +27,13 @@
     createdByName,
     startedAt = null,
     costUsd,
+    costCeilingUsd = null,
     elapsedS = null,
+    pipeline = null,
     status,
     variant = 'wide',
     actions,
+    children,
   }: {
     ticketId: string;
     repositoryName: string;
@@ -44,87 +43,125 @@
     createdByName: string | null;
     startedAt?: Date | string | null;
     costUsd: string;
-    /** Total of the steps that have run, for the rail's first stat cell. */
+    /** The run's budget, shown beside what it has spent. */
+    costCeilingUsd?: string | null;
+    /** Total of the steps that have run. */
     elapsedS?: number | null;
+    /** "Стандарт · 6 алхам": the pipeline the run pinned, and its length. */
+    pipeline?: string | null;
     status: { label: string; tone: string };
-    variant?: 'wide' | 'rail';
+    variant?: 'wide' | 'run' | 'rail';
     actions?: Snippet;
+    /** The step track, under the head (the run variant). */
+    children?: Snippet;
   } = $props();
 
-  const rail = $derived(variant === 'rail');
+  const run = $derived(variant !== 'wide');
+  const dollars = (fixed: string) => `$${Number(fixed).toFixed(2)}`;
+  /** The kit's pill tones; the older names the screens pass map onto them. */
+  const TONE: Record<string, string> = {
+    run: '',
+    live: '',
+    wait: 'pill--wait',
+    warn: 'pill--wait',
+    done: 'pill--done',
+    ok: 'pill--done',
+    fail: 'pill--fail',
+    bad: 'pill--fail',
+    pen: 'pill--pen',
+  };
+  const pill = $derived(TONE[status.tone] ?? 'pill--queue');
 </script>
 
-<header class="head" class:rail>
-  <div class="l">
-    <p class="crumb">
-      <a href="/tickets">{m.ticketHead.tickets}</a>
-      <Icon name="chevron-right" size={14} />
-      <span>{repositoryName}</span>
-      <Icon name="chevron-right" size={14} />
-      <a class="id" href="/tickets/{ticketId}">{reference}</a>
-    </p>
+<header class="head" class:tile={run} class:run>
+  <div class="top">
+    <div class="l">
+      <nav class="crumb" aria-label={m.ticketHead.where}>
+        {#if !run}<a href="/tickets">{m.ticketHead.tickets}</a><Icon name="chevron-right" size={13} />{/if}
+        <span>{repositoryName}</span>
+        <Icon name="chevron-right" size={13} />
+        <a class="id" href="/tickets/{ticketId}">{reference}</a>
+      </nav>
 
-    <div class="title-row">
-      <h1>{title}</h1>
-      <span class="badge {status.tone}">
-        <span class="dot"></span>
-        {status.label}
-      </span>
+      <div class="title-row">
+        <h1>{title}</h1>
+        <span class="pill {pill}" class:pill--live={status.tone === 'run' || status.tone === 'live'}>{status.label}</span>
+      </div>
+
+      <div class="meta">
+        <span class="chip"><Icon name="git-branch" size={12} />{branchName ?? m.ticketHead.noBranch}</span>
+        {#if run && pipeline}
+          <span class="chip"><Icon name="workflow" size={12} />{pipeline}</span>
+        {/if}
+        {#if !run}
+          <span class="chip">
+            <Icon name="user" size={12} />{m.ticketHead.createdBy(createdByName ?? m.ticketCard.unknown)}
+          </span>
+        {/if}
+        {#if startedAt}
+          <span class="chip" title={exact(startedAt)}>
+            <Icon name="timer" size={12} />{m.ticketHead.started(ago(startedAt))}
+          </span>
+        {/if}
+        {#if !run}
+          <span class="chip"><Icon name="coins" size={12} />{m.ticketHead.soFar(dollars(costUsd))}</span>
+        {/if}
+      </div>
     </div>
 
-    {#if rail}
-      <!-- The two figures somebody watching a run looks at, as a pair. -->
-      <div class="stats">
+    <div class="r">
+      {#if run}
+        <!-- The two figures somebody watching a run looks at. -->
         <div class="stat">
           <span class="v">{elapsedS ? duration(elapsedS) : '—'}</span>
-          <span class="k">elapsed</span>
+          <span class="k">{m.ticketHead.elapsed}</span>
         </div>
         <div class="stat">
-          <span class="v">${costUsd}</span>
-          <span class="k">spent</span>
+          <span class="v">{dollars(costUsd)}</span>
+          <span class="k">
+            {costCeilingUsd ? m.ticketHead.spentOf(dollars(costCeilingUsd)) : m.ticketHead.spent}
+          </span>
         </div>
-      </div>
-    {/if}
-
-    <div class="meta">
-      <span><Icon name="git-branch" size={14} />{branchName ?? 'no branch yet'}</span>
-      <span><Icon name="user" size={14} />Created by {createdByName ?? 'unknown'}</span>
-      {#if startedAt}
-        <span title={exact(startedAt)}>
-          <Icon name="timer" size={14} />Started {ago(startedAt)}
-        </span>
       {/if}
-      {#if !rail}
-        <span><Icon name="coins" size={14} />${costUsd} so far</span>
+      {#if actions}
+        <div class="actions">{@render actions()}</div>
       {/if}
     </div>
   </div>
 
-  {#if actions}
-    <div class="actions">{@render actions()}</div>
-  {/if}
+  {#if children}{@render children()}{/if}
 </header>
 
 <style>
   .head {
     display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
+    flex-direction: column;
     gap: 24px;
     margin-bottom: 20px;
   }
+  .head:not(.run) {
+    padding: 8px 4px 0;
+  }
+  .run {
+    padding: 28px;
+  }
+  .top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+  }
   .l {
     display: flex;
+    flex: 1 1 440px;
     flex-direction: column;
-    gap: 6px;
+    gap: 10px;
     min-width: 0;
   }
   .crumb {
     display: flex;
     align-items: center;
     gap: 6px;
-    margin: 0;
-    font-size: 12px;
     color: var(--text-3);
   }
   .crumb a {
@@ -132,159 +169,92 @@
     text-decoration: none;
   }
   .crumb a:hover {
-    color: var(--accent-text);
+    text-decoration: underline;
   }
   .crumb .id {
+    font-weight: 600;
     color: var(--text-2);
   }
-
   .title-row {
     display: flex;
     align-items: center;
-    gap: 12px;
     flex-wrap: wrap;
+    gap: 12px;
+    min-width: 0;
   }
   h1 {
     margin: 0;
-    font-family: var(--font-head);
-    font-size: 22px;
-    font-weight: 700;
-    color: var(--text);
+    font-size: 28px;
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: -0.6px;
+    overflow-wrap: anywhere;
   }
-
+  .title-row .pill {
+    font-weight: 700;
+  }
   .meta {
     display: flex;
-    align-items: center;
-    gap: 18px;
     flex-wrap: wrap;
-    font-size: 12px;
-    color: var(--text-2);
+    gap: 8px;
   }
-  .meta span {
+  .chip {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-  }
-  .meta :global(svg) {
-    color: var(--text-3);
-    flex: none;
-  }
-
-  .badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 10px;
-    border-radius: 999px;
-    background: var(--surface-2);
-    font-size: 12px;
+    padding: 6px 10px;
+    border-radius: var(--r-pill);
+    font-size: var(--type-caption);
     font-weight: 500;
     color: var(--text-2);
+    background: #ffffffcc;
   }
-  .badge.live {
-    background: var(--accent-soft);
-    color: var(--accent-text);
+  .run .chip {
+    background: var(--surface-2);
   }
-  .badge.warn {
-    background: var(--warning-soft);
-    color: var(--warning);
-  }
-  .badge.ok {
-    background: var(--success-soft);
-    color: var(--success);
-  }
-  .badge.bad {
-    background: var(--danger-soft);
-    color: var(--danger);
-  }
-  .dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 999px;
-    background: currentcolor;
+  .chip :global(svg) {
     flex: none;
   }
 
-  .actions {
+  .r {
     display: flex;
-    align-items: center;
-    gap: 10px;
-    flex: none;
+    flex: 0 1 auto;
     flex-wrap: wrap;
-  }
-
-  /* Everything below is the rail: one narrow column, so nothing sits beside
-     anything else except the two stat cells and the buttons. */
-  .head.rail {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 12px;
-    margin-bottom: 0;
-  }
-  .head.rail .l {
-    gap: 9px;
-  }
-  .head.rail .title-row {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-  }
-  .head.rail h1 {
-    font-size: 17px;
-    line-height: 1.3;
-  }
-  .head.rail .meta {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 6px;
-    font-size: 11.5px;
-  }
-  .head.rail .meta span {
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .head.rail .actions {
-    flex: initial;
-    flex-wrap: nowrap;
-    gap: 8px;
-  }
-  /* Full-width halves, so two buttons fit a 284px column. */
-  .head.rail .actions :global(> *) {
-    flex: 1 1 0;
-    min-width: 0;
-    justify-content: center;
-  }
-
-  .stats {
-    display: flex;
-    gap: 8px;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 16px 28px;
   }
   .stat {
     display: flex;
     flex-direction: column;
+    align-items: flex-end;
     gap: 2px;
-    flex: 1 1 0;
-    min-width: 0;
-    padding: 8px 10px;
-    border-radius: var(--r-md);
-    background: var(--surface-2);
   }
   .stat .v {
-    font-family: var(--font-mono);
-    font-size: 14px;
+    font-family: var(--font-head);
+    font-size: 26px;
     font-weight: 700;
+    letter-spacing: -0.8px;
+    font-variant-numeric: tabular-nums;
     color: var(--text);
   }
   .stat .k {
-    font-size: 10.5px;
-    color: var(--text-3);
+    font-size: var(--type-caption);
+    color: var(--text-2);
+  }
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 10px;
   }
 
   @media (max-width: 1100px) {
-    .head {
+    .top {
       flex-direction: column;
+    }
+    .r {
+      flex-wrap: wrap;
     }
   }
 </style>
