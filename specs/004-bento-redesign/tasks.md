@@ -192,11 +192,11 @@ work (FR-021).
 exported screen, why it was designed, the acceptance criteria and the action that opens the design
 source.
 
-- [ ] T060 [US5] Rebuild 07 in `apps/web/src/routes/(app)/tickets/[id]/approve/+page.svelte`: the golden approval banner, the plan document tile (`Markdown.svelte` restyled), the feedback tile, the history tile; approve, request changes and cancel unchanged
-- [ ] T061 [US5] Verify 07 against the definition of done, and run `apps/web/tests/e2e/approve.spec.ts`
-- [ ] T062 [US5] Rebuild 14 in `apps/web/src/routes/(app)/tickets/[id]/design/+page.svelte` with `ScreenGallery.svelte` restyled: the pen.dev checkpoint banner stating no code has been written yet, every exported screen large, "pen.dev дээр нээх" opening the committed design file on the provider, ".pen татах", the reason the ticket was designed and its acceptance criteria; the actions unchanged
-- [ ] T063 [US5] Extend `apps/web/tests/e2e/design-stage.spec.ts` with the independent test: at the design checkpoint the page shows the design banner stating no code has been written yet, every exported screen, why the ticket was designed, its acceptance criteria, and an "open in pen.dev" action whose address is the committed design file on the provider; approve, request changes and cancel present (US5 scenarios 1 and 2)
-- [ ] T064 [US5] Verify 14 against the definition of done, and run `apps/web/tests/e2e/design-stage.spec.ts`
+- [X] T060 [US5] Rebuild 07 in `apps/web/src/routes/(app)/tickets/[id]/approve/+page.svelte`: the golden approval banner, the plan document tile (`Markdown.svelte` restyled), the feedback tile, the history tile; approve, request changes and cancel unchanged
+- [X] T061 [US5] Verify 07 against the definition of done, and run `apps/web/tests/e2e/approve.spec.ts`
+- [X] T062 [US5] Rebuild 14 in `apps/web/src/routes/(app)/tickets/[id]/design/+page.svelte` with `ScreenGallery.svelte` restyled: the pen.dev checkpoint banner stating no code has been written yet, every exported screen large, "pen.dev дээр нээх" opening the committed design file on the provider, ".pen татах", the reason the ticket was designed and its acceptance criteria; the actions unchanged
+- [X] T063 [US5] Extend `apps/web/tests/e2e/design-stage.spec.ts` with the independent test: at the design checkpoint the page shows the design banner stating no code has been written yet, every exported screen, why the ticket was designed, its acceptance criteria, and an "open in pen.dev" action whose address is the committed design file on the provider; approve, request changes and cancel present (US5 scenarios 1 and 2)
+- [X] T064 [US5] Verify 14 against the definition of done, and run `apps/web/tests/e2e/design-stage.spec.ts`
 
 **Checkpoint**: both checkpoint screens match their artboards and behave as before.
 

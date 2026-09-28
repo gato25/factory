@@ -599,8 +599,10 @@ h2.section {
   --tint-danger-to: #f7d2d5;
   --tint-done-from: #dcf3e9;
   --tint-done-to: #cdeddf;
-  --tint-design-from: #eaf1fc;
-  --tint-design-to: #dce7fa;
+  /* A step deeper than the artboards' #EAF1FC, which measured ΔE 9.8 from the
+     ground: under the 10 FR-004 asks of a tinted tile. */
+  --tint-design-from: #e4edfc;
+  --tint-design-to: #d4e2f9;
   /* The queued column is neutral, not tinted (FR-004 names only the approval,
      done and failed ones), so it has to be lighter than the ground: the
      design's #F4F3F2 measured 1.05:1, under 1.1:1. */

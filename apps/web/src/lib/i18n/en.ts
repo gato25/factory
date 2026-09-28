@@ -493,6 +493,26 @@ export const en: Messages = {
   },
 
   approve: {
+    cancelExplain: 'Cancelling releases the sandbox and leaves the branch pushed so far alone.',
+    timelineStep: (step: string, status: string, took: string | null) =>
+      took ? `${step} ${status} · ${took}` : `${step} ${status}`,
+    timelineStepN: (n: number) => `step ${n}`,
+    stepStatus: {
+      pending: 'pending',
+      running: 'running',
+      done: 'done',
+      failed: 'failed',
+      skipped: 'skipped',
+    },
+    timelineSkipped: (reason: string) => `skipped — ${reason}`,
+    decision: {
+      approved: 'approved',
+      changes_requested: 'changes requested',
+      edited: 'edited and approved',
+      cancelled: 'cancelled',
+    },
+    timelineDecision: (decision: string, timedOut: boolean) =>
+      timedOut ? `Checkpoint ${decision} on timeout` : `Checkpoint ${decision}`,
     loading: 'Loading…',
     notStarted: 'This ticket has not been started.',
     loadingCheckpoint: 'Loading the checkpoint…',
@@ -531,8 +551,9 @@ export const en: Messages = {
     empty: '(empty)',
     version: (version: number) => `Version ${version}`,
     chooseDocument: 'Choose a document to read it.',
-    sentBackTo: (label: string) =>
-      `Your note is sent back to ${label}, which revises what it wrote and pauses here again.`,
+    sentBackTo: (label: string, what: string) =>
+      `Your note goes back to ${label}, the ${what} is revised, and the run stops here again.`,
+    theWork: 'work',
     theAgent: 'the agent',
     feedbackLabel: 'Request changes — this text is sent to the agent',
     feedbackPlaceholder: 'What should change, and why?',
@@ -548,6 +569,11 @@ export const en: Messages = {
   },
 
   designReview: {
+    loading: 'Loading…',
+    loadingDesign: 'Loading the design…',
+    checkpoint: 'Checkpoint: review the screens before any code is written',
+    downloadSource: 'Download .pen',
+    galleryNote: 'Each one opens at full size. Use the arrow keys to move between them.',
     notStarted: 'This ticket has not been started.',
     waitingForDesignApproval: 'Waiting for design approval',
     decided: 'Decided',
@@ -566,7 +592,7 @@ export const en: Messages = {
     approveAndContinue: 'Approve & continue',
     screens: 'Screens',
     exported: (screens: number) => `${screens} exported`,
-    openDesignSource: 'Open the design source',
+    openDesignSource: 'Open in pen.dev',
     sourceNotLinkable: (path: string) =>
       `${path} is committed to the branch; this repository's address is not one we can build a file link for.`,
     designedScreens: 'Designed screens',
@@ -586,8 +612,7 @@ export const en: Messages = {
     afterYouApprove: 'After you approve',
     openMergeRequest: 'Open merge request',
     openMergeRequestNote: 'Branch pushed, merge request created, ticket closed',
-    stepCost: (seconds: string | number, costUsd: string | number) =>
-      `The design step took ${seconds}s and cost ${costUsd}.`,
+    stepCost: (took: string, cost: string) => `The design step took ${took} and cost ${cost}.`,
   },
 
   agents: {
@@ -910,6 +935,7 @@ export const en: Messages = {
   },
 
   gallery: {
+    position: (n: number, total: number) => `${n} of ${total}`,
     heading: 'Screens',
     empty: 'No screens were exported.',
     close: 'Close',

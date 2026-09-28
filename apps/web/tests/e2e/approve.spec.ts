@@ -2,6 +2,7 @@ import { createHmac, randomUUID } from 'node:crypto';
 import type { APIRequestContext, BrowserContext } from '@playwright/test';
 import { expect, test } from '@playwright/test';
 import postgres from 'postgres';
+import { m } from '../../src/lib/i18n';
 
 /**
  * User Story 3's Independent Test (quickstart.md scenario C): a gate after the
@@ -202,18 +203,21 @@ test.describe('approving before work continues', () => {
 
     // The banner says what is paused and after which step.
     await expect(page.getByRole('heading', { name: /Add Google OAuth sign-in/ })).toBeVisible();
-    await expect(page.getByText(/paused at step 2/)).toBeVisible();
-    await expect(page.getByText(/Planner finished/)).toBeVisible();
+    await expect(page.getByText(m.approve.pausedExplain('Planner', 2))).toBeVisible();
     // Every document produced so far is readable here (FR-064c).
     await page.getByRole('button', { name: /docs\/plan\.md/ }).click();
     await expect(page.getByText('Add a Google button')).toBeVisible();
     // And a chronological record of the run.
-    await expect(page.getByText('Planner done')).toBeVisible();
+    await expect(page.getByText(`Planner ${m.approve.stepStatus.done}`)).toBeVisible();
 
-    await page.getByRole('button', { name: 'Approve & continue' }).click();
+    await page.getByRole('button', { name: m.approve.approveAndContinue }).click();
 
-    await expect(page.getByText(/Already decided:\s*approved/)).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText('checkpoint approved')).toBeVisible();
+    await expect(page.getByText(m.approve.alreadyDecided(m.approve.decision.approved))).toBeVisible(
+      { timeout: 10_000 },
+    );
+    await expect(
+      page.getByText(m.approve.timelineDecision(m.approve.decision.approved, false)),
+    ).toBeVisible();
 
     // The run left the gate and the decision is on the record with who and when.
     const [run] = await sql`select status from runs where id = ${seeded.runId}`;
@@ -227,7 +231,7 @@ test.describe('approving before work continues', () => {
     expect(decision!.decided_at).toBeTruthy();
 
     // The decision buttons are gone: the gate is no longer open.
-    await expect(page.getByRole('button', { name: 'Approve & continue' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: m.approve.approveAndContinue })).toHaveCount(0);
   });
 
   test('an edit continues with the edited document, keeping the previous version (FR-062)', async ({
@@ -240,14 +244,16 @@ test.describe('approving before work continues', () => {
 
     await page.goto(`/tickets/${seeded.ticketId}/approve`);
     await page.getByRole('button', { name: /docs\/plan\.md/ }).click();
-    await expect(page.getByText('Version 1')).toBeVisible();
+    await expect(page.getByText(m.approve.version(1))).toBeVisible();
 
-    await page.getByRole('button', { name: 'Edit plan' }).click();
+    await page.getByRole('button', { name: m.approve.edit(m.defaults.agents.plan.step) }).click();
     const edited = '# Plan\n\nUse the existing OAuth helper, not a new one.\n';
     await page.locator('textarea[name="content"]').fill(edited);
-    await page.getByRole('button', { name: 'Save & continue' }).click();
+    await page.getByRole('button', { name: m.approve.saveAndContinue }).click();
 
-    await expect(page.getByText(/Already decided:\s*edited/)).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(m.approve.alreadyDecided(m.approve.decision.edited))).toBeVisible({
+      timeout: 10_000,
+    });
 
     // Two versions: the agent's, and the human's on top of it.
     const versions = await sql`
@@ -262,10 +268,10 @@ test.describe('approving before work continues', () => {
     expect(versions[1]!.created_by).toBe(seeded.authorId);
 
     // The edited version is the one carried forward, and it is marked as edited.
-    await expect(page.getByText('edited').first()).toBeVisible();
+    await expect(page.getByText(m.approve.edited).first()).toBeVisible();
     await page.getByRole('button', { name: /docs\/plan\.md/ }).click();
     await expect(page.getByText('Use the existing OAuth helper')).toBeVisible();
-    await expect(page.getByText('Version 2')).toBeVisible();
+    await expect(page.getByText(m.approve.version(2))).toBeVisible();
   });
 
   test('requested changes re-run the preceding step and come back to the same gate (FR-061)', async ({
@@ -278,11 +284,11 @@ test.describe('approving before work continues', () => {
 
     await page.goto(`/tickets/${seeded.ticketId}/approve`);
     // The screen says which step will run again, so the decision is informed.
-    await expect(page.getByText(/sent back to Planner/)).toBeVisible();
+    await expect(page.getByText(m.approve.sentBackTo('Planner', 'planner'))).toBeVisible();
 
     // Empty feedback is refused: the text is what the agent reads.
-    await page.getByRole('button', { name: 'Request changes' }).click();
-    await expect(page.getByRole('alert')).toContainText('Say what should change', {
+    await page.getByRole('button', { name: m.approve.requestChanges, exact: true }).click();
+    await expect(page.getByRole('alert')).toContainText(m.form.feedbackRequired, {
       timeout: 10_000,
     });
     expect(await sql`select 1 from approvals where run_id = ${seeded.runId}`).toHaveLength(0);
@@ -290,9 +296,11 @@ test.describe('approving before work continues', () => {
     await page
       .locator('textarea[name="feedback"]')
       .fill('The plan skips the token refresh. Cover it.');
-    await page.getByRole('button', { name: 'Request changes' }).click();
+    await page.getByRole('button', { name: m.approve.requestChanges, exact: true }).click();
 
-    await expect(page.getByText(/Already decided:\s*changes requested/)).toBeVisible({
+    await expect(
+      page.getByText(m.approve.alreadyDecided(m.approve.decision.changes_requested)),
+    ).toBeVisible({
       timeout: 10_000,
     });
     const [decision] = await sql`
@@ -336,10 +344,15 @@ test.describe('approving before work continues', () => {
     await runToGate(page.request, seeded);
 
     await page.goto(`/tickets/${seeded.ticketId}/approve`);
-    await expect(page.getByText(/releases the sandbox/)).toBeVisible();
-    await page.getByRole('button', { name: 'Cancel run' }).click();
+    await expect(page.getByRole('button', { name: m.approve.cancelRun })).toHaveAttribute(
+      'title',
+      m.approve.cancelExplain,
+    );
+    await page.getByRole('button', { name: m.approve.cancelRun }).click();
 
-    await expect(page.getByText(/Already decided:\s*cancelled/)).toBeVisible({ timeout: 10_000 });
+    await expect(
+      page.getByText(m.approve.alreadyDecided(m.approve.decision.cancelled)),
+    ).toBeVisible({ timeout: 10_000 });
 
     const [run] = await sql`select status from runs where id = ${seeded.runId}`;
     const [ticket] =
@@ -366,14 +379,18 @@ test.describe('approving before work continues', () => {
     await expect(page.getByText('A Google button appears')).toBeVisible();
     await page.getByRole('button', { name: /docs\/plan\.md/ }).click();
     await expect(page.getByText('Add a Google button')).toBeVisible();
-    await expect(page.getByText('Planner done')).toBeVisible();
+    await expect(page.getByText(`Planner ${m.approve.stepStatus.done}`)).toBeVisible();
 
     // Nothing is decidable — the buttons are absent, not merely disabled.
-    await expect(page.getByText('This checkpoint is not yours to decide')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Approve & continue' })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: 'Request changes' })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: 'Cancel run' })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: 'Edit plan' })).toHaveCount(0);
+    await expect(page.getByText(m.approve.notYoursToDecide)).toBeVisible();
+    await expect(page.getByRole('button', { name: m.approve.approveAndContinue })).toHaveCount(0);
+    await expect(
+      page.getByRole('button', { name: m.approve.requestChanges, exact: true }),
+    ).toHaveCount(0);
+    await expect(page.getByRole('button', { name: m.approve.cancelRun })).toHaveCount(0);
+    await expect(
+      page.getByRole('button', { name: m.approve.edit(m.defaults.agents.plan.step) }),
+    ).toHaveCount(0);
 
     // And the gate is still open for the person it belongs to.
     const [run] = await sql`select status from runs where id = ${seeded.runId}`;
@@ -397,16 +414,18 @@ test.describe('approving before work continues', () => {
     const otherPage = await second.newPage();
     await otherPage.route('**/api/events/**', (route) => route.abort());
     await otherPage.goto(`/tickets/${seeded.ticketId}/approve`);
-    await expect(otherPage.getByRole('button', { name: 'Cancel run' })).toBeVisible();
+    await expect(otherPage.getByRole('button', { name: m.approve.cancelRun })).toBeVisible();
 
     // The author decides first.
     await page.goto(`/tickets/${seeded.ticketId}/approve`);
-    await page.getByRole('button', { name: 'Approve & continue' }).click();
-    await expect(page.getByText(/Already decided:\s*approved/)).toBeVisible({ timeout: 10_000 });
+    await page.getByRole('button', { name: m.approve.approveAndContinue }).click();
+    await expect(page.getByText(m.approve.alreadyDecided(m.approve.decision.approved))).toBeVisible(
+      { timeout: 10_000 },
+    );
 
     // The stale page submits anyway, and is told why nothing happened rather
     // than appearing to succeed or failing silently.
-    await otherPage.getByRole('button', { name: 'Cancel run' }).click();
+    await otherPage.getByRole('button', { name: m.approve.cancelRun }).click();
     await expect(otherPage.getByText(/already decided this checkpoint/)).toBeVisible({
       timeout: 10_000,
     });
@@ -436,18 +455,22 @@ test.describe('approving before work continues', () => {
     await signIn(second, seeded.outsiderId);
     const otherPage = await second.newPage();
     await otherPage.goto(`/tickets/${seeded.ticketId}/approve`);
-    await expect(otherPage.getByRole('button', { name: 'Cancel run' })).toBeVisible();
+    await expect(otherPage.getByRole('button', { name: m.approve.cancelRun })).toBeVisible();
 
     await page.goto(`/tickets/${seeded.ticketId}/approve`);
-    await page.getByRole('button', { name: 'Approve & continue' }).click();
-    await expect(page.getByText(/Already decided:\s*approved/)).toBeVisible({ timeout: 10_000 });
+    await page.getByRole('button', { name: m.approve.approveAndContinue }).click();
+    await expect(page.getByText(m.approve.alreadyDecided(m.approve.decision.approved))).toBeVisible(
+      { timeout: 10_000 },
+    );
 
     // Without a reload, the other person's decision panel goes away: the gate
     // is decided, so there is nothing left for them to decide.
-    await expect(otherPage.getByRole('button', { name: 'Cancel run' })).toHaveCount(0, {
+    await expect(otherPage.getByRole('button', { name: m.approve.cancelRun })).toHaveCount(0, {
       timeout: 10_000,
     });
-    await expect(otherPage.getByText(/Already decided:\s*approved/)).toBeVisible();
+    await expect(
+      otherPage.getByText(m.approve.alreadyDecided(m.approve.decision.approved)),
+    ).toBeVisible();
     await second.close();
   });
 });

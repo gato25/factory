@@ -150,6 +150,39 @@ const SCREENS: Screen[] = [
     click: '.run-tabs button:nth-child(3)',
     primary: ['h1', '.btn'],
   },
+  {
+    name: '07 Approval Checkpoint',
+    path: (seeded) => `/tickets/${seeded.tickets.waiting}/approve`,
+    signedIn: true,
+    primary: [
+      'h1',
+      '.t',
+      '.s',
+      '.btn',
+      'textarea',
+      '.criteria li',
+      '.what',
+      '.doc-body p',
+      '.quiet',
+    ],
+  },
+  {
+    name: '14 Design Review',
+    path: (seeded) => `/tickets/${seeded.tickets.waiting}/design`,
+    signedIn: true,
+    primary: [
+      'h1',
+      '.banner .t',
+      '.banner .s',
+      '.btn',
+      'textarea',
+      '.criteria li',
+      '.quote',
+      '.name',
+      '.n .t',
+      '.side-tile .quiet',
+    ],
+  },
 ];
 
 async function seed(): Promise<Seeded> {

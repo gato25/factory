@@ -276,6 +276,9 @@
       <StepTracker
         steps={loaded.steps}
         run={loaded.run}
+        classification={loaded.ticket.hasUi !== null && loaded.ticket.uiRationale
+          ? `${loaded.ticket.hasUi ? m.runDetails.changesInterface : m.runDetails.noInterfaceChange} — ${loaded.ticket.uiRationale}`
+          : null}
         selected={selected ?? loaded.run.currentStepIndex ?? 0}
         onSelect={(index) => {
           selected = index;
@@ -293,6 +296,11 @@
       {#if place.ready && place.current !== null}
         <div class="tile notice"><QueuePosition position={place.current} /></div>
       {/if}
+    {/if}
+
+    <!-- FR-102: a run whose ticket was never classified says so on the run itself. -->
+    {#if loaded.ticket.classificationMissing}
+      <p class="tile tile--approval notice warn" role="status">{m.runDetails.classificationMissing}</p>
     {/if}
 
     {#if loaded.run.pauseRequestedAt && inFlight}
@@ -456,6 +464,9 @@
   .notice {
     margin: 0 0 20px;
     padding: 14px 20px;
+  }
+  .notice.warn {
+    color: var(--on-amber);
   }
   .failure {
     margin: 0 0 20px;

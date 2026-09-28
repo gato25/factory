@@ -9,11 +9,14 @@
   let {
     screens,
     heading = m.gallery.heading,
-    note
+    note,
+    bare = false,
   }: {
     screens: { id: string; path: string; screenName: string | null; version: number }[];
     heading?: string;
     note?: string;
+    /** Inside a tile that has its own heading: every screen large, two to a row. */
+    bare?: boolean;
   } = $props();
 
   let openIndex = $state<number | null>(null);
@@ -37,28 +40,43 @@
 
 <svelte:window onkeydown={onKey} />
 
-<section class="card">
-  <h2 class="section">{heading} <span class="muted">{screens.length}</span></h2>
-  {#if note}<p class="muted small note">{note}</p>{/if}
-
+{#snippet grid()}
+  {#if note}<p class="note">{note}</p>{/if}
   {#if screens.length === 0}
-    <p class="muted small">{m.gallery.empty}</p>
+    <p class="empty">{m.gallery.empty}</p>
   {:else}
-    <ul class="grid">
+    <ul class="grid" class:large={bare}>
       {#each screens as screen, index (screen.id)}
         <li>
           <button type="button" onclick={() => (openIndex = index)}>
-            <img src="/api/artifacts/{screen.id}/image" alt={label(screen)} loading="lazy" />
-            <span class="caption small">
-              {label(screen)}
-              {#if screen.version > 1}<span class="badge small">v{screen.version}</span>{/if}
+            <span class="frame">
+              <img src="/api/artifacts/{screen.id}/image" alt={label(screen)} loading="lazy" />
+            </span>
+            <span class="caption">
+              <span class="name">{label(screen)}</span>
+              <span class="file">{screen.path.split('/').pop()}{#if screen.version > 1}
+                  · v{screen.version}{/if}</span
+              >
             </span>
           </button>
         </li>
       {/each}
     </ul>
   {/if}
-</section>
+{/snippet}
+
+<!--
+  Bare inside a tile that already names the screens (the design review);
+  otherwise a block of its own, with its heading.
+-->
+{#if bare}
+  {@render grid()}
+{:else}
+  <section class="block">
+    <h2>{heading} <span class="count">{screens.length}</span></h2>
+    {@render grid()}
+  </section>
+{/if}
 
 {#if open}
   <!-- Full size, with next and previous. Escape and the arrow keys work too. -->
@@ -72,7 +90,7 @@
     <header>
       <span>
         {label(open)}
-        <span class="muted small">{(openIndex ?? 0) + 1} of {screens.length}</span>
+        <span class="where">{m.gallery.position((openIndex ?? 0) + 1, screens.length)}</span>
       </span>
       <button type="button" class="close" onclick={() => (openIndex = null)} aria-label={m.gallery.close}>
         ✕
@@ -95,33 +113,66 @@
         disabled={screens.length < 2}>›</button
       >
     </div>
-    <footer class="muted small"><code>{open.path}</code></footer>
+    <footer><code>{open.path}</code></footer>
   </div>
 {/if}
 
 <style>
-  .note { margin: 0 0 10px; }
+  .block h2 {
+    margin: 0 0 12px;
+    font-size: 16px;
+    font-weight: 600;
+  }
+  .count {
+    font-weight: 500;
+    color: var(--text-3);
+  }
+  .note,
+  .empty {
+    margin: 0 0 12px;
+    font-size: var(--type-caption);
+    color: var(--text-2);
+  }
+  .empty {
+    font-size: var(--type-body);
+  }
   .grid {
-    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 12px;
     margin: 0;
     padding: 0;
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 10px;
+    list-style: none;
+  }
+  .grid.large {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
   }
   .grid button {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 10px;
     width: 100%;
     padding: 0;
-    border: 1px solid var(--border);
-    border-radius: var(--r-sm);
-    background: var(--surface);
+    border: 0;
     font: inherit;
-    cursor: pointer;
-    overflow: hidden;
     text-align: left;
+    color: inherit;
+    background: none;
+    cursor: pointer;
+  }
+  .frame {
+    display: block;
+    overflow: hidden;
+    border-radius: 16px;
+    background: linear-gradient(180deg, #ffffff, #f7f5f2);
+    box-shadow: 0 8px 18px var(--shadow-depth);
+  }
+  .grid button:hover .frame,
+  .grid button:focus-visible .frame {
+    box-shadow:
+      0 0 0 3px var(--purple-soft),
+      0 8px 18px var(--shadow-depth);
   }
   .grid img {
     display: block;
@@ -129,46 +180,70 @@
     aspect-ratio: 4 / 3;
     object-fit: cover;
     object-position: top;
-    background: var(--surface-2);
+  }
+  .large img {
+    aspect-ratio: 16 / 10;
   }
   .caption {
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 0 8px 8px;
+    justify-content: space-between;
+    gap: 8px;
+    min-width: 0;
   }
+  .name {
+    overflow: hidden;
+    font-size: var(--type-body);
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .file {
+    flex: none;
+    font: 12px/1.3 var(--font-mono);
+    color: var(--text-3);
+  }
+
   .viewer {
     position: fixed;
     inset: 0;
     z-index: 20;
     display: flex;
     flex-direction: column;
-    background: rgba(16, 18, 24, 0.94);
-    color: #fff;
     padding: 12px 16px 16px;
+    color: #fff;
+    background: rgba(22, 20, 15, 0.94);
   }
   .viewer header {
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    justify-content: space-between;
     gap: 12px;
+    font-size: var(--type-body);
   }
-  .viewer header .muted { color: #b9bfcc; }
+  .where,
+  .viewer footer {
+    font-size: var(--type-caption);
+    color: #d8d2c8;
+  }
+  .where {
+    margin-left: 8px;
+  }
   .close {
+    padding: 4px 8px;
     border: 0;
-    background: none;
-    color: #fff;
     font: inherit;
     font-size: 18px;
+    color: #fff;
+    background: none;
     cursor: pointer;
-    padding: 4px 8px;
   }
   .stage {
-    flex: 1;
-    min-height: 0;
     display: flex;
+    flex: 1;
     align-items: center;
     gap: 12px;
+    min-height: 0;
   }
   .stage img {
     flex: 1;
@@ -177,16 +252,21 @@
     object-fit: contain;
   }
   .nav {
+    padding: 12px 14px;
     border: 0;
-    background: rgba(255, 255, 255, 0.12);
-    color: #fff;
+    border-radius: var(--r-sm);
     font: inherit;
     font-size: 26px;
     line-height: 1;
-    padding: 12px 14px;
-    border-radius: var(--r-sm);
+    color: #fff;
+    background: rgba(255, 255, 255, 0.12);
     cursor: pointer;
   }
-  .nav:disabled { opacity: 0.3; cursor: default; }
-  .viewer footer { margin-top: 10px; color: #b9bfcc; }
+  .nav:disabled {
+    cursor: default;
+    opacity: 0.3;
+  }
+  .viewer footer {
+    margin-top: 10px;
+  }
 </style>

@@ -7,6 +7,7 @@
   import Markdown from '$components/Markdown.svelte';
   import ScreenGallery from '$components/ScreenGallery.svelte';
   import TicketHead from '$components/TicketHead.svelte';
+  import { agentName, stepName } from '$lib/default-names';
   import {
     approve,
     cancelRun,
@@ -47,8 +48,16 @@
       : null,
   );
 
-  /** "docs/plan.md" → "plan", which is what the artboard's Edit button says. */
+  /** "docs/plan.md" → "plan", for a document the product does not name. */
   const shortName = (path: string) => path.split('/').pop()?.replace(/\.\w+$/, '') ?? path;
+
+  /** What the artboard's Edit button calls a document: "Төлөвлөгөө засах". */
+  const DOCUMENT: Record<string, string> = {
+    'docs/spec.md': m.defaults.agents.spec.step,
+    'docs/plan.md': m.defaults.agents.plan.step,
+    'docs/tasks.md': m.defaults.agents.tasks.step,
+  };
+  const documentName = (path: string) => DOCUMENT[path] ?? shortName(path);
 
   /** The first readable document, so the screen opens on something. */
   $effect(() => {
@@ -74,11 +83,11 @@
 </script>
 
 {#if !view.ready}
-  <p class="card">{m.approve.loading}</p>
+  <p class="tile">{m.approve.loading}</p>
 {:else if !view.current}
-  <p class="card">{m.approve.notStarted}</p>
+  <p class="tile">{m.approve.notStarted}</p>
 {:else if !detail?.ready}
-  <p class="card">{m.approve.loadingCheckpoint}</p>
+  <p class="tile">{m.approve.loadingCheckpoint}</p>
 {:else}
   {@const d = detail.current}
   {@const loaded = view.current}
@@ -104,15 +113,20 @@
         <form {...cancelRun}>
           <input type="hidden" name="runId" value={d.gate.runId} />
           <input type="hidden" name="stepIndex" value={d.gate.stepIndex} />
-          <button class="secondary" type="submit" disabled={cancelRun.pending > 0}>
-            <Icon name="circle-x" size={16} />
-            <span>{m.approve.cancelRun}</span>
+          <button
+            class="btn btn--danger-soft"
+            type="submit"
+            title={m.approve.cancelExplain}
+            disabled={cancelRun.pending > 0}
+          >
+            <Icon name="circle-x" size={14} />
+            {m.approve.cancelRun}
           </button>
         </form>
       {/if}
-      <a class="secondary" href="/tickets/{ticketId}">
-        <Icon name="undo-2" size={16} />
-        <span>{m.approve.backToTheRun}</span>
+      <a class="btn btn--secondary" href="/tickets/{ticketId}">
+        <Icon name="undo-2" size={14} />
+        {m.approve.backToTheRun}
       </a>
     {/snippet}
   </TicketHead>
@@ -128,18 +142,18 @@
     editAndApprove.result?.problem ??
     cancelRun.result?.problem}
   {#if refusal}
-    <p class="card refused" role="alert">{refusal}</p>
+    <p class="tile tile--danger refused" role="alert">{refusal}</p>
   {/if}
 
   <!-- The banner names the checkpoint and says the pipeline is paused -->
-  <section class="banner" class:decided={!paused}>
-    <span class="mark"><Icon name="hand" size={22} /></span>
+  <section class="tile banner" class:tile--approval={paused} class:decided={!paused}>
+    <span class="orb orb--amber mark" aria-hidden="true"><Icon name="hand" size={22} /></span>
     <div class="tx">
       {#if paused}
         <p class="t">
           {m.approve.checkpointReview(
             d.gate.precedingLabel
-              ? m.approve.checkpointThe(shortName(d.gate.precedingLabel).toLowerCase())
+              ? m.approve.checkpointThe(stepName(d.gate.precedingLabel).toLowerCase())
               : m.approve.checkpointThis,
             d.gate.precedingIsDesign
               ? m.approve.beforeAnyCode
@@ -148,13 +162,13 @@
         </p>
         <p class="s">
           {m.approve.pausedExplain(
-            d.gate.precedingLabel ?? m.approve.thePreviousStep,
+            d.gate.precedingLabel ? agentName(d.gate.precedingLabel) : m.approve.thePreviousStep,
             d.gate.stepIndex + 1,
           )}
         </p>
       {:else if d.gate.decided}
         <p class="t">
-          {m.approve.alreadyDecided(d.gate.decided.decision.replace('_', ' '))}
+          {m.approve.alreadyDecided(m.approve.decision[d.gate.decided.decision as keyof typeof m.approve.decision] ?? d.gate.decided.decision)}
         </p>
         <p class="s">{m.approve.decidedAt(exact(d.gate.decided.at))}</p>
       {:else}
@@ -173,20 +187,20 @@
                places to press it. An empty note is refused by the server,
                which says what is missing better than a disabled button. -->
           <button
-            class="secondary"
+            class="btn changes"
             type="submit"
             form="request-changes"
             disabled={requestChanges.pending > 0}
           >
-            <Icon name="message-square" size={16} />
-            <span>{m.approve.requestChanges}</span>
+            <Icon name="message-square" size={14} />
+            {m.approve.requestChanges}
           </button>
           <form {...approve} class="inline">
             <input type="hidden" name="runId" value={d.gate.runId} />
             <input type="hidden" name="stepIndex" value={d.gate.stepIndex} />
-            <button class="go" type="submit" disabled={approve.pending > 0}>
-              <Icon name="check" size={16} />
-              <span>{m.approve.approveAndContinue}</span>
+            <button class="btn btn--amber" type="submit" disabled={approve.pending > 0}>
+              <Icon name="check" size={15} />
+              {m.approve.approveAndContinue}
             </button>
           </form>
         {/if}
@@ -195,7 +209,7 @@
   </section>
 
   {#each [...approve.fields.allIssues() ?? [], ...(requestChanges.fields.allIssues() ?? [])] as issue (issue.message)}
-    <p class="card refused" role="alert">{issue.message}</p>
+    <p class="tile tile--danger refused" role="alert">{issue.message}</p>
   {/each}
 
   <!--
@@ -203,7 +217,7 @@
     own that shows the screens properly (FR-064d).
   -->
   {#if d.gate.precedingIsDesign}
-    <p class="card notice">
+    <p class="tile tile--design notice">
       {m.approve.followsDesign}
       <a href="/tickets/{ticketId}/design">{m.approve.reviewTheScreens}</a>
       {m.approve.toSeeFullSize}
@@ -211,7 +225,7 @@
   {/if}
 
   <div class="lower">
-    <section class="doc">
+    <section class="tile doc">
       <header>
         <div class="tabs">
           {#each readable as item (item.id)}
@@ -238,14 +252,14 @@
             {#if d.mayDecide && paused}
               <button
                 type="button"
-                class="secondary"
+                class="btn btn--secondary"
                 onclick={() => {
                   draft = '';
                   editing = true;
                 }}
               >
-                <Icon name="pencil" size={16} />
-                <span>{m.approve.edit(shortName(openPath))}</span>
+                <Icon name="pencil" size={13} />
+                {m.approve.edit(documentName(openPath))}
               </button>
             {/if}
           </div>
@@ -274,12 +288,12 @@
                 </ul>
               {/if}
               <div class="row">
-                <button type="button" class="secondary" onclick={() => (editing = false)}>
+                <button type="button" class="btn btn--secondary" onclick={() => (editing = false)}>
                   {m.approve.discardChanges}
                 </button>
-                <button class="go" type="submit" disabled={!d.mayDecide}>
-                  <Icon name="check" size={16} />
-                  <span>{m.approve.saveAndContinue}</span>
+                <button class="btn btn--amber" type="submit" disabled={!d.mayDecide}>
+                  <Icon name="check" size={15} />
+                  {m.approve.saveAndContinue}
                 </button>
               </div>
               <p class="quiet">
@@ -302,10 +316,13 @@
 
     <aside class="side">
       {#if paused && d.mayDecide}
-        <section class="card">
+        <section class="tile side-tile">
           <h2>{m.approve.requestChanges}</h2>
           <p class="quiet">
-            {m.approve.sentBackTo(d.gate.precedingLabel ?? m.approve.thePreviousStep)}
+            {m.approve.sentBackTo(
+              d.gate.precedingLabel ? agentName(d.gate.precedingLabel) : m.approve.thePreviousStep,
+              d.gate.precedingLabel ? stepName(d.gate.precedingLabel).toLowerCase() : m.approve.theWork,
+            )}
           </p>
           <form {...requestChanges} id="request-changes" class="stack">
             <input type="hidden" name="runId" value={d.gate.runId} />
@@ -317,15 +334,15 @@
               aria-label={m.approve.feedbackLabel}
               placeholder={m.approve.feedbackPlaceholder}
             ></textarea>
-            <button class="secondary wide" type="submit" disabled={requestChanges.pending > 0}>
-              <Icon name="undo-2" size={16} />
-              <span>{m.approve.sendBackTo(d.gate.precedingLabel ?? m.approve.theAgent)}</span>
+            <button class="btn wide" type="submit" disabled={requestChanges.pending > 0}>
+              <Icon name="undo-2" size={15} />
+              {m.approve.sendBackTo(d.gate.precedingLabel ? agentName(d.gate.precedingLabel) : m.approve.theAgent)}
             </button>
           </form>
         </section>
       {/if}
 
-      <section class="card">
+      <section class="tile side-tile">
         <h2>{m.approve.acceptance}</h2>
         {#if d.ticket.acceptanceCriteria.length === 0}
           <p class="quiet">{m.approve.noAcceptance}</p>
@@ -346,28 +363,27 @@
         {/if}
       </section>
 
-      <section class="card">
+      <section class="tile side-tile">
         <h2>{m.approve.timeline}</h2>
         <ol class="timeline">
           {#each d.timeline as entry (entry.at.toString() + entry.label)}
             <li class={entry.kind}>
-              <Icon
-                name={entry.kind === 'decision' ? 'circle-check' : 'check'}
-                size={15}
-              />
+              <span class="orb ev" aria-hidden="true"><Icon name="check" size={13} /></span>
               <span class="what">
                 {entry.label}
                 {#if entry.detail}<span class="quiet">{entry.detail}</span>{/if}
               </span>
-              <time>{new Date(entry.at).toLocaleTimeString([], {
+              <time datetime={new Date(entry.at).toISOString()}
+                >{new Date(entry.at).toLocaleTimeString('en-GB', {
                   hour: '2-digit',
                   minute: '2-digit',
-                })}</time>
+                })}</time
+              >
             </li>
           {/each}
           {#if paused}
             <li class="now">
-              <Icon name="hand" size={15} />
+              <span class="orb orb--amber ev" aria-hidden="true"><Icon name="hand" size={13} /></span>
               <span class="what"
                 >{m.approve.waitingForApproval}{d.mayDecide
                   ? m.approve.waitingForApprovalYou
@@ -383,316 +399,309 @@
 {/if}
 
 <style>
-  /* ---- the banner ---- */
+  /* ---- the banner: the checkpoint, and the two decisions ---- */
   .banner {
     display: flex;
     align-items: center;
-    gap: 16px;
-    padding: 16px 20px;
-    border-radius: var(--r-lg);
-    background: var(--warning-soft);
-    margin-bottom: 16px;
-  }
-  .banner.decided {
-    background: var(--surface-2);
+    gap: 18px;
+    margin-bottom: 20px;
+    padding: 22px 26px;
   }
   .mark {
-    display: grid;
-    place-items: center;
-    flex: none;
-    color: var(--warning);
+    width: 52px;
+    height: 52px;
   }
   .banner.decided .mark {
     color: var(--text-3);
+    background: var(--surface-2);
+    box-shadow: none;
   }
   .tx {
     display: flex;
-    flex-direction: column;
-    gap: 3px;
     flex: 1;
+    flex-direction: column;
+    gap: 5px;
     min-width: 0;
   }
   .t {
     margin: 0;
-    font-size: 14px;
+    font-family: var(--font-head);
+    font-size: 19px;
     font-weight: 600;
-    color: var(--text);
+    letter-spacing: -0.3px;
+    color: #4a3a00;
   }
   .s {
     margin: 0;
-    font-size: 12px;
+    font-size: var(--type-body);
+    color: #7a6310;
+  }
+  .decided .t {
+    color: var(--text);
+  }
+  .decided .s {
     color: var(--text-2);
   }
   .btns {
     display: flex;
+    flex: none;
     align-items: center;
     gap: 10px;
-    flex: none;
   }
   .inline {
     display: contents;
   }
-
-  /* ---- buttons ---- */
-  button,
-  a.secondary {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 10px 16px;
-    border-radius: var(--r-sm);
-    font: inherit;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    text-decoration: none;
+  :global(.btn.btn--amber) {
+    font-weight: 700;
+    color: var(--on-amber);
+    background: linear-gradient(180deg, var(--amber), #d9a200);
+    box-shadow: 0 4px 12px #d9a2004d;
   }
-  .secondary {
-    border: 1px solid var(--border);
-    background: var(--surface);
-    color: var(--text);
+  :global(.btn.btn--danger-soft) {
+    padding: 10px 14px;
+    color: var(--danger-text);
+    background: var(--danger-soft);
+    box-shadow: none;
   }
-  .secondary :global(svg) {
-    color: var(--text-2);
+  .btn.changes {
+    color: #4a3a00;
+    background: #fffbeab3;
+    box-shadow: none;
   }
-  .secondary:hover:not(:disabled) {
-    border-color: var(--accent);
-  }
-  .secondary.wide {
+  .btn.wide {
     width: 100%;
-  }
-  /* Approve is the one button that lets work continue. */
-  .go {
-    border: 1px solid var(--success);
-    background: var(--success);
-    color: var(--text-inv);
-    font-weight: 600;
-  }
-  button:disabled {
-    opacity: 0.55;
-    cursor: not-allowed;
   }
   button.link {
     padding: 0;
     border: 0;
-    background: none;
-    font-size: 12px;
-    font-weight: 500;
+    font: 500 var(--type-body) / 1.3 var(--font);
     color: var(--accent-text);
+    background: none;
+    cursor: pointer;
   }
   button.link:hover {
     text-decoration: underline;
   }
 
-  /* ---- the document ---- */
+  /* ---- the document and the column beside it ---- */
   .lower {
     display: flex;
     align-items: flex-start;
-    gap: 24px;
+    gap: 20px;
   }
   .doc {
     display: flex;
-    flex-direction: column;
     flex: 1;
+    flex-direction: column;
+    gap: 16px;
     min-width: 0;
-    background: var(--surface);
-    border: 1px solid var(--card-border);
-    border-radius: var(--r-lg);
-    box-shadow: 0 1px 2px #0f172a0a;
+    padding: 0;
     overflow: hidden;
   }
   .doc > header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 16px;
-    padding: 10px 16px;
-    border-bottom: 1px solid var(--border);
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 16px 20px 0;
   }
   .tabs {
     display: flex;
-    gap: 4px;
     flex-wrap: wrap;
+    gap: 4px;
+    padding: 4px;
+    border-radius: 12px;
+    background: var(--accent-soft);
   }
   .tabs button {
-    padding: 6px 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
     border: 0;
-    border-radius: var(--r-sm);
-    background: none;
-    font-size: 13px;
-    font-weight: 500;
+    border-radius: 9px;
+    font: 400 var(--type-caption) / 1.3 var(--font-mono);
     color: var(--text-2);
+    background: none;
+    cursor: pointer;
   }
   .tabs button.on {
-    background: var(--accent-soft);
-    color: var(--accent-text);
+    font-weight: 600;
+    color: var(--text);
+    background: var(--surface);
+    box-shadow: 0 2px 6px var(--shadow-depth);
   }
   .edited {
-    margin-left: 6px;
-    padding: 1px 6px;
-    border-radius: 999px;
-    background: var(--surface-2);
-    font-size: 11px;
-    color: var(--text-3);
+    padding: 1px 7px;
+    border-radius: var(--r-pill);
+    font: 600 var(--type-caption) / 1.3 var(--font);
+    color: var(--warning-text);
+    background: var(--warning-soft);
   }
   .head-actions {
     display: flex;
     align-items: center;
-    gap: 12px;
-    flex: none;
+    gap: 14px;
   }
-
   .doc-body {
-    padding: 16px 20px 20px;
-    overflow-y: auto;
-    max-height: 70vh;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 4px 28px 24px;
   }
   .screens {
-    margin-bottom: 16px;
+    margin-bottom: 8px;
   }
   .doc-body pre {
     margin: 0;
-    padding: 14px;
-    border-radius: var(--r-sm);
-    background: var(--code-bg);
-    color: var(--code-text);
-    font-family: var(--font-mono);
-    font-size: 12px;
+    padding: 16px;
+    overflow: auto;
+    border-radius: 14px;
+    font: 13px/1.6 var(--font-mono);
     white-space: pre-wrap;
-    overflow-wrap: anywhere;
+    color: var(--code-text);
+    background: var(--code-bg);
   }
   .edit {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 12px;
   }
 
-  /* ---- the side ---- */
   .side {
     display: flex;
-    flex-direction: column;
-    gap: 16px;
-    width: 360px;
     flex: none;
+    flex-direction: column;
+    gap: 20px;
+    width: 400px;
   }
-  .card {
+  .side-tile {
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    padding: 16px;
-    background: var(--surface);
-    border: 1px solid var(--card-border);
-    border-radius: var(--r-lg);
-    box-shadow: 0 1px 2px #0f172a0a;
+    gap: 12px;
   }
-  .card h2 {
+  .side-tile h2 {
     margin: 0;
-    font-family: var(--font-head);
-    font-size: 15px;
+    font-size: 18px;
     font-weight: 600;
-    color: var(--text);
+    letter-spacing: -0.3px;
   }
-
   textarea {
-    padding: 10px 12px;
-    border: 1px solid var(--border);
-    border-radius: var(--r-sm);
-    background: var(--surface);
-    font: inherit;
-    font-size: 13px;
     width: 100%;
+    padding: 14px;
+    border: 0;
+    border-radius: 14px;
+    font: var(--type-body) / 1.5 var(--font);
+    color: var(--text);
+    background: var(--surface-2);
+    box-shadow: inset 0 1px 3px #3a2a1a1a;
     resize: vertical;
   }
-
+  .edit textarea {
+    font: 13px/1.6 var(--font-mono);
+  }
   .stack {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 12px;
   }
-
   .criteria {
-    margin: 0;
-    padding-left: 18px;
-    font-size: 13px;
-    color: var(--text-2);
-  }
-  .criteria li {
-    margin: 3px 0;
-  }
-
-  .timeline {
-    list-style: none;
-    margin: 0;
-    padding: 0;
     display: flex;
     flex-direction: column;
+    gap: 8px;
+    margin: 0;
+    padding-left: 18px;
+  }
+  .criteria li {
+    font-size: var(--type-body);
+    line-height: 1.5;
+  }
+  .timeline {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 0;
+    list-style: none;
   }
   .timeline li {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 7px 0;
-    border-top: 1px solid var(--border);
-    font-size: 13px;
-    color: var(--text);
+    gap: 12px;
+    padding-top: 14px;
   }
   .timeline li:first-child {
-    border-top: 0;
+    padding-top: 0;
   }
-  .timeline :global(svg) {
-    color: var(--success);
-    flex: none;
-  }
-  .timeline li.now :global(svg) {
-    color: var(--warning);
+  .ev {
+    width: 26px;
+    height: 26px;
+    box-shadow: none;
   }
   .what {
     display: flex;
-    flex-direction: column;
-    gap: 1px;
     flex: 1;
+    flex-direction: column;
+    gap: 2px;
     min-width: 0;
+    font-size: var(--type-body);
+    font-weight: 500;
+    line-height: 1.4;
+  }
+  .now .what {
+    font-weight: 700;
+    color: var(--warning-text);
   }
   .timeline time {
-    font-size: 11px;
-    color: var(--text-3);
     flex: none;
+    font-family: var(--font-head);
+    font-size: var(--type-caption);
+    font-weight: 600;
+    color: var(--text-3);
   }
-
   .quiet {
     margin: 0;
-    font-size: 12px;
+    font-size: var(--type-body);
     color: var(--text-2);
   }
+  .what .quiet {
+    font-size: var(--type-caption);
+  }
+  .refused,
+  .notice {
+    margin: 0 0 20px;
+    padding: 14px 20px;
+  }
   .refused {
-    border-left: 3px solid var(--danger);
-    margin: 0 0 16px;
-    padding: 12px 16px;
-    color: var(--danger);
+    color: var(--danger-text);
   }
   .notice {
-    border-left: 3px solid var(--accent);
-    margin: 0 0 16px;
-    padding: 12px 16px;
+    color: var(--pen-text);
+  }
+  .notice a {
+    font-weight: 600;
+    color: var(--pen-text);
   }
   .errors {
     margin: 0;
-    padding-left: 18px;
-    color: var(--danger);
+    padding: 12px 16px 12px 32px;
+    border-radius: 12px;
+    color: var(--danger-text);
+    background: var(--danger-soft);
   }
   .row {
     display: flex;
-    gap: 8px;
     justify-content: flex-end;
+    gap: 10px;
   }
 
   @media (max-width: 1100px) {
     .lower {
       flex-direction: column;
+      align-items: stretch;
     }
     .side {
-      width: auto;
+      width: 100%;
     }
     .banner {
       flex-wrap: wrap;

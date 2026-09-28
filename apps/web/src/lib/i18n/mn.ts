@@ -541,12 +541,33 @@ export const mn = {
   },
 
   approve: {
+    cancelExplain: 'Цуцлах нь орчныг чөлөөлж, одоог хүртэл түлхсэн салбарыг хөндөхгүй.',
+    /** The run so far, on the checkpoint's own page (artboard 07, "Явц"). */
+    timelineStep: (step: string, status: string, took: string | null) =>
+      took ? `${step} ${status} · ${took}` : `${step} ${status}`,
+    timelineStepN: (n: number) => `${n}-р алхам`,
+    stepStatus: {
+      pending: 'хүлээгдэж буй',
+      running: 'ажиллаж буй',
+      done: 'дууссан',
+      failed: 'амжилтгүй',
+      skipped: 'алгассан',
+    },
+    timelineSkipped: (reason: string) => `алгассан — ${reason}`,
+    decision: {
+      approved: 'батлагдсан',
+      changes_requested: 'өөрчлөлт хүссэн',
+      edited: 'засаад баталсан',
+      cancelled: 'цуцлагдсан',
+    },
+    timelineDecision: (decision: string, timedOut: boolean) =>
+      timedOut ? `Хяналтын цэг: хугацаа дуусч ${decision}` : `Хяналтын цэг: ${decision}`,
     loading: 'Ачаалж байна…',
     notStarted: 'Энэ даалгавар эхлээгүй байна.',
     loadingCheckpoint: 'Хяналтын цэгийг ачаалж байна…',
-    waitingForYourApproval: 'Таны баталгаажуулалтыг хүлээж буй',
+    waitingForYourApproval: 'Таны батлалт хүлээж буй',
     decided: 'Шийдэгдсэн',
-    cancelRun: 'Цуцлах',
+    cancelRun: 'Ажиллагаа цуцлах',
     backToTheRun: 'Ажиллагаа руу буцах',
     /**
      * "Хяналтын цэг: <юуг> код бичихээс өмнө хянана". Mongolian puts the verb
@@ -555,12 +576,13 @@ export const mn = {
      */
     checkpointReview: (what: string, when: string) => `Хяналтын цэг: ${when} ${what} хянана уу`,
     checkpointThis: 'үүнийг',
-    checkpointThe: (label: string) => `${label}-ийг`,
+    /** The accusative: "төлөвлөгөөг", "тодорхойлолтыг". */
+    checkpointThe: (label: string) => (/[аэиоуөүяеёюы]$/i.test(label) ? `${label}г` : `${label}ыг`),
     beforeAnyCode: 'код бичихээс өмнө',
     beforePipelineContinues: 'дамжлага үргэлжлэхээс өмнө',
     thePreviousStep: 'Өмнөх алхам',
-    pausedExplain: (label: string, step: number) =>
-      `${label} дууслаа. Та батлах, өөрчлөлт хүсэх, эсвэл баримтыг өөрөө засах хүртэл дамжлага ${step}-р алхам дээр түр зогссон (ажиллуулах үйлчилгээ хүлээж байна). Харин цуцлах нь орчныг чөлөөлж, салбарыг хөндөхгүй.`,
+    pausedExplain: (label: string, _step: number) =>
+      `${label} ажлаа дуусгалаа. Та батлах, өөрчлөлт хүсэх, эсвэл өөрөө засах хүртэл дамжлага түр зогсоно.`,
     alreadyDecided: (decision: string) => `Аль хэдийн шийдэгдсэн: ${decision}`,
     decidedAt: (at: string) => `${at}-нд. Энд хүлээх зүйл байхгүй.`,
     notAtCheckpoint: 'Энэ ажиллагаа хяналтын цэг дээр хүлээгээгүй',
@@ -574,7 +596,7 @@ export const mn = {
     edited: 'засварласан',
     rendered: 'Харагдацаар',
     source: 'Эх хувь',
-    edit: (name: string) => `${name}-ийг засах`,
+    edit: (name: string) => `${name} засах`,
     screens: 'Дэлгэцүүд',
     noDocuments: 'Одоогоор баримт байхгүй — дээрх дэлгэцүүд нь өнөөг хүртэл байгаа бүхэн.',
     discardChanges: 'Өөрчлөлтийг болих',
@@ -584,8 +606,9 @@ export const mn = {
     empty: '(хоосон)',
     version: (version: number) => `${version}-р хувилбар`,
     chooseDocument: 'Уншихын тулд баримт сонгоно уу.',
-    sentBackTo: (label: string) =>
-      `Таны тэмдэглэл ${label} руу буцаж, бичсэнээ дахин хянаж, дараа нь энд дахин түр зогсоно.`,
+    sentBackTo: (label: string, what: string) =>
+      `Таны тэмдэглэл ${label} руу буцаж, ${what} засагдаад дахин энд зогсоно.`,
+    theWork: 'ажил',
     theAgent: 'агент',
     feedbackLabel: 'Өөрчлөлт хүсэх — энэ текст агент руу илгээгдэнэ',
     feedbackPlaceholder: 'Юу өөрчлөгдөх ёстой, яагаад?',
@@ -595,21 +618,23 @@ export const mn = {
     classifiedAs: (kind: string, rationale: string) => `${kind} гэж тодорхойлсон — ${rationale}`,
     interfaceWork: 'интерфейсийн ажил',
     notInterfaceWork: 'интерфейсийн ажил биш',
-    timeline: 'Цагийн хэлхээ',
-    waitingForApproval: 'Баталгаажуулалт хүлээж буй',
+    timeline: 'Явц',
+    waitingForApproval: 'Батлалт хүлээж буй',
     waitingForApprovalYou: ' (та)',
   },
 
   designReview: {
     notStarted: 'Энэ даалгавар эхлээгүй байна.',
-    waitingForDesignApproval: 'Дизайны баталгаажуулалтыг хүлээж буй',
+    loading: 'Ачаалж байна…',
+    loadingDesign: 'Дизайныг ачаалж байна…',
+    waitingForDesignApproval: 'Дизайн батлахыг хүлээж буй',
+    checkpoint: 'Хяналтын цэг: код бичихээс өмнө дэлгэцүүдийг хянана уу',
     decided: 'Шийдэгдсэн',
-    cancelRun: 'Цуцлах',
+    cancelRun: 'Ажиллагаа цуцлах',
     backToTheRun: 'Ажиллагаа руу буцах',
-    producedScreens: (screens: number) =>
-      `Дизайн алхам pen.dev CLI-ээр ${screens} дэлгэц гаргалаа.`,
-    nothingImplemented: 'Одоогоор юу ч хөгжүүлээгүй.',
-    approveToContinue: (next: string) => `Үргэлжлүүлэхийн тулд ${next} руу батална уу.`,
+    producedScreens: (screens: number) => `Дизайн агент pen.dev CLI-аар ${screens} дэлгэц зурсан.`,
+    nothingImplemented: 'Одоогоор юу ч хэрэгжүүлээгүй.',
+    approveToContinue: (next: string) => `Батлавал ${next} рүү шилжинэ.`,
     alreadyDecided: (decision: string) => `Аль хэдийн шийдэгдсэн: ${decision}`,
     decidedAt: (at: string) => `${at}-нд. Энд хүлээх зүйл байхгүй.`,
     notAtCheckpoint: 'Энэ ажиллагаа дизайны хяналтын цэг дээр хүлээгээгүй',
@@ -618,29 +643,30 @@ export const mn = {
     requestChanges: 'Өөрчлөлт хүсэх',
     approveAndContinue: 'Батлаад үргэлжлүүлэх',
     screens: 'Дэлгэцүүд',
-    exported: (screens: number) => `${screens} гаргасан`,
-    openDesignSource: 'Дизайны эх хувийг нээх',
+    exported: (screens: number) => `${screens} экспортлосон`,
+    openDesignSource: 'pen.dev дээр нээх',
+    downloadSource: '.pen татах',
     sourceNotLinkable: (path: string) =>
       `${path} салбарт commit хийгдсэн; энэ репозиторийн хаягаас файлын холбоос үүсгэх боломжгүй.`,
     designedScreens: 'Зурагдсан дэлгэцүүд',
-    whyDesigned: 'Энэ даалгавар яагаад зурагдсан',
-    decidedBySpec: (kind: string) => `Тодорхойлолтын алхам шийдсэн · ${kind} гэж тодорхойлсон`,
+    whyDesigned: 'Яагаад энэ даалгаврыг зурсан бэ',
+    decidedBySpec: (kind: string) => `Тодорхойлолт агент шийдсэн · ${kind}`,
     interfaceWork: 'интерфейсийн ажил',
     notInterfaceWork: 'интерфейсийн ажил биш',
     classificationMissing:
       'Тодорхойлолтын алхам энэ даалгавар интерфейсийг өөрчлөх эсэх талаар хэрэглэж болох шийдвэр гаргаагүй тул өөрчлөхгүй гэж авсан.',
     noReason: 'Ямар ч шалтгаан бичигдээгүй.',
-    checkAgainst: 'Дэлгэцүүдийг дараахтай шалгана уу',
+    checkAgainst: 'Дэлгэцүүдийг эдгээртэй тулгана уу',
+    galleryNote: 'Тус бүр бүтэн хэмжээгээр нээгдэнэ. Сум товчоор хооронд нь шилжинэ.',
     noAcceptance: 'Нэг ч заагаагүй. Энэ нь чанарын хамгийн том хөшүүрэг юм.',
     revisedNotRedrawn: 'Дизайныг шинээр зурахгүй, зассан хувилбар нь энд эргэж ирнэ.',
     feedbackLabel: 'Өөрчлөлт хүсэх — энэ текст дизайны хэрэгсэл руу илгээгдэнэ',
     feedbackPlaceholder: 'Юу өөрчлөгдөх ёстой, яагаад?',
     sendBackToDesign: 'Дизайн алхам руу буцаах',
-    afterYouApprove: 'Та баталсны дараа',
+    afterYouApprove: 'Батласны дараа',
     openMergeRequest: 'Нэгтгэх хүсэлт нээх',
-    openMergeRequestNote: 'Салбар түлхэгдэж, нэгтгэх хүсэлт нээгдэж, даалгавар хаагдана',
-    stepCost: (seconds: string | number, costUsd: string | number) =>
-      `Дизайн алхам ${seconds}с зарцуулж, ${costUsd} өртсөн.`,
+    openMergeRequestNote: 'Салбар түлхэгдэж, хүсэлт нээгдэж, даалгавар хаагдана',
+    stepCost: (took: string, cost: string) => `Дизайн алхам ${took} зарцуулж, ${cost} өртсөн.`,
   },
 
   agents: {
@@ -962,6 +988,7 @@ export const mn = {
   },
 
   gallery: {
+    position: (n: number, total: number) => `${total}-с ${n}`,
     heading: 'Дэлгэцүүд',
     empty: 'Ямар ч дэлгэц гараагүй.',
     close: 'Хаах',

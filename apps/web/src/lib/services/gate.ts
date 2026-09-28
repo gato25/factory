@@ -12,13 +12,15 @@ import {
   type Step,
 } from '@factory/shared';
 import { and, desc, eq, sql } from 'drizzle-orm';
+import { stepTitle } from '$lib/default-names';
+import { m } from '$lib/i18n';
+import { duration } from '$lib/step-kind';
 import { currentVersion } from './artifact';
 import type { SessionUser } from './auth';
 import { requireApprover } from './authz';
 import { notifyRun } from './notify';
 import { setRunStatus } from './run';
 import { setTicketStatus } from './ticket';
-import { m } from '$lib/i18n';
 
 const log = createLogger('web');
 
@@ -347,29 +349,37 @@ export async function gateDetail(
     .where(eq(approvals.runId, runId))
     .orderBy(approvals.decidedAt);
 
+  // Said in the catalogue's words, as the artboard writes them —
+  // "Тодорхойлолт дууссан · 1м 50с", "Хяналтын цэг: батлагдсан" — and a
+  // shipped agent's step by its own name (specs/004-bento-redesign FR-026,
+  // FR-028).
   const timeline: GateDetail['timeline'] = [
     ...steps.map((step) => {
       const definition = snapshot.pipeline.steps[step.stepIndex];
-      const label =
+      const name =
         snapshot.agents.find((a) => a.id === definition?.agent_id)?.name ??
-        definition?.type ??
-        `step ${step.stepIndex + 1}`;
+        (definition?.type === 'shell' ? (definition.command ?? 'shell') : definition?.type);
+      const label = name
+        ? stepTitle({ type: definition?.type ?? 'agent', label: name })
+        : m.approve.timelineStepN(step.stepIndex + 1);
       return {
         at: step.finishedAt ?? step.startedAt ?? step.createdAt,
         kind: 'step' as const,
-        label: `${label} ${step.status}`,
+        label: m.approve.timelineStep(
+          label,
+          m.approve.stepStatus[step.status],
+          step.durationS ? duration(step.durationS) : null,
+        ),
         detail:
           step.status === 'skipped'
-            ? `skipped — ${step.conditionNotMet}`
+            ? m.approve.timelineSkipped(step.conditionNotMet ?? '')
             : (step.errorDetail ?? step.summary ?? null),
       };
     }),
     ...decisions.map((decision) => ({
       at: decision.decidedAt,
       kind: 'decision' as const,
-      label: decision.timedOut
-        ? `checkpoint ${decision.decision} on timeout`
-        : `checkpoint ${decision.decision}`,
+      label: m.approve.timelineDecision(m.approve.decision[decision.decision], decision.timedOut),
       detail: decision.feedback,
     })),
   ].sort((a, b) => a.at.getTime() - b.at.getTime());

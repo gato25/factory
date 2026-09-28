@@ -20,11 +20,14 @@
     run,
     onSelect,
     selected,
+    classification = null,
   }: {
     steps: RunView['steps'];
     run: RunView['run'];
     onSelect?: (index: number) => void;
     selected?: number;
+    /** Why a design step did or did not run, in the classification's own words (FR-100). */
+    classification?: string | null;
   } = $props();
 
   /**
@@ -160,6 +163,9 @@
         {m.stepTracker.skippedBecause(labelOf(step), step.conditionNotMet ?? '')}
       </p>
     {/each}
+    {#if skipped.length > 0 && classification}
+      <p class="note">{classification}</p>
+    {/if}
     {#if chosen?.summary && chosen.state === 'done'}
       <p class="note">{labelOf(chosen)} — {chosen.summary}</p>
     {/if}

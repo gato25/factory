@@ -2,6 +2,7 @@ import { createHmac, randomUUID } from 'node:crypto';
 import type { APIRequestContext, BrowserContext } from '@playwright/test';
 import { expect, test } from '@playwright/test';
 import postgres from 'postgres';
+import { m } from '../../src/lib/i18n';
 
 /**
  * User Story 5's Independent Test (quickstart.md scenario E): two tickets
@@ -228,7 +229,21 @@ test.describe('designing the interface before building it', () => {
     // Every screen as an image, the criteria beside them, the reason, and a
     // statement that no code has been written yet (FR-064d).
     await expect(page.getByRole('heading', { name: /Add Google OAuth sign-in/ })).toBeVisible();
-    await expect(page.getByText('Nothing has been implemented yet')).toBeVisible();
+    // It is design work, and it says so: the pen.dev checkpoint, and that no
+    // code has been written yet (US5 scenario 1).
+    const banner = page.locator('.banner');
+    await expect(banner).toContainText(m.designReview.checkpoint);
+    await expect(banner).toContainText(m.designReview.nothingImplemented);
+    await expect(
+      banner.getByRole('button', { name: m.designReview.approveAndContinue }),
+    ).toBeVisible();
+    await expect(
+      banner.getByRole('button', { name: m.designReview.requestChanges, exact: true }),
+    ).toBeVisible();
+    await expect(page.getByRole('button', { name: m.designReview.cancelRun })).toBeVisible();
+    // Why it was designed, and what to check the screens against.
+    await expect(page.getByText(m.designReview.whyDesigned)).toBeVisible();
+    await expect(page.getByText(m.designReview.checkAgainst)).toBeVisible();
     await expect(page.getByText('A Google button appears on the sign-in screen.')).toBeVisible();
     await expect(
       page.getByText('A Google button appears on the sign-in screen', { exact: true }),
@@ -259,26 +274,34 @@ test.describe('designing the interface before building it', () => {
       .click();
     const viewer = page.getByRole('dialog');
     await expect(viewer).toBeVisible();
-    await expect(viewer.getByText('1 of 2')).toBeVisible();
-    await viewer.getByRole('button', { name: 'Next screen' }).click();
-    await expect(viewer.getByText('2 of 2')).toBeVisible();
+    await expect(viewer.getByText(m.gallery.position(1, 2))).toBeVisible();
+    await viewer.getByRole('button', { name: m.gallery.next }).click();
+    await expect(viewer.getByText(m.gallery.position(2, 2))).toBeVisible();
     await expect(viewer.getByText('docs/design/screens/01-callback.png')).toBeVisible();
-    await viewer.getByRole('button', { name: 'Close' }).click();
+    await viewer.getByRole('button', { name: m.gallery.close }).click();
     await expect(viewer).toBeHidden();
 
     // A link that opens the committed design source (FR-064e).
-    const source = page.getByRole('link', { name: 'Open the design source' });
+    // "pen.dev дээр нээх" opens it on the provider; ".pen татах" fetches it
+    // (US5 scenario 2).
+    const source = page.getByRole('link', { name: m.designReview.openDesignSource });
     await expect(source).toHaveAttribute(
       'href',
       `https://gitlab.com/netgroup/shop/-/blob/factory%2F${seeded.tag}-oauth/docs/design/ui.pen`,
+    );
+    await expect(page.getByRole('link', { name: m.designReview.downloadSource })).toHaveAttribute(
+      'href',
+      `https://gitlab.com/netgroup/shop/-/raw/factory%2F${seeded.tag}-oauth/docs/design/ui.pen`,
     );
 
     // --- request changes: the design is revised, not redrawn ---
     await page
       .locator('textarea[name="feedback"]')
       .fill('The Google button is below the fold on a phone.');
-    await page.getByRole('button', { name: 'Request changes' }).click();
-    await expect(page.getByText(/Already decided:\s*changes requested/)).toBeVisible({
+    await page.getByRole('button', { name: m.designReview.requestChanges, exact: true }).click();
+    await expect(
+      page.getByText(m.designReview.alreadyDecided(m.approve.decision.changes_requested)),
+    ).toBeVisible({
       timeout: 10_000,
     });
 
@@ -367,13 +390,15 @@ test.describe('designing the interface before building it', () => {
     await page.goto(`/tickets/${seeded.ticketId}`);
 
     // Shown as skipped WITH its reason, not omitted (FR-075a, FR-110).
-    await expect(page.getByText(/skipped — ticket has no UI change/).first()).toBeVisible();
+    await expect(
+      page.getByText(new RegExp(`${m.stepTracker.skipped} — ticket has no UI change`)).first(),
+    ).toBeVisible();
     // Why, in the classification's own words (FR-100).
     await expect(page.getByText('This only adds a database migration nobody sees.')).toBeVisible();
     // The run did not fail, and a merge request opened (FR-111).
-    await expect(page.getByText('Done').first()).toBeVisible();
+    await expect(page.locator('.title-row .pill')).toHaveText(m.run.statusDone);
     await expect(
-      page.getByRole('link', { name: /merge_requests\/12|Merge request/ }),
+      page.getByRole('link', { name: new RegExp(m.runResults.mergeRequest('!12')) }),
     ).toBeVisible();
 
     // SC-018 — nothing was spent on design.
@@ -432,7 +457,6 @@ test.describe('designing the interface before building it', () => {
 
     // And the warning is visible on the run itself.
     await page.goto(`/tickets/${seeded.ticketId}`);
-    await expect(page.getByText(/recorded no decision about the interface/i).first()).toBeVisible();
-    await expect(page.getByText(/Check whether this ticket needed screens/)).toBeVisible();
+    await expect(page.getByText(m.runDetails.classificationMissing).first()).toBeVisible();
   });
 });

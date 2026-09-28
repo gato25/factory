@@ -3,9 +3,11 @@
   import { page } from '$app/state';
   import Icon from '$components/Icon.svelte';
   import { exact } from '$lib/format';
+  import { duration } from '$lib/step-kind';
   import { m } from '$lib/i18n';
   import ScreenGallery from '$components/ScreenGallery.svelte';
   import TicketHead from '$components/TicketHead.svelte';
+  import { agentName, stepTitle } from '$lib/default-names';
   import { subscribeToRun } from '$lib/events/subscribe';
   import { approve, cancelRun, design, requestChanges } from '$lib/remote/approvals.remote';
   import { runForTicket } from '$lib/remote/runs.remote';
@@ -38,9 +40,12 @@
       : [],
   );
 
+  /** The same file, as the provider serves it to download rather than to view. */
+  const rawUrl = (url: string) => url.replace('/-/blob/', '/-/raw/').replace(/\/blob\//, '/raw/');
+
   const KIND_ICON: Record<string, string> = {
     agent: 'bot',
-    design: 'palette',
+    design: 'pen-tool',
     checkpoint: 'hand',
     shell: 'terminal',
     notify: 'bell',
@@ -63,13 +68,13 @@
 </script>
 
 {#if !view.ready}
-  <p class="card">Loading…</p>
+  <p class="tile">{m.designReview.loading}</p>
 {:else if !view.current}
-  <p class="card">{m.designReview.notStarted}</p>
+  <p class="tile">{m.designReview.notStarted}</p>
 {:else if review?.error}
-  <p class="card failure" role="alert">{(review.error as Error).message}</p>
+  <p class="tile tile--danger refused" role="alert">{(review.error as Error).message}</p>
 {:else if !review?.ready}
-  <p class="card">Loading the design…</p>
+  <p class="tile">{m.designReview.loadingDesign}</p>
 {:else}
   {@const d = review.current}
   {@const loaded = view.current}
@@ -86,7 +91,7 @@
     startedAt={loaded.run.startedAt}
     costUsd={loaded.run.costUsd}
     status={paused
-      ? { label: m.designReview.waitingForDesignApproval, tone: 'warn' }
+      ? { label: m.designReview.waitingForDesignApproval, tone: 'pen' }
       : { label: m.designReview.decided, tone: 'ok' }}
   >
     {#snippet actions()}
@@ -94,15 +99,15 @@
         <form {...cancelRun}>
           <input type="hidden" name="runId" value={d.gate.runId} />
           <input type="hidden" name="stepIndex" value={d.gate.stepIndex} />
-          <button class="secondary" type="submit">
-            <Icon name="circle-x" size={16} />
-            <span>{m.designReview.cancelRun}</span>
+          <button class="btn btn--danger-soft" type="submit" title={m.approve.cancelExplain}>
+            <Icon name="circle-x" size={14} />
+            {m.designReview.cancelRun}
           </button>
         </form>
       {/if}
-      <a class="secondary" href="/tickets/{ticketId}">
-        <Icon name="undo-2" size={16} />
-        <span>{m.designReview.backToTheRun}</span>
+      <a class="btn btn--secondary" href="/tickets/{ticketId}">
+        <Icon name="undo-2" size={14} />
+        {m.designReview.backToTheRun}
       </a>
     {/snippet}
   </TicketHead>
@@ -110,21 +115,21 @@
   {@const refusal =
     approve.result?.problem ?? requestChanges.result?.problem ?? cancelRun.result?.problem}
   {#if refusal}
-    <p class="card refused" role="alert">{refusal}</p>
+    <p class="tile tile--danger refused" role="alert">{refusal}</p>
   {/if}
 
-  <section class="banner" class:decided={!paused}>
-    <span class="mark"><Icon name="palette" size={22} /></span>
+  <section class="tile banner" class:tile--design={paused} class:decided={!paused}>
+    <span class="orb orb--pen mark" aria-hidden="true"><Icon name="images" size={22} /></span>
     <div class="tx">
       {#if paused}
-        <p class="t">Checkpoint: review the screens before any code is written</p>
+        <p class="t">{m.designReview.checkpoint}</p>
         <p class="s">
           {m.designReview.producedScreens(d.screens.length)}
           {#if d.noCodeYet}{m.designReview.nothingImplemented}{/if}
-          {#if next[0]}{m.designReview.approveToContinue(next[0].label)}{/if}
+          {#if next[0]}{m.designReview.approveToContinue(stepTitle(next[0]))}{/if}
         </p>
       {:else if d.gate.decided}
-        <p class="t">{m.designReview.alreadyDecided(d.gate.decided.decision.replace('_', ' '))}</p>
+        <p class="t">{m.designReview.alreadyDecided(m.approve.decision[d.gate.decided.decision as keyof typeof m.approve.decision] ?? d.gate.decided.decision)}</p>
         <p class="s">{m.designReview.decidedAt(exact(d.gate.decided.at))}</p>
       {:else}
         <p class="t">{m.designReview.notAtCheckpoint}</p>
@@ -139,20 +144,20 @@
           <p class="s">{m.designReview.notYoursToDecide}</p>
         {:else}
           <button
-            class="secondary"
+            class="btn changes"
             type="submit"
             form="request-changes"
             disabled={requestChanges.pending > 0}
           >
-            <Icon name="message-square" size={16} />
-            <span>{m.designReview.requestChanges}</span>
+            <Icon name="message-square" size={14} />
+            {m.designReview.requestChanges}
           </button>
           <form {...approve}>
             <input type="hidden" name="runId" value={d.gate.runId} />
             <input type="hidden" name="stepIndex" value={d.gate.stepIndex} />
-            <button class="go" type="submit" disabled={approve.pending > 0}>
-              <Icon name="check" size={16} />
-              <span>{m.designReview.approveAndContinue}</span>
+            <button class="btn btn--pen" type="submit" disabled={approve.pending > 0}>
+              <Icon name="check" size={15} />
+              {m.designReview.approveAndContinue}
             </button>
           </form>
         {/if}
@@ -161,32 +166,40 @@
   </section>
 
   {#each [...(approve.fields.allIssues() ?? []), ...(requestChanges.fields.allIssues() ?? [])] as issue (issue.message)}
-    <p class="card refused" role="alert">{issue.message}</p>
+    <p class="tile tile--danger refused" role="alert">{issue.message}</p>
   {/each}
 
   <div class="lower">
-    <section class="card gallery">
+    <section class="tile gallery">
       <header class="gh">
         <div class="l">
           <h2>{m.designReview.screens}</h2>
-          <span class="badge pink">
-            <span class="dot"></span>
-            {m.designReview.exported(d.screens.length)}
-          </span>
+          <span class="exported">{m.designReview.exported(d.screens.length)}</span>
         </div>
         {#if d.designSource}
           <div class="r">
             {#if d.designSource.url}
               <!-- The committed source, openable where it lives (FR-064e) -->
               <a
-                class="secondary"
+                class="btn btn--pen small-btn"
                 href={d.designSource.url}
                 title={d.designSource.path}
                 target="_blank"
                 rel="noreferrer noopener"
               >
-                <Icon name="external-link" size={16} />
-                <span>{m.designReview.openDesignSource}</span>
+                <Icon name="pen-tool" size={13} />
+                {m.designReview.openDesignSource}
+              </a>
+              <a
+                class="btn btn--secondary small-btn"
+                href={rawUrl(d.designSource.url)}
+                title={d.designSource.path}
+                download
+                target="_blank"
+                rel="noreferrer noopener"
+              >
+                <Icon name="download" size={13} />
+                {m.designReview.downloadSource}
               </a>
             {:else}
               <span class="quiet">
@@ -198,17 +211,18 @@
       </header>
 
       <ScreenGallery
+        bare
         screens={d.screens}
         heading={m.designReview.designedScreens}
-        note="Each one opens at full size. Use the arrow keys to move between them."
+        note={m.designReview.galleryNote}
       />
     </section>
 
     <aside class="side">
       <!-- Why the design step ran at all (FR-100) -->
-      <section class="card">
+      <section class="tile side-tile">
         <div class="sh">
-          <Icon name="palette" size={16} />
+          <Icon name="pen-tool" size={15} />
           <h3>{m.designReview.whyDesigned}</h3>
         </div>
         {#if d.ticket.uiRationale}
@@ -228,21 +242,21 @@
       </section>
 
       <!-- The criteria beside the screens, so they are read together (FR-064d) -->
-      <section class="card">
+      <section class="tile side-tile">
         <h3>{m.designReview.checkAgainst}</h3>
         {#if d.ticket.acceptanceCriteria.length === 0}
           <p class="quiet">{m.designReview.noAcceptance}</p>
         {:else}
           <ul class="criteria">
             {#each d.ticket.acceptanceCriteria as criterion (criterion)}
-              <li><Icon name="square-check" size={14} /><span>{criterion}</span></li>
+              <li><span class="check" aria-hidden="true"><Icon name="check" size={11} /></span><span>{criterion}</span></li>
             {/each}
           </ul>
         {/if}
       </section>
 
       {#if paused && d.mayDecide}
-        <section class="card">
+        <section class="tile side-tile">
           <h3>{m.designReview.requestChanges}</h3>
           <p class="quiet">
             {m.designReview.revisedNotRedrawn}
@@ -256,28 +270,28 @@
               aria-label={m.designReview.feedbackLabel}
               placeholder={m.designReview.feedbackPlaceholder}
             ></textarea>
-            <button class="secondary wide" type="submit" disabled={requestChanges.pending > 0}>
-              <Icon name="undo-2" size={16} />
-              <span>{m.designReview.sendBackToDesign}</span>
+            <button class="btn btn--pen wide" type="submit" disabled={requestChanges.pending > 0}>
+              <Icon name="undo-2" size={15} />
+              {m.designReview.sendBackToDesign}
             </button>
           </form>
         </section>
       {/if}
 
       {#if next.length > 0}
-        <section class="card">
+        <section class="tile side-tile">
           <h3>{m.designReview.afterYouApprove}</h3>
           {#each next as row (row.index)}
             <div class="n">
-              <span class="ic"><Icon name={KIND_ICON[row.type] ?? 'bot'} size={13} /></span>
+              <span class="orb orb--sm ic" aria-hidden="true"><Icon name={KIND_ICON[row.type] ?? 'bot'} size={14} /></span>
               <span class="tx">
-                <span class="t">{row.label}</span>
+                <span class="t">{row.type === 'agent' || row.type === 'design' ? agentName(row.label) : stepTitle(row)}</span>
                 {#if row.model}<span class="s">{row.model}</span>{/if}
               </span>
             </div>
           {/each}
           <div class="n">
-            <span class="ic ok"><Icon name="git-pull-request" size={13} /></span>
+            <span class="orb orb--sm orb--mint ic" aria-hidden="true"><Icon name="git-pull-request" size={14} /></span>
             <span class="tx">
               <span class="t">{m.designReview.openMergeRequest}</span>
               <span class="s">{m.designReview.openMergeRequestNote}</span>
@@ -288,7 +302,7 @@
 
       {#if step}
         <p class="quiet foot">
-          {m.designReview.stepCost(step.durationS ?? 0, step.costUsd ?? 0)}
+          {m.designReview.stepCost(duration(step.durationS ?? 0), `$${Number(step.costUsd ?? 0).toFixed(2)}`)}
         </p>
       {/if}
     </aside>
@@ -296,308 +310,249 @@
 {/if}
 
 <style>
-  /* ---- the banner ---- */
+  /* ---- the banner: pen.dev's checkpoint, and the two decisions ---- */
   .banner {
     display: flex;
     align-items: center;
-    gap: 16px;
-    padding: 16px 20px;
-    border-radius: var(--r-lg);
-    background: var(--warning-soft);
-    margin-bottom: 16px;
-  }
-  .banner.decided {
-    background: var(--surface-2);
+    gap: 18px;
+    margin-bottom: 20px;
+    padding: 22px 26px;
   }
   .mark {
-    display: grid;
-    place-items: center;
-    flex: none;
-    color: var(--warning);
+    width: 52px;
+    height: 52px;
   }
   .banner.decided .mark {
     color: var(--text-3);
+    background: var(--surface-2);
+    box-shadow: none;
   }
   .banner .tx {
     display: flex;
-    flex-direction: column;
-    gap: 3px;
     flex: 1;
+    flex-direction: column;
+    gap: 5px;
     min-width: 0;
   }
-  .t {
+  .banner .t {
     margin: 0;
-    font-size: 14px;
+    font-family: var(--font-head);
+    font-size: 19px;
     font-weight: 600;
+    letter-spacing: -0.3px;
+    color: #173b7a;
+  }
+  .banner .s {
+    margin: 0;
+    font-size: var(--type-body);
+    color: #2f5596;
+  }
+  .decided .t {
     color: var(--text);
   }
-  .s {
-    margin: 0;
-    font-size: 12px;
+  .decided .s {
     color: var(--text-2);
   }
   .btns {
     display: flex;
+    flex: none;
     align-items: center;
     gap: 10px;
-    flex: none;
   }
-
-  /* ---- buttons ---- */
-  button,
-  a.secondary {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 10px 16px;
-    border-radius: var(--r-sm);
-    font: inherit;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    text-decoration: none;
+  .btns form {
+    display: contents;
   }
-  .secondary {
-    border: 1px solid var(--border);
-    background: var(--surface);
-    color: var(--text);
+  .btn.changes {
+    color: #173b7a;
+    background: #f4f8feb3;
+    box-shadow: none;
   }
-  .secondary :global(svg) {
-    color: var(--text-2);
+  :global(.btn.btn--danger-soft) {
+    padding: 10px 14px;
+    color: var(--danger-text);
+    background: var(--danger-soft);
+    box-shadow: none;
   }
-  .secondary:hover:not(:disabled) {
-    border-color: var(--accent);
-  }
-  .secondary.wide {
+  .btn.wide {
     width: 100%;
   }
-  /* Approve is the one button that lets work continue. */
-  .go {
-    border: 1px solid var(--success);
-    background: var(--success);
-    color: var(--text-inv);
-    font-weight: 600;
-  }
-  button:disabled {
-    opacity: 0.55;
-    cursor: not-allowed;
+  .small-btn {
+    padding: 8px 12px;
+    border-radius: 11px;
+    font-size: var(--type-caption);
+    font-weight: 700;
   }
 
-  /* ---- layout ---- */
+  /* ---- the screens, and the column beside them ---- */
   .lower {
     display: flex;
     align-items: flex-start;
-    gap: 24px;
-  }
-  .card {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    padding: 16px;
-    background: var(--surface);
-    border: 1px solid var(--card-border);
-    border-radius: var(--r-lg);
-    box-shadow: 0 1px 2px #0f172a0a;
+    gap: 20px;
   }
   .gallery {
-    flex: 1;
-    min-width: 0;
-  }
-  /* The gallery brings its own card; inside this one it steps out of the way. */
-  .gallery :global(.card) {
-    padding: 0;
-    border: 0;
-    box-shadow: none;
-    background: none;
-  }
-  .side {
     display: flex;
+    flex: 1;
     flex-direction: column;
     gap: 16px;
-    width: 340px;
-    flex: none;
+    min-width: 0;
+    padding: 22px;
   }
-
   .gh {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 16px;
     flex-wrap: wrap;
+    gap: 12px;
   }
-  .gh .l {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
+  .gh .l,
   .gh .r {
     display: flex;
     align-items: center;
     gap: 10px;
   }
-  h2 {
+  .gh h2 {
     margin: 0;
-    font-family: var(--font-head);
-    font-size: 16px;
+    font-size: 18px;
     font-weight: 600;
-    color: var(--text);
+    letter-spacing: -0.3px;
   }
-  h3 {
-    margin: 0;
-    font-family: var(--font-head);
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--text);
+  .exported {
+    padding: 3px 9px;
+    border-radius: var(--r-pill);
+    font-size: var(--type-caption);
+    font-weight: 700;
+    color: var(--pen-text);
+    background: var(--purple-soft);
+  }
+
+  .side {
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    gap: 20px;
+    width: 400px;
+  }
+  .side-tile {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 22px;
   }
   .sh {
     display: flex;
     align-items: center;
     gap: 8px;
+    color: var(--purple);
   }
-  .sh :global(svg) {
-    color: var(--design);
-    flex: none;
+  h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.2px;
+    color: var(--text);
   }
-
-  .badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 10px;
-    border-radius: 999px;
-    background: var(--surface-2);
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--text-2);
-  }
-  .badge.pink {
-    background: var(--design-soft);
-    color: var(--design);
-  }
-  .dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 999px;
-    background: currentcolor;
-    flex: none;
-  }
-
   .quote {
     margin: 0;
-    font-size: 13px;
-    line-height: 1.6;
-    color: var(--text-2);
+    font-size: var(--type-body);
+    line-height: 1.5;
   }
   .by {
     margin: 0;
-    font-size: 11px;
+    font: 12px/1.4 var(--font-mono);
     color: var(--text-3);
   }
-
   .criteria {
-    list-style: none;
-    margin: 0;
-    padding: 0;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
   }
   .criteria li {
     display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    font-size: 13px;
-    color: var(--text-2);
+    align-items: center;
+    gap: 10px;
+    font-size: var(--type-body);
   }
-  .criteria :global(svg) {
-    color: var(--text-3);
+  .check {
+    display: grid;
     flex: none;
-    margin-top: 2px;
+    place-items: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 6px;
+    color: var(--text-inv);
+    background: linear-gradient(180deg, var(--mint-from), var(--mint-to));
   }
-
+  textarea {
+    width: 100%;
+    padding: 14px;
+    border: 0;
+    border-radius: 14px;
+    font: var(--type-body) / 1.5 var(--font);
+    color: var(--text);
+    background: var(--surface-2);
+    box-shadow: inset 0 1px 3px #3a2a1a1a;
+    resize: vertical;
+  }
+  .stack {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
   .n {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
   }
-  .n .ic {
-    display: grid;
-    place-items: center;
-    width: 26px;
-    height: 26px;
-    border-radius: 6px;
-    background: var(--surface-2);
-    color: var(--text-2);
-    flex: none;
+  .n + .n {
+    padding-top: 6px;
   }
-  .n .ic.ok {
-    background: var(--success-soft);
-    color: var(--success);
+  .ic {
+    width: 30px;
+    height: 30px;
+    box-shadow: none;
   }
   .n .tx {
     display: flex;
     flex-direction: column;
-    gap: 1px;
+    gap: 2px;
     min-width: 0;
   }
   .n .t {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--text);
+    font-size: var(--type-body);
+    font-weight: 600;
   }
   .n .s {
-    font-size: 11px;
-    color: var(--text-3);
+    font-size: var(--type-caption);
+    color: var(--text-2);
   }
-
-  .stack {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-  textarea {
-    padding: 10px 12px;
-    border: 1px solid var(--border);
-    border-radius: var(--r-sm);
-    background: var(--surface);
-    font: inherit;
-    font-size: 13px;
-    width: 100%;
-    resize: vertical;
-  }
-
   .quiet {
     margin: 0;
-    font-size: 12px;
+    font-size: var(--type-body);
     color: var(--text-2);
   }
   .warn-text {
-    color: var(--warning);
+    color: var(--warning-text);
   }
   .foot {
-    text-align: right;
-    color: var(--text-3);
+    padding: 0 6px;
+    font-size: var(--type-caption);
   }
   .refused {
-    border-left: 3px solid var(--danger);
-    margin: 0 0 16px;
-    padding: 12px 16px;
-    color: var(--danger);
-  }
-  .failure {
-    border-left: 3px solid var(--danger);
-    padding: 12px 16px;
-    color: var(--danger);
+    margin: 0 0 20px;
+    padding: 14px 20px;
+    color: var(--danger-text);
   }
 
   @media (max-width: 1100px) {
     .lower {
       flex-direction: column;
+      align-items: stretch;
     }
     .side {
-      width: auto;
-      align-self: stretch;
+      width: 100%;
     }
     .banner {
       flex-wrap: wrap;
