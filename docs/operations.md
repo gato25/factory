@@ -24,6 +24,9 @@ both are load-bearing — see [credential-path.md](./reviews/credential-path.md)
 
 ## Bringing it up
 
+The pieces, started by hand with development servers — how to see them work together. A server is
+set up differently, under systemd with nginx in front: see [On a Linux server](#on-a-linux-server).
+
 ```bash
 bun install                                   # workspace root; Bun is pinned in .bun-version
 docker compose up -d postgres                 # or point DATABASE_URL at a Postgres of your own
@@ -61,9 +64,170 @@ three results are genuinely different states:
 | `It answered but refused our credential.` | Right address, wrong token | Replace the token |
 | `Something answered, but not this service.` | Something else is on that port | Check the address |
 
+The screen says these in the interface's language — Mongolian unless the deployment chose English;
+the words above are the English catalogue's.
+
 The container host result also reports whether the **Runner** can reach Docker. A Runner that
 answers but reports `container_host: unreachable` is configured correctly and cannot run anything —
 fix Docker access, not the address.
+
+## On a Linux server
+
+One machine running all of it: Postgres; the web application under systemd; the runner in a
+container on the machine's own Docker; nginx in front for TLS. The files are in
+[`infra/server/`](../infra/server/), and each says how it is installed. Ubuntu 24.04 is assumed;
+another systemd distribution needs only its own package names.
+
+The web application **refuses to start** on a configuration that cannot work, and names every
+problem in the journal (`journalctl -u code-factory-web`) — see [Configuration](#appsweb). Most
+first starts that fail, fail there, with the fix in the message.
+
+### 1. Install
+
+- **Node 22**, from NodeSource: building needs Node 20.19 or later, and Ubuntu's own `nodejs` is
+  older. Then **Bun**, at the pinned version: `sudo npm install -g bun@1.3.11`. Both land in
+  `/usr/bin`, where the units look for them.
+- **PostgreSQL 16**: `sudo apt install postgresql`, listening on localhost only, as it does by
+  default. Not the repository's `docker-compose.yml` Postgres: Docker publishes its port past the
+  firewall.
+- **Docker Engine** with the compose plugin, from docs.docker.com.
+- **nginx**: `sudo apt install nginx`.
+- **A firewall that admits SSH, HTTP and HTTPS, and nothing else.** This is what keeps the runner
+  private: it listens on every interface on port 8080 and shares the host's network, so without a
+  firewall the internet can reach it ([Network boundaries](#network-boundaries), rule 1).
+
+  ```bash
+  sudo ufw default deny incoming
+  sudo ufw allow OpenSSH
+  sudo ufw allow 'Nginx Full'
+  sudo ufw enable
+  ```
+
+### 2. The code, built
+
+```bash
+sudo useradd --system --home-dir /srv/code-factory --shell /usr/sbin/nologin factory
+sudo install -d -o factory -g factory /srv/code-factory
+sudo -u factory git clone <the repository> /srv/code-factory
+cd /srv/code-factory
+sudo -u factory bun install --frozen-lockfile
+sudo -u factory bun run --filter @factory/web build       # → apps/web/build
+```
+
+### 3. The database and the environment
+
+```bash
+sudo -u postgres psql -c "create role factory login password '<a long random password>'" \
+  -c "create database factory owner factory"
+sudo install -d -m 0750 -o root -g factory /etc/code-factory
+sudo install -m 0640 -o root -g factory infra/server/factory.env.example /etc/code-factory/factory.env
+sudoedit /etc/code-factory/factory.env
+```
+
+Fill in every blank and your domain; the file says how to generate each secret. It is the whole of
+the configuration: the built server does **not** read a `.env` file, and the units hand it this one.
+Keep a copy of `SECRET_ENCRYPTION_KEY` somewhere other than this machine — without it every stored
+credential is lost ([Rotating the encryption key](#rotating-the-encryption-key)).
+
+Then the schema:
+
+```bash
+sudo -u factory bash -c 'set -a && . /etc/code-factory/factory.env && set +a && bun run db:migrate'
+```
+
+### 4. The runner and its sandboxes
+
+```bash
+sudo docker build -t code-factory/sandbox:latest infra/sandbox
+sudo install -d -o 1000 -g 1000 /srv/factory/runs     # the sandbox's user must write here
+stat -c %g /var/run/docker.sock                       # → DOCKER_GID in factory.env
+sudo docker compose -f infra/runner/compose.yml --env-file /etc/code-factory/factory.env up -d --build
+```
+
+See [Hosting the runner in a container](#hosting-the-runner-in-a-container) for what that file
+arranges and why.
+
+### 5. The web application and the maintenance pass
+
+```bash
+sudo cp infra/server/code-factory-web.service infra/server/code-factory-maintenance.* /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now code-factory-web code-factory-maintenance.timer
+journalctl -u code-factory-web -n 20      # "Listening on http://127.0.0.1:3000", and no refusal
+```
+
+The timer is the schedule [What you must schedule](#what-you-must-schedule) asks for.
+
+### 6. nginx, with TLS
+
+The certificate has to exist before `nginx -t` accepts the site, so it comes first, while nginx's
+default site is still there to answer the challenge:
+
+```bash
+sudo apt install certbot python3-certbot-nginx
+sudo certbot certonly --nginx -d factory.example.com        # renewed by certbot's timer from now on
+sudo cp infra/server/nginx.conf /etc/nginx/sites-available/code-factory
+sudo sed -i 's/factory\.example\.com/YOUR-DOMAIN/g' /etc/nginx/sites-available/code-factory
+sudo ln -s /etc/nginx/sites-available/code-factory /etc/nginx/sites-enabled/
+sudo rm /etc/nginx/sites-enabled/default
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+What the configuration does, and why each part is there:
+
+| It | Because |
+| --- | --- |
+| Serves HTTPS only, and sends plain HTTP there | The session cookie is `Secure`; a browser keeps it only over HTTPS |
+| Passes `Host` through | The application builds its own links from it. Forms are checked against `ORIGIN`, so they work either way |
+| Allows 10 MB a request | Equal to `BODY_SIZE_LIMIT`; nginx's own default is 1 MB and the application's is 512 KB |
+| Refuses `/api/hooks/` and `/api/runs/` | Only the runner calls them, directly on `127.0.0.1:3000` (`CALLBACK_BASE_URL`). One is the exchange that hands out a run's git token and model key ([Network boundaries](#network-boundaries), rule 2) |
+| Holds a response open for an hour | A run page's live-update stream; the application asks nginx not to buffer it and sends a heartbeat every 20 seconds |
+
+### 7. The first start
+
+Open the address and create the administrator account at once. On an empty database the first
+person to reach the sign-in page makes that account, so if the address is already public, admit
+only yourself until then — `allow <your address>; deny all;` in the HTTPS server block, removed
+afterwards.
+
+Then do what [Bringing it up](#bringing-it-up) ends with: store a model credential in **Settings**,
+**Test every connection**, and connect a repository. Before real work, run one ticket from start to
+merge request on a repository you can throw away: no run has yet finished end to end ([What has not
+been run](#what-has-not-been-run)).
+
+### Checking it
+
+```bash
+systemctl status code-factory-web
+systemctl list-timers code-factory-maintenance.timer
+curl -sI https://factory.example.com/login | head -1                                   # 200
+curl -s -o /dev/null -w '%{http_code}\n' https://factory.example.com/api/runs/x/credentials   # 404
+sudo docker compose -f infra/runner/compose.yml ps                                      # healthy
+```
+
+### Updating
+
+```bash
+cd /srv/code-factory
+sudo -u factory git pull
+sudo -u factory bun install --frozen-lockfile
+sudo -u factory bun run --filter @factory/web build
+sudo -u factory bash -c 'set -a && . /etc/code-factory/factory.env && set +a && bun run db:migrate'
+sudo systemctl restart code-factory-web
+sudo docker compose -f infra/runner/compose.yml --env-file /etc/code-factory/factory.env up -d --build
+```
+
+The web application stops cleanly on the restart: it finishes what it is answering, closes its
+database connections and exits. While a browser has a run page open that takes up to about 30
+seconds (`SHUTDOWN_TIMEOUT`), because it lets the live-update stream finish; the page reconnects by
+itself. The runner resumes every run in flight after its own restart ([Restarting
+things](#restarting-things)).
+
+### Backups
+
+The database, on a schedule — `sudo -u postgres pg_dump factory` — and `SECRET_ENCRYPTION_KEY`,
+kept apart from the dumps: a dump restored without its key has lost every credential in it. The
+runner's state volume holds only the positions of runs in flight.
 
 ## Configuration
 
@@ -74,8 +238,12 @@ fix Docker access, not the address.
 | `DATABASE_URL` | yes | |
 | `RUNNER_BASE_URL` | yes | Validated as an absolute URL at startup |
 | `RUNNER_AUTH_TOKEN` | yes | Must match the Runner's |
-| `PUBLIC_BASE_URL` | yes | Appears in merge request bodies and callback addresses, so it must be the address others can reach |
-| `SESSION_SECRET` | yes | 32+ random bytes. Changing it signs everyone out |
+| `PUBLIC_BASE_URL` | yes | Appears in links, sign-in callbacks and merge request bodies, so it must be the address others can reach. `https://` in a deployment |
+| `CALLBACK_BASE_URL` | | Where the runner reaches this application. Defaults to `PUBLIC_BASE_URL`; on a server, `http://127.0.0.1:3000`, so the runner never goes through the proxy |
+| `ORIGIN` | in a deployment | The address in `PUBLIC_BASE_URL`, for the built server: forms are accepted only from it. Unset, they are accepted only while the proxy passes `Host` through unchanged — a warning at startup |
+| `BODY_SIZE_LIMIT` | in a deployment | The largest request the built server takes, e.g. `10M`. Unset it is 512 KB, and a larger requirement file is refused with 413 — a warning at startup |
+| `HOST` / `PORT` | | Where the built server listens. Defaults `0.0.0.0` and `3000`; behind a proxy, `127.0.0.1` |
+| `SESSION_SECRET` | yes | 32+ random bytes: `openssl rand -hex 32`. Changing it signs everyone out |
 | `SECRET_ENCRYPTION_KEY` | yes | base64 of exactly 32 bytes: `openssl rand -base64 32` |
 | `SECRET_ENCRYPTION_KEY_VERSION` | | Defaults to `v1`. Recorded on every credential this key seals |
 | `SECRET_ENCRYPTION_KEYS_PREVIOUS` | | Retired keys, `version:base64,version:base64`. **See rotation below** |
@@ -87,7 +255,24 @@ offered as a link that fails. Configure neither and email-and-password is the on
 works, but nobody has a password until an administrator sets one, so at least one provider is the
 practical choice.
 
-Startup fails, loudly, on a missing or malformed value rather than at the first run.
+**The built server refuses to start** on a configuration that cannot work: it exits 1 before it
+listens, and one log line, `refusing to start: the configuration cannot work`, names every problem —
+never a value. It checks, in a deployment:
+
+- that every required variable is set, and the addresses are absolute URLs;
+- that `SESSION_SECRET` is not the placeholder from `.env.example` — which is public, so a session
+  signed with it can be forged — and is at least 32 characters;
+- that `RUNNER_AUTH_TOKEN` is not the example's `change-me`, which the runner refuses;
+- that `SECRET_ENCRYPTION_KEY` is set and decodes to 32 bytes;
+- that `PUBLIC_BASE_URL` is `https://` (plain HTTP only on `localhost`), because a browser keeps the
+  `Secure` session cookie only there;
+- that `ORIGIN`, when set, names the same address.
+
+The built server is held to all of this whatever `NODE_ENV` says, so a forgotten
+`NODE_ENV=production` cannot bring the development defaults back. A development machine is held
+only to the required variables and a well-formed encryption key. The application never reads `.env`
+itself: `bun run dev` hands a development machine's values over, systemd's `EnvironmentFile=` a
+server's, and `node --env-file=…` does it by hand.
 
 ### `apps/runner`
 
@@ -329,7 +514,9 @@ determine; the exclusions are printed with the result so the number always carri
    who can read either can call this route and be handed the git token and the model key. Restrict
    the route at the proxy and keep the state directory as private as the database. This is
    documented as a residual risk in [credential-path.md](./reviews/credential-path.md); it cannot be
-   fixed inside the application.
+   fixed inside the application. The nginx configuration in `infra/server/` refuses `/api/runs/`
+   and `/api/hooks/` from outside altogether, and the runner reaches the application directly on
+   `127.0.0.1:3000` (`CALLBACK_BASE_URL`) — see [On a Linux server](#on-a-linux-server).
 
 3. **Under `EXECUTION_HOST=docker`, a sandbox can be kept off the network while code is being
    written.** The setting is refused under `process`, which cannot enforce it. Note that an agent
@@ -481,7 +668,15 @@ short one:
 - **The 15-minute first-run claim (SC-001) is verified only to a startable ticket** — 2.9 seconds of
   the product's time, four to eight minutes of a person's by estimate. The run itself is not timed.
   See [first-run-walkthrough.md](./reviews/first-run-walkthrough.md).
+- **[On a Linux server](#on-a-linux-server) has not been followed on a real server.** Its files were
+  checked in a container: the units with `systemd-analyze verify`, and the nginx configuration with
+  nginx 1.24 in front of the production build — a first account and signed-in pages, a form from
+  another origin refused, a 5 MB upload accepted and an 11 MB one refused, the runner's routes
+  refused from outside and reachable directly, a live-update notification through in under 0.1 s,
+  and a clean stop on SIGTERM. Not with real DNS, a real certificate, or the runner driving a run
+  on the machine's Docker.
 
-Everything else is covered by 494 unit and integration tests against a real Postgres, and 37 browser
-tests; three browser tests are skipped rather than passed, and they are exactly the three that need
-the services above.
+Everything else is covered by the unit and integration tests, against a real Postgres, and the
+browser tests; [specs/004-bento-redesign/baseline.md](../specs/004-bento-redesign/baseline.md)
+records the latest count, and which of them fail and why. Three browser tests are skipped rather
+than passed, and they are exactly the three that need the services above.

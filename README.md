@@ -132,7 +132,10 @@ connection** — it asks the execution service rather than assuming, because the
 the only thing that knows what it is.
 
 [docs/operations.md](./docs/operations.md) is the full deployment guide: configuration, the
-maintenance pass you must schedule, network boundaries, key rotation, and what to watch.
+maintenance pass you must schedule, network boundaries, key rotation, and what to watch. Putting it
+on a Linux server — systemd units, nginx with TLS, the environment file — is its section
+[On a Linux server](./docs/operations.md#on-a-linux-server), with the files in
+[infra/server/](./infra/server/).
 
 ## Checks
 

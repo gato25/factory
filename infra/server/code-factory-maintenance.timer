@@ -1,0 +1,13 @@
+# Starts code-factory-maintenance.service every five minutes. Without it, a
+# run waits at an expired checkpoint forever and a retained sandbox is never
+# reclaimed (docs/operations.md, "What you must schedule").
+[Unit]
+Description=Run the Code Factory maintenance pass every five minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+AccuracySec=30s
+
+[Install]
+WantedBy=timers.target

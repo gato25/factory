@@ -1,0 +1,36 @@
+# One maintenance pass (docs/operations.md, "What you must schedule"):
+# checkpoints whose waiting time has run out, runs past a ceiling, retained
+# sandboxes whose period has ended. Started every five minutes by
+# code-factory-maintenance.timer; not enabled by itself.
+#
+#   sudo cp infra/server/code-factory-maintenance.* /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now code-factory-maintenance.timer
+[Unit]
+Description=Code Factory maintenance pass
+Documentation=file:///srv/code-factory/docs/operations.md
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=factory
+Group=factory
+WorkingDirectory=/srv/code-factory
+EnvironmentFile=/etc/code-factory/factory.env
+Environment=NODE_ENV=production
+# Nothing to cache: the filesystem is read-only to this unit.
+Environment=BUN_RUNTIME_TRANSPILER_CACHE_PATH=0
+# --quiet: a line in the journal only when the pass did something. Exit 1
+# means part of the pass could not be done; the unit shows as failed.
+ExecStart=/usr/bin/bun scripts/maintenance.ts --quiet
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true

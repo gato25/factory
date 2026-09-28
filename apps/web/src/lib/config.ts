@@ -1,4 +1,5 @@
 import { FactoryError } from '@factory/shared';
+import { keyRingFromEnv } from './secrets/store';
 
 export interface WebConfig {
   databaseUrl: string;
@@ -92,6 +93,144 @@ export function loadWebConfig(env: NodeJS.ProcessEnv = process.env): WebConfig {
     }
   }
   return config;
+}
+
+/**
+ * The session secret `.env.example` ships. It is in the repository, so it is
+ * public, and a session signed with it is one anybody can forge — signing in
+ * as anyone, the first administrator included.
+ */
+export const PLACEHOLDER_SESSION_SECRET = 'change-me-to-32-plus-random-bytes';
+
+/** The execution service's credential `.env.example` ships; that service refuses it. */
+const PLACEHOLDER_RUNNER_TOKEN = 'change-me';
+
+/** What `openssl rand -hex 32` gives is 64; this is the least worth accepting. */
+const MIN_SESSION_SECRET_LENGTH = 32;
+
+const GENERATE_SECRET = 'generate one with `openssl rand -hex 32`';
+
+export interface StartupReport {
+  /** Each a reason the server must not start. Names a variable, never its value. */
+  problems: string[];
+  /** Worth an operator's attention, but not a reason to refuse. */
+  warnings: string[];
+}
+
+const isLoopback = (hostname: string) =>
+  hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]';
+
+function parseUrl(value: string | undefined): URL | null {
+  try {
+    return value?.trim() ? new URL(value.trim()) : null;
+  } catch {
+    return null;
+  }
+}
+
+const messageOf = (error: unknown) =>
+  (error instanceof Error ? error.message : String(error)).replace(/^web: /, '');
+
+/**
+ * Everything the environment has to supply, checked once as the server starts
+ * (`init` in hooks.server.ts) instead of by the first request that needs it.
+ *
+ * `loadWebConfig` was only ever called per request. A deployment with no
+ * `SESSION_SECRET` came up, answered, and then failed every page that reads a
+ * session, showing the variable's name on the sign-in screen — and a secret
+ * copied from `.env.example` was accepted as if it were one.
+ *
+ * `deployment` is the built server, which `init` passes as `!dev` whatever
+ * `NODE_ENV` says: forgetting `NODE_ENV=production` must not quietly bring back
+ * the development defaults (`PUBLIC_BASE_URL=http://localhost:5173`). A
+ * deployment is also held to what only matters once other people can reach
+ * it: a secret nobody else knows, an encryption key, and an address a browser
+ * will keep a `Secure` cookie for.
+ *
+ * Pure, given its environment, so it is tested against literal ones.
+ */
+export function checkStartup(
+  env: NodeJS.ProcessEnv,
+  options: { deployment?: boolean } = {},
+): StartupReport {
+  const deployment = options.deployment ?? env.NODE_ENV === 'production';
+  const problems: string[] = [];
+  const warnings: string[] = [];
+
+  // What every environment needs — in a deployment, without the development
+  // defaults standing in for what is missing. With no DATABASE_URL either,
+  // most likely nothing was handed over at all, which is the one time saying
+  // where the values have to come from is the answer.
+  try {
+    loadWebConfig(deployment ? { ...env, NODE_ENV: 'production' } : env);
+  } catch (error) {
+    const message = messageOf(error);
+    const nothingHandedOver =
+      message.startsWith('missing required configuration') && !env.DATABASE_URL?.trim();
+    problems.push(
+      deployment && nothingHandedOver
+        ? `${message} — the built server does not read .env; pass the variables with systemd's EnvironmentFile= or \`node --env-file=…\``
+        : message,
+    );
+  }
+
+  // An encryption key that is set but malformed is a mistake anywhere: the
+  // first repository token anybody stores would fail on it.
+  if (env.SECRET_ENCRYPTION_KEY?.trim() || env.SECRET_ENCRYPTION_KEYS_PREVIOUS?.trim()) {
+    try {
+      keyRingFromEnv(env);
+    } catch (error) {
+      problems.push(messageOf(error));
+    }
+  } else if (deployment) {
+    problems.push(
+      'SECRET_ENCRYPTION_KEY is not set, so no repository token or model key can be stored — generate one with `openssl rand -base64 32`',
+    );
+  }
+
+  if (!deployment) return { problems, warnings };
+
+  const secret = env.SESSION_SECRET ?? '';
+  if (secret.trim() === PLACEHOLDER_SESSION_SECRET) {
+    problems.push(
+      `SESSION_SECRET is the placeholder from .env.example, which anybody can read — ${GENERATE_SECRET}`,
+    );
+  } else if (secret !== '' && secret.length < MIN_SESSION_SECRET_LENGTH) {
+    problems.push(
+      `SESSION_SECRET is shorter than ${MIN_SESSION_SECRET_LENGTH} characters — ${GENERATE_SECRET}`,
+    );
+  }
+  if (env.RUNNER_AUTH_TOKEN?.trim() === PLACEHOLDER_RUNNER_TOKEN) {
+    problems.push(
+      `RUNNER_AUTH_TOKEN is the placeholder from .env.example, which the execution service refuses — ${GENERATE_SECRET} and give the same value to both services`,
+    );
+  }
+
+  const publicUrl = parseUrl(env.PUBLIC_BASE_URL);
+  if (publicUrl && publicUrl.protocol !== 'https:' && !isLoopback(publicUrl.hostname)) {
+    problems.push(
+      'PUBLIC_BASE_URL must be an https:// address: the session cookie is Secure, so over plain HTTP no browser keeps it and nobody can sign in',
+    );
+  }
+
+  const origin = env.ORIGIN?.trim();
+  if (!origin) {
+    warnings.push(
+      'ORIGIN is not set, so a form is accepted only while the proxy passes the Host header through unchanged — set ORIGIN to the address in PUBLIC_BASE_URL',
+    );
+  } else if (publicUrl && parseUrl(origin)?.origin !== publicUrl.origin) {
+    problems.push(
+      'ORIGIN and PUBLIC_BASE_URL name different addresses; forms are accepted only from ORIGIN, so give both the address people use',
+    );
+  }
+
+  if (!env.BODY_SIZE_LIMIT?.trim()) {
+    warnings.push(
+      'BODY_SIZE_LIMIT is not set, so any form larger than 512 KB — a requirement file, say — is refused with 413; set it to what the proxy allows, such as 10M',
+    );
+  }
+
+  return { problems, warnings };
 }
 
 /**

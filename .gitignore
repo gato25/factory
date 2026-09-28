@@ -8,6 +8,8 @@
 
 # Node / Bun
 node_modules/
+# Bun's install cache, when the checkout is its user's home (docs/operations.md, "On a Linux server")
+.bun/
 *.log
 .env
 .env.*

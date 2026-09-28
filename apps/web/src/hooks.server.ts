@@ -2,9 +2,10 @@ import { users } from '@factory/db/schema';
 import { createLogger } from '@factory/shared';
 import type { Handle, ServerInit } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
-import { bootstrapFromEnv, loadWebConfig } from '$lib/config';
+import { dev } from '$app/environment';
+import { bootstrapFromEnv, checkStartup, loadWebConfig } from '$lib/config';
+import { closeDb, db } from '$lib/db';
 import { DEFAULT_LOCALE } from '$lib/i18n';
-import { db } from '$lib/db';
 import { keyRingFromEnv } from '$lib/secrets/store';
 import { readSessionToken, SESSION_COOKIE } from '$lib/services/auth';
 import { bootstrapWorkspace } from '$lib/services/workspace';
@@ -55,8 +56,33 @@ export const handle: Handle = async ({ event, resolve }) => {
  *
  * Startup must not die on this. Anything it cannot do, the settings screen
  * still can, so a failure is logged and the server comes up.
+ *
+ * What it MUST die on comes first: a configuration the server cannot work
+ * with (`checkStartup`). Thrown here, the built server exits before it
+ * listens, so the service manager shows a failed unit and the log names every
+ * missing or unsafe variable — instead of a server that answers and then fails
+ * each page that reads a session.
  */
 export const init: ServerInit = async () => {
+  const { problems, warnings } = checkStartup(process.env, { deployment: !dev });
+  for (const warning of warnings) log.warn(warning);
+  if (problems.length > 0) {
+    log.error('refusing to start: the configuration cannot work', { problems });
+    throw new Error(`refusing to start:\n  - ${problems.join('\n  - ')}`);
+  }
+
+  // The built server emits this once it has stopped taking requests after a
+  // SIGTERM or SIGINT; the connections are ours to close (`closeDb`).
+  process.once('sveltekit:shutdown', () => {
+    closeDb().then(
+      () => log.info('stopped: database connections closed'),
+      (error) =>
+        log.error('could not close the database connections on shutdown', {
+          detail: error instanceof Error ? error.message : String(error),
+        }),
+    );
+  });
+
   const from = bootstrapFromEnv();
   try {
     // The key ring is needed only to seal a model key, and building it throws
