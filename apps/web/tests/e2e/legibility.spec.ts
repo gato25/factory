@@ -222,6 +222,12 @@ const SCREENS: Screen[] = [
     signedIn: true,
     primary: ['.head .name', '.head .s', '.tool .n', '.f input', '.select select', '.btn'],
   },
+  {
+    name: '11 Skills',
+    path: () => '/skills',
+    signedIn: true,
+    primary: ['h1', '.lede', '.sk .n', '.search input', '.f input', '.btn'],
+  },
 ];
 
 async function seed(): Promise<Seeded> {

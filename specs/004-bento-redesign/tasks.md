@@ -233,8 +233,8 @@ artboard.
 
 ### 11 — skills
 
-- [ ] T076 [US6] Rebuild 11 in `apps/web/src/routes/(app)/skills/+page.svelte`: the list tile and the markdown editor tile; fields and actions unchanged (FR-023)
-- [ ] T077 [US6] Verify 11 against the definition of done
+- [X] T076 [US6] Rebuild 11 in `apps/web/src/routes/(app)/skills/+page.svelte`: the list tile and the markdown editor tile; fields and actions unchanged (FR-023)
+- [X] T077 [US6] Verify 11 against the definition of done
 
 ### 12 — settings
 

@@ -2,6 +2,8 @@ import { FactoryError, notAuthorised } from '@factory/shared';
 import * as v from 'valibot';
 import { command, form, getRequestEvent, query } from '$app/server';
 import { db } from '$lib/db';
+import { agentName } from '$lib/default-names';
+import { m } from '$lib/i18n';
 import {
   createSkill,
   deleteSkill,
@@ -10,7 +12,6 @@ import {
   skillHistory,
   updateSkill,
 } from '$lib/services/skill';
-import { m } from '$lib/i18n';
 
 /**
  * Skills — named instruction documents attachable to any number of agents
@@ -61,12 +62,8 @@ export const history = query(SkillId, async (id) => {
  */
 const Fields = {
   name: v.pipe(v.string(), v.trim(), v.minLength(1, m.form.skillName)),
-  description: v.pipe(
-    v.string(),
-    v.trim(),
-    v.minLength(1, m.form.skillDescription),
-  ),
-  content: v.pipe(v.string(), v.minLength(1, 'A skill needs content to apply.')),
+  description: v.pipe(v.string(), v.trim(), v.minLength(1, m.form.skillDescription)),
+  content: v.pipe(v.string(), v.minLength(1, m.form.skillContent)),
 };
 
 export const create = form(v.object(Fields), async (input) => {
@@ -74,7 +71,7 @@ export const create = form(v.object(Fields), async (input) => {
   return attempt(async () => {
     const created = await createSkill(db(), input, user);
     await skills().refresh();
-    return { id: created.id, message: `“${input.name}” is ready to attach to an agent.` };
+    return { id: created.id, message: m.skills.ready(input.name) };
   });
 });
 
@@ -91,12 +88,11 @@ export const save = form(v.object({ skillId: SkillId, ...Fields }), async (input
     await history(input.skillId).refresh();
     await skills().refresh();
     return {
-      message:
-        `Saved as version ${version}. ` +
-        (reaches.length === 0
+      message: `${m.skills.savedAs(version)} ${
+        reaches.length === 0
           ? m.notice.noAgentHoldsSkill
-          : `${reaches.map((a) => a.name).join(', ')} will use it on the next run they start; ` +
-            'runs already in flight are unaffected.'),
+          : m.skills.reaches(reaches.map((a) => agentName(a.name)).join(', '))
+      }`,
     };
   });
 });
@@ -109,8 +105,8 @@ export const remove = command(SkillId, async (id) => {
     return {
       message:
         detachedFrom.length === 0
-          ? 'Deleted.'
-          : `Deleted, and taken off ${detachedFrom.map((a) => a.name).join(', ')}.`,
+          ? m.skills.deleted
+          : m.skills.deletedFrom(detachedFrom.map((a) => agentName(a.name)).join(', ')),
     };
   });
 });

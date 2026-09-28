@@ -659,6 +659,7 @@ export const en: Messages = {
     pickOne: 'Pick a skill on the left, or start a new one.',
     newSkill: 'New skill',
     usedBy: (agents: number) => `Used by ${agents} agent${agents === 1 ? '' : 's'}`,
+    agentCount: (agents: number) => `${agents} agent${agents === 1 ? '' : 's'}`,
     savedTo: 'Saved to .claude/skills/<name>/SKILL.md inside every run that uses it.',
     lastEdited: (when: string) => `· last edited ${when}`,
     by: (who: string) => `by ${who}`,
@@ -679,6 +680,16 @@ export const en: Messages = {
     content: 'Content (Markdown)',
     source: 'Source',
     preview: 'Preview',
+    backToContent: 'Back to the content',
+    putBack: (version: number) => `Put version ${version} in the editor`,
+    putBackNotice: (version: number) =>
+      `Version ${version} is in the editor. It is not saved until you save it, and saving it makes a new version rather than rewriting the old one.`,
+    ready: (name: string) => `“${name}” is ready to attach to an agent.`,
+    savedAs: (version: number) => `Saved as version ${version}.`,
+    reaches: (agents: string) =>
+      `${agents} will use it on the next run they start; runs already in flight are unaffected.`,
+    deleted: 'Deleted.',
+    deletedFrom: (agents: string) => `Deleted, and taken off ${agents}.`,
   },
 
   settings: {
@@ -1114,6 +1125,7 @@ export const en: Messages = {
     pipelineName: 'Give the pipeline a name.',
     workspaceName: 'Give the workspace a name.',
     skillName: 'Give the skill a name.',
+    skillContent: 'A skill needs content to apply.',
     ticketTitle: 'Give the ticket a title.',
     ticketTitleLong: 'Give the ticket a title — it becomes the merge request title.',
     personName: 'Give them a name.',

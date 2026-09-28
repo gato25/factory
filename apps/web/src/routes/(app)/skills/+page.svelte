@@ -6,10 +6,10 @@
   import { create, history, remove, save, skill, skills } from '$lib/remote/skills.remote';
 
   /**
-   * Screen 11 — Skills, built to `design.pen`'s artboard: a 340px list beside
-   * a filling editor, 24px apart. The editor's header carries the name, how
-   * many agents hold it, the path the file takes inside a run, and three
-   * actions — History, Delete, Save skill.
+   * Screen 11 — Skills, built to `design.pen`: a 400px list tile beside a
+   * filling editor tile, 20px apart (specs/004-bento-redesign FR-023). The
+   * editor's head carries the name, how many agents hold it, the path the
+   * file takes inside a run, and three actions — history, delete, save.
    *
    * The content field is the design's dark pane with line numbers. It is a
    * real textarea laid over a highlighted copy of the same text, so what you
@@ -105,57 +105,57 @@
   }
 </script>
 
+<header class="page-head">
+  <div class="text">
+    <h1>{m.skills.heading}</h1>
+    <p class="lede">{m.skills.lede}</p>
+  </div>
+  <button
+    type="button"
+    class="btn"
+    onclick={() => {
+      creating = true;
+      showHistory = false;
+      notice = null;
+    }}
+  >
+    <Icon name="plus" size={15} />{m.skills.newSkill}
+  </button>
+</header>
+
 <div class="wrap">
-  <section class="panel list">
-    <header>
-      <div class="title">
-        <h2>{m.skills.heading}</h2>
-        <button
-          type="button"
-          class="new"
-          onclick={() => {
-            creating = true;
-            showHistory = false;
-            notice = null;
-          }}
-        >
-          <Icon name="plus" size={14} />
-          <span>{m.skills.new}</span>
-        </button>
-      </div>
-      <p>
-        {m.skills.lede}
-      </p>
-      <label class="search">
-        <Icon name="search" size={14} />
-        <input placeholder={m.skills.search} bind:value={filter} aria-label={m.skills.search} />
-      </label>
-    </header>
+  <section class="tile list" aria-label={m.skills.heading}>
+    <label class="search">
+      <Icon name="search" size={14} />
+      <input placeholder={m.skills.search} bind:value={filter} aria-label={m.skills.search} />
+    </label>
 
     {#if list.error}
       <p class="state error" role="alert">{(list.error as Error).message}</p>
     {:else if !list.ready}
       <p class="state">{m.skills.loading}</p>
     {:else if shown.length === 0}
-      <p class="state">
-        {list.current.length === 0 ? m.skills.empty : m.skills.noMatch}
-      </p>
+      <p class="state">{list.current.length === 0 ? m.skills.empty : m.skills.noMatch}</p>
     {:else}
       <ul>
         {#each shown as item (item.id)}
+          {@const on = openId === item.id && !creating}
           <li>
             <button
               type="button"
               class="sk"
-              class:on={openId === item.id && !creating}
+              class:on
+              aria-current={on ? 'true' : undefined}
               onclick={() => choose(item.id)}
             >
-              <Icon name="sparkles" size={16} />
+              <span class="orb-sq" class:pen={!on} class:idle={item.agentCount === 0} aria-hidden="true">
+                <Icon name="sparkles" size={15} />
+              </span>
               <span class="tx">
                 <span class="n">{item.name}</span>
                 <span class="d">{item.description}</span>
               </span>
-              <span class="u">{item.agentCount} agent{item.agentCount === 1 ? '' : 's'}</span>
+              <span class="u">{m.skills.agentCount(item.agentCount)}</span>
             </button>
           </li>
         {/each}
@@ -163,7 +163,7 @@
     {/if}
   </section>
 
-  <section class="panel editor">
+  <section class="tile editor">
     {#if !creating && openId && !open?.ready}
       <p class="state">{m.skills.loadingOne}</p>
     {:else if !creating && !openId}
@@ -178,13 +178,10 @@
         <header class="h">
           <div class="l">
             <div class="nr">
-              <span class="name">{creating ? m.skills.newSkill : (s?.name ?? '')}</span>
+              <h2 class="name">{creating ? m.skills.newSkill : (s?.name ?? '')}</h2>
               {#if s}
                 <!-- How much depends on it, at the point of changing it (FR-043a) -->
-                <span class="badge">
-                  <span class="dot"></span>
-                  {m.skills.usedBy(s.agents.length)}
-                </span>
+                <span class="used">{m.skills.usedBy(s.agents.length)}</span>
               {/if}
             </div>
             <p class="path" title={s ? exact(s.updatedAt) : undefined}>
@@ -209,21 +206,20 @@
             {#if !creating && s}
               <button
                 type="button"
-                class="secondary"
+                class="chip-btn"
                 aria-pressed={showHistory}
                 onclick={() => {
                   showHistory = !showHistory;
                   readingVersion = null;
                 }}
               >
-                <Icon name="history" size={16} />
-                <span>{m.skills.history}</span>
+                <Icon name="history" size={13} />{m.skills.history}
               </button>
             {/if}
             {#if !creating && s?.mayChange}
               <button
                 type="button"
-                class="secondary danger"
+                class="chip-btn danger"
                 onclick={async () => {
                   const outcome = await remove(s.id);
                   notice = ('problem' in outcome ? outcome.problem : outcome.message) ?? null;
@@ -233,14 +229,12 @@
                   }
                 }}
               >
-                <Icon name="trash-2" size={16} />
-                <span>{m.skills.delete}</span>
+                <Icon name="trash-2" size={13} />{m.skills.delete}
               </button>
             {/if}
             {#if mayChange}
-              <button type="submit" class="primary" disabled={action.pending > 0}>
-                <Icon name="save" size={16} />
-                <span>{creating ? m.skills.createSkill : m.skills.saveSkill}</span>
+              <button type="submit" class="btn small" disabled={action.pending > 0}>
+                <Icon name="check" size={13} />{creating ? m.skills.createSkill : m.skills.saveSkill}
               </button>
             {/if}
           </div>
@@ -260,7 +254,7 @@
         {/if}
 
         <div class="meta">
-          <label class="f name">
+          <label class="f name-field">
             <span>{m.skills.name}</span>
             <input name="name" bind:value={draft.name} readonly={!mayChange} required />
           </label>
@@ -279,8 +273,8 @@
         {#if showHistory && versions}
           <div class="ed-label">
             <span>{m.skills.history}</span>
-            <button type="button" class="link" onclick={() => (showHistory = false)}>
-              Back to the content
+            <button type="button" class="chip-btn" onclick={() => (showHistory = false)}>
+              <Icon name="undo-2" size={12} />{m.skills.backToContent}
             </button>
           </div>
           {#if versions?.error}
@@ -312,9 +306,7 @@
                   </li>
                 {/each}
                 {#if versionList.length === 0}
-                  <li class="state">
-                    {m.skills.noHistory}
-                  </li>
+                  <li class="state">{m.skills.noHistory}</li>
                 {/if}
               </ul>
 
@@ -334,22 +326,18 @@
                     {@const picked = chosen}
                     <button
                       type="button"
-                      class="secondary restore"
+                      class="btn btn--secondary restore"
                       onclick={() => {
                         draft = {
                           name: picked.name,
                           description: picked.description,
                           content: picked.content,
                         };
-                        notice =
-                          `Version ${picked.version} is in the editor. It is not saved until ` +
-                          'you save it, and saving it makes a new version rather than ' +
-                          'rewriting the old one.';
+                        notice = m.skills.putBackNotice(picked.version);
                         showHistory = false;
                       }}
                     >
-                      <Icon name="undo-2" size={16} />
-                      <span>Put version {picked.version} in the editor</span>
+                      <Icon name="undo-2" size={14} />{m.skills.putBack(picked.version)}
                     </button>
                   {/if}
                 {/if}
@@ -359,15 +347,15 @@
         {:else}
           <div class="ed-label">
             <span>{m.skills.content}</span>
-            <button type="button" class="link" onclick={() => (preview = !preview)}>
-              {preview ? m.skills.source : m.skills.preview}
+            <button type="button" class="chip-btn" aria-pressed={preview} onclick={() => (preview = !preview)}>
+              <Icon name={preview ? 'code' : 'eye'} size={12} />{preview ? m.skills.source : m.skills.preview}
             </button>
           </div>
 
           {#if preview}
             <div class="preview"><Markdown source={draft.content} /></div>
           {:else}
-            <!-- The design's dark pane: a gutter of line numbers, a highlighted
+            <!-- The dark code surface: a gutter of line numbers, a highlighted
                  copy of the text, and the real field laid exactly over it. -->
             <div class="code editing">
               <div class="gutter" aria-hidden="true">
@@ -379,6 +367,7 @@
                     >{#if i < lines.length - 1}{'\n'}{/if}{/each}</pre>
                 <textarea
                   name="content"
+                  data-overlay
                   aria-label={m.skills.content}
                   spellcheck="false"
                   readonly={!mayChange}
@@ -394,370 +383,358 @@
 </div>
 
 <style>
-  .wrap {
+  .page-head {
     display: flex;
-    gap: 24px;
-    align-items: stretch;
-    /* The artboard's body fills the screen below the 72px top bar. */
-    min-height: calc(100vh - 128px);
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+    padding: 4px 4px 0;
+    margin-bottom: 20px;
   }
-
-  .panel {
+  .text {
     display: flex;
     flex-direction: column;
-    background: var(--surface);
-    border: 1px solid var(--card-border);
-    border-radius: var(--r-lg);
-    box-shadow: 0 1px 2px #0f172a0a;
-    overflow: hidden;
+    gap: 6px;
+    min-width: 0;
+  }
+  h1 {
+    margin: 0;
+    font-family: var(--font-head);
+    font-size: 30px;
+    font-weight: 600;
+    letter-spacing: -0.6px;
+    color: var(--text);
+  }
+  .lede {
+    margin: 0;
+    max-width: 90ch;
+    font-size: var(--type-body);
+    color: var(--text-2);
+  }
+
+  .wrap {
+    display: flex;
+    gap: 20px;
+    align-items: stretch;
+    min-height: calc(100vh - 220px);
+  }
+  .tile {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
   }
   .list {
-    width: 340px;
+    width: 400px;
     flex: none;
+    gap: 8px;
+    padding: 22px;
   }
   .editor {
     flex: 1;
-    min-width: 0;
+    padding: 26px;
   }
 
   /* ---- the list ---- */
-  .list > header {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    padding: 16px;
-    border-bottom: 1px solid var(--border);
-  }
-  .title {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-  }
-  .list h2 {
-    margin: 0;
-    font-family: var(--font-head);
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--text);
-  }
-  .list > header p {
-    margin: 0;
-    font-size: 12px;
-    color: var(--text-2);
-  }
-  .new {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 5px 10px;
-    border: 1px solid var(--border);
-    border-radius: var(--r-sm);
-    background: var(--surface);
-    font: inherit;
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--text);
-    cursor: pointer;
-  }
-  .new:hover {
-    border-color: var(--accent);
-    color: var(--accent-text);
-  }
-
   .search {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 8px 12px;
-    border-radius: var(--r-sm);
-    background: var(--surface-2);
+    margin-bottom: 4px;
+    padding: 0 12px;
+    border-radius: 12px;
+    background: #f4f2ef;
     color: var(--text-3);
+  }
+  .search:focus-within {
+    outline: 2px solid var(--accent);
   }
   .search input {
     flex: 1;
     min-width: 0;
+    padding: 10px 0;
     border: 0;
     background: none;
     font: inherit;
-    font-size: 13px;
+    font-size: var(--type-body);
     color: var(--text);
   }
   .search input:focus {
     outline: none;
   }
-  .search input::placeholder {
-    color: var(--text-3);
-  }
-
-  .list ul {
-    list-style: none;
+  ul {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
     margin: 0;
     padding: 0;
-    overflow-y: auto;
+    list-style: none;
   }
   .sk {
     display: flex;
     align-items: center;
     gap: 12px;
     width: 100%;
-    padding: 12px 16px;
-    border: 0;
-    border-bottom: 1px solid var(--border);
+    padding: 11px 12px;
+    border: 1.5px solid transparent;
+    border-radius: 14px;
     background: none;
     font: inherit;
     text-align: left;
+    color: inherit;
     cursor: pointer;
-    color: var(--purple);
   }
   .sk:hover {
-    background: var(--surface-2);
+    background: #f4f2ef;
   }
   .sk.on {
+    border-color: var(--accent);
     background: var(--accent-soft);
-    border-bottom-color: transparent;
-    color: var(--accent-text);
+  }
+  .orb-sq {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    color: var(--text-inv);
+    background: linear-gradient(180deg, var(--accent-from), var(--accent-to));
+  }
+  .orb-sq.pen {
+    background: linear-gradient(180deg, var(--pen-from), var(--pen-to));
+  }
+  .orb-sq.idle {
+    opacity: 0.5;
   }
   .sk .tx {
     display: flex;
+    flex: 1;
     flex-direction: column;
     gap: 2px;
-    flex: 1;
     min-width: 0;
   }
   .sk .n {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text);
-  }
-  .sk.on .n {
-    color: var(--accent-text);
-  }
-  .sk .d,
-  .sk .u {
-    font-size: 11px;
-    color: var(--text-3);
-  }
-  .sk .d {
-    font-size: 12px;
-    color: var(--text-2);
-  }
-  .sk .n {
     overflow: hidden;
+    font-family: var(--font-mono);
+    font-size: var(--type-body);
+    font-weight: 600;
     text-overflow: ellipsis;
     white-space: nowrap;
+    color: var(--text);
   }
-  /* Two lines, then stop: the design's descriptions are one line, and a long
-     one should wrap rather than disappear behind an ellipsis. */
   .sk .d {
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
     overflow: hidden;
+    font-size: var(--type-caption);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text-2);
   }
-  .sk .u {
+  .u {
     flex: none;
+    padding: 2px 8px;
+    border-radius: var(--r-pill);
+    font-family: var(--font-head);
+    font-size: var(--type-caption);
+    font-weight: 600;
+    color: var(--text-2);
+    background: #f4f2ef;
+  }
+  .sk.on .u {
+    background: #fff;
+  }
+  .state {
+    margin: 0;
+    padding: 10px 4px;
+    font-size: var(--type-body);
+    color: var(--text-2);
+  }
+  .state.error {
+    color: var(--danger-text);
   }
 
   /* ---- the editor ---- */
   .sheet {
     display: flex;
-    flex-direction: column;
     flex: 1;
+    flex-direction: column;
+    gap: 16px;
     min-height: 0;
   }
   .h {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
     gap: 16px;
-    padding: 14px 20px;
-    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
   }
   .l {
     display: flex;
+    flex: 1 1 320px;
     flex-direction: column;
-    gap: 2px;
-    flex: 1;
+    gap: 6px;
     min-width: 0;
   }
   .nr {
     display: flex;
     align-items: center;
     gap: 10px;
-    min-width: 0;
+    flex-wrap: wrap;
   }
   .name {
+    margin: 0;
     font-family: var(--font-mono);
-    font-size: 17px;
+    font-size: 22px;
     font-weight: 600;
     color: var(--text);
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    overflow-wrap: anywhere;
   }
-  .badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    flex: none;
+  .used {
     padding: 4px 10px;
-    border-radius: 999px;
-    background: var(--surface-2);
-    font-size: 12px;
-    color: var(--text-2);
-  }
-  .dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 999px;
-    background: currentcolor;
-    flex: none;
+    border-radius: var(--r-pill);
+    font-size: var(--type-caption);
+    font-weight: 700;
+    color: var(--accent-text);
+    background: var(--accent-soft);
   }
   .path {
     margin: 0;
-    font-size: 12px;
+    font-family: var(--font-mono);
+    font-size: var(--type-caption);
     color: var(--text-3);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
   .b {
     display: flex;
-    align-items: center;
-    gap: 10px;
     flex: none;
-  }
-
-  .b button,
-  .restore {
-    display: inline-flex;
     align-items: center;
     gap: 8px;
-    padding: 10px 16px;
-    border-radius: var(--r-sm);
+  }
+  .chip-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 13px;
+    border: 0;
+    border-radius: 11px;
+    background: #f4f2ef;
     font: inherit;
-    font-size: 14px;
-    font-weight: 500;
+    font-size: var(--type-caption);
+    font-weight: 600;
+    color: var(--text);
     cursor: pointer;
   }
-  .secondary {
-    border: 1px solid var(--border);
-    background: var(--surface);
-    color: var(--text);
-  }
-  .secondary :global(svg) {
+  .chip-btn :global(svg) {
     color: var(--text-2);
   }
-  .secondary:hover {
-    border-color: var(--accent);
+  .chip-btn:hover,
+  .chip-btn[aria-pressed='true'] {
+    background: #ebe8e4;
   }
-  .secondary[aria-pressed='true'] {
-    background: var(--accent-soft);
-    border-color: var(--accent-soft);
-    color: var(--accent-text);
+  .chip-btn.danger {
+    color: var(--danger-text);
+    background: var(--danger-soft);
   }
-  /* The artboard draws Delete as an ordinary secondary button. It says what
-     it is on approach rather than shouting from rest. */
-  .secondary.danger:hover,
-  .secondary.danger:hover :global(svg) {
-    border-color: var(--danger);
+  .chip-btn.danger :global(svg) {
     color: var(--danger);
   }
-  .primary {
-    border: 1px solid var(--accent);
-    background: var(--accent);
-    color: var(--text-inv);
-    font-weight: 600;
-  }
-  .primary:disabled {
-    opacity: 0.6;
-    cursor: progress;
+  .btn.small {
+    padding: 9px 14px;
   }
 
   .meta {
     display: flex;
-    gap: 16px;
-    padding: 16px 20px;
+    gap: 14px;
   }
   .f {
     display: flex;
+    flex: 1;
     flex-direction: column;
     gap: 6px;
-    flex: 1;
     min-width: 0;
   }
-  .f.name {
-    width: 260px;
+  .f.name-field {
     flex: none;
+    width: 220px;
   }
-  .f span {
-    font-size: 12px;
+  .f > span,
+  .ed-label > span {
+    font-size: var(--type-caption);
     font-weight: 600;
-    color: var(--text);
-  }
-  .f input {
-    padding: 9px 12px;
-    border: 1px solid var(--border);
-    border-radius: var(--r-sm);
-    background: var(--surface);
-    font: inherit;
-    font-size: 13px;
-    color: var(--text);
-  }
-  .f.name input {
-    font-family: var(--font-mono);
-  }
-  .f input:read-only {
-    background: var(--surface-2);
     color: var(--text-2);
   }
-
+  .f input {
+    padding: 10px 12px;
+    border: 1px solid transparent;
+    border-radius: 12px;
+    background: #f4f2ef;
+    font: inherit;
+    font-size: var(--type-body);
+    color: var(--text);
+  }
+  .f.name-field input {
+    font-family: var(--font-mono);
+  }
+  .f input:focus {
+    border-color: var(--accent);
+    outline: none;
+  }
+  .f input:read-only {
+    color: var(--text-2);
+  }
   .ed-label {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 20px 8px;
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text);
+    gap: 12px;
   }
-  .link {
-    border: 0;
-    background: none;
-    padding: 0;
-    font: inherit;
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--accent-text);
-    cursor: pointer;
-  }
-  .link:hover {
-    text-decoration: underline;
+  .ed-label .chip-btn {
+    padding: 5px 10px;
+    border-radius: var(--r-pill);
+    color: var(--text-2);
   }
 
-  /* ---- the dark pane ---- */
+  .banner {
+    margin: 0;
+    padding: 12px 16px;
+    border-radius: 14px;
+    font-size: var(--type-body);
+    color: var(--text);
+    background: #f4f2ef;
+  }
+  ul.banner {
+    padding-left: 34px;
+  }
+  .banner.bad {
+    color: var(--danger-text);
+    background: var(--danger-soft);
+  }
+  .banner.good {
+    color: var(--success-text);
+    background: var(--success-soft);
+  }
+
+  /* ---- the code surface ---- */
   .code {
-    flex: 1;
-    min-height: 240px;
     display: flex;
-    padding: 14px 0;
-    background: var(--code-bg);
+    flex: 1;
+    min-height: 360px;
+    padding: 18px 0;
+    border-radius: 18px;
+    background: linear-gradient(180deg, var(--code-bg), #2a2521);
     overflow: auto;
     font-family: var(--font-mono);
-    font-size: 12px;
-    line-height: 20px;
+    font-size: 13px;
+    line-height: 21px;
+    color: #f2eee8;
   }
   .gutter {
     position: sticky;
     left: 0;
     display: flex;
     flex-direction: column;
-    padding: 0 16px 0 20px;
+    padding: 0 14px 0 18px;
     background: var(--code-bg);
-    color: var(--code-line);
+    color: #9c9286;
     text-align: right;
     user-select: none;
   }
@@ -768,16 +745,16 @@
     position: relative;
     min-width: calc(100% - 56px);
     width: max-content;
-    padding-right: 20px;
+    padding-right: 18px;
   }
   .pane pre {
     margin: 0;
     font: inherit;
     white-space: pre;
-    color: var(--code-text);
   }
-  .pane pre .head {
-    color: var(--code-accent);
+  .head {
+    font-weight: 600;
+    color: #f8b98f;
   }
   .pane textarea {
     position: absolute;
@@ -785,7 +762,7 @@
     width: 100%;
     height: 100%;
     margin: 0;
-    padding: 0 20px 0 0;
+    padding: 0 18px 0 0;
     border: 0;
     background: none;
     font: inherit;
@@ -793,151 +770,107 @@
     overflow: hidden;
     resize: none;
     color: transparent;
-    caret-color: var(--code-text);
+    caret-color: #f2eee8;
   }
   .pane textarea:focus {
     outline: none;
   }
   .pane textarea::selection {
-    background: #1d4ed855;
+    background: #f26b1d55;
   }
-
-  /* The read-only rendering the history uses: the same pane, no field. */
-  .code .ln {
-    display: flex;
-    gap: 16px;
-    padding: 0 20px;
-  }
-  .code .ln .no {
-    min-width: 2ch;
-    text-align: right;
-    color: var(--code-line);
-    user-select: none;
-  }
-  .code .ln .c {
-    color: var(--code-text);
-    white-space: pre;
-  }
-  .code .ln .c.head {
-    color: var(--code-accent);
-  }
-  .code:not(.editing) {
-    flex-direction: column;
-    display: block;
-  }
-
   .preview {
     flex: 1;
-    min-height: 240px;
-    padding: 4px 20px 20px;
-    overflow-y: auto;
+    min-height: 360px;
+    padding: 18px 22px;
+    border-radius: 18px;
+    background: #f4f2ef;
+    overflow: auto;
   }
 
   /* ---- history ---- */
   .history {
     display: flex;
     flex: 1;
-    min-height: 0;
-    border-top: 1px solid var(--border);
+    gap: 16px;
+    min-height: 360px;
   }
   .versions {
-    list-style: none;
-    margin: 0;
-    padding: 0;
     width: 260px;
     flex: none;
-    border-right: 1px solid var(--border);
-    overflow-y: auto;
+    gap: 4px;
   }
-  .versions > li > button {
+  .versions button {
     display: flex;
     align-items: center;
     gap: 10px;
     width: 100%;
-    padding: 10px 16px;
-    border: 0;
-    border-bottom: 1px solid var(--border);
+    padding: 9px 10px;
+    border: 1.5px solid transparent;
+    border-radius: 12px;
     background: none;
     font: inherit;
     text-align: left;
+    color: inherit;
     cursor: pointer;
   }
+  .versions button:hover {
+    background: #f4f2ef;
+  }
   .versions button.on {
+    border-color: var(--accent);
     background: var(--accent-soft);
   }
   .versions .v {
     font-family: var(--font-mono);
-    font-size: 12px;
-    color: var(--text-2);
-    flex: none;
+    font-size: var(--type-body);
+    font-weight: 600;
+    color: var(--accent-text);
   }
   .versions .tx {
     display: flex;
-    flex-direction: column;
-    gap: 2px;
     flex: 1;
+    flex-direction: column;
     min-width: 0;
   }
   .versions .n {
-    font-size: 13px;
+    font-size: var(--type-body);
     color: var(--text);
   }
   .versions .d {
-    font-size: 11px;
-    color: var(--text-3);
-  }
-  .versions .u {
-    font-size: 11px;
-    color: var(--accent-text);
-    flex: none;
+    font-size: var(--type-caption);
+    color: var(--text-2);
   }
   .reading {
     display: flex;
-    flex-direction: column;
     flex: 1;
+    flex-direction: column;
+    gap: 12px;
     min-width: 0;
   }
+  .reading .code {
+    flex-direction: column;
+    padding: 18px;
+  }
+  .ln {
+    display: flex;
+    gap: 14px;
+  }
+  .ln .no {
+    min-width: 2ch;
+    color: #9c9286;
+    text-align: right;
+    user-select: none;
+  }
+  .ln .c {
+    white-space: pre-wrap;
+  }
   .restore {
-    margin: 12px 20px;
     align-self: flex-start;
-    border: 1px solid var(--border);
-    background: var(--surface);
-    color: var(--text);
   }
 
-  /* ---- shared ---- */
-  .state {
-    margin: 0;
-    padding: 20px;
-    font-size: 13px;
-    color: var(--text-2);
-  }
-  .state.error {
-    color: var(--danger);
-  }
-  .banner {
-    margin: 0;
-    padding: 10px 20px;
-    border-bottom: 1px solid var(--border);
-    font-size: 13px;
-    color: var(--text-2);
-  }
-  ul.banner {
-    padding-left: 40px;
-  }
-  .banner.bad {
-    color: var(--danger);
-    background: var(--danger-soft);
-  }
-  .banner.good {
-    color: var(--success);
-    background: var(--success-soft);
-  }
-
-  @media (max-width: 1000px) {
+  @media (max-width: 1100px) {
     .wrap {
       flex-direction: column;
-      min-height: 0;
     }
     .list {
       width: auto;
@@ -945,16 +878,8 @@
     .meta {
       flex-direction: column;
     }
-    .f.name {
+    .f.name-field {
       width: auto;
-    }
-    .history {
-      flex-direction: column;
-    }
-    .versions {
-      width: auto;
-      border-right: 0;
-      border-bottom: 1px solid var(--border);
     }
   }
 </style>

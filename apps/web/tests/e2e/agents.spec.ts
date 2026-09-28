@@ -140,7 +140,7 @@ test.describe('configuring the agents and their skills', () => {
 
     // --- a skill first, so there is one to attach ---
     await skillsReady(page);
-    await page.getByRole('button', { name: m.skills.new, exact: true }).click();
+    await page.getByRole('button', { name: m.skills.newSkill, exact: true }).click();
     await page.getByLabel(m.skills.name, { exact: true }).fill(`house-style-${seeded.tag}`);
     await page
       .getByLabel(m.skills.descriptionLabel)
@@ -355,7 +355,7 @@ test.describe('configuring the agents and their skills', () => {
     await signIn(context, seeded.memberId);
 
     await skillsReady(page);
-    await page.getByRole('button', { name: m.skills.new, exact: true }).click();
+    await page.getByRole('button', { name: m.skills.newSkill, exact: true }).click();
     await page.getByLabel(m.skills.name, { exact: true }).fill(`house-voice-${seeded.tag}`);
     await page
       .getByLabel(m.skills.descriptionLabel)
@@ -373,22 +373,22 @@ test.describe('configuring the agents and their skills', () => {
       .click();
     await expect(page.getByLabel(m.skills.content)).toHaveValue('# First\n- Write plainly.');
     await page.getByLabel(m.skills.content).fill('# Second\n- No exclamation marks.');
-    await page.getByRole('button', { name: 'Save skill' }).click();
-    await expect(page.getByRole('status').first()).toContainText('Saved as version 2', {
+    await page.getByRole('button', { name: m.skills.saveSkill }).click();
+    await expect(page.getByRole('status').first()).toContainText(m.skills.savedAs(2), {
       timeout: 15_000,
     });
 
     // --- the history holds both, and says who wrote each ---
-    await page.getByRole('button', { name: 'History' }).click();
+    await page.getByRole('button', { name: m.skills.history }).click();
     await expect(page.getByRole('button', { name: /^v2 / })).toBeVisible({ timeout: 15_000 });
     await page.getByRole('button', { name: /^v1 / }).click();
     await expect(page.getByTestId('version-content')).toContainText('- Write plainly.');
 
     // --- bringing an old one back is a new version, not a rewrite ---
-    await page.getByRole('button', { name: /Put version 1 in the editor/ }).click();
+    await page.getByRole('button', { name: m.skills.putBack(1) }).click();
     await expect(page.getByLabel(m.skills.content)).toHaveValue('# First\n- Write plainly.');
-    await page.getByRole('button', { name: 'Save skill' }).click();
-    await expect(page.getByRole('status').first()).toContainText('Saved as version 3', {
+    await page.getByRole('button', { name: m.skills.saveSkill }).click();
+    await expect(page.getByRole('status').first()).toContainText(m.skills.savedAs(3), {
       timeout: 15_000,
     });
 
