@@ -686,7 +686,7 @@ export const mn = {
 
   agents: {
     heading: 'Агент',
-    lede: 'Агент бүр өөрийн заавар, модель, хэрэгсэл, ур чадвартай ажиллана. Дизайн агент pen.dev CLI дээр, бусад нь Claude CLI дээр ажиллана. Хэн ч өөрийнхийг үүсгэж, хэн ч бусдынхийг хэрэглэж болно.',
+    lede: 'Агент бүр өөрийн заавар, загвар, хэрэгсэл, ур чадвартайгаар ажиллана. Дизайн агент pen.dev CLI дээр, бусад нь Claude CLI дээр ажиллана.',
     search: 'Агент хайх',
     loading: 'Агентуудыг ачаалж байна…',
     noMatch: 'Тохирох агент байхгүй. Доор нэгийг үүсгэнэ үү.',
@@ -943,7 +943,7 @@ export const mn = {
   agentEditor: {
     loading: 'Агентыг ачаалж байна…',
     name: 'Нэр',
-    default: 'Стандарт',
+    default: 'Үндсэн',
     custom: 'Захиалгат',
     edited: ' · засварласан',
     usage: (pipelines: number, runs: number) => `${pipelines} дамжлага · ${runs} ажиллагаа`,
@@ -952,28 +952,38 @@ export const mn = {
     anAdministrator: 'администратор',
     itsOwner: 'эзэмшигч',
     changesApplyNote:
-      'Өөрчлөлт зөвхөн шинэ ажиллагаанд хамаарна. Ажиллаж байгаа даалгаврууд эхэлсэн хувилбараа хадгална.',
+      'Өөрчлөлт зөвхөн шинэ ажиллагаанд үйлчилнэ. Ажиллаж буй даалгаврууд эхэлсэн хувилбараа хадгална.',
     resetTitle: 'Бүх өөрчлөлтийг болиод нийлүүлсэн хувилбар руу буцах',
     alreadyShipped: 'Энэ агент нийлүүлсэн хувилбартай аль хэдийн тохирч байна',
-    resetToDefault: 'Стандарт руу буцаах',
+    resetToDefault: 'Анхны төлөвт буцаах',
     saving: 'Хадгалж байна…',
     saveChanges: 'Өөрчлөлтийг хадгалах',
     systemPrompt: 'Системийн заавар',
-    systemPromptNote:
-      'Ажиллахаас өмнө хөдөлгүүрт өгөгдөнө. Даалгаврын өгөгдлийг {{variables}} хэлбэрээр хэрэглэнэ.',
+    systemPromptNote: (file: string) =>
+      `CLI ажиллахын өмнө ${file} болгон оруулна. Даалгаврын өгөгдлийг {{variables}}-аар бичнэ.`,
+    designPromptNote:
+      'Дизайны үйлчилгээ ажиллахын өмнө өгөгдөнө. Даалгаврын өгөгдлийг {{variables}}-аар бичнэ.',
     allOf: (count: number) => `бүгд ${count}`,
     engine: 'Хөдөлгүүр',
     codingAgent: 'Кодын агент',
     designService: 'Дизайны үйлчилгээ',
-    model: 'Модель',
-    maxCost: 'Ажиллагаа тутмын дээд зардал',
+    model: 'Загвар',
+    modelOption: (name: string, id: string) => (name === id ? id : `${name}  (${id})`),
+    modelAndLimits: 'Загвар ба хязгаар',
+    maxCost: 'Дээд зардал',
+    runsLimit: 'өгөгдмөл',
+    noLimit: 'байхгүй',
+    limitsNote:
+      'Тус бүр ажиллагааны зөвшөөрснөөр хязгаарлагдана, тиймээс энд тавьсан хязгаар даалгаврын зарцуулж болохыг нэмэгдүүлэхгүй. Ажиллагааныхыг хэрэглэхийн тулд хоосон үлдээнэ үү.',
+    noToolsForDesign:
+      'Хэрэгслийн зөвшөөрөл дизайны үйлчилгээнд хамаарахгүй тул тохируулах зүйл алга.',
     maxTime: 'Дээд хугацаа',
     maxTurns: 'Дээд эргэлт',
-    allowedTools: 'Зөвшөөрсөн хэрэгслүүд',
-    allowedToolsNote: 'CLI-д --allowedTools болж дамжина',
+    allowedTools: 'Зөвшөөрөгдсөн хэрэгсэл',
+    allowedToolsNote: 'CLI-д --allowedTools болгон дамжина',
     toolLabel: (name: string, what: string) => `${name} — ${what}`,
     skillsAttached: 'Хавсаргасан ур чадвар',
-    manageSkills: 'Ур чадваруудыг зохицуулах →',
+    manageSkills: 'Удирдах →',
     removeSkill: (skill: string) => `${skill}-ийг хасах`,
     add: 'Нэмэх',
     noSkillsYet: 'Одоогоор ур чадвар байхгүй — эхлээд нэгийг бичнэ үү.',
@@ -1021,6 +1031,40 @@ export const mn = {
     mergeRequest: 'Нэгтгэх хүсэлт',
     mergeRequestOpen: 'Үйлчилгээ дээр хэвийн журмаар хянаж нэгтгэнэ',
     mergeRequestPending: 'Сүүлийн алхам дуусахад үүснэ',
+  },
+
+  /** One agent's tile on artboard 09. */
+  agentCard: {
+    isDefault: 'Үндсэн',
+    conditional: 'Нөхцөлт',
+    custom: 'Захиалгат',
+    model: 'Загвар',
+    tools: 'Хэрэгсэл',
+    skills: 'Ур чадвар',
+    engine: 'Хөдөлгүүр',
+    output: 'Гаралт',
+    penCli: 'pen.dev CLI',
+    designOutput: 'ui.pen + PNG screens',
+    noTools: 'байхгүй — юу ч уншиж, бичиж чадахгүй',
+    usage: (pipelines: number, runs: number) => `${pipelines} дамжлагад · ${runs} ажиллагаа`,
+    unused: 'Хараахан ашиглаагүй',
+    inFlight: (n: number) => `${n} явагдаж буй`,
+    edit: 'Засах',
+    read: 'Унших',
+    duplicate: 'Хуулбарлах',
+    newSub: 'Дамжлагадаа өөрийн алхам нэмэх',
+  },
+
+  /** A tool by its short name, where a list of them is shown. */
+  toolName: {
+    Read: 'Унших',
+    Write: 'Бичих',
+    Edit: 'Засах',
+    Glob: 'Файл хайх',
+    Grep: 'Агуулга хайх',
+    Bash: 'Bash',
+    WebFetch: 'WebFetch',
+    GitPush: 'Git түлхэлт',
   },
 
   owner: {
@@ -1131,6 +1175,7 @@ export const mn = {
     wholeNumber: 'Бүхэл тоо байх ёстой.',
     wholeNumberOrMore: 'Бүхэл тоо, тэгээс их байх ёстой.',
     agentName: 'Агентад нэр өгнө үү.',
+    chooseModel: 'Загвар сонгоно уу.',
     pipelineName: 'Дамжлагад нэр өгнө үү.',
     workspaceName: 'Ажлын талбарт нэр өгнө үү.',
     skillName: 'Ур чадварт нэр өгнө үү.',
@@ -1189,6 +1234,11 @@ export const mn = {
       `Даалгавар шинэчлэгдлээ. ${attempt}-р оролдлого дараалалд орсон ч эхлээгүй: ${detail}.`,
     agentSaved: 'Хадгалагдлаа. Ажиллаж байгаа ажиллагаанд хамаарахгүй.',
     agentReset: 'Энэ агент нийлүүлэгдсэн тохиргоо руугаа буцлаа.',
+    agentDuplicated: (name: string) => `“${name}” нэрээр хуулбарлав. Одоо та үүнийг өөрчилж болно.`,
+    agentDeleted: (inFlight: number) =>
+      inFlight === 0
+        ? 'Устгалаа.'
+        : `Устгалаа. Явагдаж буй ${inFlight} ажиллагаа дуусна: тус бүр эхлэхдээ энэ агентыг уншсан бөгөөд дахин хардаггүй.`,
     settingsSaved: 'Хадгалагдлаа. Ажиллаж байгаа ажиллагаанууд эхэлсэн хязгаараа хадгална.',
     credentialStored: 'Хадгалагдлаа. Шифрлэгдэн хадгалагдах бөгөөд дахин харагдахгүй.',
     alreadyPausing: 'Энэ ажиллагаа аль хэдийн түр зогсож байна.',
@@ -1240,14 +1290,14 @@ export const mn = {
   },
 
   tools: {
-    Read: 'Репозиторийн файлыг унших',
+    Read: 'Репозиторийн аль ч файлыг унших',
     Write: 'Файл үүсгэх',
     Edit: 'Байгаа файлыг өөрчлөх',
     Glob: 'Файлыг нэрээр хайх',
     Grep: 'Файлын агуулгыг хайх',
-    Bash: 'Shell команд ажиллуулах — репозиторийн тестүүд ч мөн',
-    WebFetch: 'URL татах',
-    GitPush: 'Салбарыг түлхэх',
+    Bash: 'Shell команд ажиллуулах (тест, build)',
+    WebFetch: 'Гадаад хаягаас татах',
+    GitPush: 'Дуусахад салбарыг түлхэх',
   },
 
   /** What an agent's prompt may refer to, listed in the Agent Editor. */

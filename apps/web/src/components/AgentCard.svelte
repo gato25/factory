@@ -1,18 +1,22 @@
 <script lang="ts">
   import Icon from '$components/Icon.svelte';
   import OwnerBadge from '$components/OwnerBadge.svelte';
+  import { agentDescription, agentName } from '$lib/default-names';
+  import { modelName } from '$lib/format';
+  import { m } from '$lib/i18n';
 
   /**
-   * One agent, built to `design.pen`'s Agent card: an icon chip and a badge
-   * on one row, the name, the description, then Model / Tools / Skills as a
-   * key-value block above a hairline, and a foot carrying usage and Edit.
+   * One agent, as artboard 09 draws it: an orb and a badge on one row, the
+   * name, what it is for, the model, tools and skills as soft rows, and a
+   * foot carrying how much depends on it and the actions
+   * (specs/004-bento-redesign FR-023).
    *
-   * The card is coloured by WHAT THE AGENT IS. A shipped default is accent, a
-   * design agent is pink, one somebody made is purple — the same three
-   * colours the pipeline builder uses for its step nodes, so the two screens
-   * agree about what a thing is. The engine matters here rather than only in
-   * the editor: it decides which steps can use the agent and whether tool
-   * permissions apply at all (FR-036a, FR-036b).
+   * The orb is the engine the agent runs on — pen.dev blue for the design
+   * service, the accent for the Claude CLI — because the engine decides
+   * which steps can use it and whether tool permissions apply at all
+   * (FR-036a, FR-036b). One somebody made takes the deep accent and says
+   * "Захиалгат" in words, as its step does in the builder, so the two
+   * screens agree about what a thing is.
    */
   let {
     agent,
@@ -38,74 +42,96 @@
     onDuplicate?: () => void;
   } = $props();
 
-  const tone = $derived(
-    agent.engine === 'design_cli' ? 'design' : agent.isDefault ? 'accent' : 'custom',
-  );
+  const design = $derived(agent.engine === 'design_cli');
   const badge = $derived(
-    // The design labels the design agent "Conditional", because that is the
-    // fact about it that matters: it runs only when a ticket changes the
-    // interface (FR-032b).
-    agent.engine === 'design_cli' ? 'Conditional' : agent.isDefault ? 'Default' : 'Custom',
+    // The design labels the design agent "Нөхцөлт", because that is the fact
+    // about it that matters: it runs only when a ticket changes the interface
+    // (FR-032b).
+    design
+      ? m.agentCard.conditional
+      : agent.isDefault
+        ? m.agentCard.isDefault
+        : m.agentCard.custom,
   );
+  const tools = $derived(
+    agent.allowedTools
+      .map((tool) => m.toolName[tool as keyof typeof m.toolName] ?? tool)
+      .join(', '),
+  );
+  const used = $derived(agent.usage.pipelines > 0 || agent.usage.runs > 0);
 </script>
 
-<article class="agent {tone}">
+<article class="tile agent" data-agent={agent.id}>
   <div class="top">
-    <span class="chip"><Icon name={agent.icon ?? 'bot'} size={20} /></span>
-    <span class="kind">
-      <span class="dot"></span>
-      {badge}
+    <span
+      class="orb"
+      class:orb--pen={design}
+      class:custom={!design && !agent.isDefault}
+      aria-hidden="true"
+    >
+      <Icon name={agent.icon ?? (design ? 'pen-tool' : 'bot')} size={20} />
     </span>
-  </div>
-
-  <a class="name" href="/agents/{agent.id}">{agent.name}</a>
-  {#if agent.description}<p class="description">{agent.description}</p>{/if}
-
-  <dl class="kv">
-    <dt>Model</dt>
-    <dd><code>{agent.model}</code></dd>
-
-    <dt>Tools</dt>
-    <dd>
-      {#if agent.engine === 'design_cli'}
-        <!-- Tool permissions do not apply to this engine (FR-036a) -->
-        <span class="muted">not applicable to the design service</span>
-      {:else if agent.allowedTools.length === 0}
-        <span class="muted">none — it can read nothing and write nothing</span>
-      {:else}
-        {agent.allowedTools.join(', ')}
-      {/if}
-    </dd>
-
-    <dt>Skills</dt>
-    <dd>{agent.skills.length > 0 ? agent.skills.join(', ') : '—'}</dd>
-  </dl>
-
-  <div class="foot">
-    <!-- How many pipelines and runs depend on it (FR-043a) -->
-    <span class="usage">
-      Used in {agent.usage.pipelines} pipeline{agent.usage.pipelines === 1 ? '' : 's'} &middot;
-      {agent.usage.runs} run{agent.usage.runs === 1 ? '' : 's'}
-      {#if agent.usage.runsInFlight > 0}
-        &middot; {agent.usage.runsInFlight} in flight
-      {/if}
-    </span>
-    <span class="right">
+    <span class="badges">
       <OwnerBadge
         ownerName={agent.ownerName}
         isDefault={agent.isDefault}
         {mine}
         mayChange={agent.mayChange}
       />
+      <span class="kind" class:pen={design} class:custom={!design && !agent.isDefault}>{badge}</span>
+    </span>
+  </div>
+
+  <div class="tx">
+    <a class="name" href="/agents/{agent.id}">{agentName(agent.name)}</a>
+    {#if agentDescription(agent.name, agent.description)}
+      <p class="description">{agentDescription(agent.name, agent.description)}</p>
+    {/if}
+  </div>
+
+  <dl class="kv">
+    <div class="row">
+      <dt>{m.agentCard.model}</dt>
+      <dd>{modelName(agent.model)}</dd>
+    </div>
+    {#if design}
+      <!-- Tool permissions do not apply to this engine (FR-036a); what it runs on and makes does. -->
+      <div class="row">
+        <dt>{m.agentCard.engine}</dt>
+        <dd class="pen-text">{m.agentCard.penCli}</dd>
+      </div>
+      <div class="row">
+        <dt>{m.agentCard.output}</dt>
+        <dd>{m.agentCard.designOutput}</dd>
+      </div>
+    {:else}
+      <div class="row">
+        <dt>{m.agentCard.tools}</dt>
+        <dd>{tools || m.agentCard.noTools}</dd>
+      </div>
+      <div class="row">
+        <dt>{m.agentCard.skills}</dt>
+        <dd>{agent.skills.length > 0 ? agent.skills.join(', ') : '—'}</dd>
+      </div>
+    {/if}
+  </dl>
+
+  <div class="foot">
+    <!-- How many pipelines and runs depend on it (FR-043a) -->
+    <span class="usage">
+      {used ? m.agentCard.usage(agent.usage.pipelines, agent.usage.runs) : m.agentCard.unused}
+      {#if agent.usage.runsInFlight > 0}
+        · {m.agentCard.inFlight(agent.usage.runsInFlight)}
+      {/if}
+    </span>
+    <span class="actions">
       {#if onDuplicate}
-        <button type="button" class="edit" onclick={onDuplicate}>
-          <Icon name="copy" size={16} />
-          <span>Duplicate</span>
+        <button type="button" class="btn btn--secondary small" onclick={onDuplicate}>
+          <Icon name="copy" size={12} />{m.agentCard.duplicate}
         </button>
       {/if}
-      <a class="edit" href="/agents/{agent.id}">
-        <Icon name="pencil" size={16} />
-        <span>{agent.mayChange ? 'Edit' : 'Read'}</span>
+      <a class="btn btn--secondary small" href="/agents/{agent.id}">
+        <Icon name="pencil" size={12} />{agent.mayChange ? m.agentCard.edit : m.agentCard.read}
       </a>
     </span>
   </div>
@@ -115,135 +141,120 @@
   .agent {
     display: flex;
     flex-direction: column;
-    gap: 14px;
-    padding: 20px;
-    background: var(--surface);
-    border: 1px solid var(--card-border);
-    border-radius: var(--r-lg);
+    gap: 12px;
+    min-width: 0;
+    padding: 22px;
   }
-
   .top {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
     gap: 12px;
   }
-  .chip {
-    display: grid;
-    place-items: center;
-    width: 40px;
-    height: 40px;
-    border-radius: var(--r-md);
-    flex: none;
+  .orb.custom {
+    --orb-a: var(--accent-deep-from);
+    --orb-b: var(--accent-deep-to);
   }
   .kind {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
     padding: 4px 10px;
-    border-radius: 999px;
-    font-size: 12px;
-    font-weight: 600;
-  }
-  .dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 999px;
-    background: currentcolor;
-    flex: none;
-  }
-
-  /* What the agent IS, in the same three colours the builder uses. */
-  .agent.accent .chip {
-    background: var(--accent-soft);
+    border-radius: var(--r-pill);
+    font-size: var(--type-caption);
+    font-weight: 700;
     color: var(--accent-text);
+    background: var(--accent-soft);
   }
-  .agent.accent .kind {
-    background: var(--surface-2);
-    color: var(--text-2);
+  .kind.pen {
+    color: var(--pen-text);
+    background: #e3ecfb;
   }
-  .agent.design .chip,
-  .agent.design .kind {
-    background: var(--design-soft);
-    color: var(--design);
-  }
-  .agent.custom .chip,
-  .agent.custom .kind {
-    background: var(--purple-soft);
-    color: var(--purple);
+  .kind.custom {
+    color: var(--accent-text);
+    background: var(--accent-soft);
+    box-shadow: inset 0 0 0 1px #f0cdb4;
   }
 
+  .tx {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+  }
   .name {
     font-family: var(--font-head);
-    font-size: 17px;
+    font-size: 18px;
     font-weight: 600;
+    letter-spacing: -0.3px;
     color: var(--text);
     text-decoration: none;
+    overflow-wrap: anywhere;
   }
   .name:hover {
     text-decoration: underline;
   }
   .description {
     margin: 0;
-    font-size: 13px;
+    font-size: var(--type-caption);
+    line-height: 1.45;
     color: var(--text-2);
   }
 
   .kv {
-    display: grid;
-    grid-template-columns: 52px 1fr;
-    gap: 6px 8px;
-    margin: 0;
-    padding-top: 12px;
-    border-top: 1px solid var(--border);
-    font-size: 12px;
-  }
-  .kv dt {
-    color: var(--text-3);
-  }
-  .kv dd {
-    margin: 0;
-    font-weight: 500;
-    color: var(--text);
-    min-width: 0;
-    overflow-wrap: anywhere;
-  }
-
-  .foot {
     display: flex;
-    align-items: center;
+    flex-direction: column;
+    gap: 6px;
+    margin: 0;
+  }
+  .row {
+    display: flex;
+    align-items: baseline;
     justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-  .usage {
-    font-size: 12px;
-    color: var(--text-3);
-  }
-  .right {
-    display: flex;
-    align-items: center;
     gap: 8px;
+    padding: 7px 10px;
+    border-radius: 10px;
+    background: #f4f2ef;
+    font-size: var(--type-caption);
   }
-  .edit {
-    display: inline-flex;
-    font-family: inherit;
-    cursor: pointer;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 12px;
-    border: 1px solid var(--border);
-    border-radius: var(--r-sm);
-    background: var(--surface);
-    text-decoration: none;
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--text);
-  }
-  .edit :global(svg) {
+  dt {
+    flex: none;
     color: var(--text-2);
   }
-  .edit:hover {
-    border-color: var(--accent);
+  dd {
+    min-width: 0;
+    margin: 0;
+    font-weight: 600;
+    text-align: right;
+    color: var(--text);
+    overflow-wrap: anywhere;
+  }
+  .pen-text {
+    color: var(--pen-text);
+  }
+
+  .badges {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .foot {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: auto;
+  }
+  .usage {
+    font-size: var(--type-caption);
+    color: var(--text-3);
+  }
+  .btn.small {
+    padding: 7px 12px;
+  }
+  .actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    flex-wrap: wrap;
   }
 </style>

@@ -210,6 +210,18 @@ const SCREENS: Screen[] = [
     signedIn: true,
     primary: ['h1', '.lede', '.item .name', '.item .d', 'input', '.btn'],
   },
+  {
+    name: '09 Agents',
+    path: () => '/agents',
+    signedIn: true,
+    primary: ['h1', '.lede', '.agent .name', '.new h2', 'input', 'select', '.btn'],
+  },
+  {
+    name: '10 Agent Editor',
+    path: (seeded) => `/agents/${seeded.agentId}`,
+    signedIn: true,
+    primary: ['.head .name', '.head .s', '.tool .n', '.f input', '.select select', '.btn'],
+  },
 ];
 
 async function seed(): Promise<Seeded> {
@@ -523,9 +535,12 @@ function measure(input: { primary: string[]; within?: string }): Finding[] {
     if (!text || !el || el.closest('script, style, noscript, template, svg')) continue;
     check(el, text);
   }
-  // A form's values are text too, and primary content.
+  // A form's values are text too, and primary content. A field drawn as an
+  // overlay (`data-overlay`) shows its text through the highlighted copy laid
+  // under it, which the walk above has already measured; its own glyphs are
+  // transparent on purpose, so they are not what anyone reads.
   for (const field of root.querySelectorAll(
-    'input:not([type=hidden], [type=checkbox], [type=radio], [type=file]), textarea, select',
+    'input:not([type=hidden], [type=checkbox], [type=radio], [type=file]), textarea:not([data-overlay]), select',
   )) {
     const value = (field as HTMLInputElement).value;
     if (value) check(field, value);

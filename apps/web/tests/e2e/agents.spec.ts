@@ -2,6 +2,13 @@ import { createHmac, randomUUID } from 'node:crypto';
 import type { BrowserContext } from '@playwright/test';
 import { expect, test } from '@playwright/test';
 import postgres from 'postgres';
+import { modelName } from '../../src/lib/format';
+import { m } from '../../src/lib/i18n';
+
+/** A tool's toggle, named by its short name then what it does. */
+const toolToggle = (tool: keyof typeof m.toolName) => new RegExp(`^${m.toolName[tool]} —`);
+/** A step card on the builder, by its position. */
+const stepCard = (n: number) => new RegExp(`^${m.stepNode.stepLabel(n, '')}`);
 
 /**
  * User Story 7's Independent Test (quickstart.md scenario G): as a MEMBER,
@@ -115,7 +122,7 @@ async function signIn(context: BrowserContext, userId: string) {
  */
 async function skillsReady(page: import('@playwright/test').Page) {
   await page.goto('/skills');
-  await expect(page.getByText('Pick a skill on the left')).toHaveCount(0, { timeout: 15_000 });
+  await expect(page.getByText(m.skills.pickOne)).toHaveCount(0, { timeout: 15_000 });
 }
 
 test.describe('configuring the agents and their skills', () => {
@@ -133,22 +140,25 @@ test.describe('configuring the agents and their skills', () => {
 
     // --- a skill first, so there is one to attach ---
     await skillsReady(page);
-    await page.getByRole('button', { name: 'New' }).click();
-    await page.getByLabel('Name').fill(`house-style-${seeded.tag}`);
+    await page.getByRole('button', { name: m.skills.new, exact: true }).click();
+    await page.getByLabel(m.skills.name, { exact: true }).fill(`house-style-${seeded.tag}`);
     await page
-      .getByLabel('Description (shown to the agent so it knows when to use this)')
+      .getByLabel(m.skills.descriptionLabel)
       .fill('When writing anything a customer will read');
-    await page.getByLabel('Content (Markdown)').fill('Write plainly. No exclamation marks.');
-    await page.getByRole('button', { name: 'Create skill' }).click();
+    await page.getByLabel(m.skills.content).fill('Write plainly. No exclamation marks.');
+    await page.getByRole('button', { name: m.skills.createSkill }).click();
     await expect(page.getByText(`house-style-${seeded.tag}`).first()).toBeVisible({
       timeout: 15_000,
     });
 
     // --- their own agent ---
     await page.goto('/agents');
-    await page.locator('form').getByLabel('Name').fill(`Planner ${seeded.tag}`);
-    await page.locator('form').getByLabel('What it is for').fill('Turns a spec into a plan');
-    await page.locator('form').getByRole('button', { name: 'Create' }).click();
+    await page.locator('#new-agent').getByLabel(m.agents.name).fill(`Planner ${seeded.tag}`);
+    await page
+      .locator('#new-agent')
+      .getByLabel(m.agents.whatItIsFor)
+      .fill('Turns a spec into a plan');
+    await page.locator('#new-agent').getByRole('button', { name: m.agents.create }).click();
     await expect(page.getByText(`Planner ${seeded.tag}`)).toBeVisible({ timeout: 15_000 });
 
     const [created] = await sql`
@@ -158,25 +168,26 @@ test.describe('configuring the agents and their skills', () => {
 
     // --- change its instructions, model, tools and skills ---
     await page.goto(`/agents/${created!.id}`);
-    await page.getByLabel('System prompt').fill('Read docs/spec.md and write docs/plan.md.');
-    await page.getByLabel('Model').selectOption('claude-opus-5');
+    await page
+      .getByLabel(m.agentEditor.systemPrompt)
+      .fill('Read docs/spec.md and write docs/plan.md.');
+    await page.getByLabel(m.agentEditor.model).selectOption('claude-opus-5');
 
     // Withhold Bash: everything but it.
-    for (const tool of ['Read', 'Write', 'Edit']) {
-      await page.getByRole('checkbox', { name: new RegExp(`^${tool}\\b`) }).check();
+    for (const tool of ['Read', 'Write', 'Edit'] as const) {
+      await page.getByRole('checkbox', { name: toolToggle(tool) }).check();
     }
-    await expect(page.getByRole('checkbox', { name: /^Bash\b/ })).not.toBeChecked();
+    await expect(page.getByRole('checkbox', { name: toolToggle('Bash') })).not.toBeChecked();
 
     // Skills are chips with an Add beside them, as the artboard draws them.
-    await page.getByRole('button', { name: 'Add' }).click();
+    await page.getByRole('button', { name: m.agentEditor.add, exact: true }).click();
     await page.getByRole('button', { name: new RegExp(`house-style-${seeded.tag}`) }).click();
-    await page.getByLabel('Max turns').fill('25');
+    await page.getByLabel(m.agentEditor.maxTurns).fill('25');
 
-    await page.getByRole('button', { name: 'Save changes' }).click();
-    await expect(page.getByRole('status').first()).toContainText(
-      'Runs already in flight are unaffected',
-      { timeout: 15_000 },
-    );
+    await page.getByRole('button', { name: m.agentEditor.saveChanges }).click();
+    await expect(page.getByRole('status').first()).toContainText(m.notice.agentSaved, {
+      timeout: 15_000,
+    });
 
     const [saved] = await sql`
       select system_prompt, model, allowed_tools, max_turns from agents
@@ -195,12 +206,12 @@ test.describe('configuring the agents and their skills', () => {
 
     // --- swap it into their own pipeline, still alone ---
     await page.goto(`/pipelines/${seeded.pipelineId}`);
-    await page.getByRole('button', { name: /^Step 1 —/ }).click();
+    await page.getByRole('button', { name: stepCard(1) }).click();
     await page
-      .getByRole('combobox', { name: 'Agent', exact: true })
-      .selectOption({ label: `Planner ${seeded.tag} — claude-opus-5` });
-    await page.getByRole('button', { name: 'Save as version 2' }).click();
-    await expect(page.getByRole('status').first()).toContainText('Saved as version 2', {
+      .getByRole('combobox', { name: m.stepEditor.agent, exact: true })
+      .selectOption({ label: `Planner ${seeded.tag} — ${modelName('claude-opus-5')}` });
+    await page.getByRole('button', { name: m.pipeline.saveAs(2) }).click();
+    await expect(page.getByRole('status').first()).toContainText(m.pipeline.saved(2, 0), {
       timeout: 15_000,
     });
 
@@ -225,20 +236,20 @@ test.describe('configuring the agents and their skills', () => {
     // An interpolated value is its own text node, which a getByText regex
     // will not span — the containing region is what to assert on.
     await expect(page.getByRole('main')).toContainText(
-      `Changing this one is for Other ${seeded.tag}`,
+      m.agentEditor.changingIsFor(`Other ${seeded.tag}`),
     );
 
     // Readable: the instructions are there.
-    await expect(page.getByLabel('System prompt')).toHaveValue('their instructions');
+    await expect(page.getByLabel(m.agentEditor.systemPrompt)).toHaveValue('their instructions');
     // Not changeable.
-    await expect(page.getByLabel('System prompt')).not.toBeEditable();
-    await expect(page.getByRole('button', { name: 'Save changes' })).toHaveCount(0);
+    await expect(page.getByLabel(m.agentEditor.systemPrompt)).not.toBeEditable();
+    await expect(page.getByRole('button', { name: m.agentEditor.saveChanges })).toHaveCount(0);
 
     // Usable: it can still be chosen in a pipeline the member owns.
     await page.goto(`/pipelines/${seeded.pipelineId}`);
-    await page.getByRole('button', { name: /^Step 1 —/ }).click();
+    await page.getByRole('button', { name: stepCard(1) }).click();
     await expect(
-      page.getByRole('combobox', { name: 'Agent', exact: true }).getByRole('option', {
+      page.getByRole('combobox', { name: m.stepEditor.agent, exact: true }).getByRole('option', {
         name: new RegExp(`Theirs ${seeded.tag}`),
       }),
     ).toHaveCount(1);
@@ -252,9 +263,9 @@ test.describe('configuring the agents and their skills', () => {
     await signIn(context, seeded.memberId);
 
     await page.goto('/agents');
-    await page.locator('form').getByLabel('Name').fill(`Designer ${seeded.tag}`);
-    await page.locator('form').getByLabel('Engine').selectOption('design_cli');
-    await page.locator('form').getByRole('button', { name: 'Create' }).click();
+    await page.locator('#new-agent').getByLabel(m.agents.name).fill(`Designer ${seeded.tag}`);
+    await page.locator('#new-agent').getByLabel(m.agents.engine).selectOption('design_cli');
+    await page.locator('#new-agent').getByRole('button', { name: m.agents.create }).click();
     await expect(page.getByText(`Designer ${seeded.tag}`)).toBeVisible({ timeout: 15_000 });
 
     const [created] = await sql`
@@ -262,15 +273,13 @@ test.describe('configuring the agents and their skills', () => {
     await page.goto(`/agents/${created!.id}`);
 
     // That service's own models, not the coding agent's.
-    const models = page.getByLabel('Model');
+    const models = page.getByLabel(m.agentEditor.model);
     await expect(models.getByRole('option', { name: 'pen-default' })).toHaveCount(1);
     await expect(models.getByRole('option', { name: 'claude-opus-5' })).toHaveCount(0);
 
     // And no tool toggles at all — they do not apply.
-    await expect(
-      page.getByText('Tool permissions do not apply to the design service'),
-    ).toBeVisible();
-    await expect(page.getByRole('checkbox', { name: /^Bash\b/ })).toHaveCount(0);
+    await expect(page.getByText(m.agentEditor.noToolsForDesign)).toBeVisible();
+    await expect(page.getByRole('checkbox', { name: toolToggle('Bash') })).toHaveCount(0);
   });
 
   test('resetting a modified default restores what shipped (FR-040)', async ({ page, context }) => {
@@ -284,18 +293,19 @@ test.describe('configuring the agents and their skills', () => {
 
     await page.goto(`/agents/${seeded.shippedAgentId}`);
     // Nothing to reset yet, and the button says so rather than lying.
-    await expect(page.getByRole('button', { name: 'Reset to default' })).toBeDisabled();
+    await expect(page.getByRole('button', { name: m.agentEditor.resetToDefault })).toBeDisabled();
 
-    await page.getByLabel('System prompt').fill('my own version');
-    await page.getByRole('button', { name: 'Save changes' }).click();
-    await expect(page.getByRole('status').first()).toContainText('Saved', { timeout: 15_000 });
+    await page.getByLabel(m.agentEditor.systemPrompt).fill('my own version');
+    await page.getByRole('button', { name: m.agentEditor.saveChanges }).click();
+    await expect(page.getByRole('status').first()).toContainText(m.notice.agentSaved, {
+      timeout: 15_000,
+    });
 
-    await expect(page.getByRole('button', { name: 'Reset to default' })).toBeEnabled();
-    await page.getByRole('button', { name: 'Reset to default' }).click();
-    await expect(page.getByRole('status').first()).toContainText(
-      'Back to the configuration this agent shipped with',
-      { timeout: 15_000 },
-    );
+    await expect(page.getByRole('button', { name: m.agentEditor.resetToDefault })).toBeEnabled();
+    await page.getByRole('button', { name: m.agentEditor.resetToDefault }).click();
+    await expect(page.getByRole('status').first()).toContainText(m.notice.agentReset, {
+      timeout: 15_000,
+    });
 
     const [row] = await sql`
       select system_prompt, model, allowed_tools from agents where id = ${seeded.shippedAgentId}`;
@@ -312,17 +322,24 @@ test.describe('configuring the agents and their skills', () => {
     await signIn(context, seeded.memberId);
     await page.goto(`/agents/${seeded.shippedAgentId}`);
 
-    await expect(page.getByText('Default').first()).toBeVisible();
-    await expect(page.getByRole('main')).toContainText('Changing this one is for an administrator');
-    await expect(page.getByLabel('System prompt')).not.toBeEditable();
+    await expect(page.getByText(m.agentEditor.default).first()).toBeVisible();
+    await expect(page.getByRole('main')).toContainText(
+      m.agentEditor.changingIsFor(m.agentEditor.anAdministrator),
+    );
+    await expect(page.getByLabel(m.agentEditor.systemPrompt)).not.toBeEditable();
 
     // Duplicating is the way through, and the copy is theirs.
     await page.goto('/agents');
     await page
-      .locator('.cell', { hasText: `Shipped ${seeded.tag}` })
-      .getByRole('button', { name: 'Duplicate' })
+      .locator('.agent', { hasText: `Shipped ${seeded.tag}` })
+      .getByRole('button', { name: m.agentCard.duplicate })
       .click();
-    await expect(page.getByRole('status')).toContainText('yours to change', { timeout: 15_000 });
+    await expect(page.getByRole('status')).toContainText(
+      m.notice.agentDuplicated(`Shipped ${seeded.tag} (copy)`),
+      {
+        timeout: 15_000,
+      },
+    );
 
     const [copy] = await sql`
       select owner_id, system_prompt from agents where name = ${`Shipped ${seeded.tag} (copy)`}`;
@@ -338,13 +355,13 @@ test.describe('configuring the agents and their skills', () => {
     await signIn(context, seeded.memberId);
 
     await skillsReady(page);
-    await page.getByRole('button', { name: 'New' }).click();
-    await page.getByLabel('Name').fill(`house-voice-${seeded.tag}`);
+    await page.getByRole('button', { name: m.skills.new, exact: true }).click();
+    await page.getByLabel(m.skills.name, { exact: true }).fill(`house-voice-${seeded.tag}`);
     await page
-      .getByLabel('Description (shown to the agent so it knows when to use this)')
+      .getByLabel(m.skills.descriptionLabel)
       .fill('When writing anything a customer will read');
-    await page.getByLabel('Content (Markdown)').fill('# First\n- Write plainly.');
-    await page.getByRole('button', { name: 'Create skill' }).click();
+    await page.getByLabel(m.skills.content).fill('# First\n- Write plainly.');
+    await page.getByRole('button', { name: m.skills.createSkill }).click();
     await expect(
       page.getByRole('button', { name: new RegExp(`house-voice-${seeded.tag}`) }).first(),
     ).toBeVisible({ timeout: 15_000 });
@@ -354,8 +371,8 @@ test.describe('configuring the agents and their skills', () => {
       .getByRole('button', { name: new RegExp(`house-voice-${seeded.tag}`) })
       .first()
       .click();
-    await expect(page.getByLabel('Content (Markdown)')).toHaveValue('# First\n- Write plainly.');
-    await page.getByLabel('Content (Markdown)').fill('# Second\n- No exclamation marks.');
+    await expect(page.getByLabel(m.skills.content)).toHaveValue('# First\n- Write plainly.');
+    await page.getByLabel(m.skills.content).fill('# Second\n- No exclamation marks.');
     await page.getByRole('button', { name: 'Save skill' }).click();
     await expect(page.getByRole('status').first()).toContainText('Saved as version 2', {
       timeout: 15_000,
@@ -369,7 +386,7 @@ test.describe('configuring the agents and their skills', () => {
 
     // --- bringing an old one back is a new version, not a rewrite ---
     await page.getByRole('button', { name: /Put version 1 in the editor/ }).click();
-    await expect(page.getByLabel('Content (Markdown)')).toHaveValue('# First\n- Write plainly.');
+    await expect(page.getByLabel(m.skills.content)).toHaveValue('# First\n- Write plainly.');
     await page.getByRole('button', { name: 'Save skill' }).click();
     await expect(page.getByRole('status').first()).toContainText('Saved as version 3', {
       timeout: 15_000,

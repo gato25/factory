@@ -1,15 +1,18 @@
 <script lang="ts">
   import { page } from '$app/state';
   import Icon from '$components/Icon.svelte';
+  import { agentDescription, agentName } from '$lib/default-names';
+  import { modelName } from '$lib/format';
   import { m } from '$lib/i18n';
   import { agent, options, reset, save } from '$lib/remote/agents.remote';
   import { skills } from '$lib/remote/skills.remote';
 
   /**
-   * Screen 10 — Agent Editor, built to `design.pen`: a 48px chip and the
-   * name in the head, the system prompt on the design's dark editor filling
-   * the left, and a 400px column carrying the model and limits, the tool
-   * toggles and the attached skills as chips.
+   * Screen 10 — Agent Editor, built to `design.pen`: the engine's orb and
+   * the name in the head, the system prompt on the dark code surface filling
+   * the left tile, and a 420px column of tiles carrying the model and
+   * limits, the tool toggles and the attached skills as chips
+   * (specs/004-bento-redesign FR-023).
    *
    * Each is configured independently (FR-036); saving writes them together,
    * because a half-saved agent is worse than either. For an agent on the
@@ -29,6 +32,11 @@
   let tools = $state<string[] | null>(null);
   let attached = $state<string[] | null>(null);
   let prompt = $state('');
+  // The name and description as shown: a shipped agent's in the catalogue's
+  // words. Left as shown, the stored text is what saves, so a translation
+  // never overwrites what shipped (FR-028) and the way back still matches it.
+  let nameText = $state('');
+  let descriptionText = $state('');
   let loadedFor = $state<string | null>(null);
   let notice = $state<string | null>(null);
   let adding = $state(false);
@@ -43,6 +51,9 @@
       tools = [...detail.current.allowedTools];
       attached = detail.current.skills.map((skill) => skill.id);
       prompt = detail.current.systemPrompt;
+      nameText = agentName(detail.current.name);
+      descriptionText =
+        agentDescription(detail.current.name, detail.current.description) ?? '';
       loadedFor = detail.current.id;
     }
   });
@@ -57,6 +68,19 @@
   const unheld = $derived(
     skillList.ready ? skillList.current.filter((s) => !(attached ?? []).includes(s.id)) : [],
   );
+
+  /**
+   * Where the runner writes the prompt for the CLI to read: the agent's
+   * stored name, lower-cased and hyphenated, as `agentSlug` in the runner's
+   * container config makes it.
+   */
+  const promptFile = (name: string) =>
+    `.claude/agents/${name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')}.md`;
+
+  const toolName = (name: string) => m.toolName[name as keyof typeof m.toolName] ?? name;
 
   /** A line that names a variable is the one worth picking out. */
   const isVariable = (line: string) => /\{\{[\w.]+\}\}/.test(line);
@@ -75,50 +99,57 @@
 <svelte:window onclick={() => (adding = false)} />
 
 {#if detail.error}
-  <p class="card failure" role="alert">{(detail.error as Error).message}</p>
+  <p class="tile tile--danger failure" role="alert">{(detail.error as Error).message}</p>
 {:else if !detail.ready || engine === null}
-  <p class="card">{m.agentEditor.loading}</p>
+  <p class="tile">{m.agentEditor.loading}</p>
 {:else}
   {@const a = detail.current}
+  {@const design = engine === 'design_cli'}
 
   <form {...save} class="screen">
     <input type="hidden" name="agentId" value={a.id} />
     <input type="hidden" name="allowedTools" value={(tools ?? []).join(',')} />
     <input type="hidden" name="skillIds" value={(attached ?? []).join(',')} />
+    <input type="hidden" name="name" value={nameText === agentName(a.name) ? a.name : nameText} />
+    <input
+      type="hidden"
+      name="description"
+      value={descriptionText === (agentDescription(a.name, a.description) ?? '')
+        ? (a.description ?? '')
+        : descriptionText}
+    />
 
     <header class="head">
-      <span class="chip"><Icon name={a.icon ?? 'bot'} size={24} /></span>
+      <span class="orb big" class:orb--pen={design} aria-hidden="true">
+        <Icon name={a.icon ?? (design ? 'pen-tool' : 'bot')} size={24} />
+      </span>
       <div class="tx">
         <div class="row">
+          <!-- The name is the heading and the field at once, as the artboard has it. -->
           <input
             class="name"
-            name="name"
             aria-label={m.agentEditor.name}
-            value={a.name}
+            bind:value={nameText}
             required
             readonly={!a.mayChange}
           />
-          <span class="badge">
-            <span class="dot"></span>
+          <span class="kind" class:pen={design}>
             {a.isDefault
               ? m.agentEditor.default
               : (a.ownerName ?? m.agentEditor.custom)}{a.modifiedFromShipped
               ? m.agentEditor.edited
               : ''}
           </span>
-          <span class="badge quiet">
-            <span class="dot"></span>
-            {m.agentEditor.usage(a.usage.pipelines, a.usage.runs)}
-          </span>
+          <span class="kind quiet">{m.agentEditor.usage(a.usage.pipelines, a.usage.runs)}</span>
         </div>
-        <input
+        <textarea
           class="what"
-          name="description"
+          rows="1"
           aria-label={m.agentEditor.whatItIsFor}
-          value={a.description ?? ''}
+          bind:value={descriptionText}
           placeholder={m.agentEditor.whatItIsFor}
           readonly={!a.mayChange}
-        />
+        ></textarea>
         <p class="s">
           {m.agentEditor.changesApplyNote}
           {#if !a.mayChange}
@@ -134,56 +165,54 @@
           <!-- Back to what shipped (FR-040) -->
           <button
             type="button"
-            class="secondary"
+            class="btn btn--secondary"
             disabled={!a.modifiedFromShipped}
-            title={a.modifiedFromShipped
-              ? m.agentEditor.resetTitle
-              : m.agentEditor.alreadyShipped}
+            title={a.modifiedFromShipped ? m.agentEditor.resetTitle : m.agentEditor.alreadyShipped}
             onclick={async () => {
               const result = await reset(a.id);
               notice = ('problem' in result ? result.problem : result.message) ?? null;
               loadedFor = null;
             }}
           >
-            <Icon name="rotate-ccw" size={16} />
-            <span>{m.agentEditor.resetToDefault}</span>
+            <Icon name="rotate-ccw" size={14} />{m.agentEditor.resetToDefault}
           </button>
         {/if}
         {#if a.mayChange}
-          <button class="primary" type="submit" disabled={save.pending > 0}>
-            <Icon name="save" size={16} />
-            <span>{save.pending > 0 ? m.agentEditor.saving : m.agentEditor.saveChanges}</span>
+          <button class="btn" type="submit" disabled={save.pending > 0}>
+            <Icon name="save" size={14} />{save.pending > 0
+              ? m.agentEditor.saving
+              : m.agentEditor.saveChanges}
           </button>
         {/if}
       </div>
     </header>
 
-    {#if notice}<p class="banner" role="status">{notice}</p>{/if}
+    {#if notice}<p class="tile banner" role="status">{notice}</p>{/if}
     {#if save.fields.allIssues()?.length}
-      <ul class="banner bad" role="alert">
+      <ul class="tile tile--danger banner" role="alert">
         {#each save.fields.allIssues() ?? [] as issue (issue.message)}
           <li>{issue.message}</li>
         {/each}
       </ul>
     {:else if save.result && 'problem' in save.result && save.result.problem}
-      <p class="banner bad" role="alert">{save.result.problem}</p>
+      <p class="tile tile--danger banner" role="alert">{save.result.problem}</p>
     {:else if save.result && 'message' in save.result}
-      <p class="banner good" role="status">{save.result.message}</p>
+      <p class="tile tile--done banner" role="status">{save.result.message}</p>
     {/if}
 
     <div class="wrap">
-      <section class="card prompt">
+      <section class="tile prompt">
         <header class="ph">
           <div class="t">
             <h2>{m.agentEditor.systemPrompt}</h2>
-            <p>{m.agentEditor.systemPromptNote}</p>
+            <p>
+              {design ? m.agentEditor.designPromptNote : m.agentEditor.systemPromptNote(promptFile(a.name))}
+            </p>
           </div>
           {#if vocabulary.ready}
             <div class="vars">
               {#each vocabulary.current.variables.slice(0, 3) as variable (variable.name)}
-                <span class="var" title={variable.what}>
-                  &#123;&#123;{variable.name}&#125;&#125;
-                </span>
+                <span class="var" title={variable.what}>&#123;&#123;{variable.name}&#125;&#125;</span>
               {/each}
               <details class="more">
                 <summary>{m.agentEditor.allOf(vocabulary.current.variables.length)}</summary>
@@ -198,7 +227,7 @@
           {/if}
         </header>
 
-        <!-- The design's dark pane: a gutter, a highlighted copy of the text,
+        <!-- The dark code surface: a gutter, a highlighted copy of the text,
              and the real field laid exactly over it. -->
         <div class="code">
           <div class="gutter" aria-hidden="true">
@@ -210,6 +239,7 @@
                 >{#if i < lines.length - 1}{'\n'}{/if}{/each}</pre>
             <textarea
               name="systemPrompt"
+              data-overlay
               aria-label={m.agentEditor.systemPrompt}
               spellcheck="false"
               readonly={!a.mayChange}
@@ -220,13 +250,13 @@
       </section>
 
       <aside class="side">
-        <section class="card">
-          <h2>Model &amp; limits</h2>
+        <section class="tile">
+          <h2>{m.agentEditor.modelAndLimits}</h2>
 
           <label class="f">
             <span>{m.agentEditor.engine}</span>
             <div class="select">
-              <Icon name="bot" size={16} />
+              <Icon name={design ? 'pen-tool' : 'bot'} size={14} />
               <select
                 name="engine"
                 disabled={!a.mayChange}
@@ -240,20 +270,20 @@
                 <option value="claude_cli">{m.agentEditor.codingAgent}</option>
                 <option value="design_cli">{m.agentEditor.designService}</option>
               </select>
-              <Icon name="chevron-down" size={16} />
+              <Icon name="chevron-down" size={14} />
             </div>
           </label>
 
           <label class="f">
             <span>{m.agentEditor.model}</span>
             <div class="select">
-              <Icon name="code" size={16} />
+              <Icon name="sparkles" size={14} />
               <select name="model" disabled={!a.mayChange} value={model ?? models[0] ?? ''}>
                 {#each models as option (option)}
-                  <option value={option}>{option}</option>
+                  <option value={option}>{m.agentEditor.modelOption(modelName(option), option)}</option>
                 {/each}
               </select>
-              <Icon name="chevron-down" size={16} />
+              <Icon name="chevron-down" size={14} />
             </div>
           </label>
 
@@ -263,7 +293,7 @@
               <input
                 name="maxCostUsd"
                 readonly={!a.mayChange}
-                placeholder="the run's"
+                placeholder={m.agentEditor.runsLimit}
                 value={a.maxCostUsd ?? ''}
               />
             </label>
@@ -274,7 +304,7 @@
                 type="number"
                 min="1"
                 readonly={!a.mayChange}
-                placeholder="the run's"
+                placeholder={m.agentEditor.runsLimit}
                 value={a.maxMinutes ?? ''}
               />
             </label>
@@ -285,20 +315,17 @@
                 type="number"
                 min="1"
                 readonly={!a.mayChange}
-                placeholder="none"
+                placeholder={m.agentEditor.noLimit}
                 value={a.maxTurns ?? ''}
               />
             </label>
           </div>
-          <p class="quiet">
-            Each is capped at what the run allows, so a limit here cannot raise what a ticket may
-            consume. Leave one empty to use the run's.
-          </p>
+          <p class="quiet">{m.agentEditor.limitsNote}</p>
         </section>
 
-        {#if engine === 'claude_cli'}
+        {#if !design}
           <!-- Withholding a tool makes it unreachable, not discouraged (FR-039) -->
-          <section class="card">
+          <section class="tile tools">
             <div class="ch">
               <h2>{m.agentEditor.allowedTools}</h2>
               <p class="quiet">{m.agentEditor.allowedToolsNote}</p>
@@ -307,13 +334,13 @@
               {#each vocabulary.current.tools as tool (tool.name)}
                 <label class="tool">
                   <span class="tx">
-                    <span class="n">{tool.name}</span>
+                    <span class="n">{toolName(tool.name)}</span>
                     <span class="d">{tool.what}</span>
                   </span>
                   <input
                     type="checkbox"
                     class="switch"
-                    aria-label={m.agentEditor.toolLabel(tool.name, tool.what)}
+                    aria-label={m.agentEditor.toolLabel(toolName(tool.name), tool.what)}
                     disabled={!a.mayChange}
                     checked={(tools ?? []).includes(tool.name)}
                     onchange={(event) => toggleTool(tool.name, event.currentTarget.checked)}
@@ -323,16 +350,14 @@
             {/if}
           </section>
         {:else}
-          <section class="card">
+          <section class="tile">
             <h2>{m.agentEditor.allowedTools}</h2>
-            <p class="quiet">
-              Tool permissions do not apply to the design service, so there are none to set.
-            </p>
+            <p class="quiet">{m.agentEditor.noToolsForDesign}</p>
           </section>
         {/if}
 
-        <section class="card">
-          <div class="ch">
+        <section class="tile">
+          <div class="ch row-head">
             <h2>{m.agentEditor.skillsAttached}</h2>
             <a href="/skills">{m.agentEditor.manageSkills}</a>
           </div>
@@ -409,29 +434,24 @@
   .screen {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 20px;
   }
 
   /* ---- head ---- */
   .head {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     gap: 16px;
+    padding: 4px 4px 0;
   }
-  .chip {
-    display: grid;
-    place-items: center;
-    width: 48px;
-    height: 48px;
-    border-radius: var(--r-md);
-    background: var(--accent-soft);
-    color: var(--accent-text);
-    flex: none;
+  .orb.big {
+    width: 56px;
+    height: 56px;
   }
   .head .tx {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 4px;
     flex: 1;
     min-width: 0;
   }
@@ -441,11 +461,10 @@
     gap: 10px;
     flex-wrap: wrap;
   }
-  /* The name is the heading and the field at once, as the artboard has it. */
   .name,
   .what {
     border: 1px solid transparent;
-    border-radius: var(--r-sm);
+    border-radius: 10px;
     background: none;
     font: inherit;
     color: var(--text);
@@ -454,16 +473,20 @@
     width: 100%;
   }
   .name {
-    font-family: var(--font-head);
-    font-size: 22px;
-    font-weight: 700;
     width: auto;
     max-width: 22ch;
+    font-family: var(--font-head);
+    font-size: 28px;
+    font-weight: 600;
+    letter-spacing: -0.5px;
   }
   .what {
-    font-size: 13px;
+    max-width: 90ch;
+    resize: none;
+    field-sizing: content;
+    line-height: 1.45;
+    font-size: var(--type-body);
     color: var(--text-2);
-    max-width: 60ch;
   }
   .name:not(:read-only):hover,
   .what:not(:read-only):hover {
@@ -475,9 +498,9 @@
     outline: none;
   }
   .s {
-    margin: 2px 0 0;
-    font-size: 12px;
-    color: var(--text-3);
+    margin: 0;
+    font-size: var(--type-body);
+    color: var(--text-2);
   }
   .btns {
     display: flex;
@@ -485,80 +508,78 @@
     gap: 10px;
     flex: none;
   }
-
-  .badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
+  .kind {
+    flex: none;
     padding: 4px 10px;
-    border-radius: 999px;
-    background: var(--surface-2);
-    font-size: 12px;
+    border-radius: var(--r-pill);
+    font-size: var(--type-caption);
+    font-weight: 700;
+    color: var(--accent-text);
+    background: var(--accent-soft);
+  }
+  .kind.pen {
+    color: var(--pen-text);
+    background: #e3ecfb;
+  }
+  .kind.quiet {
+    font-weight: 600;
     color: var(--text-2);
-    flex: none;
-  }
-  .badge.quiet {
-    color: var(--text-3);
-  }
-  .dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 999px;
-    background: currentcolor;
-    flex: none;
+    background: var(--surface-2);
   }
 
   /* ---- layout ---- */
   .wrap {
     display: flex;
     align-items: stretch;
-    gap: 24px;
+    gap: 20px;
   }
-  .card {
+  .tile {
     display: flex;
     flex-direction: column;
     gap: 12px;
-    padding: 16px;
-    background: var(--surface);
-    border: 1px solid var(--card-border);
-    border-radius: var(--r-lg);
-    box-shadow: 0 1px 2px #0f172a0a;
+    padding: 22px;
   }
   .prompt {
     flex: 1;
     min-width: 0;
-    padding: 0;
-    gap: 0;
-    overflow: hidden;
+    gap: 16px;
   }
   .side {
     display: flex;
     flex-direction: column;
-    gap: 16px;
-    width: 400px;
+    gap: 20px;
+    width: 420px;
     flex: none;
   }
   h2 {
     margin: 0;
     font-family: var(--font-head);
-    font-size: 15px;
+    font-size: 17px;
     font-weight: 600;
     color: var(--text);
   }
+  .prompt h2 {
+    font-size: 18px;
+  }
   .quiet {
     margin: 0;
-    font-size: 12px;
+    font-size: var(--type-caption);
     color: var(--text-2);
   }
   .ch {
     display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .row-head {
+    flex-direction: row;
     align-items: baseline;
     justify-content: space-between;
     gap: 12px;
   }
   .ch a {
-    font-size: 12px;
-    font-weight: 500;
+    font-size: var(--type-caption);
+    font-weight: 600;
     color: var(--accent-text);
     text-decoration: none;
   }
@@ -572,18 +593,16 @@
     align-items: flex-start;
     justify-content: space-between;
     gap: 16px;
-    padding: 16px 20px;
-    border-bottom: 1px solid var(--border);
   }
   .ph .t {
     display: flex;
     flex-direction: column;
-    gap: 3px;
+    gap: 4px;
     min-width: 0;
   }
   .ph p {
     margin: 0;
-    font-size: 12px;
+    font-size: var(--type-caption);
     color: var(--text-2);
   }
   .vars {
@@ -591,47 +610,46 @@
     align-items: center;
     gap: 6px;
     flex-wrap: wrap;
+    justify-content: flex-end;
     flex: none;
+    max-width: 50%;
   }
-  .var {
-    padding: 3px 8px;
-    border-radius: 6px;
-    background: var(--surface-2);
+  .var,
+  .more summary {
+    padding: 4px 9px;
+    border-radius: var(--r-pill);
     font-family: var(--font-mono);
-    font-size: 11px;
-    color: var(--text-2);
+    font-size: var(--type-caption);
+    font-weight: 600;
+    color: var(--pen-text);
+    background: #e3ecfb;
   }
   .more {
     position: relative;
   }
   .more summary {
     list-style: none;
-    padding: 3px 8px;
-    border-radius: 6px;
-    background: var(--surface-2);
-    font-size: 11px;
-    color: var(--accent-text);
+    font-family: var(--font);
     cursor: pointer;
   }
   .more[open] dl {
     position: absolute;
-    top: 26px;
+    top: 30px;
     right: 0;
     z-index: 5;
     display: grid;
     grid-template-columns: auto 1fr;
-    gap: 4px 12px;
-    width: 380px;
+    gap: 6px 12px;
+    width: 400px;
     margin: 0;
-    padding: 12px 14px;
+    padding: 14px 16px;
+    border-radius: 16px;
     background: var(--surface);
-    border: 1px solid var(--card-border);
-    border-radius: var(--r-md);
-    box-shadow: 0 8px 24px #0f172a1f;
-    font-size: 12px;
+    box-shadow: 0 14px 36px var(--shadow-depth);
+    font-size: var(--type-caption);
   }
   .more dt code {
-    font-size: 11px;
+    font-size: var(--type-caption);
   }
   .more dd {
     margin: 0;
@@ -640,23 +658,24 @@
 
   .code {
     flex: 1;
-    min-height: 360px;
+    min-height: 420px;
     display: flex;
-    padding: 14px 0;
-    background: var(--code-bg);
+    padding: 18px 0;
+    border-radius: 18px;
+    background: linear-gradient(180deg, var(--code-bg), #2a2521);
     overflow: auto;
     font-family: var(--font-mono);
-    font-size: 12px;
-    line-height: 20px;
+    font-size: 13px;
+    line-height: 21px;
   }
   .gutter {
     position: sticky;
     left: 0;
     display: flex;
     flex-direction: column;
-    padding: 0 16px 0 20px;
+    padding: 0 14px 0 18px;
     background: var(--code-bg);
-    color: var(--code-line);
+    color: #9c9286;
     text-align: right;
     user-select: none;
   }
@@ -667,19 +686,20 @@
     position: relative;
     min-width: calc(100% - 56px);
     width: max-content;
-    padding-right: 20px;
+    padding-right: 18px;
   }
   .pane pre {
     margin: 0;
     font: inherit;
     white-space: pre;
-    color: var(--code-text);
+    color: #f2eee8;
   }
   .pane pre .var {
     padding: 0;
+    border-radius: 0;
     background: none;
-    color: var(--code-accent);
-    font-size: inherit;
+    font: inherit;
+    color: #ffc9a3;
   }
   .pane textarea {
     position: absolute;
@@ -687,7 +707,7 @@
     width: 100%;
     height: 100%;
     margin: 0;
-    padding: 0 20px 0 0;
+    padding: 0 18px 0 0;
     border: 0;
     background: none;
     font: inherit;
@@ -695,13 +715,13 @@
     overflow: hidden;
     resize: none;
     color: transparent;
-    caret-color: var(--code-text);
+    caret-color: #f2eee8;
   }
   .pane textarea:focus {
     outline: none;
   }
   .pane textarea::selection {
-    background: #1d4ed855;
+    background: #f26b1d55;
   }
 
   /* ---- fields ---- */
@@ -712,9 +732,9 @@
     min-width: 0;
   }
   .f > span {
-    font-size: 12px;
+    font-size: var(--type-caption);
     font-weight: 600;
-    color: var(--text);
+    color: var(--text-2);
   }
   .three {
     display: flex;
@@ -725,33 +745,49 @@
   }
   input,
   .select {
-    padding: 9px 12px;
-    border: 1px solid var(--border);
-    border-radius: var(--r-sm);
-    background: var(--surface);
-    font: inherit;
-    font-size: 13px;
-    color: var(--text);
     width: 100%;
+    padding: 10px 12px;
+    border: 1px solid transparent;
+    border-radius: 12px;
+    background: #f4f2ef;
+    font: inherit;
+    font-size: var(--type-body);
+    font-weight: 600;
+    color: var(--text);
+  }
+  input::placeholder {
+    font-weight: 400;
+    color: var(--text-3);
+  }
+  .three input {
+    padding: 10px;
+  }
+  input:focus,
+  .select:focus-within {
+    border-color: var(--accent);
+    outline: none;
   }
   .select {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     padding: 0 12px;
   }
-  .select :global(svg) {
-    color: var(--text-2);
+  .select :global(svg:first-child) {
+    color: var(--accent);
+    flex: none;
+  }
+  .select :global(svg:last-child) {
+    color: var(--text-3);
     flex: none;
   }
   .select select {
     flex: 1;
     min-width: 0;
-    padding: 9px 0;
+    padding: 10px 0;
     border: 0;
     background: none;
     font: inherit;
-    font-size: 13px;
     color: var(--text);
     appearance: none;
   }
@@ -759,22 +795,33 @@
     outline: none;
   }
   input:read-only {
-    background: var(--surface-2);
+    color: var(--text-2);
+  }
+  .head input:read-only {
+    color: var(--text);
+    background: none;
+  }
+  .head textarea.what {
+    background: none;
+  }
+  .head .what:read-only {
     color: var(--text-2);
   }
 
   /* ---- tool toggles ---- */
+  .tools {
+    gap: 4px;
+  }
+  .tools .ch {
+    padding-bottom: 8px;
+  }
   .tool {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    padding: 7px 0;
-    border-top: 1px solid var(--border);
+    padding: 8px 0;
     cursor: pointer;
-  }
-  .tool + .tool {
-    border-top: 1px solid var(--border);
   }
   .tool .tx {
     display: flex;
@@ -783,47 +830,52 @@
     min-width: 0;
   }
   .tool .n {
-    font-size: 13px;
+    font-size: var(--type-body);
+    font-weight: 600;
     color: var(--text);
   }
   .tool .d {
-    font-size: 11px;
-    color: var(--text-3);
+    font-size: var(--type-caption);
+    color: var(--text-2);
   }
-  /* The artboard's 36×20 switch, which is a checkbox underneath. */
+  /* The artboard's 40×24 switch, which is a checkbox underneath. */
   .switch {
     appearance: none;
     position: relative;
-    width: 36px;
-    height: 20px;
+    flex: none;
+    width: 40px;
+    height: 24px;
     padding: 0;
     border: 0;
-    border-radius: 999px;
-    background: var(--flow-line);
+    border-radius: var(--r-pill);
+    background: #d8d3cc;
     cursor: pointer;
-    flex: none;
     transition: background 120ms ease;
   }
   .switch::after {
     content: '';
     position: absolute;
-    top: 2px;
-    left: 2px;
-    width: 16px;
-    height: 16px;
-    border-radius: 999px;
-    background: var(--surface);
+    top: 3px;
+    left: 3px;
+    width: 18px;
+    height: 18px;
+    border-radius: var(--r-pill);
+    background: #fff;
     transition: transform 120ms ease;
   }
   .switch:checked {
-    background: var(--accent);
+    background: linear-gradient(90deg, var(--accent-from), var(--accent-to));
   }
   .switch:checked::after {
     transform: translateX(16px);
   }
   .switch:disabled {
-    opacity: 0.5;
+    opacity: 0.55;
     cursor: not-allowed;
+  }
+  .switch:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
   }
 
   /* ---- skills ---- */
@@ -833,15 +885,23 @@
     gap: 8px;
     flex-wrap: wrap;
   }
-  .chip-skill {
+  .chip-skill,
+  .add > button {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 4px 10px;
-    border-radius: 999px;
-    background: var(--purple-soft);
-    font-size: 12px;
-    color: var(--purple);
+    padding: 6px 10px;
+    border-radius: var(--r-pill);
+    font-size: var(--type-caption);
+    font-weight: 600;
+  }
+  .chip-skill {
+    font-family: var(--font-mono);
+    color: var(--pen-text);
+    background: #e3ecfb;
+  }
+  .chip-skill :global(svg) {
+    color: var(--pen-to);
   }
   .chip-skill button {
     display: grid;
@@ -849,43 +909,35 @@
     padding: 0;
     border: 0;
     background: none;
-    color: var(--purple);
+    color: var(--pen-to);
     cursor: pointer;
   }
   .add {
     position: relative;
   }
   .add > button {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 10px;
-    border: 1px dashed var(--border);
-    border-radius: 999px;
-    background: none;
-    font: inherit;
-    font-size: 12px;
+    border: 0;
+    background: #f4f2ef;
+    font-family: inherit;
     color: var(--text-2);
     cursor: pointer;
   }
   .add > button:hover {
-    border-color: var(--accent);
     color: var(--accent-text);
   }
   .menu {
     position: absolute;
-    top: 30px;
+    top: 34px;
     left: 0;
     z-index: 6;
     display: flex;
     flex-direction: column;
     gap: 2px;
-    width: 280px;
+    width: 300px;
     padding: 6px;
+    border-radius: 16px;
     background: var(--surface);
-    border: 1px solid var(--card-border);
-    border-radius: var(--r-md);
-    box-shadow: 0 8px 24px #0f172a1f;
+    box-shadow: 0 14px 36px var(--shadow-depth);
   }
   .menu button {
     display: flex;
@@ -893,7 +945,7 @@
     gap: 1px;
     padding: 8px 10px;
     border: 0;
-    border-radius: var(--r-sm);
+    border-radius: 10px;
     background: none;
     font: inherit;
     text-align: left;
@@ -903,76 +955,31 @@
     background: var(--surface-2);
   }
   .menu .n {
-    font-size: 13px;
+    font-size: var(--type-body);
+    font-weight: 600;
     color: var(--text);
   }
-  .menu .d {
-    font-size: 11px;
-    color: var(--text-3);
+  .menu .d,
+  .menu .none {
+    font-size: var(--type-caption);
+    color: var(--text-2);
   }
   .menu .none {
     padding: 8px 10px;
-    font-size: 12px;
-    color: var(--text-3);
   }
 
-  /* ---- buttons and banners ---- */
-  .secondary,
-  .primary {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 16px;
-    border-radius: var(--r-sm);
-    font: inherit;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-  }
-  .secondary {
-    border: 1px solid var(--border);
-    background: var(--surface);
-    color: var(--text);
-  }
-  .secondary :global(svg) {
-    color: var(--text-2);
-  }
-  .secondary:hover:not(:disabled) {
-    border-color: var(--accent);
-  }
-  .primary {
-    border: 1px solid var(--accent);
-    background: var(--accent);
-    color: var(--text-inv);
-    font-weight: 600;
-  }
-  .btns button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
+  /* ---- banners ---- */
   .banner {
     margin: 0;
-    padding: 12px 16px;
-    border-radius: var(--r-md);
-    background: var(--surface-2);
-    font-size: 13px;
-    color: var(--text-2);
+    padding: 14px 18px;
+    font-size: var(--type-body);
+    color: var(--text);
   }
   ul.banner {
-    padding-left: 34px;
-  }
-  .banner.bad {
-    background: var(--danger-soft);
-    color: var(--danger);
-  }
-  .banner.good {
-    background: var(--success-soft);
-    color: var(--success);
+    padding-left: 36px;
   }
   .failure {
-    border-left: 3px solid var(--danger);
-    color: var(--danger);
+    color: var(--danger-text);
   }
 
   @media (max-width: 1200px) {

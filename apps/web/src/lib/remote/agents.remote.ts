@@ -3,6 +3,7 @@ import * as v from 'valibot';
 import { command, form, getRequestEvent, query } from '$app/server';
 import { db } from '$lib/db';
 import { formBoolean } from '$lib/forms';
+import { m } from '$lib/i18n';
 import {
   createAgent,
   deleteAgent,
@@ -15,7 +16,6 @@ import {
   toggleSkill,
   updateAgent,
 } from '$lib/services/agent';
-import { m } from '$lib/i18n';
 
 /**
  * Agents. Readable and usable by anyone; changeable only by the owner or an
@@ -72,7 +72,7 @@ const SaveSchema = v.object({
   name: v.pipe(v.string(), v.trim(), v.minLength(1, m.form.agentName)),
   description: v.optional(v.string(), ''),
   engine: v.picklist(['claude_cli', 'design_cli'] as const),
-  model: v.pipe(v.string(), v.minLength(1, 'Choose a model.')),
+  model: v.pipe(v.string(), v.minLength(1, m.form.chooseModel)),
   systemPrompt: v.optional(v.string(), ''),
   /** Checkboxes, so the tools arrive as a comma-separated hidden field. */
   allowedTools: v.optional(v.string(), ''),
@@ -151,7 +151,7 @@ export const duplicate = command(AgentId, async (id) => {
   return attempt(async () => {
     const copy = await duplicateAgent(db(), id, user);
     await agents().refresh();
-    return { ...copy, message: `Duplicated as “${copy.name}”, and it is yours to change.` };
+    return { ...copy, message: m.notice.agentDuplicated(copy.name) };
   });
 });
 
@@ -160,13 +160,7 @@ export const remove = command(AgentId, async (id) => {
   return attempt(async () => {
     const { runsStillUsingIt } = await deleteAgent(db(), id, user);
     await agents().refresh();
-    return {
-      message:
-        runsStillUsingIt === 0
-          ? 'Deleted.'
-          : `Deleted. ${runsStillUsingIt} run${runsStillUsingIt === 1 ? '' : 's'} still ` +
-            'running will finish: each read this agent when it started and never looks again.',
-    };
+    return { message: m.notice.agentDeleted(runsStillUsingIt) };
   });
 });
 

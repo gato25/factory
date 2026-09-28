@@ -2,11 +2,11 @@ import type { Database } from '@factory/db';
 import { agentSkills, agents, skills } from '@factory/db/schema';
 import { conflict, invalidInput, notFound } from '@factory/shared';
 import { and, eq, inArray } from 'drizzle-orm';
+import { m } from '$lib/i18n';
 import { DEFAULT_AGENTS } from './agent-defaults';
 import type { SessionUser } from './auth';
 import { ownershipOf, requireChangeable } from './ownership';
 import { agentUsage, pipelinesUsingAgent, runsInFlightWithAgent } from './usage';
-import { m } from '$lib/i18n';
 
 /**
  * An agent's instructions, model, permitted tools, attached skills, and its
@@ -41,7 +41,7 @@ export const TOOL_DESCRIPTION: Record<Tool, string> = {
   Edit: m.tools.Edit,
   Glob: m.tools.Glob,
   Grep: m.tools.Grep,
-  Bash: 'Run a shell command — including the repository’s tests',
+  Bash: m.tools.Bash,
   WebFetch: m.tools.WebFetch,
   GitPush: m.tools.GitPush,
 };

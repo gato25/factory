@@ -1,11 +1,14 @@
 <script lang="ts">
   import AgentCard from '$components/AgentCard.svelte';
+  import Icon from '$components/Icon.svelte';
+  import { agentDescription, agentName } from '$lib/default-names';
   import { m } from '$lib/i18n';
   import { agents, create, duplicate } from '$lib/remote/agents.remote';
 
   /**
-   * Screen 09 — Agents. A card per agent with its engine, model, tools,
-   * skills and how much depends on it (FR-036b, FR-043a).
+   * Screen 09 — Agents, built to `design.pen`: a tile per agent with the orb
+   * of the engine it runs on, its model, tools, skills and how much depends
+   * on it (FR-023, FR-036b, FR-043a), and a last tile for making a new one.
    */
   let { data }: { data: { user: { id: string } } } = $props();
 
@@ -17,157 +20,223 @@
     list.ready
       ? list.current.filter((agent) =>
           filter
-            ? `${agent.name} ${agent.description ?? ''} ${agent.model}`
+            ? `${agentName(agent.name)} ${agentDescription(agent.name, agent.description) ?? ''} ${agent.model}`
                 .toLowerCase()
                 .includes(filter.toLowerCase())
-            : true
+            : true,
         )
-      : []
+      : [],
   );
 </script>
 
-<header class="head">
-  <div class="page-head">
-    <h2>{m.agents.heading}</h2>
-    <p>{m.agents.lede}</p>
+<header class="page-head">
+  <div class="text">
+    <h1>{m.agents.heading}</h1>
+    <p class="lede">{m.agents.lede}</p>
   </div>
-  <input placeholder={m.agents.search} bind:value={filter} aria-label={m.agents.search} />
+  <div class="tools">
+    <input
+      class="search"
+      placeholder={m.agents.search}
+      bind:value={filter}
+      aria-label={m.agents.search}
+    />
+    <a class="btn" href="#new-agent"><Icon name="plus" size={15} />{m.agents.newAgent}</a>
+  </div>
 </header>
 
-{#if notice}<p class="card notice" role="status">{notice}</p>{/if}
+{#if notice}<p class="tile notice" role="status">{notice}</p>{/if}
 
 {#if list.error}
-  <p class="card failure" role="alert">{(list.error as Error).message}</p>
+  <p class="tile tile--danger failure" role="alert">{(list.error as Error).message}</p>
 {:else if !list.ready}
-  <p class="card">{m.agents.loading}</p>
+  <p class="tile">{m.agents.loading}</p>
 {:else}
-  {#if shown.length === 0}
-    <p class="card">{m.agents.noMatch}</p>
-  {:else}
-    <div class="grid">
-      {#each shown as agent (agent.id)}
-        <div class="cell">
-          <!--
-            Duplicating is how a shipped default becomes yours to change
-            (FR-031). The artboard's foot carries Edit; this goes beside it
-            rather than floating under the card.
-          -->
-          <AgentCard
-            {agent}
-            mine={agent.ownerId === data.user.id}
-            onDuplicate={async () => {
-              const result = await duplicate(agent.id);
-              notice = ('problem' in result ? result.problem : result.message) ?? null;
-            }}
-          />
-        </div>
-      {/each}
-    </div>
-  {/if}
+  <div class="grid">
+    {#each shown as agent (agent.id)}
+      <!--
+        Duplicating is how a shipped default becomes yours to change
+        (FR-031). The artboard's foot carries Edit; this goes beside it.
+      -->
+      <AgentCard
+        {agent}
+        mine={agent.ownerId === data.user.id}
+        onDuplicate={async () => {
+          const result = await duplicate(agent.id);
+          notice = ('problem' in result ? result.problem : result.message) ?? null;
+        }}
+      />
+    {/each}
 
-  <form {...create} class="card new">
-    <h2 class="section">{m.agents.newAgent}</h2>
-    <label>
-      <span class="small muted">{m.agents.name}</span>
-      <input name="name" placeholder={m.agents.namePlaceholder} required />
-    </label>
-    <label>
-      <span class="small muted">{m.agents.engine}</span>
-      <select name="engine">
-        <option value="claude_cli">{m.agents.codingAgent}</option>
-        <option value="design_cli">{m.agents.designService}</option>
-      </select>
-    </label>
-    <label>
-      <span class="small muted">{m.agents.whatItIsFor}</span>
-      <input name="description" placeholder={m.agents.descriptionPlaceholder} />
-    </label>
-    {#if create.fields.allIssues()?.length}
-      <ul class="errors" role="alert">
-        {#each create.fields.allIssues() ?? [] as issue (issue.message)}
-          <li>{issue.message}</li>
-        {/each}
-      </ul>
-    {/if}
-    {#if create.result && 'problem' in create.result}
-      <p class="errors" role="alert">{create.result.problem}</p>
-    {/if}
-    <div class="row end">
-      <button class="primary" type="submit" disabled={create.pending > 0}>{m.agents.create}</button>
-    </div>
-  </form>
+    <form {...create} class="tile new" id="new-agent">
+      <div class="new-head">
+        <span class="orb-soft" aria-hidden="true"><Icon name="plus" size={22} /></span>
+        <h2>{m.agents.newAgent}</h2>
+        <p>{m.agentCard.newSub}</p>
+      </div>
+      <label class="field">
+        <span class="label">{m.agents.name}</span>
+        <input name="name" placeholder={m.agents.namePlaceholder} required />
+      </label>
+      <label class="field">
+        <span class="label">{m.agents.engine}</span>
+        <select name="engine">
+          <option value="claude_cli">{m.agents.codingAgent}</option>
+          <option value="design_cli">{m.agents.designService}</option>
+        </select>
+      </label>
+      <label class="field">
+        <span class="label">{m.agents.whatItIsFor}</span>
+        <input name="description" placeholder={m.agents.descriptionPlaceholder} />
+      </label>
+      {#if create.fields.allIssues()?.length}
+        <ul class="errors" role="alert">
+          {#each create.fields.allIssues() ?? [] as issue (issue.message)}
+            <li>{issue.message}</li>
+          {/each}
+        </ul>
+      {/if}
+      {#if create.result && 'problem' in create.result}
+        <p class="errors" role="alert">{create.result.problem}</p>
+      {/if}
+      <button class="btn" type="submit" disabled={create.pending > 0}>{m.agents.create}</button>
+    </form>
+  </div>
+
+  {#if shown.length === 0}
+    <p class="tile none">{m.agents.noMatch}</p>
+  {/if}
 {/if}
 
 <style>
-  .head {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 16px;
-    flex-wrap: wrap;
-    margin-bottom: 28px;
-  }
   .page-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+    padding: 4px 4px 0;
+    margin-bottom: 20px;
+  }
+  .text {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+  }
+  h1 {
+    margin: 0;
+    font-family: var(--font-head);
+    font-size: 30px;
+    font-weight: 600;
+    letter-spacing: -0.6px;
+    color: var(--text);
+  }
+  .lede {
+    margin: 0;
+    max-width: 90ch;
+    font-size: var(--type-body);
+    color: var(--text-2);
+  }
+  .tools {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .search {
+    width: 220px;
+    padding: 10px 12px;
+    border: 1px solid transparent;
+    border-radius: 11px;
+    font: inherit;
+    font-size: var(--type-body);
+    background: #ffffffcc;
+  }
+  .search:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+
+  .notice,
+  .failure,
+  .none {
+    margin: 0 0 20px;
+    padding: 14px 18px;
+  }
+  .none {
+    margin-top: 20px;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+  }
+
+  .new {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 22px;
+    border: 1.5px dashed #f0cdb4;
+    background: #ffffff66;
+    box-shadow: none;
+  }
+  .new-head {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding-bottom: 4px;
+    text-align: center;
+  }
+  .orb-soft {
+    display: grid;
+    place-items: center;
+    width: 52px;
+    height: 52px;
+    border-radius: var(--r-pill);
+    color: var(--accent);
+    background: var(--accent-soft);
+  }
+  .new h2 {
+    margin: 0;
+    font-family: var(--font-head);
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .new-head p {
+    margin: 0;
+    font-size: var(--type-caption);
+    color: var(--text-2);
+  }
+  .field {
     display: flex;
     flex-direction: column;
     gap: 4px;
   }
-  .page-head h2 {
-    margin: 0;
-    font-size: 24px;
-    font-weight: 700;
-    color: var(--text);
-  }
-  .page-head p {
-    margin: 0;
-    max-width: 78ch;
-    font-size: 14px;
+  .label {
+    font-size: var(--type-caption);
+    font-weight: 600;
     color: var(--text-2);
   }
-  .notice { border-left: 3px solid var(--accent); margin-bottom: 16px; padding: 12px 16px; }
-  .failure { border-left: 3px solid var(--danger); }
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-    gap: 16px;
-  }
-  /* Cards line up across a row, as the design's grid does: ragged heights
-     make the set read as unrelated items rather than as one list. */
-  .cell {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    align-items: flex-start;
-  }
-  .cell :global(.agent) {
-    flex: 1;
-    width: 100%;
-  }
-  .row { display: flex; gap: 8px; }
-  .row.end { justify-content: flex-end; }
-  .new { margin-top: 16px; display: flex; flex-direction: column; gap: 10px; }
-  label { display: flex; flex-direction: column; gap: 4px; }
-  input, select {
-    padding: 8px 10px;
+  input,
+  select {
+    padding: 9px 11px;
     border: 1px solid var(--border);
-    border-radius: var(--r-sm);
+    border-radius: 10px;
     font: inherit;
-  }
-  button, .edit {
-    padding: 8px 14px;
-    border: 1px solid var(--border);
-    border-radius: var(--r-sm);
+    font-size: var(--type-body);
     background: var(--surface);
-    font: inherit;
-    cursor: pointer;
-    text-decoration: none;
-    color: inherit;
   }
-  button.primary {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: #fff;
-    font-weight: 600;
+  .new .btn {
+    align-self: flex-end;
   }
-  .errors { margin: 0; padding-left: 18px; color: var(--danger); }
+  .errors {
+    margin: 0;
+    padding-left: 18px;
+    font-size: var(--type-body);
+    color: var(--danger-text);
+  }
 </style>

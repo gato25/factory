@@ -227,9 +227,9 @@ artboard.
 
 ### 09 and 10 — agents
 
-- [ ] T073 [US6] Rebuild 09 in `apps/web/src/routes/(app)/agents/+page.svelte` with `AgentCard.svelte` and `OwnerBadge.svelte`: agent tiles, each with the orb of the engine it runs on (Claude or pen.dev) (FR-023)
-- [ ] T074 [US6] Rebuild 10 in `apps/web/src/routes/(app)/agents/[id]/+page.svelte`: the instructions in a code surface, model and limits, tool toggles, skills; every field and action unchanged (FR-023)
-- [ ] T075 [US6] Verify 09 and 10 against the definition of done, and run `apps/web/tests/e2e/agents.spec.ts`
+- [X] T073 [US6] Rebuild 09 in `apps/web/src/routes/(app)/agents/+page.svelte` with `AgentCard.svelte` and `OwnerBadge.svelte`: agent tiles, each with the orb of the engine it runs on (Claude or pen.dev) (FR-023)
+- [X] T074 [US6] Rebuild 10 in `apps/web/src/routes/(app)/agents/[id]/+page.svelte`: the instructions in a code surface, model and limits, tool toggles, skills; every field and action unchanged (FR-023)
+- [X] T075 [US6] Verify 09 and 10 against the definition of done, and run `apps/web/tests/e2e/agents.spec.ts`
 
 ### 11 — skills
 

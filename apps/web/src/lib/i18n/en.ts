@@ -632,7 +632,7 @@ export const en: Messages = {
 
   agents: {
     heading: 'Agents',
-    lede: "Each agent runs with its own instructions, model, tools and skills. The Design agent runs on the pen.dev CLI; the rest run on the Claude CLI. Anyone can make their own; anyone can use anyone else's.",
+    lede: 'Each agent runs with its own instructions, model, tools and skills. The Design agent runs on the pen.dev CLI; the rest run on the Claude CLI.',
     search: 'Search agents',
     loading: 'Loading agents…',
     noMatch: 'No agent matches. Create one below.',
@@ -909,13 +909,24 @@ export const en: Messages = {
     saving: 'Saving…',
     saveChanges: 'Save changes',
     systemPrompt: 'System prompt',
-    systemPromptNote: 'Given to the engine before it runs. Use {{variables}} for ticket data.',
+    systemPromptNote: (file: string) =>
+      `Written as ${file} before the CLI runs. Use {{variables}} for ticket data.`,
+    designPromptNote:
+      'Given to the design service before it runs. Use {{variables}} for ticket data.',
     allOf: (count: number) => `all ${count}`,
     engine: 'Engine',
     codingAgent: 'Coding agent',
     designService: 'Design service',
     model: 'Model',
+    modelOption: (name: string, id: string) => (name === id ? id : `${name}  (${id})`),
+    modelAndLimits: 'Model & limits',
     maxCost: 'Max cost per run',
+    runsLimit: "the run's",
+    noLimit: 'none',
+    limitsNote:
+      "Each is capped at what the run allows, so a limit here cannot raise what a ticket may consume. Leave one empty to use the run's.",
+    noToolsForDesign:
+      'Tool permissions do not apply to the design service, so there are none to set.',
     maxTime: 'Max time',
     maxTurns: 'Max turns',
     allowedTools: 'Allowed tools',
@@ -970,6 +981,41 @@ export const en: Messages = {
     mergeRequest: 'Merge request',
     mergeRequestOpen: 'Review and merge on the provider, as usual',
     mergeRequestPending: 'Created when the last step finishes',
+  },
+
+  /** One agent's tile on artboard 09. */
+  agentCard: {
+    isDefault: 'Default',
+    conditional: 'Conditional',
+    custom: 'Custom',
+    model: 'Model',
+    tools: 'Tools',
+    skills: 'Skills',
+    engine: 'Engine',
+    output: 'Output',
+    penCli: 'pen.dev CLI',
+    designOutput: 'ui.pen + PNG screens',
+    noTools: 'none — it can read nothing and write nothing',
+    usage: (pipelines: number, runs: number) =>
+      `In ${pipelines} pipeline${pipelines === 1 ? '' : 's'} · ${runs} run${runs === 1 ? '' : 's'}`,
+    unused: 'Not used yet',
+    inFlight: (n: number) => `${n} in flight`,
+    edit: 'Edit',
+    read: 'Read',
+    duplicate: 'Duplicate',
+    newSub: 'Add a step of your own to your pipelines',
+  },
+
+  /** A tool by its short name, where a list of them is shown. */
+  toolName: {
+    Read: 'Read',
+    Write: 'Write',
+    Edit: 'Edit',
+    Glob: 'Find files',
+    Grep: 'Search contents',
+    Bash: 'Bash',
+    WebFetch: 'WebFetch',
+    GitPush: 'Git push',
   },
 
   owner: {
@@ -1064,6 +1110,7 @@ export const en: Messages = {
     wholeNumber: 'Expected a whole number.',
     wholeNumberOrMore: 'Expected a whole number, zero or more.',
     agentName: 'Give the agent a name.',
+    chooseModel: 'Choose a model.',
     pipelineName: 'Give the pipeline a name.',
     workspaceName: 'Give the workspace a name.',
     skillName: 'Give the skill a name.',
@@ -1121,6 +1168,11 @@ export const en: Messages = {
       `Ticket updated. Attempt ${attempt} is queued but has not begun: ${detail}.`,
     agentSaved: 'Saved. Runs already in flight are unaffected.',
     agentReset: 'Back to the configuration this agent shipped with.',
+    agentDuplicated: (name: string) => `Duplicated as “${name}”, and it is yours to change.`,
+    agentDeleted: (inFlight: number) =>
+      inFlight === 0
+        ? 'Deleted.'
+        : `Deleted. ${inFlight} run${inFlight === 1 ? '' : 's'} still running will finish: each read this agent when it started and never looks again.`,
     settingsSaved: 'Saved. Runs already in flight keep the ceilings they started with.',
     credentialStored: 'Stored. It is encrypted at rest and never shown again.',
     alreadyPausing: 'This run is already pausing.',
@@ -1179,7 +1231,7 @@ export const en: Messages = {
     Grep: 'Search file contents',
     Bash: 'Run a shell command — including the repository’s tests',
     WebFetch: 'Fetch a URL',
-    GitPush: 'Push the branch',
+    GitPush: 'Push the branch when done',
   },
 
   vocabulary: {
