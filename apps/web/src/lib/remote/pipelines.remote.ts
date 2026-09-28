@@ -2,6 +2,7 @@ import { FactoryError, notAuthorised, type Step } from '@factory/shared';
 import * as v from 'valibot';
 import { command, form, getRequestEvent, query } from '$app/server';
 import { db } from '$lib/db';
+import { m } from '$lib/i18n';
 import { previewRun } from '$lib/services/estimate';
 import {
   blankStep,
@@ -16,7 +17,6 @@ import {
   STEP_KINDS,
   savePipeline,
 } from '$lib/services/pipeline';
-import { m } from '$lib/i18n';
 
 /**
  * The builder's data. A `query` for one pipeline, a `form` for the save
@@ -87,14 +87,7 @@ export const save = form(SaveSchema, async (input) => {
     return {
       version,
       runsUnaffected,
-      message:
-        runsUnaffected === 0
-          ? `Saved as version ${version}.`
-          : runsUnaffected === 1
-            ? `Saved as version ${version}. 1 run already in flight continues on the version ` +
-              'it started with.'
-            : `Saved as version ${version}. ${runsUnaffected} runs already in flight continue ` +
-              'on the versions they started with.',
+      message: m.pipeline.saved(version, runsUnaffected),
     };
   } catch (error) {
     if (error instanceof FactoryError) return { problem: error.message };
@@ -175,7 +168,7 @@ export const duplicate = command(PipelineId, async (id) => {
   try {
     const copy = await duplicatePipeline(db(), id, user);
     await pipelines().refresh();
-    return { ...copy, message: `Duplicated as “${copy.name}”.` };
+    return { ...copy, message: m.pipeline.duplicated(copy.name) };
   } catch (error) {
     if (error instanceof FactoryError) return { problem: error.message };
     throw error;

@@ -812,7 +812,7 @@ export const mn = {
     loading: 'Дамжлагуудыг ачаалж байна…',
     empty: 'Одоогоор байхгүй. Доор нэгийг үүсгэнэ үү.',
     repositoriesUsing: (repositories: number) => `· ${repositories} репозитори ашиглаж байна`,
-    duplicate: 'Хувилах',
+    duplicate: 'Хуулбарлах',
     newPipeline: 'Шинэ дамжлага',
     name: 'Нэр',
     namePlaceholder: 'Бүтээхээс өмнө хянана',
@@ -822,6 +822,19 @@ export const mn = {
   },
 
   pipeline: {
+    loading: 'Дамжлагыг ачаалж байна…',
+    runsInFlight: (n: number) => `${n} ажиллагаа явагдаж байна`,
+    inFlightNote: (n: number) =>
+      `Энэ дамжлагаар ${n} ажиллагаа явагдаж байна. Хадгалах нь тэдэнд хамаарахгүй: тус бүр эхэлсэн хувилбараараа үргэлжилнэ.`,
+    toFix: (n: number) => `Хадгалахаас өмнө ${n} зүйл засах хэрэгтэй.`,
+    willWrite: (version: number) => `Хадгалахад ${version}-р хувилбар бичигдэнэ.`,
+    nothingToSave: 'Хадгалах зүйл алга.',
+    saveAs: (version: number) => `${version}-р хувилбар болгон хадгалах`,
+    saved: (version: number, inFlight: number) =>
+      inFlight === 0
+        ? `${version}-р хувилбар болгон хадгаллаа.`
+        : `${version}-р хувилбар болгон хадгаллаа. Явагдаж буй ${inFlight} ажиллагаа эхэлсэн хувилбараараа үргэлжилнэ.`,
+    duplicated: (name: string) => `“${name}” нэрээр хуулбарлав.`,
     breadcrumb: 'Дамжлага',
     nameLabel: 'Дамжлагын нэр',
     rename: 'Энэ дамжлагын нэрийг солих',
@@ -831,7 +844,7 @@ export const mn = {
       'Алхмуудаа хүссэн дарааллаар чирнэ үү. Дамжлага үргэлжлэхээс өмнө хүн харах ёстой газарт хяналтын цэг нэмээрэй.',
     someoneElseOwns: 'Энэ дамжлагыг өөр хүн эзэмшдэг — та хэрэглэж болох ч өөрчилж болохгүй.',
     shippedDefault: 'Энэ нь нийлүүлсэн стандарт — та хэрэглэж болох ч өөрчилж болохгүй.',
-    duplicate: 'Хувилах',
+    duplicate: 'Хуулбарлах',
     testRun: 'Туршилтаар ажиллуулах',
     preflightHeading: 'Одоо энэ дамжлагаар даалгавар эхэлбэл',
     preflightNote: (version: number) => `${version}-р хувилбар, хадгалсан байдлаар. Юу ч эхлээгүй.`,
@@ -852,7 +865,7 @@ export const mn = {
     notify: 'Мэдэгдэх',
     agentDetail: 'Claude CLI-аар агентаа ажиллуулна',
     designDetail: 'pen.dev CLI-аар дэлгэц зурна',
-    checkpointDetail: 'Хэн нэгэн батлах хүртэл хүлээнэ',
+    checkpointDetail: 'Хэн нэгэн батлах хүртэл зогсоно',
     shellDetail: 'Тусгаарлагдсан орчинд скрипт ажиллуулна (lint, build)',
     notifyDetail: 'Slack / и-мэйл / webhook',
     implicitLast: 'Нэгтгэх хүсэлт нээх',
@@ -860,6 +873,13 @@ export const mn = {
   },
 
   stepNode: {
+    noAgentChosen: (kind: string) => `${kind} — агент сонгоогүй`,
+    writesDesign: (path: string) => `${path} бичнэ`,
+    skills: (names: string) => `ур чадвар: ${names}`,
+    conditional: 'Нөхцөлт',
+    moveUp: (n: number) => `${n}-р алхмыг дээш`,
+    moveDown: (n: number) => `${n}-р алхмыг доош`,
+    remove: (n: number) => `${n}-р алхмыг хасах`,
     produces: (files: string) => `${files}-ийг гаргана`,
     writesTheCode: 'Код бичнэ',
     anyoneDecides: 'Ажлын талбарын хэн ч батална',
@@ -878,6 +898,9 @@ export const mn = {
   },
 
   builder: {
+    trigger: 'Эхлэл: даалгавар үүсэх',
+    insertAt: (n: number) => `${n}-р байранд алхам оруулах`,
+    finish: 'Нэгтгэх хүсэлт нээх → даалгавар хаах',
     addAtEnd: 'Төгсгөлд алхам нэмэх',
     addSequence: 'Алхам нэмэх',
     addHint: 'Зураг дээр чирэх эсвэл холбоос дээрх + дарна уу.',
@@ -886,6 +909,13 @@ export const mn = {
   },
 
   stepEditor: {
+    whenRuns: 'Энэ алхам хэзээ ажиллах вэ?',
+    /** A step's condition in the editor, and inside a sentence that names it. */
+    condition: {
+      always: 'үргэлж',
+      ticket_has_ui: 'зөвхөн даалгавар интерфейс өөрчлөх үед',
+      ticket_has_no_ui: 'зөвхөн даалгавар интерфейс өөрчлөхгүй үед',
+    },
     heading: (index: number, kind: string) => `${index}-р алхам — ${kind}`,
     close: (index: number) => `${index}-р алхмыг хаах`,
     agent: 'Агент',
@@ -1238,6 +1268,20 @@ export const mn = {
     addAgentStep: 'Агент алхам нэмж, шалгалт, хяналтын цэг, мэдэгдлийг түүний дараа тавина уу.',
     noVerification:
       'Энэ дамжлагад шалгах алхам байхгүй тул хөгжүүлэх агентаас өөр юу ч үр дүнг шалгахгүй.',
+    addCodeStep:
+      'Шаардлагатай баримтгүй агент алхам нэмж, шалгалт, хяналтын цэг, мэдэгдлийг түүний дараа тавина уу.',
+    conditionTooEarly: (n: number, when: string) =>
+      `${n}-р алхам ${when} ажиллана, гэвч тэр үед даалгавар интерфейс өөрчлөх эсэх хараахан тодорхойгүй. Үүнийг тодорхойлолт бичдэг алхмын дараа зөөнө үү.`,
+    designTooEarly: (n: number) =>
+      `${n}-р алхам нь дизайн алхам боловч даалгавар интерфейс өөрчлөх эсэхийг шийддэг тодорхойлолтын алхмаас өмнө байна. Түүний дараа зөөнө үү.`,
+    noAgent: (n: number) => `${n}-р алхамд агент сонгоогүй. Нэгийг сонгох эсвэл алхмыг хасна уу.`,
+    noApprovers: (n: number) =>
+      `${n}-р алхам нь батлагчийн жагсаалт хоосон хяналтын цэг тул хэн ч шийдэж чадахгүй. Хэн нэгнийг нэрлэх эсвэл ажлын талбарын хэн ч шийдэхийг зөвшөөрнө үү.`,
+    timeoutTooShort: (n: number, hours: number) =>
+      `${n}-р алхам ${hours} цаг хүлээх бөгөөд хэн нэгэн харахаас өмнө дуусна. Хугацаагүй хүлээлгэхийн тулд хүлээх хугацааг хоосон үлдээнэ үү.`,
+    noCommand: (n: number) =>
+      `${n}-р алхам нь команд байхгүй Shell алхам тул юу ч ажиллуулахгүйгээр амжилттай болно. Энэ репозиторийн хэрэглэдэг командыг өгнө үү.`,
+    noSteps: 'Дамжлагад дор хаяж нэг алхам хэрэгтэй. Самбараас нэгийг нэмнэ үү.',
   },
 
   conflicts: {

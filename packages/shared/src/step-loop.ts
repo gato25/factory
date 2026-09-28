@@ -96,6 +96,8 @@ export function applyStepResult(
  */
 export interface PipelineProblem {
   index: number;
+  /** Which rule it breaks, so a screen can say it in its own words. */
+  kind: 'condition_too_early' | 'design_too_early';
   message: string;
 }
 
@@ -110,6 +112,7 @@ export function validateStepOrder(
     if (needsClassification && (classifyingIndex === null || index <= classifyingIndex)) {
       problems.push({
         index,
+        kind: 'condition_too_early',
         message:
           `Step ${index + 1} runs ${CONDITION_DESCRIPTION[step.condition]}, but ` +
           `${CONDITION_FACT[step.condition]} is not known yet at that point. ` +
@@ -119,6 +122,7 @@ export function validateStepOrder(
     if (step.type === 'design' && (classifyingIndex === null || index <= classifyingIndex)) {
       problems.push({
         index,
+        kind: 'design_too_early',
         message:
           `Step ${index + 1} is a design step, but it comes before the specification step that ` +
           'decides whether the ticket changes the interface. Move it after.',

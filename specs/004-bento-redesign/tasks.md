@@ -221,9 +221,9 @@ artboard.
 
 ### 08 — pipelines
 
-- [ ] T070 [US6] Rebuild 08 in `apps/web/src/routes/(app)/pipelines/[id]/+page.svelte`, `PipelineBuilder.svelte`, `StepNode.svelte` and `StepEditor.svelte`: colour-coded step cards on a soft canvas with + connectors and the palette tiles; agent, checkpoint, design, custom agent, shell and notify steps told apart by colour and label; reorder and insert unchanged (FR-022)
-- [ ] T071 [US6] Restyle the pipelines list `apps/web/src/routes/(app)/pipelines/+page.svelte`, which has no artboard of its own, with the kit's tiles and pills; note in the fidelity check that it is not an artboard
-- [ ] T072 [US6] Verify 08 against the definition of done, and run `apps/web/tests/e2e/pipeline-builder.spec.ts`
+- [X] T070 [US6] Rebuild 08 in `apps/web/src/routes/(app)/pipelines/[id]/+page.svelte`, `PipelineBuilder.svelte`, `StepNode.svelte` and `StepEditor.svelte`: colour-coded step cards on a soft canvas with + connectors and the palette tiles; agent, checkpoint, design, custom agent, shell and notify steps told apart by colour and label; reorder and insert unchanged (FR-022)
+- [X] T071 [US6] Restyle the pipelines list `apps/web/src/routes/(app)/pipelines/+page.svelte`, which has no artboard of its own, with the kit's tiles and pills; note in the fidelity check that it is not an artboard
+- [X] T072 [US6] Verify 08 against the definition of done, and run `apps/web/tests/e2e/pipeline-builder.spec.ts`
 
 ### 09 and 10 — agents
 

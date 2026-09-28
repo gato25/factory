@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { agentName } from '$lib/default-names';
+  import { modelName } from '$lib/format';
   import type { Step } from '@factory/shared';
   import Icon from '$components/Icon.svelte';
   import { m } from '$lib/i18n';
@@ -153,22 +155,18 @@
     {/if}
 
     {#if steps.length > 0 && !verifies}
-      <p class="banner warn">
-        Nothing in this pipeline checks the result. The implementing agent is asked to leave the
-        tests passing, and nothing after it confirms that. Add a shell step running your tests to
-        change that.
-      </p>
+      <p class="banner warn">{m.newTicket.noVerification}</p>
     {/if}
 
     <!-- What starts a run. Not a step: it is the pipeline's entry (plan.md). -->
     <p class="trigger">
       <Icon name="zap" size={16} />
-      <span>Trigger: ticket created</span>
+      <span>{m.builder.trigger}</span>
     </p>
 
     <ol>
       {#each steps as step, index (index)}
-        {@render connector(index, `Insert a step at position ${index + 1}`)}
+        {@render connector(index, m.builder.insertAt(index + 1))}
         <li
           class="slot"
           draggable={editable}
@@ -214,7 +212,7 @@
       <!-- Implicit and always last: not a step anyone can move (FR-029) -->
       <li class="finish" title={IMPLICIT_LAST_STEP.why}>
         <Icon name="git-pull-request" size={16} />
-        <span>{IMPLICIT_LAST_STEP.label} → close ticket</span>
+        <span>{m.builder.finish}</span>
       </li>
       <li class="why">{IMPLICIT_LAST_STEP.why}</li>
     </ol>
@@ -222,7 +220,7 @@
 
   <aside class="palette">
     {#if editable}
-      <section class="card">
+      <section class="tile side">
         <h3>{m.builder.addSequence}</h3>
         <p>{m.builder.addHint}</p>
         {#each PALETTE_ORDER as kind (kind)}
@@ -248,7 +246,7 @@
       </section>
     {/if}
 
-    <section class="card">
+    <section class="tile side">
       <h3>{m.builder.yourAgents}</h3>
       {#if agents.length === 0}
         <p>{m.builder.noAgents}</p>
@@ -256,10 +254,14 @@
         {#each agents as agent (agent.id)}
           <a class="ag" href="/agents/{agent.id}">
             <span class="l">
-              <Icon name={agent.icon ?? 'bot'} size={14} />
-              <span>{agent.name}</span>
+              <span class="mini {agent.engine === 'design_cli' ? 'pen' : ''}" aria-hidden="true"
+                ><Icon name={agent.icon ?? 'bot'} size={12} /></span
+              >
+              <span class="nm">{agentName(agent.name)}</span>
             </span>
-            <span class="m">{agent.model}</span>
+            <span class="m" class:pen={agent.engine === 'design_cli'}
+              >{agent.engine === 'design_cli' ? 'pen.dev' : modelName(agent.model)}</span
+            >
           </a>
         {/each}
       {/if}
@@ -271,30 +273,34 @@
   .builder {
     display: flex;
     align-items: stretch;
-    gap: 24px;
+    gap: 20px;
   }
 
-  /* ---- the canvas ---- */
+  /* ---- the canvas: a soft tile the steps are threaded down ---- */
   .canvas {
     display: flex;
+    flex: 1;
     flex-direction: column;
     align-items: center;
-    gap: 0;
-    flex: 1;
     min-width: 0;
-    padding: 16px;
-    background: var(--surface-2);
-    border: 1px solid var(--border);
-    border-radius: var(--r-lg);
+    padding: 26px 24px;
+    border: 1px solid transparent;
+    border-radius: var(--r-xl);
+    background:
+      linear-gradient(180deg, #faf9f7, #f3f1ee) padding-box,
+      linear-gradient(180deg, var(--highlight), #ffffff00) border-box;
+    box-shadow:
+      0 1px 2px var(--shadow-soft),
+      0 14px 36px var(--shadow-depth);
   }
   .canvas ol {
-    list-style: none;
-    margin: 0;
-    padding: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
     width: 100%;
+    margin: 0;
+    padding: 0;
+    list-style: none;
   }
   .canvas ol.one {
     width: auto;
@@ -304,32 +310,29 @@
   .finish {
     display: inline-flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     margin: 0;
-    padding: 10px 16px;
-    border-radius: 999px;
-    font-size: 13px;
-    font-weight: 600;
-  }
-  .trigger {
-    background: var(--text);
+    padding: 9px 16px;
+    border-radius: var(--r-pill);
+    font-size: var(--type-body);
+    font-weight: 700;
     color: var(--text-inv);
   }
-  .trigger :global(svg) {
-    color: var(--amber);
+  .trigger {
+    background: linear-gradient(180deg, var(--accent-deep-from), var(--accent-deep-to));
+    box-shadow: 0 6px 14px var(--glow-accent);
   }
   .finish {
-    background: var(--success-soft);
-    border: 1px solid var(--success);
-    color: var(--success);
+    background: linear-gradient(180deg, var(--mint-deep-from), var(--mint-deep-to));
+    box-shadow: 0 6px 14px #16a34a40;
   }
   .why {
-    margin-top: 6px;
-    font-size: 11px;
-    color: var(--text-3);
+    margin-top: 8px;
+    font-size: var(--type-caption);
+    color: var(--text-2);
   }
 
-  /* ---- connectors ---- */
+  /* ---- connectors, each with its + ---- */
   .conn {
     position: relative;
     display: flex;
@@ -342,10 +345,10 @@
     background: var(--flow-line);
   }
   .v {
-    height: 12px;
+    height: 10px;
   }
   .v2 {
-    height: 14px;
+    height: 10px;
   }
   .conn.over .v,
   .conn.over .v2 {
@@ -358,56 +361,57 @@
   .plus > button {
     display: grid;
     place-items: center;
-    width: 22px;
-    height: 22px;
+    width: 26px;
+    height: 18px;
     padding: 0;
-    border: 1px solid var(--border);
-    border-radius: 999px;
+    border: 0;
+    border-radius: var(--r-pill);
+    color: var(--accent);
     background: var(--surface);
-    color: var(--text-2);
+    box-shadow: 0 2px 5px var(--shadow-depth);
     cursor: pointer;
   }
   .plus > button:hover,
   .plus > button[aria-expanded='true'] {
-    border-color: var(--accent);
-    color: var(--accent);
+    color: var(--text-inv);
+    background: var(--accent-deep-from);
   }
   .picker {
     position: absolute;
-    top: 26px;
+    top: 24px;
     left: 50%;
-    transform: translateX(-50%);
     z-index: 6;
     display: flex;
     flex-direction: column;
     gap: 2px;
-    width: 200px;
+    width: 230px;
     padding: 6px;
+    border-radius: 14px;
     background: var(--surface);
-    border: 1px solid var(--card-border);
-    border-radius: var(--r-md);
-    box-shadow: 0 8px 24px #0f172a1f;
+    box-shadow:
+      0 1px 2px var(--shadow-soft),
+      0 14px 36px var(--shadow-depth);
+    transform: translateX(-50%);
   }
   .picker button {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 8px 10px;
+    padding: 9px 10px;
     border: 0;
-    border-radius: var(--r-sm);
-    background: none;
-    font: inherit;
-    font-size: 13px;
+    border-radius: 10px;
+    font: 500 var(--type-body) / 1.3 var(--font);
     text-align: left;
     color: var(--text);
+    background: none;
     cursor: pointer;
   }
   .picker button:hover {
     background: var(--surface-2);
   }
   .picker :global(svg) {
-    color: var(--text-2);
     flex: none;
+    color: var(--text-2);
   }
   /* The whole connector is the drop target, not only its line. */
   .drop {
@@ -415,7 +419,6 @@
     inset: -8px -120px;
     z-index: 1;
   }
-
   .slot {
     display: flex;
     flex-direction: column;
@@ -424,170 +427,162 @@
     cursor: grab;
   }
   .inline-editor {
-    width: 560px;
+    width: 640px;
     max-width: 100%;
     margin-top: 8px;
   }
-
   .banner {
     width: 100%;
-    max-width: 560px;
-    margin: 0 0 12px;
+    max-width: 640px;
+    margin: 0 0 16px;
     padding: 12px 16px;
-    border-radius: var(--r-md);
-    font-size: 13px;
+    border-radius: 14px;
+    font-size: var(--type-body);
   }
   ul.banner {
     padding-left: 34px;
   }
   .banner.bad {
+    color: var(--danger-text);
     background: var(--danger-soft);
-    color: var(--danger);
   }
   .banner.warn {
+    color: var(--warning-text);
     background: var(--warning-soft);
-    color: var(--warning);
   }
 
   /* ---- the palette ---- */
   .palette {
     display: flex;
-    flex-direction: column;
-    gap: 16px;
-    width: 320px;
     flex: none;
+    flex-direction: column;
+    gap: 20px;
+    width: 360px;
   }
-  .card {
+  .side {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    padding: 16px;
-    background: var(--surface);
-    border: 1px solid var(--card-border);
-    border-radius: var(--r-lg);
-    box-shadow: 0 1px 2px #0f172a0a;
+    gap: 10px;
+    padding: 22px;
   }
-  .card h3 {
+  .side h3 {
     margin: 0;
-    font-family: var(--font-head);
-    font-size: 14px;
+    font-size: 17px;
     font-weight: 600;
-    color: var(--text);
+    letter-spacing: -0.3px;
   }
-  .card p {
+  .side p {
     margin: 0;
-    font-size: 12px;
+    font-size: var(--type-caption);
     color: var(--text-2);
   }
-
   .pal {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 8px;
-    border: 1px solid var(--border);
-    border-radius: var(--r-sm);
-    background: var(--surface);
+    width: 100%;
+    padding: 10px 12px;
+    border: 0;
+    border-radius: 14px;
     font: inherit;
     text-align: left;
+    color: inherit;
+    background: var(--surface-2);
     cursor: grab;
   }
   .pal:hover {
-    border-color: var(--accent);
+    box-shadow: inset 0 0 0 2px var(--accent-soft);
   }
   .pal .ic {
     display: grid;
+    flex: none;
     place-items: center;
     width: 30px;
     height: 30px;
-    border-radius: 6px;
-    flex: none;
-    background: var(--surface-2);
-    color: var(--text-2);
+    border-radius: 10px;
+    color: var(--text-inv);
+    background: linear-gradient(180deg, var(--accent-from), var(--accent-to));
+  }
+  .pal.checkpoint .ic {
+    color: var(--on-amber);
+    background: linear-gradient(180deg, var(--amber-from), var(--amber-to));
+  }
+  .pal.design .ic {
+    background: linear-gradient(180deg, var(--pen-from), var(--pen-to));
+  }
+  .pal.shell .ic {
+    background: linear-gradient(180deg, #b9b2a9, #6a635a);
+  }
+  .pal.notify .ic {
+    background: linear-gradient(180deg, var(--mint-from), var(--mint-to));
   }
   .pal .tx {
     display: flex;
-    flex-direction: column;
-    gap: 1px;
     flex: 1;
+    flex-direction: column;
+    gap: 2px;
     min-width: 0;
   }
   .pal .n {
-    font-size: 13px;
+    font-size: var(--type-body);
     font-weight: 600;
-    color: var(--text);
   }
   .pal .d {
-    font-size: 11px;
-    color: var(--text-3);
-  }
-  .pal > :global(svg) {
-    color: var(--flow-line);
-    flex: none;
-  }
-
-  /* Each kind wears its own colour here too, so the palette and the canvas
-     agree about what a thing is. */
-  .pal.checkpoint .ic {
-    background: var(--warning-soft);
-    color: var(--warning);
-  }
-  .pal.design {
-    background: var(--design-soft);
-    border-color: var(--design);
-  }
-  .pal.design .ic {
-    background: var(--surface);
-    color: var(--design);
-  }
-  .pal.design .d {
+    font-size: var(--type-caption);
     color: var(--text-2);
   }
-  .pal.agent .ic {
-    background: var(--accent-soft);
-    color: var(--accent-text);
-  }
-  .pal.notify .ic {
-    background: var(--purple-soft);
-    color: var(--purple);
+  .pal > :global(svg) {
+    flex: none;
+    color: var(--text-3);
   }
 
   .ag {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 8px;
+    gap: 10px;
     padding: 6px 0;
-    border-top: 1px solid var(--border);
     text-decoration: none;
-  }
-  .ag:first-of-type {
-    border-top: 0;
+    color: inherit;
   }
   .ag .l {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     min-width: 0;
-    font-size: 13px;
-    color: var(--text);
   }
-  .ag .l span {
+  .ag .nm {
     overflow: hidden;
+    font-size: var(--type-body);
+    font-weight: 500;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  .ag .l :global(svg) {
-    color: var(--text-2);
+  .mini {
+    display: grid;
     flex: none;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    border-radius: var(--r-pill);
+    color: var(--text-inv);
+    background: linear-gradient(180deg, var(--accent-from), var(--accent-to));
+  }
+  .mini.pen {
+    background: linear-gradient(180deg, var(--pen-from), var(--pen-to));
   }
   .ag .m {
-    font-size: 11px;
-    color: var(--text-3);
     flex: none;
+    font-family: var(--font-head);
+    font-size: var(--type-caption);
+    font-weight: 600;
+    color: var(--text-2);
   }
-  .ag:hover .l {
-    color: var(--accent-text);
+  .ag .m.pen {
+    color: var(--pen-text);
+  }
+  .ag:hover .nm {
+    text-decoration: underline;
   }
 
   @media (max-width: 1100px) {

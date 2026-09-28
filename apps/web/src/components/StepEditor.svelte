@@ -1,7 +1,8 @@
 <script lang="ts">
   import type { Step, StepCondition } from '@factory/shared';
-  import { CONDITION_DESCRIPTION } from '@factory/shared';
   import Icon from '$components/Icon.svelte';
+  import { agentName } from '$lib/default-names';
+  import { modelName } from '$lib/format';
   import { m } from '$lib/i18n';
   import { STEP_KIND_LABEL } from '$lib/services/pipeline';
 
@@ -27,7 +28,6 @@
   } = $props();
 
   const CONDITIONS: StepCondition[] = ['always', 'ticket_has_ui', 'ticket_has_no_ui'];
-  const conditionLabel = (c: StepCondition) => CONDITION_DESCRIPTION[c] ?? 'always';
 
   /** Only agents on the matching engine can run this kind of step (FR-036b). */
   const usable = $derived(
@@ -65,13 +65,13 @@
 
   <!-- Every step carries a condition, defaulting to always (FR-032a, FR-032b) -->
   <label>
-    <span class="small muted">When does this step run?</span>
+    <span class="small muted">{m.stepEditor.whenRuns}</span>
     <select
       value={step.condition}
       onchange={(e) => patch({ condition: e.currentTarget.value as StepCondition })}
     >
       {#each CONDITIONS as condition (condition)}
-        <option value={condition}>{conditionLabel(condition)}</option>
+        <option value={condition}>{m.stepEditor.condition[condition]}</option>
       {/each}
     </select>
   </label>
@@ -82,7 +82,7 @@
       <select value={step.agent_id ?? ''} onchange={(e) => patch({ agent_id: e.currentTarget.value })}>
         <option value="">{m.stepEditor.chooseAgent}</option>
         {#each usable as agent (agent.id)}
-          <option value={agent.id}>{agent.name} — {agent.model}</option>
+          <option value={agent.id}>{agentName(agent.name)} — {modelName(agent.model)}</option>
         {/each}
       </select>
     </label>

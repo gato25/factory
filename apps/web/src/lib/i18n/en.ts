@@ -769,6 +769,21 @@ export const en: Messages = {
   },
 
   pipeline: {
+    loading: 'Loading the pipeline…',
+    runsInFlight: (n: number) => `${n} ${n === 1 ? 'run' : 'runs'} in flight`,
+    inFlightNote: (n: number) =>
+      `${n} ${n === 1 ? 'run on this pipeline is' : 'runs on this pipeline are'} in flight. Saving does not affect ${n === 1 ? 'it' : 'them'}: each continues on the version it started with.`,
+    toFix: (n: number) => `${n} ${n === 1 ? 'thing' : 'things'} to fix before this can be saved.`,
+    willWrite: (version: number) => `Saving writes version ${version}.`,
+    nothingToSave: 'Nothing to save.',
+    saveAs: (version: number) => `Save as version ${version}`,
+    saved: (version: number, inFlight: number) =>
+      inFlight === 0
+        ? `Saved as version ${version}.`
+        : inFlight === 1
+          ? `Saved as version ${version}. 1 run already in flight continues on the version it started with.`
+          : `Saved as version ${version}. ${inFlight} runs already in flight continue on the versions they started with.`,
+    duplicated: (name: string) => `Duplicated as “${name}”.`,
     breadcrumb: 'Pipelines',
     nameLabel: 'Pipeline name',
     rename: 'Rename this pipeline',
@@ -807,6 +822,13 @@ export const en: Messages = {
   },
 
   stepNode: {
+    noAgentChosen: (kind: string) => `${kind} — no agent chosen`,
+    writesDesign: (path: string) => `writes ${path}`,
+    skills: (names: string) => `skills: ${names}`,
+    conditional: 'Conditional',
+    moveUp: (n: number) => `Move step ${n} up`,
+    moveDown: (n: number) => `Move step ${n} down`,
+    remove: (n: number) => `Remove step ${n}`,
     produces: (files: string) => `Produces ${files}`,
     writesTheCode: 'Writes the code',
     anyoneDecides: 'Anyone in the workspace decides',
@@ -825,6 +847,9 @@ export const en: Messages = {
   },
 
   builder: {
+    trigger: 'Trigger: ticket created',
+    insertAt: (n: number) => `Insert a step at position ${n}`,
+    finish: 'Open merge request → close ticket',
     addAtEnd: 'Add a step at the end',
     addSequence: 'Add a step',
     addHint: 'Drag onto the canvas or click a + on a connector.',
@@ -833,6 +858,13 @@ export const en: Messages = {
   },
 
   stepEditor: {
+    whenRuns: 'When does this step run?',
+    /** A step's condition in the editor, and inside a sentence that names it. */
+    condition: {
+      always: 'always',
+      ticket_has_ui: 'only if this ticket changes the interface',
+      ticket_has_no_ui: 'only if this ticket does not change the interface',
+    },
     heading: (index: number, kind: string) => `Step ${index} — ${kind}`,
     close: (index: number) => `Close step ${index}`,
     agent: 'Agent',
@@ -1167,6 +1199,20 @@ export const en: Messages = {
     addAgentStep: 'Add an agent step, and put any verification, gate or notification after it.',
     noVerification:
       'This pipeline has no verification step, so nothing beyond the implementing agent will check the result.',
+    addCodeStep:
+      'Add an agent step with no required documents, and put any verification, gate or notification after it.',
+    conditionTooEarly: (n: number, when: string) =>
+      `Step ${n} runs ${when}, but whether the ticket changes the interface is not known yet at that point. Move it after the step that writes the specification.`,
+    designTooEarly: (n: number) =>
+      `Step ${n} is a design step, but it comes before the specification step that decides whether the ticket changes the interface. Move it after.`,
+    noAgent: (n: number) => `Step ${n} has no agent chosen. Pick one, or remove the step.`,
+    noApprovers: (n: number) =>
+      `Step ${n} is a checkpoint whose approver list is empty, so nobody could ever decide it. Name someone, or let anyone in the workspace decide.`,
+    timeoutTooShort: (n: number, hours: number) =>
+      `Step ${n} waits ${hours} hours, which expires before anyone could look at it. Leave the waiting time empty to wait indefinitely.`,
+    noCommand: (n: number) =>
+      `Step ${n} is a shell command with no command, so it would pass without running anything. Give it the command this repository uses.`,
+    noSteps: 'A pipeline needs at least one step. Add one from the palette.',
   },
 
   conflicts: {

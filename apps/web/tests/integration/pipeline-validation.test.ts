@@ -2,6 +2,7 @@ import { afterAll, beforeEach, expect, test } from 'bun:test';
 import { pipelines, pipelineVersions } from '@factory/db/schema';
 import type { Step } from '@factory/shared';
 import { eq } from 'drizzle-orm';
+import { m } from '../../src/lib/i18n';
 import { savePipeline } from '../../src/lib/services/pipeline';
 import {
   assertSavable,
@@ -63,16 +64,15 @@ test('a pipeline with no code-producing step is refused, and told what to add', 
   const problems = problemsWith([spec(), gate(), shell()]);
   expect(problems).toHaveLength(1);
   expect(problems[0]?.index).toBeNull();
-  expect(problems[0]?.message).toContain('no step that writes code');
   // And it says which steps it looked at, rather than leaving them guessing.
-  expect(problems[0]?.message).toContain('every agent step here declares documents');
-  expect(problems[0]?.message).toContain('Add an agent step with no required documents');
+  expect(problems[0]?.message).toContain(m.validate.noCodeStepDeclares);
+  expect(problems[0]?.message).toContain(m.validate.addCodeStep);
 });
 
 test('a pipeline with nothing but verification says so more plainly', () => {
   const problems = problemsWith([shell()]);
-  expect(problems[0]?.message).toContain('cannot produce a merge request');
-  expect(problems[0]?.message).not.toContain('every agent step here');
+  expect(problems[0]?.message).toContain(m.validate.noCodeStep);
+  expect(problems[0]?.message).not.toContain(m.validate.noCodeStepDeclares);
 });
 
 test('verification, gates and notifications may follow the code step (FR-028)', () => {
@@ -96,7 +96,7 @@ test('the code-producing step is the agent step with no required documents', () 
 });
 
 test('an empty pipeline is refused, and told where to start', () => {
-  expect(messages([])).toEqual(['A pipeline needs at least one step. Add one from the palette.']);
+  expect(messages([])).toEqual([m.validate.noSteps]);
 });
 
 // --- FR-032e: a design step before the classifying step ---
@@ -105,10 +105,7 @@ test('a design step before the classifying step is refused, naming it', () => {
   const problems = problemsWith([design(), spec(), code()]);
   const about = problems.filter((p) => p.index === 0);
   expect(about.length).toBeGreaterThan(0);
-  expect(about.some((p) => p.message.includes('Step 1 is a design step'))).toBe(true);
-  expect(about.some((p) => p.message.includes('before the specification step that decides'))).toBe(
-    true,
-  );
+  expect(about.some((p) => p.message === m.validate.designTooEarly(1))).toBe(true);
 });
 
 test('a design step after it is fine', () => {
@@ -118,7 +115,7 @@ test('a design step after it is fine', () => {
 test('a design step in a pipeline that classifies nowhere is refused', () => {
   // No document-producing step, so nothing ever decides.
   const problems = problemsWith([design('always'), code()]);
-  expect(problems.some((p) => p.message.includes('Step 1 is a design step'))).toBe(true);
+  expect(problems.some((p) => p.message === m.validate.designTooEarly(1))).toBe(true);
   expect(classifyingIndex([design('always'), code()])).toBeNull();
 });
 
@@ -127,16 +124,16 @@ test('a design step in a pipeline that classifies nowhere is refused', () => {
 test('a condition before the fact is established is refused, naming step and fact', () => {
   const problems = problemsWith([gate('ticket_has_ui'), spec(), code()]);
   const first = problems.find((p) => p.index === 0);
-  expect(first?.message).toContain('Step 1 runs only if this ticket changes the interface');
-  // The FACT in words, which is what FR-032d asks be stated.
-  expect(first?.message).toContain('whether the ticket changes the interface is not known yet');
-  expect(first?.message).toContain('Move it after the step that writes the specification');
+  // The step, the condition and the fact, all in words, which is what FR-032d asks be stated.
+  expect(first?.message).toBe(
+    m.validate.conditionTooEarly(1, m.stepEditor.condition.ticket_has_ui),
+  );
 });
 
 test('the inverse condition is refused in the same place', () => {
   const problems = problemsWith([gate('ticket_has_no_ui'), spec(), code()]);
-  expect(problems[0]?.message).toContain(
-    'Step 1 runs only if this ticket does not change the interface',
+  expect(problems[0]?.message).toBe(
+    m.validate.conditionTooEarly(1, m.stepEditor.condition.ticket_has_no_ui),
   );
 });
 
@@ -175,7 +172,7 @@ test('a gate nobody can decide is refused', () => {
     code(),
     { type: 'checkpoint', condition: 'always', approvers: [] },
   ]);
-  expect(problems[0]?.message).toContain('nobody could ever decide it');
+  expect(problems[0]?.message).toBe(m.validate.noApprovers(2));
 });
 
 test('a gate that expires before anyone could look is refused', () => {
@@ -183,15 +180,15 @@ test('a gate that expires before anyone could look is refused', () => {
     code(),
     { type: 'checkpoint', condition: 'always', approvers: 'anyone', timeout_hours: 0 },
   ]);
-  expect(problems[0]?.message).toContain('expires before anyone could look at it');
+  expect(problems[0]?.message).toBe(m.validate.timeoutTooShort(2, 0));
 });
 
 test('a shell step with no command is refused: it would pass without running', () => {
-  expect(messages([code(), shell('')])[0]).toContain('would pass without running anything');
+  expect(messages([code(), shell('')])[0]).toBe(m.validate.noCommand(2));
 });
 
 test('an agent step with no agent is refused', () => {
-  expect(messages([{ type: 'agent', condition: 'always' }])[0]).toContain('no agent chosen');
+  expect(messages([{ type: 'agent', condition: 'always' }])).toContain(m.validate.noAgent(1));
 });
 
 // --- the refusals reach the save, and every one is reported at once ---
@@ -212,9 +209,9 @@ test('a save is refused, and reports every problem in one pass', async () => {
 
   const message = refused?.message ?? '';
   // No code step, a condition too early, and a design step too early.
-  expect(message).toContain('no step that writes code');
-  expect(message).toContain('Step 2 runs only if this ticket changes the interface');
-  expect(message).toContain('Step 1 is a design step');
+  expect(message).toContain(m.validate.noCodeStepDeclares);
+  expect(message).toContain(m.validate.conditionTooEarly(2, m.stepEditor.condition.ticket_has_ui));
+  expect(message).toContain(m.validate.designTooEarly(1));
 
   // And nothing was written: the pipeline is still on version 1.
   const [pipeline] = await db

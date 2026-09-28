@@ -2,6 +2,8 @@ import { createHmac, randomUUID } from 'node:crypto';
 import type { BrowserContext } from '@playwright/test';
 import { expect, test } from '@playwright/test';
 import postgres from 'postgres';
+import { modelName } from '../../src/lib/format';
+import { m } from '../../src/lib/i18n';
 
 /**
  * User Story 6's Independent Test (quickstart.md scenario F): build a
@@ -154,51 +156,45 @@ test.describe('composing the pipeline', () => {
     await page.goto(`/pipelines/${seeded.pipelineId}`);
 
     // The two steps it starts with, and the implicit last one (FR-029).
-    await expect(page.getByText('Version 1')).toBeVisible();
-    await expect(page.getByText('Open merge request')).toBeVisible();
-    await expect(
-      page.getByText('Every pipeline ends here. It is not a step you can move or remove.'),
-    ).toBeVisible();
+    await expect(page.getByText(m.pipeline.version(1))).toBeVisible();
+    await expect(page.getByText(m.builder.finish)).toBeVisible();
+    await expect(page.locator('.finish')).toHaveAttribute('title', m.stepKind.implicitLastWhy);
     // How many repositories use it, before anyone changes it (FR-030).
-    await expect(page.getByText('Used by 1 repo')).toBeVisible();
+    await expect(page.getByText(m.pipeline.usedBy(1))).toBeVisible();
     // And the run in flight is named, with what saving will not do to it.
-    await expect(page.getByText('1 run in flight')).toBeVisible();
+    await expect(page.getByText(m.pipeline.runsInFlight(1))).toBeVisible();
 
     // --- add a review gate between the two steps, from the connector's + ---
-    await page.getByLabel('Insert a step at position 2').click();
+    await page.getByLabel(m.builder.insertAt(2)).click();
     // Scoped to the popover just opened: the side panel offers the same
     // palette, so an unscoped match is ambiguous.
     await page
       .locator('.picker')
-      .getByRole('button', { name: 'Human checkpoint', exact: true })
+      .getByRole('button', { name: m.stepKind.checkpoint, exact: true })
       .click();
-    await expect(page.getByText('Step 2 — Human checkpoint')).toBeVisible();
+    await expect(page.getByText(m.stepEditor.heading(2, m.stepKind.checkpoint))).toBeVisible();
 
     // Its approvers, waiting time and expiry behaviour (FR-032).
-    await page.getByLabel('Who may decide this checkpoint?').selectOption('ticket_creator');
-    await page.getByLabel('How long it waits, in hours').fill('8');
-    await page.getByLabel('When that time expires').selectOption('fail');
+    await page.getByLabel(m.stepEditor.whoMayDecide).selectOption('ticket_creator');
+    await page.getByLabel(m.stepEditor.timeoutHours).fill('8');
+    await page.getByLabel(m.stepEditor.whenExpires).selectOption('fail');
 
     // --- and a shell step at the end ---
-    await page.getByLabel('Add a step at the end').click();
+    await page.getByLabel(m.builder.addAtEnd).click();
     await page
       .locator('.picker')
-      .getByRole('button', { name: 'Shell command', exact: true })
+      .getByRole('button', { name: m.stepKind.shell, exact: true })
       .click();
-    await page.getByRole('textbox', { name: 'Command' }).fill('bun test');
+    await page.getByRole('textbox', { name: m.stepEditor.command }).fill('bun test');
 
     // SC-010 is stated before the save, not discovered after it.
-    await expect(page.getByRole('status')).toContainText(
-      'Saving does not affect it: each continues on the version it started with',
-    );
+    await expect(page.getByRole('status')).toContainText(m.pipeline.inFlightNote(1));
 
-    await page.getByRole('button', { name: 'Save as version 2' }).click();
-    await expect(page.getByRole('status').first()).toContainText('Saved as version 2', {
+    await page.getByRole('button', { name: m.pipeline.saveAs(2) }).click();
+    // Saved, and the run already in flight named as continuing on its own version.
+    await expect(page.getByRole('status').first()).toContainText(m.pipeline.saved(2, 1), {
       timeout: 15_000,
     });
-    await expect(page.getByRole('status').first()).toContainText(
-      '1 run already in flight continues on the version it started with',
-    );
 
     // Exactly those steps, in exactly that order.
     const saved = await sql`
@@ -237,42 +233,42 @@ test.describe('composing the pipeline', () => {
     await page.goto(`/pipelines/${seeded.pipelineId}`);
 
     // --- FR-028: remove the code-producing step ---
-    await page.getByRole('button', { name: 'Actions for step 2' }).click();
-    await page.getByRole('button', { name: 'Remove step 2' }).click();
-    await expect(page.getByText(/This pipeline has no step that writes code/)).toBeVisible();
-    await expect(page.getByRole('button', { name: /^Save as version/ })).toBeDisabled();
+    await page.getByRole('button', { name: m.stepNode.actionsFor(2) }).click();
+    await page.getByRole('button', { name: m.stepNode.remove(2) }).click();
+    await expect(page.getByText(m.validate.noCodeStepDeclares)).toBeVisible();
+    await expect(page.getByRole('button', { name: m.pipeline.saveAs(2) })).toBeDisabled();
 
     // Put it back, and the refusal goes away.
-    await page.getByLabel('Add a step at the end').click();
-    await page.locator('.picker').getByRole('button', { name: 'Agent step', exact: true }).click();
-    await page
-      .getByRole('combobox', { name: 'Agent', exact: true })
-      .selectOption({ label: `Implement ${seeded.tag} — claude-opus-5` });
-    await expect(page.getByText(/no step that writes code/)).toHaveCount(0);
-
-    // --- FR-032e: a design step before the step that classifies ---
-    await page.getByLabel('Insert a step at position 1').click();
-    await page.locator('.picker').getByRole('button', { name: 'Design step', exact: true }).click();
-    await expect(page.getByText(/Step 1 is a design step/)).toBeVisible();
-    await expect(page.getByText(/before the specification step that decides/)).toBeVisible();
-    await page.getByRole('button', { name: 'Actions for step 1' }).click();
-    await page.getByRole('button', { name: 'Remove step 1' }).click();
-
-    // --- FR-032d: a condition before its fact is established ---
-    await page.getByLabel('Insert a step at position 1').click();
+    await page.getByLabel(m.builder.addAtEnd).click();
     await page
       .locator('.picker')
-      .getByRole('button', { name: 'Human checkpoint', exact: true })
+      .getByRole('button', { name: m.stepKind.agent, exact: true })
       .click();
     await page
-      .getByLabel('When does this step run?')
-      .selectOption('only if this ticket changes the interface');
+      .getByRole('combobox', { name: m.stepEditor.agent, exact: true })
+      .selectOption({ label: `Implement ${seeded.tag} — ${modelName('claude-opus-5')}` });
+    await expect(page.getByText(m.validate.noCodeStepDeclares)).toHaveCount(0);
+
+    // --- FR-032e: a design step before the step that classifies ---
+    await page.getByLabel(m.builder.insertAt(1)).click();
+    await page
+      .locator('.picker')
+      .getByRole('button', { name: m.stepKind.design, exact: true })
+      .click();
+    await expect(page.getByText(m.validate.designTooEarly(1))).toBeVisible();
+    await page.getByRole('button', { name: m.stepNode.actionsFor(1) }).click();
+    await page.getByRole('button', { name: m.stepNode.remove(1) }).click();
+
+    // --- FR-032d: a condition before its fact is established ---
+    await page.getByLabel(m.builder.insertAt(1)).click();
+    await page
+      .locator('.picker')
+      .getByRole('button', { name: m.stepKind.checkpoint, exact: true })
+      .click();
+    await page.getByLabel(m.stepEditor.whenRuns).selectOption(m.stepEditor.condition.ticket_has_ui);
+    // The step, its condition and the fact it waits on, in words rather than as a code.
     await expect(
-      page.getByText(/Step 1 runs only if this ticket changes the interface/),
-    ).toBeVisible();
-    // The fact, in words rather than as a code.
-    await expect(
-      page.getByText(/whether the ticket changes the interface is not known yet/),
+      page.getByText(m.validate.conditionTooEarly(1, m.stepEditor.condition.ticket_has_ui)),
     ).toBeVisible();
     await expect(page.getByText('ticket_has_ui')).toHaveCount(0);
 
@@ -293,13 +289,13 @@ test.describe('composing the pipeline', () => {
     await signIn(context, other!.id);
 
     await page.goto(`/pipelines/${seeded.pipelineId}`);
-    await expect(page.getByText(/you can use it, not change it/)).toBeVisible();
+    await expect(page.getByText(m.pipeline.someoneElseOwns)).toBeVisible();
     // Readable: the steps are all there.
-    await expect(page.getByText('Open merge request')).toBeVisible();
+    await expect(page.getByText(m.builder.finish)).toBeVisible();
     // Not changeable: no save, no palette, no remove.
-    await expect(page.getByRole('button', { name: /^Save as version/ })).toHaveCount(0);
-    await expect(page.getByLabel('Add a step at the end')).toHaveCount(0);
-    await expect(page.getByRole('button', { name: 'Remove step 1' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: m.pipeline.saveAs(2) })).toHaveCount(0);
+    await expect(page.getByLabel(m.builder.addAtEnd)).toHaveCount(0);
+    await expect(page.getByRole('button', { name: m.stepNode.remove(1) })).toHaveCount(0);
   });
 
   test('a pipeline can be duplicated, and the copy is the copier own (FR-031)', async ({
@@ -313,9 +309,11 @@ test.describe('composing the pipeline', () => {
     const [name] = await sql`select name from pipelines where id = ${seeded.pipelineId}`;
     await page
       .locator('li', { hasText: name!.name })
-      .getByRole('button', { name: 'Duplicate' })
+      .getByRole('button', { name: m.pipelines.duplicate })
       .click();
-    await expect(page.getByText(/Duplicated as/)).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText(m.pipeline.duplicated(`${name!.name} (copy)`))).toBeVisible({
+      timeout: 15_000,
+    });
 
     const copies = await sql`
       select id, name, owner_id, current_version from pipelines

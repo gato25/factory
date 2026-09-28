@@ -197,6 +197,19 @@ const SCREENS: Screen[] = [
     within: '.modal',
     primary: ['h2', '.tx p', '.step-title', '.provider-name', 'input', 'select', '.btn'],
   },
+  {
+    name: '08 Pipeline Builder',
+    path: (seeded) => `/pipelines/${seeded.pipelineId}`,
+    signedIn: true,
+    primary: ['h1', '.sub', '.node .nm', '.pal .n', '.ag .nm', '.trigger', '.finish', '.btn'],
+  },
+  {
+    // No artboard of its own; held to the same rules as every screen that has one.
+    name: 'the pipelines list',
+    path: () => '/pipelines',
+    signedIn: true,
+    primary: ['h1', '.lede', '.item .name', '.item .d', 'input', '.btn'],
+  },
 ];
 
 async function seed(): Promise<Seeded> {

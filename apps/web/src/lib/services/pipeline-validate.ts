@@ -1,10 +1,4 @@
-import {
-  CONDITION_DESCRIPTION,
-  CONDITION_FACT,
-  invalidInput,
-  type Step,
-  validateStepOrder,
-} from '@factory/shared';
+import { invalidInput, type Step, validateStepOrder } from '@factory/shared';
 import { m } from '$lib/i18n';
 
 /**
@@ -55,12 +49,8 @@ function checkProducesCode(steps: Step[]): Problem[] {
     {
       index: null,
       message: documentOnly
-        ? 'This pipeline has no step that writes code — every agent step here declares ' +
-          'documents it must produce, so all of them are writing documents. Add an agent ' +
-          'step with no required documents, and put any verification, gate or notification ' +
-          'after it.'
-        : 'This pipeline has no step that writes code, so it cannot produce a merge request. ' +
-          m.validate.addAgentStep,
+        ? `${m.validate.noCodeStepDeclares} ${m.validate.addCodeStep}`
+        : `${m.validate.noCodeStep} ${m.validate.addAgentStep}`,
     },
   ];
 }
@@ -72,7 +62,16 @@ function checkProducesCode(steps: Step[]): Problem[] {
  * mirrors, so what is refused here is exactly what would misbehave there.
  */
 function checkOrder(steps: Step[]): Problem[] {
-  return validateStepOrder(steps, classifyingIndex(steps));
+  return validateStepOrder(steps, classifyingIndex(steps)).map(({ index, kind }) => ({
+    index,
+    message:
+      kind === 'design_too_early'
+        ? m.validate.designTooEarly(index + 1)
+        : m.validate.conditionTooEarly(
+            index + 1,
+            m.stepEditor.condition[steps[index]?.condition ?? 'always'],
+          ),
+  }));
 }
 
 /** A gate's own settings have to be answerable (FR-032). */
@@ -83,17 +82,13 @@ function checkGates(steps: Step[]): Problem[] {
     if (Array.isArray(step.approvers) && step.approvers.length === 0) {
       problems.push({
         index,
-        message:
-          `Step ${index + 1} is a checkpoint whose approver list is empty, so nobody could ` +
-          'ever decide it. Name someone, or let anyone in the workspace decide.',
+        message: m.validate.noApprovers(index + 1),
       });
     }
     if (step.timeout_hours !== undefined && step.timeout_hours <= 0) {
       problems.push({
         index,
-        message:
-          `Step ${index + 1} waits ${step.timeout_hours} hours, which expires before anyone ` +
-          'could look at it. Leave the waiting time empty to wait indefinitely.',
+        message: m.validate.timeoutTooShort(index + 1, step.timeout_hours),
       });
     }
   });
@@ -107,9 +102,7 @@ function checkShell(steps: Step[]): Problem[] {
       ? [
           {
             index,
-            message:
-              `Step ${index + 1} is a shell command with no command, so it would pass without ` +
-              'running anything. Give it the command this repository uses.',
+            message: m.validate.noCommand(index + 1),
           },
         ]
       : [],
@@ -123,7 +116,7 @@ function checkAgents(steps: Step[]): Problem[] {
       ? [
           {
             index,
-            message: `Step ${index + 1} has no agent chosen. Pick one, or remove the step.`,
+            message: m.validate.noAgent(index + 1),
           },
         ]
       : [],
@@ -135,7 +128,7 @@ export function problemsWith(steps: Step[]): Problem[] {
     return [
       {
         index: null,
-        message: 'A pipeline needs at least one step. Add one from the palette.',
+        message: m.validate.noSteps,
       },
     ];
   }
@@ -163,5 +156,5 @@ export function assertSavable(steps: Step[]): void {
  * rather than in a component so every surface says the same thing.
  */
 export function conditionWords(step: Step): string | undefined {
-  return CONDITION_DESCRIPTION[step.condition];
+  return step.condition === 'always' ? undefined : m.stepEditor.condition[step.condition];
 }

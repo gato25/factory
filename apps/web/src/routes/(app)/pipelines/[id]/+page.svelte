@@ -2,6 +2,8 @@
   import type { Step } from '@factory/shared';
   import { page } from '$app/state';
   import Icon from '$components/Icon.svelte';
+  import { pipelineName, stepTitle } from '$lib/default-names';
+  import { modelName } from '$lib/format';
   import { m } from '$lib/i18n';
   import PipelineBuilder from '$components/PipelineBuilder.svelte';
   import { agents } from '$lib/remote/agents.remote';
@@ -53,9 +55,9 @@
 </script>
 
 {#if detail.error}
-  <p class="card failure" role="alert">{(detail.error as Error).message}</p>
+  <p class="tile tile--danger failure" role="alert">{(detail.error as Error).message}</p>
 {:else if !detail.ready || draft === null}
-  <p class="card">Loading the pipeline…</p>
+  <p class="tile">{m.pipeline.loading}</p>
 {:else}
   {@const p = detail.current}
 
@@ -64,7 +66,7 @@
       <p class="crumb">
         <a href="/pipelines">{m.pipeline.breadcrumb}</a>
         <Icon name="chevron-right" size={14} />
-        <span>{p.name}</span>
+        <span>{pipelineName(p.name)}</span>
       </p>
 
       <div class="name-row">
@@ -83,7 +85,7 @@
             }}
           />
         {:else}
-          <h1>{p.name}</h1>
+          <h1>{pipelineName(p.name)}</h1>
           {#if p.mayChange}
             <button
               type="button"
@@ -100,16 +102,10 @@
         {/if}
 
         <!-- How many repositories use it, before anyone changes it (FR-030) -->
-        <span class="badge">
-          <span class="dot"></span>
-          {m.pipeline.usedBy(p.repositoriesUsing)}
-        </span>
-        <span class="badge quiet"><span class="dot"></span>{m.pipeline.version(p.currentVersion)}</span>
+        <span class="used"><Icon name="folder-git-2" size={12} />{m.pipeline.usedBy(p.repositoriesUsing)}</span>
+        <span class="chip">{m.pipeline.version(p.currentVersion)}</span>
         {#if p.runsInFlight > 0}
-          <span class="badge quiet">
-            <span class="dot"></span>
-            {p.runsInFlight} run{p.runsInFlight === 1 ? '' : 's'} in flight
-          </span>
+          <span class="chip">{m.pipeline.runsInFlight(p.runsInFlight)}</span>
         {/if}
       </div>
 
@@ -127,23 +123,23 @@
     <div class="r">
       <button
         type="button"
-        class="secondary"
+        class="btn btn--secondary"
         onclick={async () => {
           const result = await duplicate(p.id);
           notice = ('problem' in result ? result.problem : result.message) ?? null;
         }}
       >
-        <Icon name="copy" size={16} />
-        <span>{m.pipeline.duplicate}</span>
+        <Icon name="copy" size={14} />
+        {m.pipeline.duplicate}
       </button>
       <button
         type="button"
-        class="secondary"
+        class="btn"
         aria-pressed={showPreflight}
         onclick={() => (showPreflight = !showPreflight)}
       >
-        <Icon name="play" size={16} />
-        <span>{m.pipeline.testRun}</span>
+        <Icon name="play" size={14} />
+        {m.pipeline.testRun}
       </button>
     </div>
   </header>
@@ -151,7 +147,7 @@
   {#if showPreflight}
     <!-- A dry run: what a ticket starting on version {p.currentVersion} would
          do, and what comparable runs cost. It starts nothing (FR-019). -->
-    <section class="card dry">
+    <section class="tile dry">
       <header>
         <h2>{m.pipeline.preflightHeading}</h2>
         <span class="small muted">{m.pipeline.preflightNote(p.currentVersion)}</span>
@@ -166,11 +162,11 @@
             <li>
               <span class="i">{preview.index + 1}</span>
               <span class="t">
-                {preview.label}
-                {#if preview.model}<span class="small muted">· {preview.model}</span>{/if}
+                {stepTitle({ type: preview.type, label: preview.label })}
+                {#if preview.model}<span class="muted">· {modelName(preview.model)}</span>{/if}
               </span>
               {#if preview.conditional}
-                <span class="badge pink"><span class="dot"></span>{preview.conditionText}</span>
+                <span class="cond">{m.newTicket.condition[preview.condition]}</span>
               {/if}
             </li>
           {/each}
@@ -198,21 +194,17 @@
     </section>
   {/if}
 
-  {#if notice}<p class="card notice" role="status">{notice}</p>{/if}
+  {#if notice}<p class="tile notice" role="status">{notice}</p>{/if}
 
   {#if p.runsInFlight > 0 && dirty}
     <!-- SC-010: editing changes the behaviour of zero runs already in flight -->
-    <p class="card notice" role="status">
-      {p.runsInFlight} run{p.runsInFlight === 1 ? '' : 's'} on this pipeline
-      {p.runsInFlight === 1 ? 'is' : 'are'} in flight. Saving does not affect
-      {p.runsInFlight === 1 ? 'it' : 'them'}: each continues on the version it started with.
-    </p>
+    <p class="tile notice" role="status">{m.pipeline.inFlightNote(p.runsInFlight)}</p>
   {/if}
 
   {#if save.result && 'problem' in save.result && save.result.problem}
-    <p class="card failure" role="alert">{save.result.problem}</p>
+    <p class="tile tile--danger failure" role="alert">{save.result.problem}</p>
   {:else if save.result && 'message' in save.result}
-    <p class="card notice" role="status">{save.result.message}</p>
+    <p class="tile notice" role="status">{save.result.message}</p>
   {/if}
 
   <PipelineBuilder
@@ -226,26 +218,25 @@
   {#if p.mayChange}
     <!-- Saving is a form, so it does not depend on JavaScript any more than
          approving does. The draft rides along as JSON. -->
-    <form {...save} class="card saver">
+    <form {...save} class="tile saver">
       <input type="hidden" name="pipelineId" value={p.id} />
       <input type="hidden" name="steps" value={JSON.stringify(steps)} />
       <div class="saver-row">
         <span class="small muted">
           {#if problems.length > 0}
-            {problems.length} thing{problems.length === 1 ? '' : 's'} to fix before this can be
-            saved.
+            {m.pipeline.toFix(problems.length)}
           {:else if dirty}
-            Saving writes version {p.currentVersion + 1}.
+            {m.pipeline.willWrite(p.currentVersion + 1)}
           {:else}
-            Nothing to save.
+            {m.pipeline.nothingToSave}
           {/if}
         </span>
         <button
-          class="primary"
+          class="btn"
           type="submit"
           disabled={!dirty || problems.length > 0 || save.pending > 0}
         >
-          Save as version {p.currentVersion + 1}
+          {m.pipeline.saveAs(p.currentVersion + 1)}
         </button>
       </div>
       {#if save.fields.allIssues()?.length}
@@ -262,15 +253,16 @@
 <style>
   .head {
     display: flex;
-    align-items: flex-start;
+    align-items: flex-end;
     justify-content: space-between;
     gap: 24px;
     margin-bottom: 20px;
+    padding: 4px 4px 0;
   }
   .l {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 8px;
     min-width: 0;
   }
   .crumb {
@@ -278,7 +270,6 @@
     align-items: center;
     gap: 6px;
     margin: 0;
-    font-size: 12px;
     color: var(--text-3);
   }
   .crumb a {
@@ -286,219 +277,169 @@
     text-decoration: none;
   }
   .crumb a:hover {
-    color: var(--accent-text);
+    text-decoration: underline;
   }
   .crumb span {
+    font-weight: 600;
     color: var(--text-2);
   }
-
   .name-row {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 10px;
-    flex-wrap: wrap;
   }
   h1 {
     margin: 0;
-    font-family: var(--font-head);
-    font-size: 22px;
-    font-weight: 700;
-    color: var(--text);
+    font-size: 30px;
+    font-weight: 600;
+    letter-spacing: -0.6px;
   }
   .rename {
-    padding: 4px 10px;
-    border: 1px solid var(--accent);
-    border-radius: var(--r-sm);
-    font: inherit;
-    font-family: var(--font-head);
-    font-size: 22px;
-    font-weight: 700;
-    color: var(--text);
+    padding: 6px 10px;
+    border: 0;
+    border-radius: 10px;
+    font: 600 24px / 1.2 var(--font-head);
+    background: var(--surface);
+    box-shadow: var(--focus-ring);
   }
   button.icon {
     display: grid;
     place-items: center;
-    width: 28px;
-    height: 28px;
-    padding: 0;
+    padding: 4px;
     border: 0;
-    border-radius: var(--r-sm);
-    background: none;
+    border-radius: 8px;
     color: var(--text-3);
+    background: none;
     cursor: pointer;
   }
   button.icon:hover {
-    background: var(--surface-2);
     color: var(--text-2);
+    background: #ffffffb3;
   }
-  .sub {
-    margin: 0;
-    max-width: 70ch;
-    font-size: 13px;
-    color: var(--text-2);
-  }
-
-  .badge {
+  .used,
+  .chip {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 4px 10px;
-    border-radius: 999px;
-    background: var(--surface-2);
-    font-size: 12px;
+    padding: 5px 11px;
+    border-radius: var(--r-pill);
+    font-size: var(--type-caption);
+    font-weight: 600;
+  }
+  .used {
+    color: var(--accent-text);
+    background: var(--accent-soft);
+  }
+  .chip {
+    font-weight: 500;
+    color: var(--text-2);
+    background: #ffffffcc;
+  }
+  .sub {
+    max-width: 720px;
+    margin: 0;
     color: var(--text-2);
   }
-  .badge.quiet {
-    color: var(--text-3);
-  }
-  .badge.pink {
-    background: var(--design-soft);
-    color: var(--design);
-  }
-  .dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 999px;
-    background: currentcolor;
-    flex: none;
-  }
-
   .r {
     display: flex;
-    align-items: center;
-    gap: 10px;
     flex: none;
+    gap: 10px;
   }
-  .secondary {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 16px;
-    border: 1px solid var(--border);
-    border-radius: var(--r-sm);
-    background: var(--surface);
-    font: inherit;
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--text);
-    cursor: pointer;
-  }
-  .secondary :global(svg) {
-    color: var(--text-2);
-  }
-  .secondary:hover {
-    border-color: var(--accent);
-  }
-  .secondary[aria-pressed='true'] {
-    background: var(--accent-soft);
-    border-color: var(--accent-soft);
-    color: var(--accent-text);
+  .r .btn[aria-pressed='true'] {
+    box-shadow: var(--focus-ring);
   }
 
   .dry {
     display: flex;
     flex-direction: column;
     gap: 10px;
-    margin-bottom: 16px;
+    margin-bottom: 20px;
   }
   .dry > header {
     display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 12px;
     flex-wrap: wrap;
+    align-items: baseline;
+    gap: 12px;
   }
   .dry h2 {
     margin: 0;
-    font-family: var(--font-head);
-    font-size: 15px;
+    font-size: 18px;
     font-weight: 600;
-    color: var(--text);
   }
   .dry p {
     margin: 0;
   }
   .dry-steps {
-    list-style: none;
-    margin: 0;
-    padding: 0;
     display: flex;
     flex-direction: column;
+    margin: 0;
+    padding: 0;
+    list-style: none;
   }
   .dry-steps li {
     display: flex;
     align-items: center;
     gap: 10px;
     padding: 8px 0;
-    border-top: 1px solid var(--border);
+    border-top: 1px solid var(--surface-2);
   }
   .dry-steps li:first-child {
     border-top: 0;
   }
   .dry-steps .i {
     display: grid;
-    place-items: center;
-    width: 20px;
-    height: 20px;
-    border-radius: 999px;
-    background: var(--surface-2);
-    font-size: 11px;
-    color: var(--text-2);
     flex: none;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    border-radius: var(--r-pill);
+    font: 700 var(--type-caption) / 1 var(--font-head);
+    color: var(--text-inv);
+    background: linear-gradient(180deg, var(--accent-deep-from), var(--accent-deep-to));
   }
   .dry-steps .t {
     flex: 1;
-    min-width: 0;
-    font-size: 13px;
-    color: var(--text);
+    font-size: var(--type-body);
   }
-
-  .notice {
-    border-left: 3px solid var(--accent);
-    margin-bottom: 16px;
-    padding: 12px 16px;
+  .cond {
+    padding: 2px 8px;
+    border-radius: var(--r-pill);
+    font-size: var(--type-caption);
+    font-weight: 700;
+    color: var(--pen-text);
+    background: var(--purple-soft);
+  }
+  .notice,
+  .failure {
+    margin: 0 0 20px;
+    padding: 14px 20px;
   }
   .failure {
-    border-left: 3px solid var(--danger);
-    margin-bottom: 16px;
-    padding: 12px 16px;
-    color: var(--danger);
+    color: var(--danger-text);
   }
-
   .saver {
-    margin-top: 16px;
+    margin-top: 20px;
+    padding: 16px 20px;
   }
   .saver-row {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-  .saver button {
-    padding: 10px 16px;
-    border: 1px solid var(--accent);
-    border-radius: var(--r-sm);
-    background: var(--accent);
-    font: inherit;
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--text-inv);
-    cursor: pointer;
-  }
-  .saver button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
+    justify-content: space-between;
+    gap: 16px;
   }
   .errors {
-    margin: 8px 0 0;
-    padding-left: 18px;
-    color: var(--danger);
+    margin: 12px 0 0;
+    padding: 12px 16px 12px 32px;
+    border-radius: 12px;
+    color: var(--danger-text);
+    background: var(--danger-soft);
   }
 
   @media (max-width: 900px) {
     .head {
       flex-direction: column;
+      align-items: flex-start;
     }
   }
 </style>

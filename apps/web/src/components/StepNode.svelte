@@ -1,19 +1,22 @@
 <script lang="ts">
-  import { CONDITION_DESCRIPTION, type Step } from '@factory/shared';
+  import type { Step } from '@factory/shared';
   import Icon from '$components/Icon.svelte';
+  import { agentDescription, agentName } from '$lib/default-names';
+  import { modelName } from '$lib/format';
   import { m } from '$lib/i18n';
   import { STEP_KIND_LABEL } from '$lib/services/pipeline';
 
   /**
-   * One node on `design.pen`'s canvas: a grip, a 32px chip coloured by what
-   * the step is, the name with any badges, a description, a meta line, and an
-   * overflow menu.
+   * One step card on artboard 08's canvas: a grip, an orb coloured by what
+   * the step is, the name with any badges, a line saying what it does, and an
+   * overflow menu (specs/004-bento-redesign FR-022).
    *
-   * The colour is the point. A checkpoint is amber because a person has to
-   * act; a design step is pink and a custom agent purple, the same two
-   * colours the Agents screen uses, so the two screens agree about what a
-   * thing is. A conditional step is marked as conditional and its condition
-   * is stated in words, never as a code (FR-032f).
+   * The colour is the point, and each keeps its one meaning (FR-005): the
+   * accent for an agent's work — deeper for a custom agent, which also says
+   * "Захиалгат" in words — golden yellow for a checkpoint, where a person
+   * has to act, pen.dev blue for a design step, grey for a shell command and
+   * green for a notification. A conditional step is marked as conditional and
+   * its condition is stated in words, never as a code (FR-032f).
    */
 
   export interface BuilderAgent {
@@ -65,15 +68,19 @@
       ? 'gate'
       : step.type === 'design'
         ? 'design'
-        : custom
-          ? 'custom'
-          : 'plain',
+        : step.type === 'shell'
+          ? 'shell'
+          : step.type === 'notify'
+            ? 'notify'
+            : custom
+              ? 'custom'
+              : 'plain',
   );
 
   /** The design gives each kind its own icon; an agent brings its own. */
   const KIND_ICON: Record<Step['type'], string> = {
     agent: 'bot',
-    design: 'palette',
+    design: 'pen-tool',
     checkpoint: 'hand',
     shell: 'terminal',
     notify: 'bell',
@@ -82,11 +89,15 @@
     (step.type === 'agent' || step.type === 'design' ? agent?.icon : null) ?? KIND_ICON[step.type],
   );
 
-  const condition = $derived(CONDITION_DESCRIPTION[step.condition]);
+  const condition = $derived(
+    step.condition === 'always' ? undefined : m.newTicket.condition[step.condition],
+  );
 
   const title = $derived(
     step.type === 'agent' || step.type === 'design'
-      ? (agent?.name ?? `${STEP_KIND_LABEL[step.type]} — no agent chosen`)
+      ? agent
+        ? agentName(agent.name)
+        : m.stepNode.noAgentChosen(STEP_KIND_LABEL[step.type])
       : STEP_KIND_LABEL[step.type],
   );
 
@@ -97,7 +108,7 @@
     switch (step.type) {
       case 'agent':
         return (
-          agent?.description ??
+          (agent ? agentDescription(agent.name, agent.description ?? null) : null) ??
           (step.output_files?.length
             ? m.stepNode.produces(step.output_files.join(', '))
             : m.stepNode.writesTheCode)
@@ -133,17 +144,17 @@
     if (step.type === 'design') {
       return [
         'pen.dev CLI',
-        agent?.model,
-        `writes ${step.design?.source_path ?? 'docs/design/ui.pen'}`,
+        agent?.model ? modelName(agent.model) : undefined,
+        m.stepNode.writesDesign(step.design?.source_path ?? 'docs/design/ui.pen'),
       ]
         .filter(Boolean)
         .join(' · ');
     }
     if (step.type !== 'agent' || !agent) return undefined;
     return [
-      agent.model,
+      modelName(agent.model),
       agent.allowedTools?.length ? agent.allowedTools.join(', ') : undefined,
-      agent.skills?.length ? `skills: ${agent.skills.join(', ')}` : undefined,
+      agent.skills?.length ? m.stepNode.skills(agent.skills.join(', ')) : undefined,
     ]
       .filter(Boolean)
       .join(' · ');
@@ -171,16 +182,16 @@
     onclick={onSelect}
     disabled={!onSelect}
   >
-    <span class="ic"><Icon name={icon} size={18} /></span>
+    <span class="ic" aria-hidden="true"><Icon name={icon} size={16} /></span>
     <span class="tx">
       <span class="tr">
         <span class="nm">{title}</span>
         {#if condition}
           <!-- Marked as conditional, in words (FR-032f) -->
-          <span class="badge conditional"><span class="dot"></span>{condition}</span>
+          <span class="badge conditional">{condition}</span>
         {/if}
         {#if custom}
-          <span class="badge custom"><span class="dot"></span>{m.stepNode.custom}</span>
+          <span class="badge custom">{m.stepNode.custom}</span>
         {/if}
       </span>
       {#if description}<span class="d">{description}</span>{/if}
@@ -214,7 +225,7 @@
             onclick={() => {
               onMoveUp?.();
               menu = false;
-            }}>Move step {index + 1} up</button
+            }}>{m.stepNode.moveUp(index + 1)}</button
           >
           <button
             type="button"
@@ -222,7 +233,7 @@
             onclick={() => {
               onMoveDown?.();
               menu = false;
-            }}>Move step {index + 1} down</button
+            }}>{m.stepNode.moveDown(index + 1)}</button
           >
           <button
             type="button"
@@ -230,7 +241,7 @@
             onclick={() => {
               onRemove?.();
               menu = false;
-            }}>Remove step {index + 1}</button
+            }}>{m.stepNode.remove(index + 1)}</button
           >
         </span>
       {/if}
@@ -239,155 +250,164 @@
 </li>
 
 <style>
+  /* A step card: the kit's tile at a smaller radius, tinted by what it is. */
   .node {
+    --node-a: var(--tile-from);
+    --node-b: var(--tile-to);
     display: flex;
     align-items: center;
     gap: 12px;
-    width: 560px;
+    width: 640px;
     max-width: 100%;
-    padding: 8px 12px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--r-md);
-    box-shadow: 0 1px 3px #0f172a14;
+    padding: 10px 14px 10px 10px;
+    border: 1px solid transparent;
+    border-radius: var(--r-lg);
+    background:
+      linear-gradient(180deg, var(--node-a), var(--node-b)) padding-box,
+      linear-gradient(180deg, var(--highlight), #ffffff00) border-box;
+    box-shadow: 0 6px 16px var(--shadow-depth);
   }
-
-  /* What the step IS, drawn as an edge rather than a label. */
   .node.gate {
-    background: var(--warning-soft);
-    border: 1.5px solid var(--warning-edge);
-    box-shadow: none;
-  }
-  .node.design {
-    border: 1.5px solid var(--design);
-  }
-  .node.custom {
-    border: 1.5px solid var(--purple);
+    --node-a: var(--approval-from);
+    --node-b: var(--approval-to);
   }
   .node.selected {
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
+    box-shadow:
+      0 0 0 2px var(--accent),
+      0 6px 16px var(--shadow-depth);
   }
   .node.invalid {
-    border-color: var(--danger);
+    box-shadow:
+      0 0 0 2px var(--red-to),
+      0 6px 16px var(--shadow-depth);
   }
 
   .grip {
     display: flex;
+    flex: none;
     align-items: center;
     gap: 4px;
-    flex: none;
-    color: var(--flow-line);
+    color: var(--text-3);
     cursor: grab;
   }
   .n {
-    font-size: 11px;
-    color: var(--text-3);
     min-width: 1ch;
+    font-size: var(--type-caption);
     text-align: right;
+    color: var(--text-3);
   }
 
   .open {
     display: flex;
+    flex: 1;
     align-items: center;
     gap: 12px;
-    flex: 1;
     min-width: 0;
     padding: 0;
     border: 0;
-    background: none;
     font: inherit;
     text-align: left;
+    color: inherit;
+    background: none;
     cursor: pointer;
   }
   .open:disabled {
     cursor: default;
   }
 
+  /* The orb says what kind of step it is (FR-005, FR-022). */
   .ic {
+    --ic-a: var(--accent-from);
+    --ic-b: var(--accent-to);
     display: grid;
-    place-items: center;
-    width: 32px;
-    height: 32px;
-    border-radius: var(--r-sm);
     flex: none;
-    background: var(--accent-soft);
-    color: var(--accent-text);
-  }
-  .node.gate .ic {
-    background: var(--warning-chip);
-    color: var(--warning);
-  }
-  .node.design .ic {
-    background: var(--design-soft);
-    color: var(--design);
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 11px;
+    color: var(--text-inv);
+    background: linear-gradient(180deg, var(--ic-a), var(--ic-b));
   }
   .node.custom .ic {
-    background: var(--purple-soft);
-    color: var(--purple);
+    --ic-a: var(--accent-deep-from);
+    --ic-b: var(--accent-deep-to);
+  }
+  .node.gate .ic {
+    --ic-a: var(--amber-from);
+    --ic-b: var(--amber-to);
+    color: var(--on-amber);
+  }
+  .node.design .ic {
+    --ic-a: var(--pen-from);
+    --ic-b: var(--pen-to);
+  }
+  .node.shell .ic {
+    --ic-a: #b9b2a9;
+    --ic-b: #6a635a;
+  }
+  .node.notify .ic {
+    --ic-a: var(--mint-from);
+    --ic-b: var(--mint-to);
   }
 
   .tx {
     display: flex;
-    flex-direction: column;
-    gap: 1px;
     flex: 1;
+    flex-direction: column;
+    gap: 2px;
     min-width: 0;
   }
   .tr {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 8px;
-    flex-wrap: wrap;
   }
   .nm {
-    font-size: 13px;
-    font-weight: 600;
+    font-size: var(--type-body);
+    font-weight: 700;
     color: var(--text);
   }
-  .d {
-    font-size: 12px;
-    color: var(--text-2);
-  }
-  .m {
-    font-size: 11px;
-    color: var(--text-3);
+  .node.gate .nm {
+    color: #4a3a00;
   }
   .d,
   .m {
     overflow: hidden;
+    font-size: var(--type-caption);
     text-overflow: ellipsis;
     white-space: nowrap;
+    color: var(--text-2);
+  }
+  .node.gate .d {
+    color: #7a6310;
+  }
+  .m {
+    color: var(--text-3);
   }
   /* A problem is read, not scanned: it wraps rather than truncating. */
   .problem {
     margin-top: 2px;
-    font-size: 12px;
-    color: var(--danger);
+    font-size: var(--type-caption);
     white-space: normal;
+    color: var(--danger-text);
   }
 
   .badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 3px 8px;
-    border-radius: 999px;
-    font-size: 11px;
-    font-weight: 500;
-    background: var(--design-soft);
-    color: var(--design);
+    padding: 2px 8px;
+    border-radius: var(--r-pill);
+    font-size: var(--type-caption);
+    font-weight: 700;
+    color: var(--pen-text);
+    background: var(--purple-soft);
+  }
+  .node.gate .badge.conditional {
+    color: var(--warning-text);
+    background: #fffbea;
   }
   .badge.custom {
-    background: var(--purple-soft);
-    color: var(--purple);
-  }
-  .dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 999px;
-    background: currentcolor;
-    flex: none;
+    color: var(--accent-text);
+    background: var(--accent-soft);
   }
 
   .more {
@@ -401,49 +421,49 @@
     height: 28px;
     padding: 0;
     border: 0;
-    border-radius: var(--r-sm);
-    background: none;
+    border-radius: 8px;
     color: var(--text-3);
+    background: none;
     cursor: pointer;
   }
   .more > button:hover {
-    background: var(--surface-2);
     color: var(--text-2);
+    background: #ffffffb3;
   }
   .menu {
     position: absolute;
-    top: 30px;
+    top: 32px;
     right: 0;
     z-index: 5;
     display: flex;
     flex-direction: column;
     gap: 2px;
-    width: 200px;
+    width: 220px;
     padding: 6px;
+    border-radius: 14px;
     background: var(--surface);
-    border: 1px solid var(--card-border);
-    border-radius: var(--r-md);
-    box-shadow: 0 8px 24px #0f172a1f;
+    box-shadow:
+      0 1px 2px var(--shadow-soft),
+      0 14px 36px var(--shadow-depth);
   }
   .menu button {
-    padding: 8px 10px;
+    padding: 9px 10px;
     border: 0;
-    border-radius: var(--r-sm);
-    background: none;
-    font: inherit;
-    font-size: 13px;
+    border-radius: 10px;
+    font: 500 var(--type-body) / 1.3 var(--font);
     text-align: left;
     color: var(--text);
+    background: none;
     cursor: pointer;
   }
   .menu button:hover:not(:disabled) {
     background: var(--surface-2);
   }
   .menu button:disabled {
-    opacity: 0.4;
     cursor: default;
+    opacity: 0.4;
   }
   .menu button.danger {
-    color: var(--danger);
+    color: var(--danger-text);
   }
 </style>
