@@ -49,9 +49,12 @@ export async function composeMergeRequest(
     .where(sql`${artifacts.runId} = ${runId}::uuid and ${artifacts.kind} = 'document'`)
     .orderBy(desc(artifacts.version));
 
-  const latest = (path: string) => documents.find((d) => d.path === path);
-  const spec = latest('docs/spec.md');
-  const plan = latest('docs/plan.md');
+  // By file name: the documents are in the ticket's own folder
+  // (`docs/tickets/<n>/spec.md`), and runs from before that wrote `docs/`.
+  const latest = (name: string) =>
+    documents.find((d) => d.path === name || d.path.endsWith(`/${name}`));
+  const spec = latest('spec.md');
+  const plan = latest('plan.md');
 
   // A step that did not run is part of what a reviewer needs to know: a
   // ticket labelled `ui` with no screens is otherwise just puzzling

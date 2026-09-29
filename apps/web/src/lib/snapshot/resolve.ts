@@ -19,6 +19,7 @@ import {
 import { and, eq, inArray } from 'drizzle-orm';
 import { fileManifest } from '../services/ticket-files';
 import { type Ceilings, resolveCeilings } from './ceilings';
+import { ticketAgent, ticketDocsDir, ticketSteps } from './ticket-docs';
 import { m } from '$lib/i18n';
 
 /**
@@ -88,6 +89,7 @@ export async function resolveSnapshot(
     .limit(1);
 
   const steps = version.steps as Step[];
+  const docsDir = ticketDocsDir(ticket.reference);
   const agentIds = [...new Set(steps.map((s) => s.agent_id).filter((id): id is string => !!id))];
   const agentRows = agentIds.length
     ? await database.select().from(agents).where(inArray(agents.id, agentIds))
@@ -136,7 +138,7 @@ export async function resolveSnapshot(
 
   const requirementFiles = await fileManifest(database, ticket.id);
 
-  const snapshotAgents: SnapshotAgent[] = agentRows.map((agent) => ({
+  const snapshotAgents: SnapshotAgent[] = agentRows.map((agent) => ticketAgent({
     id: agent.id,
     name: agent.name,
     engine: agent.engine,
@@ -153,7 +155,7 @@ export async function resolveSnapshot(
       max_minutes: agent.maxMinutes ?? undefined,
       max_turns: agent.maxTurns ?? undefined,
     },
-  }));
+  }, docsDir));
 
   const snapshot: PipelineSnapshot = {
     run_id: input.runId,
@@ -181,7 +183,9 @@ export async function resolveSnapshot(
       id: ticket.pipelineId,
       version: ticket.pipelineVersion,
       name: pipeline?.name ?? 'pipeline',
-      steps,
+      // Each ticket's documents in its own folder, not the shared `docs/`
+      // an earlier ticket already filled (see ticket-docs.ts).
+      steps: ticketSteps(steps, docsDir),
     },
     limits: { cost_ceiling_usd: ceilings.costUsd, time_ceiling_minutes: ceilings.minutes },
     // Pinned at start, like the ceilings: raising a sandbox's memory must

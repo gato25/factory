@@ -1,4 +1,9 @@
-import { type PipelineSnapshot, REQUIREMENTS_DIR, type SnapshotAgent } from '@factory/shared';
+import {
+  type PipelineSnapshot,
+  REQUIREMENTS_DIR,
+  type SnapshotAgent,
+  ticketDocsDir,
+} from '@factory/shared';
 import { installGuard } from './guard';
 import type { ContainerHost } from './host';
 import { directoryName } from './paths';
@@ -33,6 +38,7 @@ export function substitute(template: string, context: SubstitutionContext): stri
   const { snapshot } = context;
   const values: Record<string, string> = {
     'ticket.id': snapshot.ticket.reference,
+    'ticket.docs': ticketDocsDir(snapshot.ticket.reference),
     'ticket.title': snapshot.ticket.title,
     'ticket.description': snapshot.ticket.description ?? '',
     'ticket.acceptance': snapshot.ticket.acceptance_criteria.map((line) => `- ${line}`).join('\n'),

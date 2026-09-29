@@ -11,7 +11,7 @@ import { GUARD_SETTINGS_PATH } from '../container/guard';
 import type { ContainerHost } from '../container/host';
 import { needsIsolation } from '../container/isolate';
 import { WORKDIR } from '../container/start';
-import { checkRequiredOutputs } from '../outputs/check';
+import { checkOutputsAreNew, checkRequiredOutputs } from '../outputs/check';
 import { parseClassification } from '../outputs/classification';
 import type { LogSink } from '../stream/logs';
 import { ClaudeStreamRenderer, Heartbeat } from './claude-stream';
@@ -260,6 +260,13 @@ export async function runClaudeStep(
 
   try {
     await checkRequiredOutputs(host, input.containerId, WORKDIR, input.step.output_files ?? []);
+    await checkOutputsAreNew(
+      host,
+      input.containerId,
+      WORKDIR,
+      input.step.output_files ?? [],
+      input.snapshot.repo.default_branch,
+    );
   } catch (error) {
     return {
       status: 'failed',

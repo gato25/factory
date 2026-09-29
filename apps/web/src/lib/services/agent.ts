@@ -398,6 +398,7 @@ export async function duplicateAgent(
 export const TEMPLATE_VARIABLES = [
   { name: 'ticket.id', what: m.vocabulary.reference },
   { name: 'ticket.title', what: 'Its title' },
+  { name: 'ticket.docs', what: 'The folder its specification and plan are written to' },
   { name: 'ticket.description', what: 'Its description' },
   { name: 'ticket.acceptance', what: m.vocabulary.acceptance },
   { name: 'ticket.has_ui', what: m.vocabulary.hasUi },

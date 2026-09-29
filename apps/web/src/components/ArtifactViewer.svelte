@@ -62,13 +62,19 @@
   const designFiles = $derived(artifacts.filter((a) => a.kind === 'design_file'));
   const commits = $derived(artifacts.filter((a) => a.kind === 'commits'));
 
-  /** What a document is for, in the words the artboard uses. */
+  /** What a document is for, in the words the artboard uses. By file name:
+   *  each ticket's documents are in a folder of their own. */
   const PURPOSE: Record<string, string> = {
-    'docs/spec.md': m.artifacts.purposeSpec,
-    'docs/plan.md': m.artifacts.purposePlan,
-    'docs/tasks.md': m.artifacts.purposeTasks,
+    'spec.md': m.artifacts.purposeSpec,
+    'plan.md': m.artifacts.purposePlan,
+    'tasks.md': m.artifacts.purposeTasks,
   };
-  const purposeOf = (path: string) => PURPOSE[path] ?? m.artifacts.purposeOther;
+  const purposeOf = (path: string) =>
+    PURPOSE[path.split('/').pop() ?? path] ?? m.artifacts.purposeOther;
+  /** The folder the screens were exported to, as the step recorded them. */
+  const screensDir = $derived(
+    screens[0]?.path.split('/').slice(0, -1).join('/') || 'docs/design/screens',
+  );
 </script>
 
 <section class="tile viewer">
@@ -107,7 +113,7 @@
         <Icon name="images" size={16} />
         <span class="tx">
           <span class="n">{m.artifacts.screenCount(screens.length)}</span>
-          <span class="s">docs/design/screens</span>
+          <span class="s">{screensDir}</span>
         </span>
       </div>
       <ScreenGallery {screens} heading={m.artifacts.screens} />

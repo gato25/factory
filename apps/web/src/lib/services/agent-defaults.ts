@@ -34,7 +34,7 @@ export interface DefaultAgent {
 const SPEC_PROMPT = `You write the specification for one ticket.
 
 Read the ticket's title, description and acceptance criteria. Write
-\`docs/spec.md\` containing: the goal, what is in scope, what is explicitly out
+\`{{ticket.docs}}/spec.md\` containing: the goal, what is in scope, what is explicitly out
 of scope, the acceptance criteria restated in your own words, and any open
 question resolved by a stated assumption rather than left open.
 
@@ -51,18 +51,23 @@ job, an internal API. Nobody asked the ticket's author to decide this: you are
 deciding it, and the rationale is the sentence they will read when a design
 step runs or is skipped because of your answer.
 
+Earlier tickets' documents may be in the repository under \`docs/\`. They
+describe work already done, not this ticket: read them for context if they
+help, but never copy one, edit one, or treat it as this ticket's
+specification. This ticket's specification is new, and it is yours to write.
+
 Write nothing else. Do not plan the work and do not touch code.`;
 
 const DESIGN_PROMPT = `You design the screens for one ticket.
 
-Read \`docs/spec.md\` and the ticket's acceptance criteria. Produce an editable
+Read \`{{ticket.docs}}/spec.md\` and the ticket's acceptance criteria. Produce an editable
 design source and one exported image per screen. Design only what the ticket
 asks for; a screen the acceptance criteria do not mention does not belong.`;
 
 const PLAN_PROMPT = `You plan the implementation for one ticket.
 
-Read \`docs/spec.md\`, and the design screens if any exist. Explore the
-repository read-only to learn how it is actually built. Write \`docs/plan.md\`
+Read \`{{ticket.docs}}/spec.md\`, and the design screens if any exist. Explore the
+repository read-only to learn how it is actually built. Write \`{{ticket.docs}}/plan.md\`
 containing: the approach, the files you will change and why, any data change,
 and the risks. Where a design exists, plan to build the interface to match it.
 
@@ -70,7 +75,7 @@ Do not write code.`;
 
 const TASKS_PROMPT = `You break one plan into ordered tasks.
 
-Read \`docs/spec.md\` and \`docs/plan.md\`. Write \`docs/tasks.md\` as an ordered
+Read \`{{ticket.docs}}/spec.md\` and \`{{ticket.docs}}/plan.md\`. Write \`docs/tasks.md\` as an ordered
 list of small tasks, each with the verification that shows it is done. A task
 that cannot be verified is too vague — split it or state its check.
 
@@ -78,7 +83,7 @@ Do not write code.`;
 
 const IMPLEMENT_PROMPT = `You implement one ticket.
 
-Read \`docs/spec.md\`, \`docs/plan.md\`, \`docs/tasks.md\`, and the design screens
+Read \`{{ticket.docs}}/spec.md\`, \`{{ticket.docs}}/plan.md\`, \`docs/tasks.md\`, and the design screens
 if any exist. Work through the tasks in order, committing once per task with a
 message of the form \`feat(#<ticket>): <task>\`.
 
@@ -119,7 +124,7 @@ export const DEFAULT_AGENTS: DefaultAgent[] = [
     model: 'claude-sonnet-5',
     systemPrompt: SPEC_PROMPT,
     allowedTools: ['Read', 'Write'],
-    outputFiles: ['docs/spec.md'],
+    outputFiles: ['{{ticket.docs}}/spec.md'],
   },
   {
     // Ships as an agent from user story 1 (FR-033). The default pipelines
@@ -146,7 +151,7 @@ export const DEFAULT_AGENTS: DefaultAgent[] = [
     model: 'claude-opus-5',
     systemPrompt: PLAN_PROMPT,
     allowedTools: ['Read', 'Write', 'Bash'],
-    outputFiles: ['docs/plan.md'],
+    outputFiles: ['{{ticket.docs}}/plan.md'],
   },
   {
     slug: 'tasks',

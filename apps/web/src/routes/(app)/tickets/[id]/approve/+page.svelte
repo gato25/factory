@@ -53,11 +53,11 @@
 
   /** What the artboard's Edit button calls a document: "Төлөвлөгөө засах". */
   const DOCUMENT: Record<string, string> = {
-    'docs/spec.md': m.defaults.agents.spec.step,
-    'docs/plan.md': m.defaults.agents.plan.step,
-    'docs/tasks.md': m.defaults.agents.tasks.step,
+    'spec.md': m.defaults.agents.spec.step,
+    'plan.md': m.defaults.agents.plan.step,
+    'tasks.md': m.defaults.agents.tasks.step,
   };
-  const documentName = (path: string) => DOCUMENT[path] ?? shortName(path);
+  const documentName = (path: string) => DOCUMENT[path.split('/').pop() ?? path] ?? shortName(path);
 
   /** The first readable document, so the screen opens on something. */
   $effect(() => {

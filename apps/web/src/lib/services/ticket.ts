@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { Database } from '@factory/db';
 import { pipelines, repositories, tickets } from '@factory/db/schema';
 import { FactoryError, invalidInput, notFound, type Step } from '@factory/shared';
@@ -34,10 +35,20 @@ export const TICKET_STATES = [
 export type TicketState = (typeof TICKET_STATES)[number];
 
 const TERMINAL_STATES: TicketState[] = ['done', 'failed', 'cancelled'];
-/** T057 — a stable, human-readable identifier, and the branch derived from it. */
-export function branchNameFor(reference: string, title: string): string {
+/**
+ * T057 — a stable, human-readable identifier, and the branch derived from it.
+ *
+ * The reference and title alone are not unique on the REMOTE: references
+ * start again at #1 on a fresh database, and a second factory can work the
+ * same repository, so `factory/1-add-login` may already exist from another
+ * ticket — and `git checkout -B` plus the push would take it over. The
+ * ticket's own id settles it; six characters of it are enough to tell two
+ * tickets apart and short enough to stay readable.
+ */
+export function branchNameFor(reference: string, title: string, ticketId: string): string {
   const number = reference.replace(/^#/, '');
-  return `factory/${number}-${slugify(title)}`;
+  const suffix = ticketId.replace(/-/g, '').slice(0, 6);
+  return `factory/${number}-${slugify(title)}-${suffix}`;
 }
 
 export function slugify(title: string): string {
@@ -104,9 +115,11 @@ export async function createTicket(
   }
 
   const reference = await nextReference(database);
+  const id = randomUUID();
   const inserted = await database
     .insert(tickets)
     .values({
+      id,
       repositoryId: repository.id,
       createdBy,
       reference,
@@ -120,7 +133,7 @@ export async function createTicket(
       // Pinned when the run starts, so a later pipeline edit cannot reach it.
       pipelineVersion: input.start ? pipelineVersion : null,
       status: input.start ? 'queued' : 'draft',
-      branchName: branchNameFor(reference, title),
+      branchName: branchNameFor(reference, title, id),
     })
     .returning();
 
