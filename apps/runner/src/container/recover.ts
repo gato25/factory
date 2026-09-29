@@ -1,5 +1,6 @@
 import { FactoryError, type PipelineSnapshot } from '@factory/shared';
 import { writeAgentConfig } from './config';
+import { GIT_READ_TIMEOUT_MS, GIT_STALL_ENV } from './git-network';
 import type { ContainerHost } from './host';
 import type { ResolvedCredentials } from './secrets';
 import { quoteOne } from './shell';
@@ -166,7 +167,11 @@ async function resumeFromBranch(
       `git fetch ${authenticatedRemote(snapshot.repo.clone_url)} ${refspec} && ` +
         `git checkout -B ${quoteOne(branch)} ${remoteRef} && git rev-parse HEAD`,
     ],
-    { cwd: WORKDIR, env: { GIT_TOKEN: credentials.gitToken } },
+    {
+      cwd: WORKDIR,
+      env: { GIT_TOKEN: credentials.gitToken, ...GIT_STALL_ENV },
+      timeoutMs: GIT_READ_TIMEOUT_MS,
+    },
   );
   if (fetched.exitCode !== 0) {
     const head = await host.exec(containerId, ['git', 'rev-parse', 'HEAD'], { cwd: WORKDIR });

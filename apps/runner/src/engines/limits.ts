@@ -15,6 +15,16 @@ import type { SnapshotAgent, StepOutcome } from '@factory/shared';
 /** The signal the host uses for a process it killed at its deadline. */
 export const TIMEOUT_EXIT_CODE = 124;
 
+/**
+ * What the host reports for a process it stopped for printing more than it may
+ * (`capture.ts`).
+ *
+ * 128 + 25, the shell's number for SIGXFSZ, "file size limit exceeded": near
+ * enough to what happened, and nothing else in the runner uses it, so a caller
+ * can tell a flood from a deadline from a step that simply failed.
+ */
+export const OUTPUT_LIMIT_EXIT_CODE = 153;
+
 export interface RunCeilings {
   cost_ceiling_usd: string;
   time_ceiling_minutes: number;

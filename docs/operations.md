@@ -387,8 +387,9 @@ from a bare process. There is no daemon inside the image and nothing about it is
 What the container gives that a bare `bun src/index.ts` does not: `restart: unless-stopped`, so a
 Runner that dies is started again and resumes every run from `FACTORY_STATE_DIR`; a memory and a
 process ceiling on the Runner itself, so a runaway elsewhere on the machine cannot take the
-orchestrator down with it; rotated logs; a health check the restart policy can act on; and pinned
-versions of bun and the Docker CLI. It is `EXECUTION_HOST=docker` only. `process` would need git,
+orchestrator down with it; rotated logs; a health check that shows `unhealthy` in `docker ps` (Docker
+does not restart a container for that — only for exiting); a minute to stop cleanly
+(`stop_grace_period`) and an init process as PID 1; and pinned versions of bun and the Docker CLI. It is `EXECUTION_HOST=docker` only. `process` would need git,
 Node and the Claude CLI in the image and would run every agent inside the Runner's own container —
 one shared sandbox for every run, which the constitution's sandbox invariant forbids.
 
@@ -539,6 +540,41 @@ typing every token in again. The startup check refuses an entry that repeats the
 and a run that meets a credential it cannot decrypt says `no key available for version v1`, which
 names exactly what was lost.
 
+### What a command may take, and what it may print
+
+A step is a command run in a sandbox by the Runner, and the Runner is one process for every run on
+the machine, so nothing a command does may be able to stop it, or to hold a run for ever. Two limits
+and a set of deadlines say so (`apps/runner/src/container/capture.ts`, `git-network.ts`, `host.ts`).
+
+**What it may print.** The live log is given every line as it arrives. The result of the command
+keeps the first and last 4 MB of each stream, with a line between them saying how much was left out
+— the end is what explains a failure. A command that prints more than 256 MB is stopped and the step
+fails. (Before this, the result kept every byte: a command that printed without end ended the Runner
+with `Out of memory` within a second, and every run on the machine started its current step again.)
+
+**What it may take.**
+
+| Command | Deadline |
+| --- | --- |
+| An agent or design step | The agent's own limit, at most the run's time ceiling (Settings) |
+| A shell step (the tests) | The run's time ceiling. Fails as a time limit, not as "exited 124" |
+| `git clone` into a new sandbox | 15 minutes |
+| `git push` that ends a run | 10 minutes |
+| `git push` after each step (best effort; repeated at the end) | 3 minutes |
+| `git fetch`, `git ls-remote` | 5 minutes |
+| A file read, written or looked for in a sandbox through Docker | 60 seconds |
+| Any other command that names no deadline | 10 minutes |
+
+Every git command that crosses the network is also told to give up on a transfer that has moved
+less than a kilobyte a second for two minutes (`GIT_HTTP_LOW_SPEED_*`), so a host that accepted the
+connection and then said nothing fails in about two minutes rather than at the deadline. A file
+operation that hits its deadline is a lost sandbox, which is handled as one: the run waits for the
+container host if it is the one not answering, and otherwise builds a replacement.
+
+**An error nobody expected** in one run's loop fails that run — the application is told, the sandbox
+is released — and does not reach the process. A rejection nothing caught anywhere else is logged
+and the Runner carries on.
+
 ## What to watch
 
 Both services log one JSON object per line, with `service`, `level`, `msg` and a `run_id` where
@@ -567,6 +603,10 @@ there is one. The lines worth alerting on:
 | `could not release the sandbox of a run that ended` (runner) | `docker rm` failed or timed out; the container is still there. The maintenance pass retries; if it repeats, the daemon is refusing |
 | `could not write the failure down` (runner) | The state directory refused a write while a run was failing. Disk, first |
 | `the run was released while it was being driven` (runner, in a failure detail) | Expected: a cancel landed during a step and the loop stood down |
+| `a run’s loop stopped on an error nothing expected` (runner) | A bug or a fault in the Runner itself, not in the run's step. Only that run is failed, with the error in its failure detail; the others carry on. Worth reading the `detail` and reporting |
+| `a promise was rejected and nothing was waiting for it; the runner carries on` (runner) | The last net caught something no code path handled. The Runner carries on, and nothing about a run is lost; it is a bug to report, with the `detail` |
+| `stopped after printing more than … of output` (in a step's failure detail) | A command printed without end and was stopped at 256 MB. The step failed; the log shows what it was printing |
+| `stopped after …ms` (in a step's failure detail) | A command reached its deadline — see "What a command may take", below |
 
 A run's own state is on its ticket page and needs no log reading: which step is executing, how many
 tokens it has used so far, what the last agent produced, and the failing step and reason when it

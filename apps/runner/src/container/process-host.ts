@@ -9,6 +9,9 @@ import {
   drain,
   type ExecOptions,
   type ExecResult,
+  floodResult,
+  hostDeadlines,
+  outputLimits,
   timerDelay,
 } from './host';
 import { withinWorkspace } from './paths';
@@ -350,31 +353,43 @@ export function processHost(options: ProcessHostOptions = {}): ContainerHost & {
       b.live.add(proc);
 
       let killedAtDeadline = false;
-      const deadline = options?.timeoutMs
-        ? setTimeout(() => {
-            killedAtDeadline = true;
-            killTree(proc.pid);
-          }, timerDelay(options.timeoutMs))
-        : null;
+      // Every command has one: the caller's, or the host's default for the
+      // ones that named none (`DEFAULT_EXEC_TIMEOUT_MS`).
+      const timeoutMs = options?.timeoutMs ?? hostDeadlines.exec;
+      const deadline = setTimeout(() => {
+        killedAtDeadline = true;
+        killTree(proc.pid);
+      }, timerDelay(timeoutMs));
+
+      // A limit on what it may print, for the reason `run` has one: the
+      // result kept every byte, and a command that never stopped printing
+      // ended the runner before its deadline could.
+      let killedForOutput = false;
+      const limits = outputLimits(options, () => {
+        killedForOutput = true;
+        killTree(proc.pid);
+      });
 
       try {
         const [stdout, stderr] = await Promise.all([
-          drain(proc.stdout, (text) => options?.onOutput?.('stdout', text)),
-          drain(proc.stderr, (text) => options?.onOutput?.('stderr', text)),
+          drain(proc.stdout, (text) => options?.onOutput?.('stdout', text), limits),
+          drain(proc.stderr, (text) => options?.onOutput?.('stderr', text), limits),
         ]);
         const exitCode = await proc.exited;
-        const result: ExecResult = killedAtDeadline
-          ? {
-              exitCode: TIMEOUT_EXIT_CODE,
-              stdout,
-              stderr: `${stderr}\nstopped after ${options?.timeoutMs}ms`.trim(),
-            }
-          : { exitCode, stdout, stderr };
+        const result: ExecResult = killedForOutput
+          ? floodResult({ stdout, stderr }, options)
+          : killedAtDeadline
+            ? {
+                exitCode: TIMEOUT_EXIT_CODE,
+                stdout,
+                stderr: `${stderr}\nstopped after ${timeoutMs}ms`.trim(),
+              }
+            : { exitCode, stdout, stderr };
         return result.exitCode === 0
           ? result
           : { ...result, stderr: annotateUnreachable(result.stderr, result.stdout) };
       } finally {
-        if (deadline) clearTimeout(deadline);
+        clearTimeout(deadline);
         b.live.delete(proc);
       }
     },

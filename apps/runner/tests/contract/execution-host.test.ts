@@ -6,7 +6,7 @@ import { FactoryError } from '@factory/shared';
 import { type ContainerHost, dockerHost, run } from '../../src/container/host';
 import { processHost } from '../../src/container/process-host';
 import { secretValues } from '../../src/container/secrets';
-import { TIMEOUT_EXIT_CODE } from '../../src/engines/limits';
+import { OUTPUT_LIMIT_EXIT_CODE, TIMEOUT_EXIT_CODE } from '../../src/engines/limits';
 import { LogSink } from '../../src/stream/logs';
 import { credentials, FakeHost } from '../fake-host';
 
@@ -266,6 +266,59 @@ describe.each(
     expect(result.exitCode).toBe(TIMEOUT_EXIT_CODE);
     await host.destroy(containerId);
   });
+
+  test('E6: a command that never stops printing is stopped, and what it printed is not all kept', async () => {
+    // The defect this holds. The result carried every byte, so a command that
+    // printed without end was a process that grew without end: one second of
+    // this ended the runner with `Out of memory`, and every run on the
+    // machine with it, long before any deadline could fire.
+    const containerId = await host.create(spec);
+    let heard = 0;
+    const result = await host.exec(
+      containerId,
+      ['sh', '-c', 'while :; do echo "a line of output from a noisy step"; done'],
+      {
+        // Small, so the test is quick; the defaults are 4 MB kept and 256 MB
+        // before the stop, and the behaviour is the same at either size.
+        captureBytes: 64 * 1024,
+        maxOutputBytes: 4 * 1024 * 1024,
+        timeoutMs: 60_000,
+        onOutput: (_stream, text) => {
+          heard += text.length;
+        },
+      },
+    );
+    // A code of its own, so a flood is told from a deadline and from a step
+    // that simply failed.
+    expect(result.exitCode).toBe(OUTPUT_LIMIT_EXIT_CODE);
+    expect(result.stderr).toContain('stopped after printing more than 4.0 MB of output');
+    // The live log was given all of it up to the stop; the result keeps a sliver.
+    expect(heard).toBeGreaterThan(4 * 1024 * 1024);
+    expect(result.stdout.length).toBeLessThan(80 * 1024);
+    expect(result.stdout).toContain('of output left out');
+    // And nothing is left running to keep printing.
+    const again = await host.exec(containerId, ['true']);
+    expect(again.exitCode).toBe(0);
+    await host.destroy(containerId);
+  }, 90_000);
+
+  test('E7: a large output keeps both ends, and a caller that needs it whole can ask', async () => {
+    const containerId = await host.create(spec);
+    const trimmed = await host.exec(containerId, ['sh', '-c', 'seq 1 200000'], {
+      captureBytes: 32 * 1024,
+    });
+    expect(trimmed.exitCode).toBe(0);
+    expect(trimmed.stdout.startsWith('1\n2\n3\n')).toBe(true);
+    expect(trimmed.stdout.trimEnd().endsWith('200000')).toBe(true);
+    expect(trimmed.stdout).toContain('of output left out');
+    expect(trimmed.stdout.length).toBeLessThan(40 * 1024);
+
+    // 1.3 MB: whole by default, and whole when asked for more than it needs.
+    const whole = await host.exec(containerId, ['sh', '-c', 'seq 1 200000']);
+    expect(whole.stdout).not.toContain('left out');
+    expect(whole.stdout.trimEnd().split('\n')).toHaveLength(200_000);
+    await host.destroy(containerId);
+  }, 60_000);
 
   test('F2: a lost sandbox is not reported as a missing document', async () => {
     // The defect this caught. Both causes make `docker exec` fail, and

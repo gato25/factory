@@ -197,6 +197,39 @@ The screens now show the tokens a run processed wherever they used to show what 
   written and tested against the field names in the installed CLI and against fixtures; no model
   was called. The first real run is the check: if a finished step shows no tokens, look there first.
 
+### Follow-up: runner stability — what a command may print and take
+
+Found by reading the runner rather than by a failure in use; the first was reproduced. Described in
+`docs/operations.md`, "What a command may take, and what it may print".
+
+- **A command that printed without end ended the runner.** The result of every command kept every
+  byte, so `run('sh', ['-c', 'yes …'])` died with `RangeError: Out of memory` inside a second, before
+  its deadline could fire (measured before the change; the runner then holds every run on the
+  machine). Now the result keeps the first and last 4 MB, the live log still sees everything, and a
+  command past 256 MB is stopped (exit 153): the same command is stopped after 256 MB with the process
+  at 121 MB.
+- **An unexpected error in one run's loop ended the runner.** Bun exits on an unhandled rejection
+  (checked on 1.3.11) and the four `void this.drive(…)` calls had no catch. Now the run is failed and
+  reported and the others carry on; the two tests for it fail with the change removed and pass with
+  it.
+- **Nothing had a deadline** but the agent step: `git clone`, `git push`, `git fetch`, `git ls-remote`,
+  the Docker file reads and writes, every command that named none — and a shell step, where the tests
+  run, which is now held to the run's time ceiling. The Docker-outage handling only helps when a call
+  fails; a call that hangs never did. Tested against a `docker` on the PATH that never answers.
+- **Compose** gains `stop_grace_period: 60s` and `init: true`. The Dockerfile and the guide said an
+  unhealthy runner "is restarted by its policy"; Docker does not do that, and a contract test now keeps
+  the comment honest.
+- **Verified**: `bun run check` clean; no new lint finding in a touched file; runner unit and contract
+  453 pass with the 2 container-specific failures; every runner integration file passes; the full
+  file-by-file run is **129 files, 1352 pass, 18 fail** — the same 18 as above (a first run showed
+  395 failures because this container's Postgres stopped partway; it was started again and the run
+  repeated). The real runner starts, answers `/health` and `/ready`, and stops cleanly on SIGTERM.
+- **Not verified**: the Docker host's changes against a real daemon (none here) — the process host, a
+  `docker` that never answers and the fake host stand in; and the deferred items below.
+- **Left for a run that can be tried on a real Claude CLI**: stopping a step that has been silent for
+  a long time, and passing the CLI's `--max-budget-usd` (which the installed 2.1.284 has) so a step
+  cannot overshoot its cost limit.
+
 ### Human checks (T096) — waiting on people
 
 Neither can be stood in for by a test; both need the presentation room, its projector with the

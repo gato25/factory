@@ -31,6 +31,17 @@ services:
     image: code-factory/runner:latest
     container_name: factory-runner
     restart: unless-stopped
+    # Time to stop cleanly. On SIGTERM the runner stops each run's agents (one
+    # `docker exec` per run) and waits for the loops to return before it
+    # exits; Docker's default is ten seconds before it kills the container,
+    # which a few runs in flight can use up. Killed mid-way, nothing is lost —
+    # every run's position is written before it changes, and an agent left
+    # working is stopped when the next runner adopts its sandbox — but a clean
+    # stop is the one that says which runs were interrupted.
+    stop_grace_period: 60s
+    # A process to be PID 1 that forwards signals and reaps what the runner's
+    # children leave behind. Bun as PID 1 does neither.
+    init: true
     network_mode: host
     # The mounted socket is owned by the host's `docker` group; this is that
     # group's id, so the non-root user in the image may use it:

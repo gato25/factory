@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import type { Callback, PipelineSnapshot } from '@factory/shared';
 import type { RunnerConfig } from '../../src/config';
 import { Orchestrator } from '../../src/orchestrate/loop';
@@ -428,5 +428,78 @@ describe('where a run is', () => {
     expect(shown.index).toBe(1);
     expect(shown.spentUsd).toBe(0.42);
     expect(shown.snapshot).toBeUndefined();
+  });
+});
+
+describe('a run whose loop hits an error nobody expected', () => {
+  /** Every rejection nothing was waiting for, while a test runs. */
+  let unhandled: unknown[];
+  const collect = (reason: unknown) => {
+    unhandled.push(reason);
+  };
+  beforeEach(() => {
+    unhandled = [];
+    process.on('unhandledRejection', collect);
+  });
+  afterEach(() => {
+    process.off('unhandledRejection', collect);
+  });
+
+  /**
+   * A state store that cannot be read twice running — a blip long enough to
+   * get through the loop's own handling of an error, which reads the state
+   * again to see whether the run was cancelled. That second failure is what
+   * used to leave `drive` with nowhere to send the error but the process.
+   */
+  function blipping(): StateStore {
+    const inner = memoryStateStore();
+    let reads = 0;
+    return {
+      ...inner,
+      async get(runId) {
+        reads += 1;
+        // The first read is `execute`'s; the next two are the loop's.
+        if (reads === 2 || reads === 3) throw new Error('EIO: i/o error, read');
+        return inner.get(runId);
+      },
+    };
+  }
+
+  test('is failed and reported, not left running, and the runner is not taken down', async () => {
+    build({ states: blipping(), host: new FakeHost() });
+    host.files.set('/work/docs/spec.md', '# Spec');
+    host.responses = [{ match: 'claude', result: { stdout: '{"total_cost_usd":0.1}' } }];
+
+    const accepted = await call('POST', `/runs/${base.run_id}/execute`, snapshot);
+    expect(accepted.status).toBe(202);
+    await until(gone, 'the run to be failed');
+
+    // The application is told, in words, and given the error.
+    const failed = callbacks.at(-1) as Callback & { reason: string; detail: string };
+    expect(failed.event).toBe('failed');
+    expect(failed.reason).toBe('command_failed');
+    expect(failed.detail).toContain('did not expect');
+    expect(failed.detail).toContain('EIO: i/o error');
+
+    // And nothing escaped to the process, where on Bun it ends the runner.
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(unhandled).toEqual([]);
+  });
+
+  test('leaves the runner able to drive the next run, and the same one again', async () => {
+    build({ states: blipping(), host: new FakeHost() });
+    host.files.set('/work/docs/spec.md', '# Spec');
+    host.responses = [{ match: 'claude', result: { stdout: '{"total_cost_usd":0.1}' } }];
+
+    await call('POST', `/runs/${base.run_id}/execute`, snapshot);
+    await until(gone, 'the run to be failed');
+
+    // The loop is no longer marked as running for it, so a run started again
+    // is driven from the beginning to its checkpoint as any other.
+    callbacks = [];
+    await call('POST', `/runs/${base.run_id}/execute`, snapshot);
+    await until(phaseIs('waiting_approval'), 'the checkpoint');
+    expect(events()).toContain('waiting_approval@1');
+    expect(unhandled).toEqual([]);
   });
 });

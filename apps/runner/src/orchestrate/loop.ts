@@ -230,7 +230,7 @@ export class Orchestrator {
     }
 
     await this.save(state);
-    void this.drive(runId);
+    this.spawn(runId);
     return { accepted: true, phase: state.phase };
   }
 
@@ -246,7 +246,7 @@ export class Orchestrator {
       state.paused = false;
       state.phase = 'stepping';
       await this.save(state);
-      void this.drive(runId);
+      this.spawn(runId);
       return;
     }
 
@@ -299,7 +299,7 @@ export class Orchestrator {
     state.waitingAt = undefined;
     state.phase = 'stepping';
     await this.save(state);
-    void this.drive(runId);
+    this.spawn(runId);
   }
 
   /**
@@ -431,7 +431,7 @@ export class Orchestrator {
         // or the sandbox released, when the last process stopped.
         if (state.pending?.after.outcome === 'terminal') {
           resumed.push(state.runId);
-          void this.settleTerminal(state);
+          this.spawnTerminal(state);
         } else {
           await this.deps.states.delete(state.runId);
         }
@@ -442,12 +442,74 @@ export class Orchestrator {
         continue;
       }
       resumed.push(state.runId);
-      void this.drive(state.runId);
+      this.spawn(state.runId);
     }
     return { resumed, waiting };
   }
 
   // --- the loop --------------------------------------------------------------
+
+  /**
+   * Starts driving a run, and keeps whatever goes wrong in it to that run.
+   *
+   * Nothing awaits a loop, so an error that got out of `drive` had nowhere to
+   * go but the process — and on Bun an unhandled rejection ends the process.
+   * This one process drives every run on the machine, so one run's unexpected
+   * error ended the others' steps with it, and each began its step again
+   * after the restart, spending what the first attempt had. `drive` already
+   * catches what a step can throw; this is for what it does not expect, and
+   * for the errors that surface while it is handling the ones it does.
+   */
+  private spawn(runId: string): void {
+    void this.drive(runId).catch((error) => this.abandon(runId, error));
+  }
+
+  /** `spawn` for the end of a run that a restart found half-ended. */
+  private spawnTerminal(state: LoopState): void {
+    void this.settleTerminal(state).catch((error) => {
+      if (this.stopping) return;
+      log.error('could not finish ending a run after a restart', {
+        run_id: state.runId,
+        detail: error instanceof Error ? error.message : String(error),
+      });
+    });
+  }
+
+  /**
+   * A run's loop ended in an error nobody expected. Said, and the run failed
+   * with it — the application is told, the sandbox released — so it does not
+   * sit as `running` with nothing driving it. If even that cannot be done, the
+   * run's position is on disk for a restart, and the application's own
+   * ceilings are underneath it.
+   */
+  private async abandon(runId: string, error: unknown): Promise<void> {
+    const detail = error instanceof Error ? error.message : String(error);
+    // Shutting down: the loop was interrupted, not broken, and its position
+    // is written down for the restart to pick up.
+    if (this.stopping) {
+      log.warn('a run’s loop was interrupted by shutdown', { run_id: runId, detail });
+      return;
+    }
+    log.error('a run’s loop stopped on an error nothing expected', {
+      run_id: runId,
+      detail: error instanceof Error ? (error.stack ?? detail).slice(0, 2000) : detail,
+    });
+    try {
+      const state = await this.deps.states.get(runId);
+      if (!state || state.phase === 'cancelled') return;
+      await this.fail(
+        state,
+        state.index,
+        'command_failed',
+        `The execution service hit an error it did not expect while driving this run: ${detail}`,
+      );
+    } catch (second) {
+      log.error('and the run could not be failed either; its position is on disk for a restart', {
+        run_id: runId,
+        detail: second instanceof Error ? second.message : String(second),
+      });
+    }
+  }
 
   private async drive(runId: string): Promise<void> {
     if (this.driving.has(runId)) return;

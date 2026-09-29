@@ -68,8 +68,13 @@ ENV NODE_ENV=production \
 
 EXPOSE 8080
 
-# Liveness, unauthenticated, from inside: `/health` answers anyone, and a
-# container whose runner does not answer it is restarted by its policy.
+# Liveness, unauthenticated, from inside: `/health` answers anyone. What a
+# failure gives is a status — `docker ps` says `unhealthy` — and NOT a
+# restart: a restart policy acts on a container that exits, and Docker does
+# not restart one that is merely unhealthy. A runner that dies is started
+# again by `restart: unless-stopped` and resumes every run from its state
+# volume; one that is alive and stuck stays stuck until something acts on this
+# status, or someone restarts it.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
     CMD bun -e "fetch('http://localhost:' + (process.env.RUNNER_PORT || 8080) + '/health').then(r => process.exit(r.ok ? 0 : 1), () => process.exit(1))"
 

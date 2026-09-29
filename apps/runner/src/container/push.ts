@@ -1,4 +1,6 @@
 import { FactoryError, type PipelineSnapshot } from '@factory/shared';
+import { TIMEOUT_EXIT_CODE } from '../engines/limits';
+import { GIT_PUSH_TIMEOUT_MS, GIT_READ_TIMEOUT_MS, GIT_STALL_ENV, minutesOf } from './git-network';
 import type { ContainerHost } from './host';
 import { quoteOne } from './shell';
 import { authenticatedRemote, WORKDIR } from './start';
@@ -27,8 +29,9 @@ export async function pushBranch(
   containerId: string,
   snapshot: PipelineSnapshot,
   gitToken: string,
-  options: { force?: boolean } = {},
+  options: { force?: boolean; timeoutMs?: number } = {},
 ): Promise<PushOutcome> {
+  const timeoutMs = options.timeoutMs ?? GIT_PUSH_TIMEOUT_MS;
   // Force is used on a retry, where the branch is brought back to a known
   // state rather than accumulating two attempts' work (FR-091).
   // With the network, which a sandbox kept off it while code was written
@@ -44,7 +47,7 @@ export async function pushBranch(
         `git push ${flag} ${authenticatedRemote(snapshot.repo.clone_url)} ` +
           quoteOne(snapshot.repo.branch),
       ],
-      { cwd: WORKDIR, env: { GIT_TOKEN: gitToken } },
+      { cwd: WORKDIR, env: { GIT_TOKEN: gitToken, ...GIT_STALL_ENV }, timeoutMs },
     );
   });
 
@@ -52,9 +55,12 @@ export async function pushBranch(
     const detail = result.stderr.trim();
     return {
       pushed: false,
-      reason: /authentication|403|401/i.test(detail)
-        ? 'the access token was rejected when pushing'
-        : 'the branch could not be pushed',
+      reason:
+        result.exitCode === TIMEOUT_EXIT_CODE
+          ? `the repository host did not finish receiving the branch within ${minutesOf(timeoutMs)}`
+          : /authentication|403|401/i.test(detail)
+            ? 'the access token was rejected when pushing'
+            : 'the branch could not be pushed',
       detail,
     };
   }
@@ -114,7 +120,11 @@ async function lease(
       `git ls-remote ${authenticatedRemote(snapshot.repo.clone_url)} ` +
         quoteOne(`refs/heads/${branch}`),
     ],
-    { cwd: WORKDIR, env: { GIT_TOKEN: gitToken } },
+    {
+      cwd: WORKDIR,
+      env: { GIT_TOKEN: gitToken, ...GIT_STALL_ENV },
+      timeoutMs: GIT_READ_TIMEOUT_MS,
+    },
   );
   if (seen.exitCode !== 0) return '';
 

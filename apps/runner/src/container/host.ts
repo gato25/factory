@@ -1,5 +1,6 @@
-import { FactoryError } from '@factory/shared';
-import { TIMEOUT_EXIT_CODE } from '../engines/limits';
+import { describeBytes, FactoryError } from '@factory/shared';
+import { OUTPUT_LIMIT_EXIT_CODE, TIMEOUT_EXIT_CODE } from '../engines/limits';
+import { BoundedText, DEFAULT_CAPTURE_BYTES, DEFAULT_MAX_OUTPUT_BYTES } from './capture';
 import { HARDENING_ARGS } from './hardening';
 import { type ContainerLabels, labelArgs } from './labels';
 import { quoteOne } from './shell';
@@ -65,6 +66,18 @@ export interface ExecOptions {
   timeoutMs?: number;
   /** Called as output arrives, so the live log is live (FR-076). */
   onOutput?: (stream: 'stdout' | 'stderr', text: string) => void;
+  /**
+   * How much of each stream the RESULT keeps: its beginning and its end, with
+   * a line between saying how much was left out. `onOutput` sees all of it
+   * whatever this says. Absent, `DEFAULT_CAPTURE_BYTES`; a caller that needs a
+   * whole file back says how large a file it can be (`capture.ts`).
+   */
+  captureBytes?: number;
+  /**
+   * The most either stream may print before the command is stopped, reported
+   * as `OUTPUT_LIMIT_EXIT_CODE`. Absent, `DEFAULT_MAX_OUTPUT_BYTES`.
+   */
+  maxOutputBytes?: number;
 }
 
 export interface ContainerHost {
@@ -178,6 +191,43 @@ export interface ContainerHost {
 export const DOCKER_COMMAND_TIMEOUT_MS = 30_000;
 export const DOCKER_CREATE_TIMEOUT_MS = 120_000;
 
+/**
+ * A file read, written or looked for through `docker exec`. Each is one small
+ * command; a minute is a long time for it, and a daemon that has not answered
+ * in one is not going to.
+ */
+export const DOCKER_FILE_TIMEOUT_MS = 60_000;
+
+/**
+ * For a command run in a sandbox whose caller named no deadline of its own —
+ * writing a config file, a `git commit`. Every command that can legitimately
+ * run long names one (a step's, a clone's, an install's); this is what stops
+ * the ones that should not from being able to wait for ever.
+ */
+export const DEFAULT_EXEC_TIMEOUT_MS = 10 * 60_000;
+
+/**
+ * The deadlines the hosts apply, as one object so a test that has to see a
+ * deadline fire can shorten it, rather than wait a minute for it.
+ */
+export const hostDeadlines = {
+  command: DOCKER_COMMAND_TIMEOUT_MS,
+  file: DOCKER_FILE_TIMEOUT_MS,
+  exec: DEFAULT_EXEC_TIMEOUT_MS,
+};
+
+/**
+ * The most of a file `readFile` brings back whole.
+ *
+ * What is read back is a document a step wrote, and the application keeps the
+ * first half a megabyte of it (`MAX_DOCUMENT_BYTES`). Sixteen megabytes is far
+ * more than that, and far less than an agent that wrote a file until the disk
+ * was full — which `cat` would otherwise have carried into the runner's memory
+ * in full. Past it the text comes back with its middle left out; past four
+ * times it, the read is stopped.
+ */
+const MAX_READ_BYTES = 16 * 1024 * 1024;
+
 /** What `docker rm` says when there is nothing to remove, which is the outcome asked for. */
 const ALREADY_GONE = /No such container|removal of container .* is already in progress/i;
 
@@ -252,7 +302,7 @@ export const dockerHost: ContainerHost = {
     // portably from dash. The count is what was alive, so the log can say
     // what a restart found.
     const result = await run('docker', ['exec', containerId, 'sh', '-c', QUIESCE_SCRIPT], {
-      timeoutMs: DOCKER_COMMAND_TIMEOUT_MS,
+      timeoutMs: hostDeadlines.command,
     });
     if (result.exitCode !== 0) {
       throw new FactoryError('sandbox_lost', 'could not stop what was running in the sandbox', {
@@ -274,7 +324,7 @@ export const dockerHost: ContainerHost = {
         '{{range $name, $_ := .NetworkSettings.Networks}}{{$name}} {{end}}',
         containerId,
       ],
-      { timeoutMs: DOCKER_COMMAND_TIMEOUT_MS },
+      { timeoutMs: hostDeadlines.command },
     );
     if (attached.exitCode !== 0) {
       throw new FactoryError('sandbox_lost', 'could not read the sandbox’s networks', {
@@ -284,7 +334,7 @@ export const dockerHost: ContainerHost = {
     const networks = attached.stdout.trim().split(/\s+/).filter(Boolean);
     for (const network of networks) {
       const result = await run('docker', ['network', 'disconnect', network, containerId], {
-        timeoutMs: DOCKER_COMMAND_TIMEOUT_MS,
+        timeoutMs: hostDeadlines.command,
       });
       if (result.exitCode !== 0) {
         throw new FactoryError('sandbox_lost', `could not disconnect the sandbox from ${network}`, {
@@ -304,7 +354,7 @@ export const dockerHost: ContainerHost = {
     if (!networks || networks.length === 0) return work();
     for (const network of networks) {
       const result = await run('docker', ['network', 'connect', network, containerId], {
-        timeoutMs: DOCKER_COMMAND_TIMEOUT_MS,
+        timeoutMs: hostDeadlines.command,
       });
       if (result.exitCode !== 0 && !/already exists in network/i.test(result.stderr)) {
         throw new FactoryError('sandbox_lost', `could not reconnect the sandbox to ${network}`, {
@@ -323,7 +373,7 @@ export const dockerHost: ContainerHost = {
     // rather than logged — ahead of whatever the work itself threw.
     for (const network of networks) {
       const result = await run('docker', ['network', 'disconnect', network, containerId], {
-        timeoutMs: DOCKER_COMMAND_TIMEOUT_MS,
+        timeoutMs: hostDeadlines.command,
       });
       if (result.exitCode !== 0 && !/is not connected/i.test(result.stderr)) {
         throw new FactoryError('sandbox_lost', `could not disconnect the sandbox from ${network}`, {
@@ -344,13 +394,17 @@ export const dockerHost: ContainerHost = {
       containerId,
       ...argv,
     ];
-    const result = await run('docker', docker, { env, ...options });
-    if (result.exitCode === TIMEOUT_EXIT_CODE) {
-      // The deadline killed the `docker exec` CLIENT. The process inside the
-      // container — the agent, still working, still spending — is untouched
-      // by that, so it is stopped here: the step has already been recorded
-      // as stopped, and an agent working on after that is one nobody is
-      // paying attention to (FR-080).
+    const result = await run('docker', docker, {
+      env,
+      ...options,
+      timeoutMs: options?.timeoutMs ?? hostDeadlines.exec,
+    });
+    if (result.exitCode === TIMEOUT_EXIT_CODE || result.exitCode === OUTPUT_LIMIT_EXIT_CODE) {
+      // The deadline — or the output limit — killed the `docker exec` CLIENT.
+      // The process inside the container — the agent, still working, still
+      // spending, still printing — is untouched by that, so it is stopped
+      // here: the step has already been recorded as stopped, and an agent
+      // working on after that is one nobody is paying attention to (FR-080).
       await dockerHost.quiesce?.(containerId).catch(() => ({ stopped: 0 }));
     }
     // A failed command that could not reach something says so in its own
@@ -381,7 +435,7 @@ export const dockerHost: ContainerHost = {
         '-c',
         `mkdir -p ${quoteOne(parent)} && cat > ${quoteOne(path)}`,
       ],
-      { stdin: content },
+      { stdin: content, timeoutMs: hostDeadlines.file },
     );
     if (result.exitCode !== 0) {
       throw new FactoryError('sandbox_lost', `could not write ${path}`, {
@@ -391,8 +445,16 @@ export const dockerHost: ContainerHost = {
   },
 
   async readFile(containerId, path) {
-    const result = await run('docker', ['exec', containerId, 'cat', path]);
+    const result = await run('docker', ['exec', containerId, 'cat', path], {
+      captureBytes: MAX_READ_BYTES,
+      maxOutputBytes: MAX_READ_BYTES * 4,
+      timeoutMs: hostDeadlines.file,
+    });
     if (result.exitCode === 0) return result.stdout;
+    // A read that never answered is not a file that is not there. Both leave
+    // `docker exec` failing, and the second is asked about below; this one is
+    // the daemon, and is reported as what it is, so the run waits for it.
+    if (result.exitCode === TIMEOUT_EXIT_CODE) throw unanswered(path);
     // A missing document and a lost sandbox are different answers, and this
     // used to give the same one for both (F2). The consequence was specific:
     // a step whose sandbox died mid-run reported its required document as not
@@ -404,18 +466,23 @@ export const dockerHost: ContainerHost = {
   },
 
   async stat(containerId, path) {
-    const result = await run('docker', [
-      'exec',
-      containerId,
-      'sh',
-      '-c',
-      // Same reason as writeFile: this path came from a person (FR-015).
-      `test -f ${quoteOne(path)} && wc -c < ${quoteOne(path)}`,
-    ]);
+    const result = await run(
+      'docker',
+      [
+        'exec',
+        containerId,
+        'sh',
+        '-c',
+        // Same reason as writeFile: this path came from a person (FR-015).
+        `test -f ${quoteOne(path)} && wc -c < ${quoteOne(path)}`,
+      ],
+      { timeoutMs: hostDeadlines.file },
+    );
     if (result.exitCode === 0) {
       const size = Number(result.stdout.trim());
       return Number.isFinite(size) ? { size } : null;
     }
+    if (result.exitCode === TIMEOUT_EXIT_CODE) throw unanswered(path);
     // `test -f` exits 1 for a missing path, which is indistinguishable from
     // `docker exec` failing because there is no container. Same question,
     // same answer as readFile (F3).
@@ -424,7 +491,9 @@ export const dockerHost: ContainerHost = {
   },
 
   async address(containerId, port) {
-    const result = await run('docker', ['port', containerId, `${port}/tcp`]);
+    const result = await run('docker', ['port', containerId, `${port}/tcp`], {
+      timeoutMs: hostDeadlines.command,
+    });
     if (result.exitCode !== 0) return null;
     // Docker prints one line per bound address, e.g. `127.0.0.1:49153`, and
     // on some hosts a second for `[::1]`. The loopback IPv4 one is the one a
@@ -444,7 +513,7 @@ export const dockerHost: ContainerHost = {
     // its name. A container already gone is the outcome asked for, and is
     // not a failure.
     const result = await run('docker', ['rm', '--force', '--volumes', containerId], {
-      timeoutMs: DOCKER_COMMAND_TIMEOUT_MS,
+      timeoutMs: hostDeadlines.command,
     });
     const failed = removalFailed(result);
     if (failed) {
@@ -472,6 +541,14 @@ export const QUIESCE_SCRIPT = [
   'echo $n',
 ].join('\n');
 
+/** What a `docker exec` that hit its deadline is reported as: the sandbox is not answering. */
+function unanswered(path: string): FactoryError {
+  return new FactoryError(
+    'sandbox_lost',
+    `the sandbox did not answer within ${Math.round(hostDeadlines.file / 1000)} seconds, so ${path} could not be read`,
+  );
+}
+
 /**
  * Throws `sandbox_lost` if the container is not running, and returns quietly if
  * it is (F2, F3).
@@ -496,7 +573,7 @@ async function assertContainerAlive(containerId: string, path: string): Promise<
   // branch, which is correct if it really is gone and harmless if the read was
   // simply of a file that was never written.
   const state = await run('docker', ['inspect', '--format', '{{.State.Running}}', containerId], {
-    timeoutMs: DOCKER_COMMAND_TIMEOUT_MS,
+    timeoutMs: hostDeadlines.command,
   })
     .then((probe) => (probe.exitCode === 0 ? probe.stdout.trim() : probe.stderr.trim()))
     .catch((error) => (error instanceof Error ? error.message : String(error)));
@@ -542,6 +619,33 @@ export function timerDelay(ms: number): number {
 }
 
 /**
+ * What the two streams' capture is told: how much the result keeps, how much
+ * a stream may print before the command is stopped, and what to do then.
+ * Shared by every host that runs a real process, so they agree.
+ */
+export function outputLimits(options: ExecOptions | undefined, onLimit: () => void) {
+  return {
+    keepBytes: options?.captureBytes ?? DEFAULT_CAPTURE_BYTES,
+    maxBytes: options?.maxOutputBytes ?? DEFAULT_MAX_OUTPUT_BYTES,
+    onLimit,
+  };
+}
+
+/** The result of a command stopped for printing more than it may. */
+export function floodResult(
+  output: { stdout: string; stderr: string },
+  options: ExecOptions | undefined,
+): ExecResult {
+  const limit = options?.maxOutputBytes ?? DEFAULT_MAX_OUTPUT_BYTES;
+  return {
+    exitCode: OUTPUT_LIMIT_EXIT_CODE,
+    stdout: output.stdout,
+    stderr:
+      `${output.stderr}\nstopped after printing more than ${describeBytes(limit)} of output`.trim(),
+  };
+}
+
+/**
  * Exported so the deadline can be proven against a real process. An agent's
  * time limit is only a limit if something enforces it (FR-080), and that
  * something is here.
@@ -572,12 +676,22 @@ export async function run(
       }, timerDelay(options.timeoutMs))
     : null;
 
+  // And so is a limit on what it may print. A command that never stops
+  // printing was a process that never stopped growing, and it took the
+  // runner with it before any deadline could fire (`capture.ts`).
+  let killedForOutput = false;
+  const limits = outputLimits(options, () => {
+    killedForOutput = true;
+    proc.kill('SIGKILL');
+  });
+
   try {
     const [stdout, stderr] = await Promise.all([
-      drain(proc.stdout, (text) => options.onOutput?.('stdout', text)),
-      drain(proc.stderr, (text) => options.onOutput?.('stderr', text)),
+      drain(proc.stdout, (text) => options.onOutput?.('stdout', text), limits),
+      drain(proc.stderr, (text) => options.onOutput?.('stderr', text), limits),
     ]);
     const exitCode = await proc.exited;
+    if (killedForOutput) return floodResult({ stdout, stderr }, options);
     return killedAtDeadline
       ? {
           exitCode: TIMEOUT_EXIT_CODE,
@@ -590,16 +704,29 @@ export async function run(
   }
 }
 
+/**
+ * Reads a stream to its end, telling `onChunk` everything as it arrives and
+ * keeping only what `keepBytes` allows for the result (`capture.ts`). Past
+ * `maxBytes` it calls `onLimit` — which is expected to stop the process — and
+ * stops reading.
+ */
 export async function drain(
   stream: ReadableStream<Uint8Array>,
   onChunk?: (text: string) => void,
+  options: { keepBytes?: number; maxBytes?: number; onLimit?: () => void } = {},
 ): Promise<string> {
   const decoder = new TextDecoder();
-  let all = '';
+  const kept = new BoundedText(options.keepBytes ?? DEFAULT_CAPTURE_BYTES);
+  let seen = 0;
   for await (const chunk of stream) {
+    seen += chunk.byteLength;
     const text = decoder.decode(chunk, { stream: true });
-    all += text;
+    kept.add(text);
     onChunk?.(text);
+    if (options.maxBytes !== undefined && seen > options.maxBytes) {
+      options.onLimit?.();
+      break;
+    }
   }
-  return all;
+  return kept.toString();
 }

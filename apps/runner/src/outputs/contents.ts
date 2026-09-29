@@ -123,7 +123,12 @@ export async function readOutputBytes(
         });
         continue;
       }
-      const read = await host.exec(containerId, ['sh', '-c', `base64 ${quoteOne(path)}`]);
+      // Twice the file's ceiling: base64 adds a third, and the whole of it is
+      // wanted back — a picture with its middle left out is not a picture.
+      const read = await host.exec(containerId, ['sh', '-c', `base64 ${quoteOne(path)}`], {
+        captureBytes: MAX_SCREEN_BYTES * 2,
+        maxOutputBytes: MAX_SCREEN_BYTES * 2,
+      });
       if (read.exitCode !== 0) {
         log.warn('an exported screen could not be read back', {
           path: output.path,

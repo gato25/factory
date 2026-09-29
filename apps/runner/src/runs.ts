@@ -8,6 +8,7 @@ import {
 import { commitDesign, commitPaths } from './container/commit';
 import { writeAgentConfig } from './container/config';
 import { destroyRunWorkspace } from './container/destroy';
+import { GIT_STEP_PUSH_TIMEOUT_MS } from './container/git-network';
 import type { ContainerHost } from './container/host';
 import { pushBranch } from './container/push';
 import { REACH_TIMEOUT_MS, reachSignal } from './container/reach';
@@ -419,6 +420,7 @@ async function persistStepWork(
   // final push uses.
   const pushed = await pushBranch(host, containerId, snapshot, state.credentials.gitToken, {
     force: snapshot.attempt > 1,
+    timeoutMs: GIT_STEP_PUSH_TIMEOUT_MS,
   });
   if (!pushed.pushed) {
     logs.write('stdout', `⚠ ${pushed.reason}. The work is committed and will be pushed again.\n`);
@@ -445,7 +447,18 @@ async function dispatch(
   const step = request.step;
 
   if (step.type === 'shell') {
-    return { outcome: await runShellStep(host, { step, containerId, logs }), containerId };
+    return {
+      outcome: await runShellStep(host, {
+        step,
+        containerId,
+        logs,
+        // The run's own time ceiling, which is what an agent step gets when
+        // its agent names none. A shell step is where the tests run, and a
+        // test that never finishes was a step that never ended.
+        ceilingMinutes: snapshot.limits.time_ceiling_minutes,
+      }),
+      containerId,
+    };
   }
 
   // A checkpoint and a notification never reach the Runner: the orchestrator

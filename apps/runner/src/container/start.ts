@@ -1,6 +1,8 @@
 import { FactoryError, type PipelineSnapshot } from '@factory/shared';
+import { TIMEOUT_EXIT_CODE } from '../engines/limits';
 import { log } from '../errors';
 import { writeAgentConfig } from './config';
+import { GIT_CLONE_TIMEOUT_MS, GIT_STALL_ENV, minutesOf } from './git-network';
 import type { ContainerHost, ContainerSpec } from './host';
 import { runLabels } from './labels';
 import { fetchRequirementFiles, writeRequirementFiles } from './requirements';
@@ -218,8 +220,19 @@ export async function cloneRepository(
 
   const result = await host.exec(containerId, ['sh', '-c', script], {
     cwd: WORKDIR,
-    env: { GIT_TOKEN: gitToken },
+    env: { GIT_TOKEN: gitToken, ...GIT_STALL_ENV },
+    timeoutMs: GIT_CLONE_TIMEOUT_MS,
   });
+  if (result.exitCode === TIMEOUT_EXIT_CODE) {
+    // Not a sandbox problem, and not one a new sandbox would cure: the
+    // repository host did not finish. Said as it is, and not retried three
+    // times over at a quarter of an hour each.
+    throw new FactoryError(
+      'command_failed',
+      `Could not clone ${snapshot.repo.clone_url}: the repository host did not finish within ${minutesOf(GIT_CLONE_TIMEOUT_MS)}.`,
+      { detail: result.stderr.trim() },
+    );
+  }
   if (result.exitCode !== 0) {
     const detail = result.stderr.trim();
     // A rejected credential is a credential problem, not a sandbox problem.

@@ -97,6 +97,26 @@ describe('the compose service', () => {
     expect(compose).toContain("max-size: '50m'");
   });
 
+  test('is given time to stop cleanly, and an init process to be PID 1', () => {
+    // On SIGTERM the runner stops each run's agents and waits for the loops
+    // to return; Docker's default of ten seconds ends it before that is done
+    // once a few runs are in flight. Nothing is lost when it does — positions
+    // are written before they change — but the clean stop is the one that
+    // says which runs were interrupted.
+    const grace = compose.match(/^\s*stop_grace_period:\s*(\d+)s\s*$/m);
+    expect(grace).not.toBeNull();
+    expect(Number(grace?.[1])).toBeGreaterThanOrEqual(30);
+    expect(compose).toMatch(/^\s*init:\s*true\s*$/m);
+  });
+
+  test('does not claim the health check restarts an unhealthy runner', () => {
+    // It does not: a restart policy acts on a container that exits, and
+    // Docker leaves an unhealthy one running. The comment said otherwise, and
+    // an operator relying on it would have a stuck runner nobody restarts.
+    expect(dockerfile).not.toMatch(/restarted by its policy/i);
+    expect(dockerfile).toMatch(/not restart/i);
+  });
+
   test('refuses to start without a credential of the operator’s own', () => {
     expect(compose).toMatch(/RUNNER_AUTH_TOKEN: '\$\{RUNNER_AUTH_TOKEN:\?/);
   });

@@ -1,11 +1,12 @@
 import type { SnapshotAgent } from '@factory/shared';
-import { TIMEOUT_EXIT_CODE } from '../engines/limits';
+import { OUTPUT_LIMIT_EXIT_CODE, TIMEOUT_EXIT_CODE } from '../engines/limits';
 import { HARDENING_ARGS } from './hardening';
 import {
   type ContainerHost,
   type ContainerSpec,
   type ExecOptions,
   type ExecResult,
+  hostDeadlines,
   run,
 } from './host';
 import { labelArgs, stepLabels } from './labels';
@@ -286,14 +287,16 @@ export function isolatingHost(options: IsolatingHostOptions): ContainerHost & { 
         ],
         {
           env: { ...spec.env, ...opts?.env },
-          timeoutMs: opts?.timeoutMs,
+          timeoutMs: opts?.timeoutMs ?? hostDeadlines.exec,
           onOutput: opts?.onOutput,
+          captureBytes: opts?.captureBytes,
+          maxOutputBytes: opts?.maxOutputBytes,
         },
       );
 
-      // The deadline killed the client; the container is still working, and
-      // still spending, until it is removed.
-      if (result.exitCode === TIMEOUT_EXIT_CODE) {
+      // The deadline — or the output limit — killed the client; the container
+      // is still working, and still spending, until it is removed.
+      if (result.exitCode === TIMEOUT_EXIT_CODE || result.exitCode === OUTPUT_LIMIT_EXIT_CODE) {
         await exec('docker', ['rm', '--force', name], { timeoutMs: 30_000 }).catch(() => {});
       }
       stepContainers.get(id)?.delete(name);

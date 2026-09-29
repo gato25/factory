@@ -1,4 +1,5 @@
 import type { PipelineSnapshot } from '@factory/shared';
+import { GIT_READ_TIMEOUT_MS, GIT_STALL_ENV } from './git-network';
 import type { ContainerHost } from './host';
 import { quoteOne } from './shell';
 import { authenticatedRemote, WORKDIR } from './start';
@@ -42,7 +43,11 @@ export async function resetRunBranch(
       `git fetch ${authenticatedRemote(snapshot.repo.clone_url)} ` +
         quoteOne(`+refs/heads/${branch}:refs/remotes/origin/${branch}`),
     ],
-    { cwd: WORKDIR, env: { GIT_TOKEN: gitToken } },
+    {
+      cwd: WORKDIR,
+      env: { GIT_TOKEN: gitToken, ...GIT_STALL_ENV },
+      timeoutMs: GIT_READ_TIMEOUT_MS,
+    },
   );
   const existedRemotely = fetched.exitCode === 0;
 
@@ -95,7 +100,11 @@ export async function branchExistsRemotely(
       `git ls-remote --exit-code --heads ${authenticatedRemote(snapshot.repo.clone_url)} ` +
         quoteOne(snapshot.repo.branch),
     ],
-    { cwd: WORKDIR, env: { GIT_TOKEN: gitToken } },
+    {
+      cwd: WORKDIR,
+      env: { GIT_TOKEN: gitToken, ...GIT_STALL_ENV },
+      timeoutMs: GIT_READ_TIMEOUT_MS,
+    },
   );
   return result.exitCode === 0;
 }

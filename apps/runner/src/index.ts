@@ -28,6 +28,24 @@ import { fileRunStore } from './run-records';
  */
 const config = loadRunnerConfig();
 
+/**
+ * The last net. A promise that rejects with nobody waiting on it ends a Bun
+ * process, and this one drives every run on the machine: a forgotten `.catch`
+ * on a timer's callback would take every run's current step down with it, to
+ * be started again after the restart at the price of the first attempt. So it
+ * is said, with the error, and the runner carries on — each run's position is
+ * on disk, and the loops catch their own (`Orchestrator.spawn`). A thrown
+ * exception nothing caught is another matter, and still ends the process.
+ */
+process.on('unhandledRejection', (reason) => {
+  log.error('a promise was rejected and nothing was waiting for it; the runner carries on', {
+    detail: (reason instanceof Error ? (reason.stack ?? reason.message) : String(reason)).slice(
+      0,
+      2000,
+    ),
+  });
+});
+
 // Before anything else: that every run's position CAN be written down, and
 // that nothing else is writing there (`lock.ts`). Both fail the start with a
 // sentence naming the cause, rather than failing the first run with one
@@ -192,11 +210,18 @@ const server = Bun.serve({ port: config.port, fetch });
 
 // Runs that were in flight when this process last stopped pick up where
 // they were; runs that were waiting keep waiting.
-void orchestrator.recover().then(({ resumed, waiting }) => {
-  if (resumed.length || waiting.length) {
-    log.info('runs picked up after a restart', { resumed, waiting });
-  }
-});
+void orchestrator
+  .recover()
+  .then(({ resumed, waiting }) => {
+    if (resumed.length || waiting.length) {
+      log.info('runs picked up after a restart', { resumed, waiting });
+    }
+  })
+  .catch((error) =>
+    log.error('could not pick up the runs a restart found', {
+      detail: error instanceof Error ? error.message : String(error),
+    }),
+  );
 
 // Launches live in memory, so this process knows none from before it
 // started; the containers it made for them are running for nobody. Removed
