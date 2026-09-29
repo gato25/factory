@@ -98,7 +98,8 @@ apps/web/src/components/
 ├── TicketHead.svelte, StepTracker.svelte, LiveLog.svelte, RunDetails.svelte,
 │   ArtifactViewer.svelte, LaunchPanel.svelte, RequestConsole.svelte,
 │   QueuePosition.svelte                     # restyled (06)
-├── RunResults.svelte                        # new (06): the results column
+├── RunResults.svelte                        # new (06), then removed: the head took the side column
+│                                            #   and the results are the Artifacts tab (spec: Divergence)
 ├── ScreenGallery.svelte                     # restyled (14)
 ├── PipelineBuilder.svelte, StepNode.svelte, StepEditor.svelte        # restyled (08)
 ├── AgentCard.svelte, OwnerBadge.svelte      # restyled (09)

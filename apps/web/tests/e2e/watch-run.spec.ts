@@ -189,12 +189,12 @@ test.describe('watching a run', () => {
     await expect(page.getByText('$0.42')).toHaveCount(0);
 
     // --- what the last agent produced is readable in the application (FR-077) ---
-    // The results tile names it as the artboard does, by its file name.
-    await expect(
-      page
-        .getByRole('region', { name: m.runResults.heading })
-        .getByText('spec.md', { exact: true }),
-    ).toBeVisible();
+    // The Artifacts tab lists it, by its path, and the tab counts it.
+    const artifactsTab = page.getByRole('tab', { name: new RegExp(m.run.tabArtifacts) });
+    await expect(artifactsTab).toContainText('1');
+    await artifactsTab.click();
+    await expect(page.getByText('docs/spec.md', { exact: true })).toBeVisible();
+    await page.getByRole('tab', { name: m.run.tabOutput }).click();
 
     // --- a skipped step is shown WITH its reason, not omitted (FR-075a) ---
     await callback({

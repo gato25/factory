@@ -399,7 +399,7 @@ test.describe('designing the interface before building it', () => {
     // The run did not fail, and a merge request opened (FR-111).
     await expect(page.locator('.title-row .pill')).toHaveText(m.run.statusDone);
     await expect(
-      page.getByRole('link', { name: new RegExp(m.runResults.mergeRequest('!12')) }),
+      page.getByRole('link', { name: new RegExp(m.stepTracker.mergeRequestNamed('!12')) }),
     ).toBeVisible();
 
     // SC-018 — nothing was spent on design.

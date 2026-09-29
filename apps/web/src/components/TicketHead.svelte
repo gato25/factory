@@ -9,10 +9,11 @@
   /**
    * The head of a ticket screen, in the two shapes the artboards draw:
    *
-   *   - `run` (artboard 06): one tile holding the crumb, the title beside its
-   *     state, the branch, the pipeline and when it started, the two figures
-   *     somebody watching a run looks at — how long, and how much of the
-   *     budget — the actions, and under it all the step track.
+   *   - `run` (artboard 06): the tile of the page's side column, stacked — the
+   *     crumb, the title over its state, the branch, the pipeline and when it
+   *     started, the two figures somebody watching a run looks at — how long,
+   *     and how many tokens — the actions full width, and under it all the
+   *     step track running down the column.
    *   - `wide` (artboards 07 and 14): the same crumb, title and state on the
    *     ground above the checkpoint's own tiles, the meta as pills, and the
    *     actions on the right.
@@ -113,14 +114,16 @@
     <div class="r">
       {#if run && stats}
         <!-- The two figures somebody watching a run looks at. -->
-        <div class="stat">
-          <span class="v">{elapsedS ? duration(elapsedS) : '—'}</span>
-          <span class="k">{m.ticketHead.elapsed}</span>
-        </div>
-        <div class="stat">
-          <!-- A dash, not "0": a run from before tokens were recorded did not use none. -->
-          <span class="v" data-tokens={tokens}>{tokens > 0 ? compactTokens(tokens) : '—'}</span>
-          <span class="k">{m.ticketHead.tokensUsed}</span>
+        <div class="stats">
+          <div class="stat">
+            <span class="v">{elapsedS ? duration(elapsedS) : '—'}</span>
+            <span class="k">{m.ticketHead.elapsed}</span>
+          </div>
+          <div class="stat">
+            <!-- A dash, not "0": a run from before tokens were recorded did not use none. -->
+            <span class="v" data-tokens={tokens}>{tokens > 0 ? compactTokens(tokens) : '—'}</span>
+            <span class="k">{m.ticketHead.tokensUsed}</span>
+          </div>
         </div>
       {/if}
       {#if actions}
@@ -141,9 +144,6 @@
   }
   .head:not(.run) {
     padding: 8px 4px 0;
-  }
-  .run {
-    padding: 28px;
   }
   .top {
     display: flex;
@@ -247,6 +247,54 @@
     flex-wrap: wrap;
     justify-content: flex-end;
     gap: 10px;
+  }
+  .stats {
+    display: flex;
+    gap: 28px;
+  }
+
+  /*
+   * The run variant is the side column's tile: everything stacked, the
+   * figures and the actions under the title rather than beside it, the
+   * actions sharing the column's width.
+   */
+  .run {
+    gap: 22px;
+    margin-bottom: 0;
+    padding: 24px;
+  }
+  .run .top {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 18px;
+  }
+  .run .l {
+    flex: none;
+  }
+  .run .title-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .run h1 {
+    font-size: 24px;
+    letter-spacing: -0.5px;
+  }
+  .run .r {
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 16px;
+  }
+  .run .stat {
+    align-items: flex-start;
+  }
+  .run .actions {
+    justify-content: stretch;
+  }
+  .run .actions > :global(.btn) {
+    flex: 1 1 auto;
+    justify-content: center;
   }
 
   @media (max-width: 1100px) {

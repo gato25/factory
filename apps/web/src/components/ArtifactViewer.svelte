@@ -106,7 +106,7 @@
       <div class="head">
         <Icon name="images" size={16} />
         <span class="tx">
-          <span class="n">{m.runResults.screens(screens.length)}</span>
+          <span class="n">{m.artifacts.screenCount(screens.length)}</span>
           <span class="s">docs/design/screens</span>
         </span>
       </div>

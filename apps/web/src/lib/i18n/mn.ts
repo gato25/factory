@@ -494,17 +494,6 @@ export const mn = {
     pipeline: (pipeline: string, steps: number) => `${pipeline} · ${steps} алхам`,
   },
 
-  runResults: {
-    heading: 'Үр дүн',
-    count: (n: number) => `${n} гаралт`,
-    screens: (n: number) => `${n} дэлгэц`,
-    screensFrom: 'ui.pen + exports · pen.dev',
-    commits: (n: number) => `${n} commit`,
-    mergeRequest: (reference: string) => `Нэгтгэх хүсэлт ${reference}`,
-    mergeRequestOpened: 'нээгдсэн · хүн шийднэ',
-    mergeRequestPending: 'хүлээгдэж · хүн шийднэ',
-  },
-
   /** A run held by the concurrency cap, on its own page (FR-082). */
   queue: {
     position: (position: number, cap: number | null) =>
@@ -515,6 +504,7 @@ export const mn = {
     label: (n: number) => `Ажиллагааны ${n} алхам`,
     stepLabel: (n: number, name: string, detail: string) => `${n}-р алхам — ${name}, ${detail}`,
     mergeRequest: 'Нэгтгэх хүсэлт',
+    mergeRequestNamed: (reference: string) => `Нэгтгэх хүсэлт ${reference}`,
     opened: 'нээгдсэн',
     waiting: 'хүлээгдэж',
     done: 'дууссан',
@@ -1081,6 +1071,7 @@ export const mn = {
     purposeSpec: 'Шаардлага',
     purposePlan: 'Арга барил',
     purposeTasks: 'Дараалсан ажлууд',
+    screenCount: (n: number) => `${n} дэлгэц`,
     purposeOther: 'Ажиллагаа гаргасан',
     screens: 'Дэлгэцүүд',
     opening: 'Нээж байна…',

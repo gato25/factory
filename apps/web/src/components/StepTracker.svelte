@@ -3,27 +3,33 @@
   import { stepTitle } from '$lib/default-names';
   import { m } from '$lib/i18n';
   import type { RunView } from '$lib/services/run-view';
+  import { requestReference } from '$lib/state-words';
   import { duration, iconFor } from '$lib/step-kind';
 
   /**
-   * Artboard 06's step track: the run's OWN pipeline across the head tile,
-   * one orb per step and one for the merge request that ends it, threaded on
-   * a belt that is lit behind the run and grey ahead of it (FR-020).
+   * Artboard 06's step track: the run's OWN pipeline down the side column,
+   * one row per step and one for the merge request that ends it — an orb,
+   * the step's name and what happened to it — joined by a connector that is
+   * lit behind the run and grey ahead of it (FR-020).
    *
    * Each step says in words what happened to it — how long it took, that it
    * is running, that it waits for a person, that it failed — and a skipped
    * step says so and, under the track, why (FR-075a). Choosing a step shows
-   * its log below.
+   * its log beside the column. The merge request, once opened, is the link
+   * to it: the results column that used to carry it is gone (spec:
+   * Divergence).
    */
   let {
     steps,
     run,
+    mergeRequestUrl = null,
     onSelect,
     selected,
     classification = null,
   }: {
     steps: RunView['steps'];
     run: RunView['run'];
+    mergeRequestUrl?: string | null;
     onSelect?: (index: number) => void;
     selected?: number;
     /** Why a design step did or did not run, in the classification's own words (FR-100). */
@@ -91,16 +97,20 @@
                 : state === 'waiting'
                   ? 'hand'
                   : iconFor(step.type),
+        // Green for done, as everywhere else (FR-005); a running design step
+        // is pen.dev blue.
         tone:
-          state === 'failed'
-            ? 'orb--red'
-            : state === 'waiting'
-              ? 'orb--amber'
-              : state === 'pending' || state === 'skipped'
-                ? 'quiet'
-                : step.type === 'design'
-                  ? 'orb--pen'
-                  : '',
+          state === 'done'
+            ? 'orb--mint'
+            : state === 'failed'
+              ? 'orb--red'
+              : state === 'waiting'
+                ? 'orb--amber'
+                : state === 'pending' || state === 'skipped'
+                  ? 'quiet'
+                  : step.type === 'design'
+                    ? 'orb--pen'
+                    : '',
       };
     });
     // Implicit and always last (FR-029).
@@ -108,7 +118,10 @@
     const opening = run.status === 'opening_mr';
     out.push({
       index: null,
-      label: m.stepTracker.mergeRequest,
+      label:
+        opened && mergeRequestUrl
+          ? m.stepTracker.mergeRequestNamed(requestReference(mergeRequestUrl))
+          : m.stepTracker.mergeRequest,
       state: opened ? 'done' : opening ? 'running' : 'pending',
       detail: opened ? m.stepTracker.opened : opening ? m.stepTracker.running : m.stepTracker.waiting,
       icon: opened ? 'check' : 'git-pull-request',
@@ -117,7 +130,7 @@
     return out;
   });
 
-  /** A cell the run has got to, which is what lights the belt into it. */
+  /** A cell the run has got to, which is what lights the connector into it. */
   const reached = (cell: Cell | undefined) =>
     !!cell && cell.state !== 'pending' && cell.state !== 'skipped';
 </script>
@@ -125,15 +138,36 @@
 <ol class="track" aria-label={m.stepTracker.label(cells.length)}>
   {#each cells as cell, i (cell.index ?? 'mr')}
     {#if i > 0}
-      <li class="belt" class:lit={reached(cell)} aria-hidden="true"><span></span></li>
+      <li
+        class="belt"
+        class:lit={reached(cell)}
+        class:into-running={cell.state === 'running'}
+        aria-hidden="true"
+      >
+        <span></span>
+      </li>
     {/if}
     <li class="step {cell.state}" data-step-state={cell.state}>
       {#if cell.index === null}
-        <span class="cell">
-          <span class="orb {cell.tone}" aria-hidden="true"><Icon name={cell.icon} size={19} /></span>
-          <span class="n">{cell.label}</span>
-          <span class="d">{cell.detail}</span>
-        </span>
+        {#if cell.state === 'done' && mergeRequestUrl}
+          <!-- The system opens it; a person merges it (FR-070). -->
+          <a class="cell" href={mergeRequestUrl} target="_blank" rel="noreferrer noopener">
+            <span class="orb {cell.tone}" aria-hidden="true"><Icon name={cell.icon} size={17} /></span>
+            <span class="tx">
+              <span class="n">{cell.label}</span>
+              <span class="d">{cell.detail}</span>
+            </span>
+            <Icon name="external-link" size={14} />
+          </a>
+        {:else}
+          <span class="cell">
+            <span class="orb {cell.tone}" aria-hidden="true"><Icon name={cell.icon} size={17} /></span>
+            <span class="tx">
+              <span class="n">{cell.label}</span>
+              <span class="d">{cell.detail}</span>
+            </span>
+          </span>
+        {/if}
       {:else}
         <button
           type="button"
@@ -141,11 +175,14 @@
           class:on={selected === cell.index}
           aria-pressed={selected === cell.index}
           aria-label={m.stepTracker.stepLabel(cell.index + 1, cell.label, cell.detail)}
+          title={cell.label}
           onclick={() => onSelect?.(cell.index as number)}
         >
-          <span class="orb {cell.tone}" aria-hidden="true"><Icon name={cell.icon} size={19} /></span>
-          <span class="n">{cell.label}</span>
-          <span class="d">{cell.detail}</span>
+          <span class="orb {cell.tone}" aria-hidden="true"><Icon name={cell.icon} size={17} /></span>
+          <span class="tx">
+            <span class="n">{cell.label}</span>
+            <span class="d">{cell.detail}</span>
+          </span>
         </button>
       {/if}
     </li>
@@ -175,49 +212,58 @@
 <style>
   .track {
     display: flex;
-    align-items: flex-start;
+    flex-direction: column;
     margin: 0;
     padding: 0;
     list-style: none;
   }
-  .step {
-    flex: none;
-    width: 150px;
-  }
+  /* The connector: centred under a 40px orb, between one row and the next. */
   .belt {
-    flex: 1;
-    min-width: 12px;
-    padding-top: 21px;
+    padding: 4px 0 4px 18px;
   }
   .belt span {
     display: block;
-    height: 4px;
+    width: 4px;
+    height: 14px;
     border-radius: 2px;
     background: var(--card-border);
   }
   .belt.lit span {
-    background: linear-gradient(90deg, var(--accent-from), var(--accent-to));
+    background: #a9e8cf;
+  }
+  .belt.into-running span {
+    background: linear-gradient(180deg, #a9e8cf, #f8b98f);
   }
 
   .cell {
     display: flex;
-    flex-direction: column;
     align-items: center;
-    gap: 10px;
+    gap: 14px;
     width: 100%;
     padding: 0;
     border: 0;
     border-radius: 16px;
     font: inherit;
-    text-align: center;
+    text-align: left;
+    text-decoration: none;
     color: inherit;
     background: none;
   }
-  button.cell {
+  button.cell,
+  a.cell {
     cursor: pointer;
   }
+  a.cell > :global(svg) {
+    flex: none;
+    color: var(--text-3);
+  }
+  .orb {
+    width: 40px;
+    height: 40px;
+  }
   button.cell:hover .orb,
-  button.cell.on .orb {
+  button.cell.on .orb,
+  a.cell:hover .orb {
     outline: 3px solid var(--accent-soft);
     outline-offset: 2px;
   }
@@ -226,8 +272,14 @@
     background: var(--surface-2);
     box-shadow: inset 0 0 0 1.5px var(--border);
   }
+  .tx {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
   .n {
-    max-width: 100%;
     overflow: hidden;
     font-size: var(--type-body);
     font-weight: 600;
@@ -272,15 +324,5 @@
     font-size: var(--type-body);
     color: var(--text-2);
     background: var(--surface-2);
-  }
-
-  @media (max-width: 1100px) {
-    .track {
-      overflow-x: auto;
-      padding-bottom: 6px;
-    }
-    .step {
-      width: 120px;
-    }
   }
 </style>

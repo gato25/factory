@@ -330,7 +330,10 @@ it fails and names the screen and phrase.
 - **FR-020**: The run page MUST show a step track of the run's own pipeline — done, running, upcoming or
   skipped with its reason, with durations — the live log, and the results produced. Run details
   (pipeline, attempt, environment, budget used of cap) MUST be available on the run page without an
-  orchestration-service link.
+  orchestration-service link. (Amended 2026-09-29: the head and its step track are the page's side
+  column, the track running down it; the log takes the rest of the page at full height; the results
+  are the Artifacts tab, and an opened merge request is reached from the track's last step — see
+  Divergence.)
 - **FR-021**: The approval checkpoint and the design review MUST keep their actions and behaviour; the
   design review MUST state that it is design work, show every exported screen, the reason the ticket
   was designed and the acceptance criteria, and offer opening the committed design source.
@@ -430,7 +433,7 @@ optional `tokens` object (001 `contracts/orchestrator.md`).
 description, the acceptance criteria, the requirement documents they attach — was shown on no screen
 once the ticket existed: the run page had a title, the criteria appeared only at an approval
 checkpoint, and a document was a name and a size in the Requirements tab. Artboard 06 has no tile for
-it; the screen adds one, "Юу хүссэн бэ" ("What was asked"), in the side column under the results,
+it; the screen adds one, "Юу хүссэн бэ" ("What was asked"), in the side column under the head,
 holding the description (rendered as Markdown), the criteria, and the names of the documents with a
 button to the Requirements tab, where each document opens in place — Markdown rendered, anything else
 as written. A ticket saved as a draft (001 FR-017) had no page beyond "not started", and no way to be
@@ -439,6 +442,21 @@ started from the app; its page now shows the same tile and documents, and a Star
 is behaviour 001 FR-017 already required and the application had the command for (`start`) with no
 screen calling it. Attaching two documents at once, which the form offers, failed with a server error
 because the file field was not named as a list (`files[]`); it is named so now.
+
+**Amended: the run page's head is its side column.** Artboard 06 drew the head — crumb, title, state,
+branch, pipeline, the two figures, the actions and the step track across it — as a tile the full width
+of the page, and the results as a column beside the log. The head took a quarter of the screen above
+the one thing that changes while a run is watched, the log. On the owner's decision of 2026-09-29 the
+artboard was redrawn: the results tile is gone, the head moves into the side column at 400px, stacked
+— crumb, title and state, the meta, the two figures, the actions full width — and the step track runs
+down it, one row per step with its orb, name and duration and a connector between them. The log fills
+the rest of the page at full height. Nothing the results tile showed is lost: every document, the
+screens, the commits and the merge request are the Artifacts tab, one click away; and the merge request,
+once opened, is also the track's last step, which becomes the link to it. "What was asked" stays in the
+side column, under the head. What the page says about the run — a notice, the queue position, a pause
+being honoured, a failure and its reasons, the edit-and-retry form — sits above the log, where it is
+read at the width it needs. A draft has the same two columns: its head, with Start, in the side column,
+and what was asked and its documents in the main one.
 
 **Superseded requirements of 001.** Two requirements of `specs/001-code-factory-mvp/spec.md` describe
 the dashboard this feature replaces, and are superseded by it; 001 is amended to point here:

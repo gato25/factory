@@ -217,10 +217,10 @@ Footer shows an estimated cost and duration. Actions: **Save as draft**, **Creat
 
 ### 06 Ticket Run
 **Purpose:** watch one run and understand exactly where it is.
-- Header: breadcrumb, title, status badge, branch name, creator, start time, cost so far. Actions: **Pause**, **Cancel run**.
-- **Pipeline steps** tracker: Spec, Design, Plan, Tasks, Implement, Merge request. Each shows done (green check), running (blue), upcoming (grey) or skipped (grey, struck through, with the reason "no UI change"), plus duration and cost.
-- **Live log**: streamed terminal output of the current step, with the exact command shown in the header. This is the Claude CLI for agent steps and the pen.dev CLI for design steps.
-- **Artifacts**: `spec.md`, the design screens, `plan.md`, `tasks.md`, commits on the branch, and the merge request once it exists. Documents open in a viewer. Screens appear as a row of thumbnails that opens the gallery (14).
+- Header, as the page's right-hand side column: breadcrumb, title, status badge, branch name, pipeline, start time, time and tokens so far. Actions: **Pause**, **Cancel run**. (Amended by `specs/004-bento-redesign`: the header moved from across the top of the page into the side column, so the log has the full height.)
+- **Pipeline steps** tracker, running down the side column under the header: Spec, Design, Plan, Tasks, Implement, Merge request. Each shows done (green check), running (blue), upcoming (grey) or skipped (grey, struck through, with the reason "no UI change"), plus duration. The merge request, once opened, links to it.
+- **Live log**: streamed terminal output of the current step, with the exact command shown in the header. This is the Claude CLI for agent steps and the pen.dev CLI for design steps. It fills the rest of the page.
+- **Artifacts**, in their own tab beside the log: `spec.md`, the design screens, `plan.md`, `tasks.md`, commits on the branch, and the merge request once it exists. Documents open in a viewer. Screens appear as a row of thumbnails that opens the gallery (14). (Amended by `specs/004-bento-redesign`: the separate results column was removed; the tab holds everything it listed.)
 - **Run details**, in their own tab beside the log: pipeline, attempt, sandbox image, budget used of cap. (Amended by `specs/004-bento-redesign`: the n8n execution link was removed with n8n, and the details moved into a tab.)
 **Behavior:** the page is the visual form of the run state machine (§6). When the run finishes, the MR link appears and the ticket closes. When it fails, the failed step is highlighted, the log shows the error, and a **Retry** action creates a new attempt.
 

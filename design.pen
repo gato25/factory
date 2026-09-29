@@ -37900,1354 +37900,6 @@
         },
         {
           "type": "frame",
-          "id": "TbAD1",
-          "name": "Tile · Ticket Head",
-          "clip": true,
-          "width": "fill_container",
-          "fill": {
-            "type": "gradient",
-            "gradientType": "linear",
-            "enabled": true,
-            "rotation": 180,
-            "size": {
-              "height": 1
-            },
-            "colors": [
-              {
-                "color": "$tile-from",
-                "position": 0
-              },
-              {
-                "color": "$tile-to",
-                "position": 1
-              }
-            ]
-          },
-          "cornerRadius": 24,
-          "stroke": {
-            "type": "gradient",
-            "gradientType": "linear",
-            "enabled": true,
-            "rotation": 180,
-            "size": {
-              "height": 1
-            },
-            "colors": [
-              {
-                "color": "$highlight",
-                "position": 0
-              },
-              {
-                "color": "#FFFFFF00",
-                "position": 1
-              }
-            ]
-          },
-          "strokeWidth": 1,
-          "effect": [
-            {
-              "type": "shadow",
-              "shadowType": "outer",
-              "color": "$shadow-soft",
-              "offset": {
-                "x": 0,
-                "y": 1
-              },
-              "blur": 2
-            },
-            {
-              "type": "shadow",
-              "shadowType": "outer",
-              "color": "$shadow-depth",
-              "offset": {
-                "x": 0,
-                "y": 14
-              },
-              "blur": 36
-            }
-          ],
-          "layout": "vertical",
-          "gap": 24,
-          "padding": 28,
-          "children": [
-            {
-              "type": "frame",
-              "id": "Fo5sA",
-              "name": "Top",
-              "width": "fill_container",
-              "justifyContent": "space_between",
-              "children": [
-                {
-                  "type": "frame",
-                  "id": "Bw0E2",
-                  "name": "L",
-                  "layout": "vertical",
-                  "gap": 10,
-                  "children": [
-                    {
-                      "type": "frame",
-                      "id": "o6iOHC",
-                      "name": "Crumb",
-                      "gap": 6,
-                      "alignItems": "center",
-                      "children": [
-                        {
-                          "type": "text",
-                          "id": "dq4Jg",
-                          "name": "A",
-                          "fill": "$text-3",
-                          "content": "shop-frontend",
-                          "fontFamily": "$font",
-                          "fontSize": 14,
-                          "fontWeight": "normal"
-                        },
-                        {
-                          "type": "icon",
-                          "id": "AoAls",
-                          "name": "C",
-                          "width": 13,
-                          "height": 13,
-                          "icon": "chevron-right",
-                          "library": "lucide",
-                          "fill": "$text-3"
-                        },
-                        {
-                          "type": "text",
-                          "id": "Mp9Mp",
-                          "name": "B",
-                          "fill": "$text-2",
-                          "content": "#142",
-                          "fontFamily": "$font",
-                          "fontSize": 14,
-                          "fontWeight": "600"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "frame",
-                      "id": "uD3fL",
-                      "name": "Title Row",
-                      "gap": 12,
-                      "alignItems": "center",
-                      "children": [
-                        {
-                          "type": "text",
-                          "id": "b2kG2",
-                          "name": "T",
-                          "fill": "$text",
-                          "content": "Google-ээр нэвтрэх эрх нэмэх",
-                          "fontFamily": "$font-head",
-                          "fontSize": 28,
-                          "fontWeight": "600",
-                          "letterSpacing": -0.6
-                        },
-                        {
-                          "type": "frame",
-                          "id": "fgulr",
-                          "name": "Status",
-                          "fill": "$accent-soft",
-                          "cornerRadius": 999,
-                          "gap": 7,
-                          "padding": [
-                            6,
-                            12
-                          ],
-                          "alignItems": "center",
-                          "children": [
-                            {
-                              "type": "ellipse",
-                              "id": "qo1nc",
-                              "name": "D",
-                              "fill": "$accent",
-                              "width": 8,
-                              "height": 8,
-                              "effect": {
-                                "type": "shadow",
-                                "shadowType": "outer",
-                                "color": "#F26B1DAA",
-                                "blur": 6
-                              }
-                            },
-                            {
-                              "type": "text",
-                              "id": "l3loC",
-                              "name": "L",
-                              "fill": "$accent-text",
-                              "content": "Ажиллаж буй · Хөгжүүлэлт",
-                              "fontFamily": "$font",
-                              "fontSize": 12,
-                              "fontWeight": "700"
-                            }
-                          ]
-                        }
-                      ]
-                    },
-                    {
-                      "type": "frame",
-                      "id": "wQaBF",
-                      "name": "Meta",
-                      "gap": 8,
-                      "children": [
-                        {
-                          "type": "frame",
-                          "id": "ILttp",
-                          "name": "M · factory/142-oauth-google",
-                          "fill": "$surface-2",
-                          "cornerRadius": 999,
-                          "gap": 6,
-                          "padding": [
-                            6,
-                            10
-                          ],
-                          "alignItems": "center",
-                          "children": [
-                            {
-                              "type": "icon",
-                              "id": "K10KB",
-                              "name": "I",
-                              "width": 12,
-                              "height": 12,
-                              "icon": "git-branch",
-                              "library": "lucide",
-                              "fill": "$text-2"
-                            },
-                            {
-                              "type": "text",
-                              "id": "QHz6B",
-                              "name": "L",
-                              "fill": "$text-2",
-                              "content": "factory/142-oauth-google",
-                              "fontFamily": "$font",
-                              "fontSize": 12,
-                              "fontWeight": "500"
-                            }
-                          ]
-                        },
-                        {
-                          "type": "frame",
-                          "id": "a9wwG",
-                          "name": "M · Стандарт · 6 алхам",
-                          "fill": "$surface-2",
-                          "cornerRadius": 999,
-                          "gap": 6,
-                          "padding": [
-                            6,
-                            10
-                          ],
-                          "alignItems": "center",
-                          "children": [
-                            {
-                              "type": "icon",
-                              "id": "OQ0xI",
-                              "name": "I",
-                              "width": 12,
-                              "height": 12,
-                              "icon": "workflow",
-                              "library": "lucide",
-                              "fill": "$text-2"
-                            },
-                            {
-                              "type": "text",
-                              "id": "ShCxi",
-                              "name": "L",
-                              "fill": "$text-2",
-                              "content": "Стандарт · 6 алхам",
-                              "fontFamily": "$font",
-                              "fontSize": 12,
-                              "fontWeight": "500"
-                            }
-                          ]
-                        },
-                        {
-                          "type": "frame",
-                          "id": "hlvxo",
-                          "name": "M · 14 мин өмнө эхэлсэн",
-                          "fill": "$surface-2",
-                          "cornerRadius": 999,
-                          "gap": 6,
-                          "padding": [
-                            6,
-                            10
-                          ],
-                          "alignItems": "center",
-                          "children": [
-                            {
-                              "type": "icon",
-                              "id": "KZlR7",
-                              "name": "I",
-                              "width": 12,
-                              "height": 12,
-                              "icon": "timer",
-                              "library": "lucide",
-                              "fill": "$text-2"
-                            },
-                            {
-                              "type": "text",
-                              "id": "UnP2G",
-                              "name": "L",
-                              "fill": "$text-2",
-                              "content": "14 мин өмнө эхэлсэн",
-                              "fontFamily": "$font",
-                              "fontSize": 12,
-                              "fontWeight": "500"
-                            }
-                          ]
-                        }
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "RkCsS",
-                  "name": "R",
-                  "gap": 28,
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "frame",
-                      "id": "qEp90",
-                      "name": "Stat · хугацаа",
-                      "layout": "vertical",
-                      "gap": 2,
-                      "alignItems": "end",
-                      "children": [
-                        {
-                          "type": "text",
-                          "id": "jaF0E",
-                          "name": "V",
-                          "fill": "$text",
-                          "content": "12м 19с",
-                          "fontFamily": "$font-head",
-                          "fontSize": 26,
-                          "fontWeight": "700",
-                          "letterSpacing": -0.8
-                        },
-                        {
-                          "type": "text",
-                          "id": "nukMw",
-                          "name": "L",
-                          "fill": "$text-2",
-                          "content": "хугацаа",
-                          "fontFamily": "$font",
-                          "fontSize": 12,
-                          "fontWeight": "normal"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "frame",
-                      "id": "Cr89T",
-                      "name": "Stat · зарцуулсан",
-                      "layout": "vertical",
-                      "gap": 2,
-                      "alignItems": "end",
-                      "children": [
-                        {
-                          "type": "text",
-                          "id": "TQaY3",
-                          "name": "V",
-                          "fill": "$text",
-                          "content": "$1.54",
-                          "fontFamily": "$font-head",
-                          "fontSize": 26,
-                          "fontWeight": "700",
-                          "letterSpacing": -0.8
-                        },
-                        {
-                          "type": "text",
-                          "id": "OB5DP",
-                          "name": "L",
-                          "fill": "$text-2",
-                          "content": "зарцуулсан · төсөв $5.00",
-                          "fontFamily": "$font",
-                          "fontSize": 12,
-                          "fontWeight": "normal"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "frame",
-                      "id": "N98zv",
-                      "name": "Actions",
-                      "gap": 10,
-                      "children": [
-                        {
-                          "type": "frame",
-                          "id": "j3yFX",
-                          "name": "Pause",
-                          "fill": "$surface-2",
-                          "cornerRadius": 12,
-                          "gap": 7,
-                          "padding": [
-                            10,
-                            14
-                          ],
-                          "alignItems": "center",
-                          "children": [
-                            {
-                              "type": "icon",
-                              "id": "bgkVx",
-                              "name": "I",
-                              "width": 14,
-                              "height": 14,
-                              "icon": "pause",
-                              "library": "lucide",
-                              "fill": "$text-2"
-                            },
-                            {
-                              "type": "text",
-                              "id": "hKQyZ",
-                              "name": "L",
-                              "fill": "$text",
-                              "content": "Түр зогсоох",
-                              "fontFamily": "$font",
-                              "fontSize": 14,
-                              "fontWeight": "600"
-                            }
-                          ]
-                        },
-                        {
-                          "type": "frame",
-                          "id": "Z6xAm",
-                          "name": "Cancel run",
-                          "fill": "$danger-soft",
-                          "cornerRadius": 12,
-                          "gap": 7,
-                          "padding": [
-                            10,
-                            14
-                          ],
-                          "alignItems": "center",
-                          "children": [
-                            {
-                              "type": "icon",
-                              "id": "h1F5Ux",
-                              "name": "I",
-                              "width": 14,
-                              "height": 14,
-                              "icon": "circle-x",
-                              "library": "lucide",
-                              "fill": "$danger"
-                            },
-                            {
-                              "type": "text",
-                              "id": "ieawO",
-                              "name": "L",
-                              "fill": "#A12A2E",
-                              "content": "Цуцлах",
-                              "fontFamily": "$font",
-                              "fontSize": 14,
-                              "fontWeight": "600"
-                            }
-                          ]
-                        }
-                      ]
-                    }
-                  ]
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "qlg3A",
-              "name": "Track",
-              "width": "fill_container",
-              "children": [
-                {
-                  "type": "frame",
-                  "id": "orYjk",
-                  "name": "Step · Тодорхойлолт",
-                  "width": 150,
-                  "layout": "vertical",
-                  "gap": 10,
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "frame",
-                      "id": "gNhhX",
-                      "name": "Orb",
-                      "width": 46,
-                      "height": 46,
-                      "fill": {
-                        "type": "gradient",
-                        "gradientType": "linear",
-                        "enabled": true,
-                        "rotation": 180,
-                        "size": {
-                          "height": 1
-                        },
-                        "colors": [
-                          {
-                            "color": "$mint-from",
-                            "position": 0
-                          },
-                          {
-                            "color": "$mint-to",
-                            "position": 1
-                          }
-                        ]
-                      },
-                      "cornerRadius": 999,
-                      "stroke": {
-                        "type": "gradient",
-                        "gradientType": "linear",
-                        "enabled": true,
-                        "rotation": 180,
-                        "size": {
-                          "height": 1
-                        },
-                        "colors": [
-                          {
-                            "color": "$highlight",
-                            "position": 0
-                          },
-                          {
-                            "color": "#FFFFFF00",
-                            "position": 1
-                          }
-                        ]
-                      },
-                      "strokeWidth": 1.5,
-                      "effect": [
-                        {
-                          "type": "shadow",
-                          "shadowType": "outer",
-                          "color": "#16A34A4D",
-                          "offset": {
-                            "x": 0,
-                            "y": 6
-                          },
-                          "blur": 12
-                        },
-                        {
-                          "type": "shadow",
-                          "shadowType": "inner",
-                          "color": "#FFFFFF59",
-                          "offset": {
-                            "x": 0,
-                            "y": 2
-                          },
-                          "blur": 3
-                        }
-                      ],
-                      "justifyContent": "center",
-                      "alignItems": "center",
-                      "children": [
-                        {
-                          "type": "icon",
-                          "id": "Wr4Qa",
-                          "name": "I",
-                          "width": 19,
-                          "height": 19,
-                          "icon": "check",
-                          "library": "lucide",
-                          "fill": "$on-mint"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "text",
-                      "id": "hzNkY",
-                      "name": "N",
-                      "fill": "$text",
-                      "content": "Тодорхойлолт",
-                      "textAlign": "center",
-                      "fontFamily": "$font",
-                      "fontSize": 14,
-                      "fontWeight": "600"
-                    },
-                    {
-                      "type": "text",
-                      "id": "bqBoL",
-                      "name": "D",
-                      "fill": "$text-2",
-                      "content": "2м 10с",
-                      "textAlign": "center",
-                      "fontFamily": "$font",
-                      "fontSize": 12,
-                      "fontWeight": "normal"
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "oDYMC",
-                  "name": "Belt",
-                  "width": "fill_container",
-                  "layout": "vertical",
-                  "padding": [
-                    21,
-                    0,
-                    0,
-                    0
-                  ],
-                  "children": [
-                    {
-                      "type": "rectangle",
-                      "cornerRadius": 2,
-                      "id": "S6g4St",
-                      "name": "Bar",
-                      "fill": {
-                        "type": "gradient",
-                        "gradientType": "linear",
-                        "enabled": true,
-                        "rotation": 90,
-                        "size": {
-                          "height": 1
-                        },
-                        "colors": [
-                          {
-                            "color": "#A9E8CF",
-                            "position": 0
-                          },
-                          {
-                            "color": "#A9E8CF",
-                            "position": 1
-                          }
-                        ]
-                      },
-                      "width": "fill_container",
-                      "height": 4
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "OlejA",
-                  "name": "Step · Дизайн · pen.dev",
-                  "width": 150,
-                  "layout": "vertical",
-                  "gap": 10,
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "frame",
-                      "id": "WRVdl",
-                      "name": "Orb",
-                      "width": 46,
-                      "height": 46,
-                      "fill": {
-                        "type": "gradient",
-                        "gradientType": "linear",
-                        "enabled": true,
-                        "rotation": 180,
-                        "size": {
-                          "height": 1
-                        },
-                        "colors": [
-                          {
-                            "color": "$mint-from",
-                            "position": 0
-                          },
-                          {
-                            "color": "$mint-to",
-                            "position": 1
-                          }
-                        ]
-                      },
-                      "cornerRadius": 999,
-                      "stroke": {
-                        "type": "gradient",
-                        "gradientType": "linear",
-                        "enabled": true,
-                        "rotation": 180,
-                        "size": {
-                          "height": 1
-                        },
-                        "colors": [
-                          {
-                            "color": "$highlight",
-                            "position": 0
-                          },
-                          {
-                            "color": "#FFFFFF00",
-                            "position": 1
-                          }
-                        ]
-                      },
-                      "strokeWidth": 1.5,
-                      "effect": [
-                        {
-                          "type": "shadow",
-                          "shadowType": "outer",
-                          "color": "#16A34A4D",
-                          "offset": {
-                            "x": 0,
-                            "y": 6
-                          },
-                          "blur": 12
-                        },
-                        {
-                          "type": "shadow",
-                          "shadowType": "inner",
-                          "color": "#FFFFFF59",
-                          "offset": {
-                            "x": 0,
-                            "y": 2
-                          },
-                          "blur": 3
-                        }
-                      ],
-                      "justifyContent": "center",
-                      "alignItems": "center",
-                      "children": [
-                        {
-                          "type": "icon",
-                          "id": "chCRb",
-                          "name": "I",
-                          "width": 19,
-                          "height": 19,
-                          "icon": "check",
-                          "library": "lucide",
-                          "fill": "$on-mint"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "text",
-                      "id": "cY0vn",
-                      "name": "N",
-                      "fill": "$text",
-                      "content": "Дизайн · pen.dev",
-                      "textAlign": "center",
-                      "fontFamily": "$font",
-                      "fontSize": 14,
-                      "fontWeight": "600"
-                    },
-                    {
-                      "type": "text",
-                      "id": "kqzKW",
-                      "name": "D",
-                      "fill": "$text-2",
-                      "content": "2м 41с",
-                      "textAlign": "center",
-                      "fontFamily": "$font",
-                      "fontSize": 12,
-                      "fontWeight": "normal"
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "L8Wyx",
-                  "name": "Belt",
-                  "width": "fill_container",
-                  "layout": "vertical",
-                  "padding": [
-                    21,
-                    0,
-                    0,
-                    0
-                  ],
-                  "children": [
-                    {
-                      "type": "rectangle",
-                      "cornerRadius": 2,
-                      "id": "V9orM",
-                      "name": "Bar",
-                      "fill": {
-                        "type": "gradient",
-                        "gradientType": "linear",
-                        "enabled": true,
-                        "rotation": 90,
-                        "size": {
-                          "height": 1
-                        },
-                        "colors": [
-                          {
-                            "color": "#A9E8CF",
-                            "position": 0
-                          },
-                          {
-                            "color": "#A9E8CF",
-                            "position": 1
-                          }
-                        ]
-                      },
-                      "width": "fill_container",
-                      "height": 4
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "CpchM",
-                  "name": "Step · Төлөвлөгөө",
-                  "width": 150,
-                  "layout": "vertical",
-                  "gap": 10,
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "frame",
-                      "id": "y32Oww",
-                      "name": "Orb",
-                      "width": 46,
-                      "height": 46,
-                      "fill": {
-                        "type": "gradient",
-                        "gradientType": "linear",
-                        "enabled": true,
-                        "rotation": 180,
-                        "size": {
-                          "height": 1
-                        },
-                        "colors": [
-                          {
-                            "color": "$mint-from",
-                            "position": 0
-                          },
-                          {
-                            "color": "$mint-to",
-                            "position": 1
-                          }
-                        ]
-                      },
-                      "cornerRadius": 999,
-                      "stroke": {
-                        "type": "gradient",
-                        "gradientType": "linear",
-                        "enabled": true,
-                        "rotation": 180,
-                        "size": {
-                          "height": 1
-                        },
-                        "colors": [
-                          {
-                            "color": "$highlight",
-                            "position": 0
-                          },
-                          {
-                            "color": "#FFFFFF00",
-                            "position": 1
-                          }
-                        ]
-                      },
-                      "strokeWidth": 1.5,
-                      "effect": [
-                        {
-                          "type": "shadow",
-                          "shadowType": "outer",
-                          "color": "#16A34A4D",
-                          "offset": {
-                            "x": 0,
-                            "y": 6
-                          },
-                          "blur": 12
-                        },
-                        {
-                          "type": "shadow",
-                          "shadowType": "inner",
-                          "color": "#FFFFFF59",
-                          "offset": {
-                            "x": 0,
-                            "y": 2
-                          },
-                          "blur": 3
-                        }
-                      ],
-                      "justifyContent": "center",
-                      "alignItems": "center",
-                      "children": [
-                        {
-                          "type": "icon",
-                          "id": "lrpiS",
-                          "name": "I",
-                          "width": 19,
-                          "height": 19,
-                          "icon": "check",
-                          "library": "lucide",
-                          "fill": "$on-mint"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "text",
-                      "id": "R7HKDf",
-                      "name": "N",
-                      "fill": "$text",
-                      "content": "Төлөвлөгөө",
-                      "textAlign": "center",
-                      "fontFamily": "$font",
-                      "fontSize": 14,
-                      "fontWeight": "600"
-                    },
-                    {
-                      "type": "text",
-                      "id": "AubGm",
-                      "name": "D",
-                      "fill": "$text-2",
-                      "content": "3м 42с",
-                      "textAlign": "center",
-                      "fontFamily": "$font",
-                      "fontSize": 12,
-                      "fontWeight": "normal"
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "r6Pbfm",
-                  "name": "Belt",
-                  "width": "fill_container",
-                  "layout": "vertical",
-                  "padding": [
-                    21,
-                    0,
-                    0,
-                    0
-                  ],
-                  "children": [
-                    {
-                      "type": "rectangle",
-                      "cornerRadius": 2,
-                      "id": "EddmU",
-                      "name": "Bar",
-                      "fill": {
-                        "type": "gradient",
-                        "gradientType": "linear",
-                        "enabled": true,
-                        "rotation": 90,
-                        "size": {
-                          "height": 1
-                        },
-                        "colors": [
-                          {
-                            "color": "#A9E8CF",
-                            "position": 0
-                          },
-                          {
-                            "color": "#A9E8CF",
-                            "position": 1
-                          }
-                        ]
-                      },
-                      "width": "fill_container",
-                      "height": 4
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "zfTEh",
-                  "name": "Step · Даалгавар",
-                  "width": 150,
-                  "layout": "vertical",
-                  "gap": 10,
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "frame",
-                      "id": "MBmdh",
-                      "name": "Orb",
-                      "width": 46,
-                      "height": 46,
-                      "fill": {
-                        "type": "gradient",
-                        "gradientType": "linear",
-                        "enabled": true,
-                        "rotation": 180,
-                        "size": {
-                          "height": 1
-                        },
-                        "colors": [
-                          {
-                            "color": "$mint-from",
-                            "position": 0
-                          },
-                          {
-                            "color": "$mint-to",
-                            "position": 1
-                          }
-                        ]
-                      },
-                      "cornerRadius": 999,
-                      "stroke": {
-                        "type": "gradient",
-                        "gradientType": "linear",
-                        "enabled": true,
-                        "rotation": 180,
-                        "size": {
-                          "height": 1
-                        },
-                        "colors": [
-                          {
-                            "color": "$highlight",
-                            "position": 0
-                          },
-                          {
-                            "color": "#FFFFFF00",
-                            "position": 1
-                          }
-                        ]
-                      },
-                      "strokeWidth": 1.5,
-                      "effect": [
-                        {
-                          "type": "shadow",
-                          "shadowType": "outer",
-                          "color": "#16A34A4D",
-                          "offset": {
-                            "x": 0,
-                            "y": 6
-                          },
-                          "blur": 12
-                        },
-                        {
-                          "type": "shadow",
-                          "shadowType": "inner",
-                          "color": "#FFFFFF59",
-                          "offset": {
-                            "x": 0,
-                            "y": 2
-                          },
-                          "blur": 3
-                        }
-                      ],
-                      "justifyContent": "center",
-                      "alignItems": "center",
-                      "children": [
-                        {
-                          "type": "icon",
-                          "id": "OKpwg",
-                          "name": "I",
-                          "width": 19,
-                          "height": 19,
-                          "icon": "check",
-                          "library": "lucide",
-                          "fill": "$on-mint"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "text",
-                      "id": "ltkOL",
-                      "name": "N",
-                      "fill": "$text",
-                      "content": "Даалгавар",
-                      "textAlign": "center",
-                      "fontFamily": "$font",
-                      "fontSize": 14,
-                      "fontWeight": "600"
-                    },
-                    {
-                      "type": "text",
-                      "id": "PZQAr",
-                      "name": "D",
-                      "fill": "$text-2",
-                      "content": "1м 05с",
-                      "textAlign": "center",
-                      "fontFamily": "$font",
-                      "fontSize": 12,
-                      "fontWeight": "normal"
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "FnSfg",
-                  "name": "Belt",
-                  "width": "fill_container",
-                  "layout": "vertical",
-                  "padding": [
-                    21,
-                    0,
-                    0,
-                    0
-                  ],
-                  "children": [
-                    {
-                      "type": "rectangle",
-                      "cornerRadius": 2,
-                      "id": "JXBmB",
-                      "name": "Bar",
-                      "fill": {
-                        "type": "gradient",
-                        "gradientType": "linear",
-                        "enabled": true,
-                        "rotation": 90,
-                        "size": {
-                          "height": 1
-                        },
-                        "colors": [
-                          {
-                            "color": "#A9E8CF",
-                            "position": 0
-                          },
-                          {
-                            "color": "#F8B98F",
-                            "position": 1
-                          }
-                        ]
-                      },
-                      "width": "fill_container",
-                      "height": 4
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "M3To60",
-                  "name": "Step · Хөгжүүлэлт",
-                  "width": 150,
-                  "layout": "vertical",
-                  "gap": 10,
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "frame",
-                      "id": "GaLbg",
-                      "name": "Orb",
-                      "width": 46,
-                      "height": 46,
-                      "fill": {
-                        "type": "gradient",
-                        "gradientType": "linear",
-                        "enabled": true,
-                        "rotation": 180,
-                        "size": {
-                          "height": 1
-                        },
-                        "colors": [
-                          {
-                            "color": "$accent-from",
-                            "position": 0
-                          },
-                          {
-                            "color": "$accent-to",
-                            "position": 1
-                          }
-                        ]
-                      },
-                      "cornerRadius": 999,
-                      "stroke": {
-                        "type": "gradient",
-                        "gradientType": "linear",
-                        "enabled": true,
-                        "rotation": 180,
-                        "size": {
-                          "height": 1
-                        },
-                        "colors": [
-                          {
-                            "color": "$highlight",
-                            "position": 0
-                          },
-                          {
-                            "color": "#FFFFFF00",
-                            "position": 1
-                          }
-                        ]
-                      },
-                      "strokeWidth": 1.5,
-                      "effect": [
-                        {
-                          "type": "shadow",
-                          "shadowType": "outer",
-                          "color": "$glow-accent",
-                          "offset": {
-                            "x": 0,
-                            "y": 6
-                          },
-                          "blur": 18
-                        },
-                        {
-                          "type": "shadow",
-                          "shadowType": "inner",
-                          "color": "#FFFFFF59",
-                          "offset": {
-                            "x": 0,
-                            "y": 2
-                          },
-                          "blur": 3
-                        }
-                      ],
-                      "justifyContent": "center",
-                      "alignItems": "center",
-                      "children": [
-                        {
-                          "type": "icon",
-                          "id": "QGzka",
-                          "name": "I",
-                          "width": 19,
-                          "height": 19,
-                          "icon": "code",
-                          "library": "lucide",
-                          "fill": "$text-inv"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "text",
-                      "id": "W0bJLe",
-                      "name": "N",
-                      "fill": "$text",
-                      "content": "Хөгжүүлэлт",
-                      "textAlign": "center",
-                      "fontFamily": "$font",
-                      "fontSize": 14,
-                      "fontWeight": "600"
-                    },
-                    {
-                      "type": "text",
-                      "id": "HQ4jG",
-                      "name": "D",
-                      "fill": "$accent-text",
-                      "content": "2м 41с · ажиллаж буй",
-                      "textAlign": "center",
-                      "fontFamily": "$font",
-                      "fontSize": 12,
-                      "fontWeight": "700"
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "xwoXv",
-                  "name": "Belt",
-                  "width": "fill_container",
-                  "layout": "vertical",
-                  "padding": [
-                    21,
-                    0,
-                    0,
-                    0
-                  ],
-                  "children": [
-                    {
-                      "type": "rectangle",
-                      "cornerRadius": 2,
-                      "id": "fJZyo",
-                      "name": "Bar",
-                      "fill": "#D8D3CC",
-                      "width": "fill_container",
-                      "height": 4
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "f0wyj",
-                  "name": "Step · Нэгтгэх хүсэлт",
-                  "width": 150,
-                  "layout": "vertical",
-                  "gap": 10,
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "frame",
-                      "id": "KLQle",
-                      "name": "Orb",
-                      "width": 46,
-                      "height": 46,
-                      "fill": {
-                        "type": "gradient",
-                        "gradientType": "linear",
-                        "enabled": true,
-                        "rotation": 180,
-                        "size": {
-                          "height": 1
-                        },
-                        "colors": [
-                          {
-                            "color": "#FFFFFF",
-                            "position": 0
-                          },
-                          {
-                            "color": "#E8E6E2",
-                            "position": 1
-                          }
-                        ]
-                      },
-                      "cornerRadius": 999,
-                      "stroke": {
-                        "type": "gradient",
-                        "gradientType": "linear",
-                        "enabled": true,
-                        "rotation": 180,
-                        "size": {
-                          "height": 1
-                        },
-                        "colors": [
-                          {
-                            "color": "$highlight",
-                            "position": 0
-                          },
-                          {
-                            "color": "#FFFFFF00",
-                            "position": 1
-                          }
-                        ]
-                      },
-                      "strokeWidth": 1.5,
-                      "effect": [
-                        {
-                          "type": "shadow",
-                          "shadowType": "outer",
-                          "color": "$shadow-depth",
-                          "offset": {
-                            "x": 0,
-                            "y": 6
-                          },
-                          "blur": 12
-                        },
-                        {
-                          "type": "shadow",
-                          "shadowType": "inner",
-                          "color": "#FFFFFF59",
-                          "offset": {
-                            "x": 0,
-                            "y": 2
-                          },
-                          "blur": 3
-                        }
-                      ],
-                      "justifyContent": "center",
-                      "alignItems": "center",
-                      "children": [
-                        {
-                          "type": "icon",
-                          "id": "DV5sf",
-                          "name": "I",
-                          "width": 19,
-                          "height": 19,
-                          "icon": "git-pull-request",
-                          "library": "lucide",
-                          "fill": "$text-3"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "text",
-                      "id": "s7PerV",
-                      "name": "N",
-                      "fill": "$text-3",
-                      "content": "Нэгтгэх хүсэлт",
-                      "textAlign": "center",
-                      "fontFamily": "$font",
-                      "fontSize": 14,
-                      "fontWeight": "600"
-                    },
-                    {
-                      "type": "text",
-                      "id": "KEHiC",
-                      "name": "D",
-                      "fill": "$text-2",
-                      "content": "хүлээгдэж",
-                      "textAlign": "center",
-                      "fontFamily": "$font",
-                      "fontSize": 12,
-                      "fontWeight": "normal"
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "type": "frame",
           "id": "M8QYo",
           "name": "Lower",
           "width": "fill_container",
@@ -39899,143 +38551,1165 @@
             },
             {
               "type": "frame",
-              "id": "RLinQ",
-              "name": "Side",
+              "id": "TbAD1",
+              "name": "Tile · Ticket Head",
+              "clip": true,
               "width": 400,
               "height": "fill_container",
+              "fill": {
+                "type": "gradient",
+                "gradientType": "linear",
+                "enabled": true,
+                "rotation": 180,
+                "size": {
+                  "height": 1
+                },
+                "colors": [
+                  {
+                    "color": "$tile-from",
+                    "position": 0
+                  },
+                  {
+                    "color": "$tile-to",
+                    "position": 1
+                  }
+                ]
+              },
+              "cornerRadius": 24,
+              "stroke": {
+                "type": "gradient",
+                "gradientType": "linear",
+                "enabled": true,
+                "rotation": 180,
+                "size": {
+                  "height": 1
+                },
+                "colors": [
+                  {
+                    "color": "$highlight",
+                    "position": 0
+                  },
+                  {
+                    "color": "#FFFFFF00",
+                    "position": 1
+                  }
+                ]
+              },
+              "strokeWidth": 1,
+              "effect": [
+                {
+                  "type": "shadow",
+                  "shadowType": "outer",
+                  "color": "$shadow-soft",
+                  "offset": {
+                    "x": 0,
+                    "y": 1
+                  },
+                  "blur": 2
+                },
+                {
+                  "type": "shadow",
+                  "shadowType": "outer",
+                  "color": "$shadow-depth",
+                  "offset": {
+                    "x": 0,
+                    "y": 14
+                  },
+                  "blur": 36
+                }
+              ],
               "layout": "vertical",
-              "gap": 20,
+              "gap": 22,
+              "padding": 24,
               "children": [
                 {
                   "type": "frame",
-                  "id": "XUK8q",
-                  "name": "Tile · Үр дүн",
-                  "clip": true,
+                  "id": "Fo5sA",
+                  "name": "Top",
                   "width": "fill_container",
-                  "height": "fill_container",
-                  "fill": {
-                    "type": "gradient",
-                    "gradientType": "linear",
-                    "enabled": true,
-                    "rotation": 180,
-                    "size": {
-                      "height": 1
-                    },
-                    "colors": [
-                      {
-                        "color": "$tile-from",
-                        "position": 0
-                      },
-                      {
-                        "color": "$tile-to",
-                        "position": 1
-                      }
-                    ]
-                  },
-                  "cornerRadius": 24,
-                  "stroke": {
-                    "type": "gradient",
-                    "gradientType": "linear",
-                    "enabled": true,
-                    "rotation": 180,
-                    "size": {
-                      "height": 1
-                    },
-                    "colors": [
-                      {
-                        "color": "$highlight",
-                        "position": 0
-                      },
-                      {
-                        "color": "#FFFFFF00",
-                        "position": 1
-                      }
-                    ]
-                  },
-                  "strokeWidth": 1,
-                  "effect": [
-                    {
-                      "type": "shadow",
-                      "shadowType": "outer",
-                      "color": "$shadow-soft",
-                      "offset": {
-                        "x": 0,
-                        "y": 1
-                      },
-                      "blur": 2
-                    },
-                    {
-                      "type": "shadow",
-                      "shadowType": "outer",
-                      "color": "$shadow-depth",
-                      "offset": {
-                        "x": 0,
-                        "y": 14
-                      },
-                      "blur": 36
-                    }
-                  ],
                   "layout": "vertical",
-                  "gap": 8,
-                  "padding": 22,
+                  "gap": 18,
                   "children": [
                     {
                       "type": "frame",
-                      "id": "EO7OZ",
-                      "name": "Head",
+                      "id": "Bw0E2",
+                      "name": "L",
                       "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 10,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "o6iOHC",
+                          "name": "Crumb",
+                          "gap": 6,
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "dq4Jg",
+                              "name": "A",
+                              "fill": "$text-3",
+                              "content": "shop-frontend",
+                              "fontFamily": "$font",
+                              "fontSize": 14,
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "icon",
+                              "id": "AoAls",
+                              "name": "C",
+                              "width": 13,
+                              "height": 13,
+                              "icon": "chevron-right",
+                              "library": "lucide",
+                              "fill": "$text-3"
+                            },
+                            {
+                              "type": "text",
+                              "id": "Mp9Mp",
+                              "name": "B",
+                              "fill": "$text-2",
+                              "content": "#142",
+                              "fontFamily": "$font",
+                              "fontSize": 14,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "uD3fL",
+                          "name": "Title Row",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "gap": 10,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "b2kG2",
+                              "name": "T",
+                              "fill": "$text",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "Google-ээр нэвтрэх эрх нэмэх",
+                              "lineHeight": 1.2,
+                              "fontFamily": "$font-head",
+                              "fontSize": 24,
+                              "fontWeight": "600",
+                              "letterSpacing": -0.5
+                            },
+                            {
+                              "type": "frame",
+                              "id": "fgulr",
+                              "name": "Status",
+                              "fill": "$accent-soft",
+                              "cornerRadius": 999,
+                              "gap": 7,
+                              "padding": [
+                                6,
+                                12
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "ellipse",
+                                  "id": "qo1nc",
+                                  "name": "D",
+                                  "fill": "$accent",
+                                  "width": 8,
+                                  "height": 8,
+                                  "effect": {
+                                    "type": "shadow",
+                                    "shadowType": "outer",
+                                    "color": "#F26B1DAA",
+                                    "blur": 6
+                                  }
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "l3loC",
+                                  "name": "L",
+                                  "fill": "$accent-text",
+                                  "content": "Ажиллаж буй · Хөгжүүлэлт",
+                                  "fontFamily": "$font",
+                                  "fontSize": 12,
+                                  "fontWeight": "700"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "wQaBF",
+                          "name": "Meta",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "gap": 8,
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "ILttp",
+                              "name": "M · factory/142-oauth-google",
+                              "fill": "$surface-2",
+                              "cornerRadius": 999,
+                              "gap": 6,
+                              "padding": [
+                                6,
+                                10
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "K10KB",
+                                  "name": "I",
+                                  "width": 12,
+                                  "height": 12,
+                                  "icon": "git-branch",
+                                  "library": "lucide",
+                                  "fill": "$text-2"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "QHz6B",
+                                  "name": "L",
+                                  "fill": "$text-2",
+                                  "content": "factory/142-oauth-google",
+                                  "fontFamily": "$font",
+                                  "fontSize": 12,
+                                  "fontWeight": "500"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "MHqVZ",
+                              "name": "Meta Row 2",
+                              "gap": 8,
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "a9wwG",
+                                  "name": "M · Стандарт · 6 алхам",
+                                  "fill": "$surface-2",
+                                  "cornerRadius": 999,
+                                  "gap": 6,
+                                  "padding": [
+                                    6,
+                                    10
+                                  ],
+                                  "alignItems": "center",
+                                  "children": [
+                                    {
+                                      "type": "icon",
+                                      "id": "OQ0xI",
+                                      "name": "I",
+                                      "width": 12,
+                                      "height": 12,
+                                      "icon": "workflow",
+                                      "library": "lucide",
+                                      "fill": "$text-2"
+                                    },
+                                    {
+                                      "type": "text",
+                                      "id": "ShCxi",
+                                      "name": "L",
+                                      "fill": "$text-2",
+                                      "content": "Стандарт · 6 алхам",
+                                      "fontFamily": "$font",
+                                      "fontSize": 12,
+                                      "fontWeight": "500"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "hlvxo",
+                                  "name": "M · 14 мин өмнө эхэлсэн",
+                                  "fill": "$surface-2",
+                                  "cornerRadius": 999,
+                                  "gap": 6,
+                                  "padding": [
+                                    6,
+                                    10
+                                  ],
+                                  "alignItems": "center",
+                                  "children": [
+                                    {
+                                      "type": "icon",
+                                      "id": "KZlR7",
+                                      "name": "I",
+                                      "width": 12,
+                                      "height": 12,
+                                      "icon": "timer",
+                                      "library": "lucide",
+                                      "fill": "$text-2"
+                                    },
+                                    {
+                                      "type": "text",
+                                      "id": "UnP2G",
+                                      "name": "L",
+                                      "fill": "$text-2",
+                                      "content": "14 мин өмнө эхэлсэн",
+                                      "fontFamily": "$font",
+                                      "fontSize": 12,
+                                      "fontWeight": "500"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "RkCsS",
+                      "name": "R",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 16,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "O5xO7M",
+                          "name": "Stats",
+                          "width": "fill_container",
+                          "gap": 28,
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "qEp90",
+                              "name": "Stat · хугацаа",
+                              "layout": "vertical",
+                              "gap": 2,
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "jaF0E",
+                                  "name": "V",
+                                  "fill": "$text",
+                                  "content": "12м 19с",
+                                  "fontFamily": "$font-head",
+                                  "fontSize": 26,
+                                  "fontWeight": "700",
+                                  "letterSpacing": -0.8
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "nukMw",
+                                  "name": "L",
+                                  "fill": "$text-2",
+                                  "content": "хугацаа",
+                                  "fontFamily": "$font",
+                                  "fontSize": 12,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "Cr89T",
+                              "name": "Stat · зарцуулсан",
+                              "layout": "vertical",
+                              "gap": 2,
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "TQaY3",
+                                  "name": "V",
+                                  "fill": "$text",
+                                  "content": "$1.54",
+                                  "fontFamily": "$font-head",
+                                  "fontSize": 26,
+                                  "fontWeight": "700",
+                                  "letterSpacing": -0.8
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "OB5DP",
+                                  "name": "L",
+                                  "fill": "$text-2",
+                                  "content": "зарцуулсан · төсөв $5.00",
+                                  "fontFamily": "$font",
+                                  "fontSize": 12,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "N98zv",
+                          "name": "Actions",
+                          "width": "fill_container",
+                          "gap": 10,
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "j3yFX",
+                              "name": "Pause",
+                              "width": "fill_container",
+                              "fill": "$surface-2",
+                              "cornerRadius": 12,
+                              "gap": 7,
+                              "padding": [
+                                10,
+                                14
+                              ],
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "bgkVx",
+                                  "name": "I",
+                                  "width": 14,
+                                  "height": 14,
+                                  "icon": "pause",
+                                  "library": "lucide",
+                                  "fill": "$text-2"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "hKQyZ",
+                                  "name": "L",
+                                  "fill": "$text",
+                                  "content": "Түр зогсоох",
+                                  "fontFamily": "$font",
+                                  "fontSize": 14,
+                                  "fontWeight": "600"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "Z6xAm",
+                              "name": "Cancel run",
+                              "width": "fill_container",
+                              "fill": "$danger-soft",
+                              "cornerRadius": 12,
+                              "gap": 7,
+                              "padding": [
+                                10,
+                                14
+                              ],
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "icon",
+                                  "id": "h1F5Ux",
+                                  "name": "I",
+                                  "width": 14,
+                                  "height": 14,
+                                  "icon": "circle-x",
+                                  "library": "lucide",
+                                  "fill": "$danger"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "ieawO",
+                                  "name": "L",
+                                  "fill": "#A12A2E",
+                                  "content": "Цуцлах",
+                                  "fontFamily": "$font",
+                                  "fontSize": 14,
+                                  "fontWeight": "600"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "qlg3A",
+                  "name": "Track",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "orYjk",
+                      "name": "Step · Тодорхойлолт",
+                      "width": "fill_container",
+                      "gap": 14,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "gNhhX",
+                          "name": "Orb",
+                          "width": 40,
+                          "height": 40,
+                          "fill": {
+                            "type": "gradient",
+                            "gradientType": "linear",
+                            "enabled": true,
+                            "rotation": 180,
+                            "size": {
+                              "height": 1
+                            },
+                            "colors": [
+                              {
+                                "color": "$mint-from",
+                                "position": 0
+                              },
+                              {
+                                "color": "$mint-to",
+                                "position": 1
+                              }
+                            ]
+                          },
+                          "cornerRadius": 999,
+                          "stroke": {
+                            "type": "gradient",
+                            "gradientType": "linear",
+                            "enabled": true,
+                            "rotation": 180,
+                            "size": {
+                              "height": 1
+                            },
+                            "colors": [
+                              {
+                                "color": "$highlight",
+                                "position": 0
+                              },
+                              {
+                                "color": "#FFFFFF00",
+                                "position": 1
+                              }
+                            ]
+                          },
+                          "strokeWidth": 1.5,
+                          "effect": [
+                            {
+                              "type": "shadow",
+                              "shadowType": "outer",
+                              "color": "#16A34A4D",
+                              "offset": {
+                                "x": 0,
+                                "y": 6
+                              },
+                              "blur": 12
+                            },
+                            {
+                              "type": "shadow",
+                              "shadowType": "inner",
+                              "color": "#FFFFFF59",
+                              "offset": {
+                                "x": 0,
+                                "y": 2
+                              },
+                              "blur": 3
+                            }
+                          ],
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "Wr4Qa",
+                              "name": "I",
+                              "width": 17,
+                              "height": 17,
+                              "icon": "check",
+                              "library": "lucide",
+                              "fill": "$on-mint"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "u9VvCA",
+                          "name": "Text",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "gap": 2,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "hzNkY",
+                              "name": "N",
+                              "fill": "$text",
+                              "content": "Тодорхойлолт",
+                              "fontFamily": "$font",
+                              "fontSize": 14,
+                              "fontWeight": "600"
+                            },
+                            {
+                              "type": "text",
+                              "id": "bqBoL",
+                              "name": "D",
+                              "fill": "$text-2",
+                              "content": "2м 10с",
+                              "fontFamily": "$font",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "oDYMC",
+                      "name": "Belt",
+                      "width": "fill_container",
+                      "layout": "vertical",
                       "padding": [
+                        4,
                         0,
+                        4,
+                        18
+                      ],
+                      "children": [
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 2,
+                          "id": "S6g4St",
+                          "name": "Bar",
+                          "fill": {
+                            "type": "gradient",
+                            "gradientType": "linear",
+                            "enabled": true,
+                            "rotation": 180,
+                            "size": {
+                              "height": 1
+                            },
+                            "colors": [
+                              {
+                                "color": "#A9E8CF",
+                                "position": 0
+                              },
+                              {
+                                "color": "#A9E8CF",
+                                "position": 1
+                              }
+                            ]
+                          },
+                          "width": 4,
+                          "height": 14
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "OlejA",
+                      "name": "Step · Дизайн · pen.dev",
+                      "width": "fill_container",
+                      "gap": 14,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "WRVdl",
+                          "name": "Orb",
+                          "width": 40,
+                          "height": 40,
+                          "fill": {
+                            "type": "gradient",
+                            "gradientType": "linear",
+                            "enabled": true,
+                            "rotation": 180,
+                            "size": {
+                              "height": 1
+                            },
+                            "colors": [
+                              {
+                                "color": "$mint-from",
+                                "position": 0
+                              },
+                              {
+                                "color": "$mint-to",
+                                "position": 1
+                              }
+                            ]
+                          },
+                          "cornerRadius": 999,
+                          "stroke": {
+                            "type": "gradient",
+                            "gradientType": "linear",
+                            "enabled": true,
+                            "rotation": 180,
+                            "size": {
+                              "height": 1
+                            },
+                            "colors": [
+                              {
+                                "color": "$highlight",
+                                "position": 0
+                              },
+                              {
+                                "color": "#FFFFFF00",
+                                "position": 1
+                              }
+                            ]
+                          },
+                          "strokeWidth": 1.5,
+                          "effect": [
+                            {
+                              "type": "shadow",
+                              "shadowType": "outer",
+                              "color": "#16A34A4D",
+                              "offset": {
+                                "x": 0,
+                                "y": 6
+                              },
+                              "blur": 12
+                            },
+                            {
+                              "type": "shadow",
+                              "shadowType": "inner",
+                              "color": "#FFFFFF59",
+                              "offset": {
+                                "x": 0,
+                                "y": 2
+                              },
+                              "blur": 3
+                            }
+                          ],
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "chCRb",
+                              "name": "I",
+                              "width": 17,
+                              "height": 17,
+                              "icon": "check",
+                              "library": "lucide",
+                              "fill": "$on-mint"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "e1dgis",
+                          "name": "Text",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "gap": 2,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "cY0vn",
+                              "name": "N",
+                              "fill": "$text",
+                              "content": "Дизайн · pen.dev",
+                              "fontFamily": "$font",
+                              "fontSize": 14,
+                              "fontWeight": "600"
+                            },
+                            {
+                              "type": "text",
+                              "id": "kqzKW",
+                              "name": "D",
+                              "fill": "$text-2",
+                              "content": "2м 41с",
+                              "fontFamily": "$font",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "L8Wyx",
+                      "name": "Belt",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "padding": [
+                        4,
                         0,
-                        6,
-                        0
+                        4,
+                        18
                       ],
-                      "justifyContent": "space_between",
-                      "alignItems": "center",
                       "children": [
                         {
-                          "type": "text",
-                          "id": "RHVgm",
-                          "name": "T",
-                          "fill": "$text",
-                          "content": "Үр дүн",
-                          "fontFamily": "$font-head",
-                          "fontSize": 18,
-                          "fontWeight": "600",
-                          "letterSpacing": -0.3
-                        },
-                        {
-                          "type": "text",
-                          "id": "vqgKg",
-                          "name": "C",
-                          "fill": "$text-2",
-                          "content": "6 гаралт",
-                          "fontFamily": "$font",
-                          "fontSize": 12,
-                          "fontWeight": "normal"
+                          "type": "rectangle",
+                          "cornerRadius": 2,
+                          "id": "V9orM",
+                          "name": "Bar",
+                          "fill": {
+                            "type": "gradient",
+                            "gradientType": "linear",
+                            "enabled": true,
+                            "rotation": 180,
+                            "size": {
+                              "height": 1
+                            },
+                            "colors": [
+                              {
+                                "color": "#A9E8CF",
+                                "position": 0
+                              },
+                              {
+                                "color": "#A9E8CF",
+                                "position": 1
+                              }
+                            ]
+                          },
+                          "width": 4,
+                          "height": 14
                         }
                       ]
                     },
                     {
                       "type": "frame",
-                      "id": "sytkm",
-                      "name": "Art spec.md",
+                      "id": "CpchM",
+                      "name": "Step · Төлөвлөгөө",
                       "width": "fill_container",
-                      "fill": "$surface-2",
-                      "cornerRadius": 14,
-                      "gap": 12,
-                      "padding": [
-                        10,
-                        12
-                      ],
+                      "gap": 14,
                       "alignItems": "center",
                       "children": [
                         {
                           "type": "frame",
-                          "id": "jGDKQ",
+                          "id": "y32Oww",
                           "name": "Orb",
-                          "width": 30,
-                          "height": 30,
+                          "width": 40,
+                          "height": 40,
+                          "fill": {
+                            "type": "gradient",
+                            "gradientType": "linear",
+                            "enabled": true,
+                            "rotation": 180,
+                            "size": {
+                              "height": 1
+                            },
+                            "colors": [
+                              {
+                                "color": "$mint-from",
+                                "position": 0
+                              },
+                              {
+                                "color": "$mint-to",
+                                "position": 1
+                              }
+                            ]
+                          },
+                          "cornerRadius": 999,
+                          "stroke": {
+                            "type": "gradient",
+                            "gradientType": "linear",
+                            "enabled": true,
+                            "rotation": 180,
+                            "size": {
+                              "height": 1
+                            },
+                            "colors": [
+                              {
+                                "color": "$highlight",
+                                "position": 0
+                              },
+                              {
+                                "color": "#FFFFFF00",
+                                "position": 1
+                              }
+                            ]
+                          },
+                          "strokeWidth": 1.5,
+                          "effect": [
+                            {
+                              "type": "shadow",
+                              "shadowType": "outer",
+                              "color": "#16A34A4D",
+                              "offset": {
+                                "x": 0,
+                                "y": 6
+                              },
+                              "blur": 12
+                            },
+                            {
+                              "type": "shadow",
+                              "shadowType": "inner",
+                              "color": "#FFFFFF59",
+                              "offset": {
+                                "x": 0,
+                                "y": 2
+                              },
+                              "blur": 3
+                            }
+                          ],
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "lrpiS",
+                              "name": "I",
+                              "width": 17,
+                              "height": 17,
+                              "icon": "check",
+                              "library": "lucide",
+                              "fill": "$on-mint"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "A4mlO9",
+                          "name": "Text",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "gap": 2,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "R7HKDf",
+                              "name": "N",
+                              "fill": "$text",
+                              "content": "Төлөвлөгөө",
+                              "fontFamily": "$font",
+                              "fontSize": 14,
+                              "fontWeight": "600"
+                            },
+                            {
+                              "type": "text",
+                              "id": "AubGm",
+                              "name": "D",
+                              "fill": "$text-2",
+                              "content": "3м 42с",
+                              "fontFamily": "$font",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "r6Pbfm",
+                      "name": "Belt",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "padding": [
+                        4,
+                        0,
+                        4,
+                        18
+                      ],
+                      "children": [
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 2,
+                          "id": "EddmU",
+                          "name": "Bar",
+                          "fill": {
+                            "type": "gradient",
+                            "gradientType": "linear",
+                            "enabled": true,
+                            "rotation": 180,
+                            "size": {
+                              "height": 1
+                            },
+                            "colors": [
+                              {
+                                "color": "#A9E8CF",
+                                "position": 0
+                              },
+                              {
+                                "color": "#A9E8CF",
+                                "position": 1
+                              }
+                            ]
+                          },
+                          "width": 4,
+                          "height": 14
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "zfTEh",
+                      "name": "Step · Даалгавар",
+                      "width": "fill_container",
+                      "gap": 14,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "MBmdh",
+                          "name": "Orb",
+                          "width": 40,
+                          "height": 40,
+                          "fill": {
+                            "type": "gradient",
+                            "gradientType": "linear",
+                            "enabled": true,
+                            "rotation": 180,
+                            "size": {
+                              "height": 1
+                            },
+                            "colors": [
+                              {
+                                "color": "$mint-from",
+                                "position": 0
+                              },
+                              {
+                                "color": "$mint-to",
+                                "position": 1
+                              }
+                            ]
+                          },
+                          "cornerRadius": 999,
+                          "stroke": {
+                            "type": "gradient",
+                            "gradientType": "linear",
+                            "enabled": true,
+                            "rotation": 180,
+                            "size": {
+                              "height": 1
+                            },
+                            "colors": [
+                              {
+                                "color": "$highlight",
+                                "position": 0
+                              },
+                              {
+                                "color": "#FFFFFF00",
+                                "position": 1
+                              }
+                            ]
+                          },
+                          "strokeWidth": 1.5,
+                          "effect": [
+                            {
+                              "type": "shadow",
+                              "shadowType": "outer",
+                              "color": "#16A34A4D",
+                              "offset": {
+                                "x": 0,
+                                "y": 6
+                              },
+                              "blur": 12
+                            },
+                            {
+                              "type": "shadow",
+                              "shadowType": "inner",
+                              "color": "#FFFFFF59",
+                              "offset": {
+                                "x": 0,
+                                "y": 2
+                              },
+                              "blur": 3
+                            }
+                          ],
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "OKpwg",
+                              "name": "I",
+                              "width": 17,
+                              "height": 17,
+                              "icon": "check",
+                              "library": "lucide",
+                              "fill": "$on-mint"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "t2uMVC",
+                          "name": "Text",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "gap": 2,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "ltkOL",
+                              "name": "N",
+                              "fill": "$text",
+                              "content": "Даалгавар",
+                              "fontFamily": "$font",
+                              "fontSize": 14,
+                              "fontWeight": "600"
+                            },
+                            {
+                              "type": "text",
+                              "id": "PZQAr",
+                              "name": "D",
+                              "fill": "$text-2",
+                              "content": "1м 05с",
+                              "fontFamily": "$font",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "FnSfg",
+                      "name": "Belt",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "padding": [
+                        4,
+                        0,
+                        4,
+                        18
+                      ],
+                      "children": [
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 2,
+                          "id": "JXBmB",
+                          "name": "Bar",
+                          "fill": {
+                            "type": "gradient",
+                            "gradientType": "linear",
+                            "enabled": true,
+                            "rotation": 180,
+                            "size": {
+                              "height": 1
+                            },
+                            "colors": [
+                              {
+                                "color": "#A9E8CF",
+                                "position": 0
+                              },
+                              {
+                                "color": "#F8B98F",
+                                "position": 1
+                              }
+                            ]
+                          },
+                          "width": 4,
+                          "height": 14
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "M3To60",
+                      "name": "Step · Хөгжүүлэлт",
+                      "width": "fill_container",
+                      "gap": 14,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "GaLbg",
+                          "name": "Orb",
+                          "width": 40,
+                          "height": 40,
                           "fill": {
                             "type": "gradient",
                             "gradientType": "linear",
@@ -40055,17 +39729,59 @@
                               }
                             ]
                           },
-                          "cornerRadius": 10,
+                          "cornerRadius": 999,
+                          "stroke": {
+                            "type": "gradient",
+                            "gradientType": "linear",
+                            "enabled": true,
+                            "rotation": 180,
+                            "size": {
+                              "height": 1
+                            },
+                            "colors": [
+                              {
+                                "color": "$highlight",
+                                "position": 0
+                              },
+                              {
+                                "color": "#FFFFFF00",
+                                "position": 1
+                              }
+                            ]
+                          },
+                          "strokeWidth": 1.5,
+                          "effect": [
+                            {
+                              "type": "shadow",
+                              "shadowType": "outer",
+                              "color": "$glow-accent",
+                              "offset": {
+                                "x": 0,
+                                "y": 6
+                              },
+                              "blur": 18
+                            },
+                            {
+                              "type": "shadow",
+                              "shadowType": "inner",
+                              "color": "#FFFFFF59",
+                              "offset": {
+                                "x": 0,
+                                "y": 2
+                              },
+                              "blur": 3
+                            }
+                          ],
                           "justifyContent": "center",
                           "alignItems": "center",
                           "children": [
                             {
                               "type": "icon",
-                              "id": "QJAX1",
+                              "id": "QGzka",
                               "name": "I",
-                              "width": 14,
-                              "height": 14,
-                              "icon": "file-text",
+                              "width": 17,
+                              "height": 17,
+                              "icon": "code",
                               "library": "lucide",
                               "fill": "$text-inv"
                             }
@@ -40073,66 +39789,74 @@
                         },
                         {
                           "type": "frame",
-                          "id": "i1nkJ",
-                          "name": "Tx",
+                          "id": "WtQFf",
+                          "name": "Text",
                           "width": "fill_container",
                           "layout": "vertical",
                           "gap": 2,
                           "children": [
                             {
                               "type": "text",
-                              "id": "rLasS",
-                              "name": "T",
+                              "id": "W0bJLe",
+                              "name": "N",
                               "fill": "$text",
-                              "content": "spec.md",
+                              "content": "Хөгжүүлэлт",
                               "fontFamily": "$font",
                               "fontSize": 14,
                               "fontWeight": "600"
                             },
                             {
                               "type": "text",
-                              "id": "A0Jtz9",
-                              "name": "S",
-                              "fill": "$text-2",
-                              "content": "Шаардлага · Тодорхойлолт агент",
+                              "id": "HQ4jG",
+                              "name": "D",
+                              "fill": "$accent-text",
+                              "content": "2м 41с · ажиллаж буй",
                               "fontFamily": "$font",
                               "fontSize": 12,
-                              "fontWeight": "normal"
+                              "fontWeight": "700"
                             }
                           ]
-                        },
-                        {
-                          "type": "icon",
-                          "id": "vW9H3",
-                          "name": "Open",
-                          "width": 14,
-                          "height": 14,
-                          "icon": "external-link",
-                          "library": "lucide",
-                          "fill": "$text-3"
                         }
                       ]
                     },
                     {
                       "type": "frame",
-                      "id": "jkZFu",
-                      "name": "Art 4 дэлгэц",
+                      "id": "xwoXv",
+                      "name": "Belt",
                       "width": "fill_container",
-                      "fill": "$surface-2",
-                      "cornerRadius": 14,
-                      "gap": 12,
+                      "layout": "vertical",
                       "padding": [
-                        10,
-                        12
+                        4,
+                        0,
+                        4,
+                        18
                       ],
+                      "children": [
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 2,
+                          "id": "fJZyo",
+                          "name": "Bar",
+                          "fill": "#D8D3CC",
+                          "width": 4,
+                          "height": 14
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "f0wyj",
+                      "name": "Step · Нэгтгэх хүсэлт",
+                      "width": "fill_container",
+                      "gap": 14,
                       "alignItems": "center",
                       "children": [
                         {
                           "type": "frame",
-                          "id": "Z6aj1c",
+                          "id": "KLQle",
                           "name": "Orb",
-                          "width": 30,
-                          "height": 30,
+                          "width": 40,
+                          "height": 40,
                           "fill": {
                             "type": "gradient",
                             "gradientType": "linear",
@@ -40143,94 +39867,17 @@
                             },
                             "colors": [
                               {
-                                "color": "$pen-from",
+                                "color": "#FFFFFF",
                                 "position": 0
                               },
                               {
-                                "color": "$pen-to",
+                                "color": "#E8E6E2",
                                 "position": 1
                               }
                             ]
                           },
-                          "cornerRadius": 10,
-                          "justifyContent": "center",
-                          "alignItems": "center",
-                          "children": [
-                            {
-                              "type": "icon",
-                              "id": "I9l941",
-                              "name": "I",
-                              "width": 14,
-                              "height": 14,
-                              "icon": "pen-tool",
-                              "library": "lucide",
-                              "fill": "$text-inv"
-                            }
-                          ]
-                        },
-                        {
-                          "type": "frame",
-                          "id": "jNNBt",
-                          "name": "Tx",
-                          "width": "fill_container",
-                          "layout": "vertical",
-                          "gap": 2,
-                          "children": [
-                            {
-                              "type": "text",
-                              "id": "QzxwG",
-                              "name": "T",
-                              "fill": "$text",
-                              "content": "4 дэлгэц",
-                              "fontFamily": "$font",
-                              "fontSize": 14,
-                              "fontWeight": "600"
-                            },
-                            {
-                              "type": "text",
-                              "id": "e79qOT",
-                              "name": "S",
-                              "fill": "$text-2",
-                              "content": "ui.pen + exports · pen.dev",
-                              "fontFamily": "$font",
-                              "fontSize": 12,
-                              "fontWeight": "normal"
-                            }
-                          ]
-                        },
-                        {
-                          "type": "icon",
-                          "id": "DH4mw",
-                          "name": "Open",
-                          "width": 14,
-                          "height": 14,
-                          "icon": "external-link",
-                          "library": "lucide",
-                          "fill": "$text-3"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "frame",
-                      "id": "IBqfN",
-                      "name": "Art plan.md",
-                      "width": "fill_container",
-                      "fill": "$surface-2",
-                      "cornerRadius": 14,
-                      "gap": 12,
-                      "padding": [
-                        10,
-                        12
-                      ],
-                      "alignItems": "center",
-                      "children": [
-                        {
-                          "type": "frame",
-                          "id": "W4PUe",
-                          "name": "Orb",
-                          "width": 30,
-                          "height": 30,
-                          "fill": {
+                          "cornerRadius": 999,
+                          "stroke": {
                             "type": "gradient",
                             "gradientType": "linear",
                             "enabled": true,
@@ -40240,299 +39887,47 @@
                             },
                             "colors": [
                               {
-                                "color": "$accent-from",
+                                "color": "$highlight",
                                 "position": 0
                               },
                               {
-                                "color": "$accent-to",
+                                "color": "#FFFFFF00",
                                 "position": 1
                               }
                             ]
                           },
-                          "cornerRadius": 10,
-                          "justifyContent": "center",
-                          "alignItems": "center",
-                          "children": [
+                          "strokeWidth": 1.5,
+                          "effect": [
                             {
-                              "type": "icon",
-                              "id": "dV993",
-                              "name": "I",
-                              "width": 14,
-                              "height": 14,
-                              "icon": "map",
-                              "library": "lucide",
-                              "fill": "$text-inv"
-                            }
-                          ]
-                        },
-                        {
-                          "type": "frame",
-                          "id": "jzbNH",
-                          "name": "Tx",
-                          "width": "fill_container",
-                          "layout": "vertical",
-                          "gap": 2,
-                          "children": [
-                            {
-                              "type": "text",
-                              "id": "WQPgs",
-                              "name": "T",
-                              "fill": "$text",
-                              "content": "plan.md",
-                              "fontFamily": "$font",
-                              "fontSize": 14,
-                              "fontWeight": "600"
-                            },
-                            {
-                              "type": "text",
-                              "id": "wj8Bb",
-                              "name": "S",
-                              "fill": "$text-2",
-                              "content": "Арга барил · Төлөвлөгөө агент",
-                              "fontFamily": "$font",
-                              "fontSize": 12,
-                              "fontWeight": "normal"
-                            }
-                          ]
-                        },
-                        {
-                          "type": "icon",
-                          "id": "IwGTR",
-                          "name": "Open",
-                          "width": 14,
-                          "height": 14,
-                          "icon": "external-link",
-                          "library": "lucide",
-                          "fill": "$text-3"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "frame",
-                      "id": "A13Nfs",
-                      "name": "Art tasks.md",
-                      "width": "fill_container",
-                      "fill": "$surface-2",
-                      "cornerRadius": 14,
-                      "gap": 12,
-                      "padding": [
-                        10,
-                        12
-                      ],
-                      "alignItems": "center",
-                      "children": [
-                        {
-                          "type": "frame",
-                          "id": "WYAof",
-                          "name": "Orb",
-                          "width": 30,
-                          "height": 30,
-                          "fill": {
-                            "type": "gradient",
-                            "gradientType": "linear",
-                            "enabled": true,
-                            "rotation": 180,
-                            "size": {
-                              "height": 1
-                            },
-                            "colors": [
-                              {
-                                "color": "$accent-from",
-                                "position": 0
+                              "type": "shadow",
+                              "shadowType": "outer",
+                              "color": "$shadow-depth",
+                              "offset": {
+                                "x": 0,
+                                "y": 6
                               },
-                              {
-                                "color": "$accent-to",
-                                "position": 1
-                              }
-                            ]
-                          },
-                          "cornerRadius": 10,
-                          "justifyContent": "center",
-                          "alignItems": "center",
-                          "children": [
-                            {
-                              "type": "icon",
-                              "id": "SVXY0",
-                              "name": "I",
-                              "width": 14,
-                              "height": 14,
-                              "icon": "list-checks",
-                              "library": "lucide",
-                              "fill": "$text-inv"
-                            }
-                          ]
-                        },
-                        {
-                          "type": "frame",
-                          "id": "NvSfM",
-                          "name": "Tx",
-                          "width": "fill_container",
-                          "layout": "vertical",
-                          "gap": 2,
-                          "children": [
-                            {
-                              "type": "text",
-                              "id": "v7ygoH",
-                              "name": "T",
-                              "fill": "$text",
-                              "content": "tasks.md",
-                              "fontFamily": "$font",
-                              "fontSize": 14,
-                              "fontWeight": "600"
+                              "blur": 12
                             },
                             {
-                              "type": "text",
-                              "id": "qRa7E",
-                              "name": "S",
-                              "fill": "$text-2",
-                              "content": "4 даалгавар · Даалгавар агент",
-                              "fontFamily": "$font",
-                              "fontSize": 12,
-                              "fontWeight": "normal"
-                            }
-                          ]
-                        },
-                        {
-                          "type": "icon",
-                          "id": "sEJxZ",
-                          "name": "Open",
-                          "width": 14,
-                          "height": 14,
-                          "icon": "external-link",
-                          "library": "lucide",
-                          "fill": "$text-3"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "frame",
-                      "id": "ZXUsq",
-                      "name": "Art 4 commit",
-                      "width": "fill_container",
-                      "fill": "$surface-2",
-                      "cornerRadius": 14,
-                      "gap": 12,
-                      "padding": [
-                        10,
-                        12
-                      ],
-                      "alignItems": "center",
-                      "children": [
-                        {
-                          "type": "frame",
-                          "id": "P5Sf1",
-                          "name": "Orb",
-                          "width": 30,
-                          "height": 30,
-                          "fill": {
-                            "type": "gradient",
-                            "gradientType": "linear",
-                            "enabled": true,
-                            "rotation": 180,
-                            "size": {
-                              "height": 1
-                            },
-                            "colors": [
-                              {
-                                "color": "$accent-from",
-                                "position": 0
+                              "type": "shadow",
+                              "shadowType": "inner",
+                              "color": "#FFFFFF59",
+                              "offset": {
+                                "x": 0,
+                                "y": 2
                               },
-                              {
-                                "color": "$accent-to",
-                                "position": 1
-                              }
-                            ]
-                          },
-                          "cornerRadius": 10,
+                              "blur": 3
+                            }
+                          ],
                           "justifyContent": "center",
                           "alignItems": "center",
                           "children": [
                             {
                               "type": "icon",
-                              "id": "Q4mDX",
+                              "id": "DV5sf",
                               "name": "I",
-                              "width": 14,
-                              "height": 14,
-                              "icon": "git-commit-horizontal",
-                              "library": "lucide",
-                              "fill": "$text-inv"
-                            }
-                          ]
-                        },
-                        {
-                          "type": "frame",
-                          "id": "iP2Ix",
-                          "name": "Tx",
-                          "width": "fill_container",
-                          "layout": "vertical",
-                          "gap": 2,
-                          "children": [
-                            {
-                              "type": "text",
-                              "id": "CpT0X",
-                              "name": "T",
-                              "fill": "$text",
-                              "content": "4 commit",
-                              "fontFamily": "$font",
-                              "fontSize": 14,
-                              "fontWeight": "600"
-                            },
-                            {
-                              "type": "text",
-                              "id": "GSpTY",
-                              "name": "S",
-                              "fill": "$text-2",
-                              "content": "factory/142-oauth-google",
-                              "fontFamily": "$font",
-                              "fontSize": 12,
-                              "fontWeight": "normal"
-                            }
-                          ]
-                        },
-                        {
-                          "type": "icon",
-                          "id": "BIeoh",
-                          "name": "Open",
-                          "width": 14,
-                          "height": 14,
-                          "icon": "external-link",
-                          "library": "lucide",
-                          "fill": "$text-3"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "frame",
-                      "id": "xFD9x",
-                      "name": "Art Нэгтгэх хүсэлт !318",
-                      "opacity": 0.7,
-                      "width": "fill_container",
-                      "fill": "#F4F2EF99",
-                      "cornerRadius": 14,
-                      "gap": 12,
-                      "padding": [
-                        10,
-                        12
-                      ],
-                      "alignItems": "center",
-                      "children": [
-                        {
-                          "type": "frame",
-                          "id": "kHrWG",
-                          "name": "Orb",
-                          "width": 30,
-                          "height": 30,
-                          "fill": "#E4E0DA",
-                          "cornerRadius": 10,
-                          "justifyContent": "center",
-                          "alignItems": "center",
-                          "children": [
-                            {
-                              "type": "icon",
-                              "id": "c5Ffyg",
-                              "name": "I",
-                              "width": 14,
-                              "height": 14,
+                              "width": 17,
+                              "height": 17,
                               "icon": "git-pull-request",
                               "library": "lucide",
                               "fill": "$text-3"
@@ -40541,28 +39936,28 @@
                         },
                         {
                           "type": "frame",
-                          "id": "z57n7I",
-                          "name": "Tx",
+                          "id": "aavym",
+                          "name": "Text",
                           "width": "fill_container",
                           "layout": "vertical",
                           "gap": 2,
                           "children": [
                             {
                               "type": "text",
-                              "id": "QOrTG",
-                              "name": "T",
-                              "fill": "$text",
-                              "content": "Нэгтгэх хүсэлт !318",
+                              "id": "s7PerV",
+                              "name": "N",
+                              "fill": "$text-3",
+                              "content": "Нэгтгэх хүсэлт",
                               "fontFamily": "$font",
                               "fontSize": 14,
                               "fontWeight": "600"
                             },
                             {
                               "type": "text",
-                              "id": "EwAcT",
-                              "name": "S",
+                              "id": "KEHiC",
+                              "name": "D",
                               "fill": "$text-2",
-                              "content": "хүлээгдэж · хүн шийднэ",
+                              "content": "хүлээгдэж",
                               "fontFamily": "$font",
                               "fontSize": 12,
                               "fontWeight": "normal"

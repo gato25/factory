@@ -445,17 +445,6 @@ export const en: Messages = {
     pipeline: (pipeline: string, steps: number) => `${pipeline} · ${steps} steps`,
   },
 
-  runResults: {
-    heading: 'Results',
-    count: (n: number) => `${n} ${n === 1 ? 'output' : 'outputs'}`,
-    screens: (n: number) => `${n} ${n === 1 ? 'screen' : 'screens'}`,
-    screensFrom: 'ui.pen + exports · pen.dev',
-    commits: (n: number) => `${n} ${n === 1 ? 'commit' : 'commits'}`,
-    mergeRequest: (reference: string) => `Merge request ${reference}`,
-    mergeRequestOpened: 'opened · a person decides',
-    mergeRequestPending: 'waiting · a person decides',
-  },
-
   queue: {
     position: (position: number, cap: number | null) =>
       `Waiting for a free sandbox — position ${position} in the queue${cap ? `, which holds ${cap} at once` : ''}.`,
@@ -465,6 +454,7 @@ export const en: Messages = {
     label: (n: number) => `The run's ${n} steps`,
     stepLabel: (n: number, name: string, detail: string) => `Step ${n} — ${name}, ${detail}`,
     mergeRequest: 'Merge request',
+    mergeRequestNamed: (reference: string) => `Merge request ${reference}`,
     opened: 'opened',
     waiting: 'waiting',
     done: 'done',
@@ -1031,6 +1021,7 @@ export const en: Messages = {
     purposeSpec: 'Requirements',
     purposePlan: 'Architecture & files to change',
     purposeTasks: 'Ordered tasks',
+    screenCount: (n: number) => `${n} ${n === 1 ? 'screen' : 'screens'}`,
     purposeOther: 'Produced by the run',
     screens: 'Screens',
     opening: 'Opening…',

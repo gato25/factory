@@ -134,11 +134,10 @@ const SCREENS: Screen[] = [
       'h1',
       '.cell .n',
       '.run-tabs button',
-      '.results .t',
       '.btn',
       '.log .t',
       '.note',
-      // What was asked, beside the results.
+      // What was asked, under the head.
       '[data-brief] .text',
       '[data-brief] .criteria li',
       '[data-brief] .docs li',
