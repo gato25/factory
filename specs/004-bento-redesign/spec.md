@@ -419,8 +419,8 @@ person is *shown* a run's expense it is now the tokens the engines reported (inp
 prompt cache's reads and writes, added up and written compactly: 842, 18.4K, 1.2M), because that is the
 number the engine itself reports and the one people compare runs by. Nothing that *enforces* a limit
 changed: the ceilings — Settings' cost limits, an agent's maximum cost, and the "stopped at its limit"
-message — remain in dollars, since the model CLI is stopped on a dollar figure and a limit must be
-stated in the unit it is enforced in. Each `step_results` row gains four counts (`input_tokens`,
+message — remain in dollars, since the runner enforces them on the dollar total the model CLI
+reports for each step, and a limit must be stated in the unit it is enforced in. Each `step_results` row gains four counts (`input_tokens`,
 `output_tokens`, `cache_read_tokens`, `cache_creation_tokens`); the run's figure is their sum, and a
 step that runs again (a change request, a continued run) adds its passes together, as the run's dollar
 cost does; runs from before the counts existed show none, and the estimate ignores them. `step_finished` carries an
