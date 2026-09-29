@@ -96,6 +96,17 @@ export const stepResults = pgTable(
     finishedAt: timestamp('finished_at', { withTimezone: true }),
     durationS: integer('duration_s'),
     costUsd: money('cost_usd').notNull().default('0.0000'),
+    /**
+     * What the engine said the step processed — shown in place of what it
+     * cost. The engine's four counts, kept apart because they mean different
+     * things (fresh input, output, written to the prompt cache, read back from
+     * it); the headline figure is their sum. Zero where the engine reported
+     * nothing, which is also what a step from before these columns has.
+     */
+    inputTokens: integer('input_tokens').notNull().default(0),
+    outputTokens: integer('output_tokens').notNull().default(0),
+    cacheReadTokens: integer('cache_read_tokens').notNull().default(0),
+    cacheCreationTokens: integer('cache_creation_tokens').notNull().default(0),
     engineSessionId: text('engine_session_id'),
     summary: text('summary'),
     logRef: text('log_ref'),

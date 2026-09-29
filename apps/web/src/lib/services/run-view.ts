@@ -11,11 +11,18 @@ import {
   users,
   workspaces,
 } from '@factory/db/schema';
-import { CONDITION_DESCRIPTION, notFound, type PipelineSnapshot, type Step } from '@factory/shared';
+import {
+  CONDITION_DESCRIPTION,
+  notFound,
+  type PipelineSnapshot,
+  type Step,
+  totalTokens,
+} from '@factory/shared';
 import { and, count, desc, eq, gte, inArray, sql } from 'drizzle-orm';
 import { m } from '$lib/i18n';
 import { type RunStatus, type StepShape, shapeOf } from '$lib/step-shape';
 import { stateContext, stateOf, type TicketState } from './ticket-state';
+import { sumRows, type TokenFigures, tokensOfRow } from './token-columns';
 
 /**
  * Everything the run page and the dashboard read. The stream carries changes;
@@ -34,6 +41,8 @@ export interface StepView {
   conditionNotMet?: string | null;
   durationS?: number | null;
   costUsd?: string;
+  /** Everything the engine processed on this step; shown in place of its cost. */
+  tokens?: number;
   summary?: string | null;
   errorDetail?: string | null;
   command?: string;
@@ -46,6 +55,8 @@ export interface RunView {
     status: string;
     costUsd: string;
     costCeilingUsd: string;
+    /** What the run's steps processed so far — the figure the screens lead with. */
+    tokens: TokenFigures;
     timeCeilingMinutes: number;
     currentStepIndex: number | null;
     /** Set while a pause has been asked for and the step is still finishing. */
@@ -133,6 +144,7 @@ export async function runView(database: Database, runId: string): Promise<RunVie
       conditionNotMet: result?.conditionNotMet,
       durationS: result?.durationS,
       costUsd: result?.costUsd,
+      tokens: result ? totalTokens(tokensOfRow(result)) : undefined,
       summary: result?.summary,
       errorDetail: result?.errorDetail,
       command: step.command,
@@ -146,6 +158,7 @@ export async function runView(database: Database, runId: string): Promise<RunVie
       status: run.status,
       costUsd: run.costUsd,
       costCeilingUsd: run.costCeilingUsd,
+      tokens: sumRows(results),
       timeCeilingMinutes: run.timeCeilingMinutes,
       currentStepIndex: run.currentStepIndex,
       pauseRequestedAt: run.pauseRequestedAt,

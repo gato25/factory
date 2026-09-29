@@ -1,23 +1,23 @@
 <script lang="ts">
+  import { compactTokens } from '@factory/shared';
   import { m } from '$lib/i18n';
 
   /**
    * Merge requests opened on each of the last seven days, today marked, the
-   * week's total, and today's recorded cost beside it (FR-013).
+   * week's total, and the tokens processed today beside it (FR-013).
    *
    * A day with none keeps its place with a stub at the floor — an omitted day
-   * would make the week look shorter than it was (spec edge case). The cost
-   * is labelled as RECORDED: a run killed before its engine reported usage
-   * added nothing to it.
+   * would make the week look shorter than it was (spec edge case). Tokens are
+   * what the engines reported: a step that reported nothing added nothing.
    */
   let {
     days,
     total,
-    costToday,
+    tokensToday,
   }: {
     days: { date: string; count: number; today: boolean }[];
     total: number;
-    costToday: string;
+    tokensToday: number;
   } = $props();
 
   const TALLEST = 110;
@@ -28,7 +28,6 @@
     const [y, mo, d] = date.split('-').map(Number);
     return m.dashboard.week.weekdays[new Date(y ?? 0, (mo ?? 1) - 1, d ?? 1).getDay()] ?? '';
   }
-  const dollars = (fixed: string) => `$${Number(fixed).toFixed(2)}`;
 </script>
 
 <section class="tile week" aria-labelledby="week-title">
@@ -60,9 +59,9 @@
     {/each}
   </ol>
 
-  <p class="cost" title={m.dashboard.week.costNote}>
-    <span class="l">{m.dashboard.week.costToday}</span>
-    <span class="v" data-cost={costToday}>{dollars(costToday)}</span>
+  <p class="tokens" title={m.dashboard.week.tokensNote}>
+    <span class="l">{m.dashboard.week.tokensToday}</span>
+    <span class="v" data-tokens={tokensToday}>{compactTokens(tokensToday)}</span>
   </p>
 </section>
 
@@ -134,7 +133,7 @@
     font-weight: 700;
     color: var(--text);
   }
-  .cost {
+  .tokens {
     display: flex;
     align-items: center;
     justify-content: space-between;

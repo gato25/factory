@@ -166,8 +166,8 @@ export const en: Messages = {
       today: 'today',
       day: (weekday: string, n: number) =>
         `${weekday}: ${n} ${n === 1 ? 'merge request' : 'merge requests'}`,
-      costToday: "Today's cost",
-      costNote: 'recorded cost',
+      tokensToday: "Today's tokens",
+      tokensNote: 'tokens processed by the steps that finished today',
     },
     missing: {
       'the runner address': 'the runner address',
@@ -365,11 +365,11 @@ export const en: Messages = {
     notStarted: 'not started',
     started: (reference: string) => `${reference} started.`,
     savedAsDraft: (reference: string) => `${reference} saved as a draft.`,
-    estimateMeasured: (costUsd: string | number, minutes: string | number) =>
-      `Estimated cost ≈ ${costUsd} · usually about ${minutes} min`,
-    estimateCeiling: (ceilingUsd: string | number, ceilingMinutes: string | number) =>
-      `No comparable run yet · up to ${ceilingUsd} and ${ceilingMinutes} min`,
-    estimateUnknown: 'Choose a repository and a pipeline to see what it will cost.',
+    estimateMeasured: (tokens: string, minutes: string | number) =>
+      `About ≈ ${tokens} tokens · usually ${minutes} min`,
+    estimateCeiling: (ceilingMinutes: string | number) =>
+      `No comparable run yet · up to ${ceilingMinutes} min`,
+    estimateUnknown: 'Choose a repository and a pipeline to see an estimate.',
     saveAsDraft: 'Save as draft',
     creating: 'Creating…',
     createAndStart: 'Create & start pipeline',
@@ -418,11 +418,11 @@ export const en: Messages = {
     continue: 'Continue',
     pause: 'Pause',
     continueRunTitle:
-      'If nothing has happened for a while, drive the run again from its first unfinished step. Finished steps and their cost are kept. Only for a run that is stuck: a step still running would run twice.',
+      'If nothing has happened for a while, drive the run again from its first unfinished step. Finished steps and their tokens are kept. Only for a run that is stuck: a step still running would run twice.',
     continueRun: 'Continue run',
     cancelRun: 'Cancel run',
     continueFromFailedTitle:
-      'Run again from the step that failed. Finished steps and their cost are kept.',
+      'Run again from the step that failed. Finished steps and their tokens are kept.',
     continueFromFailed: 'Continue from the failed step',
     retry: 'Retry',
   },
@@ -433,10 +433,9 @@ export const en: Messages = {
     noBranch: 'no branch yet',
     createdBy: (name: string) => `Created by ${name}`,
     started: (ago: string) => `Started ${ago}`,
-    soFar: (dollars: string) => `${dollars} so far`,
+    soFar: (tokens: string) => `${tokens} tokens so far`,
     elapsed: 'elapsed',
-    spent: 'spent',
-    spentOf: (budget: string) => `spent · budget ${budget}`,
+    tokensUsed: 'tokens used',
     pipeline: (pipeline: string, steps: number) => `${pipeline} · ${steps} steps`,
   },
 
@@ -490,7 +489,7 @@ export const en: Messages = {
     branch: 'Branch',
     sandbox: 'Sandbox',
     execution: 'Execution',
-    budget: 'Budget',
+    tokens: 'Tokens',
     time: 'Time',
     changesInterface: 'Changes the interface',
     noInterfaceChange: 'No interface change',
@@ -501,7 +500,6 @@ export const en: Messages = {
     },
     notCreated: 'not created',
     notStarted: 'not started',
-    budgetOf: (spent: string | number, cap: string | number) => `${spent} of ${cap} cap`,
     timeCap: (minutes: string | number) => `${minutes} min cap per step`,
     classificationMissing:
       'The specification step recorded no decision about the interface, so design was skipped. Check whether this ticket needed screens.',
@@ -627,7 +625,9 @@ export const en: Messages = {
     afterYouApprove: 'After you approve',
     openMergeRequest: 'Open merge request',
     openMergeRequestNote: 'Branch pushed, merge request created, ticket closed',
-    stepCost: (took: string, cost: string) => `The design step took ${took} and cost ${cost}.`,
+    stepCost: (took: string, tokens: string) =>
+      `The design step took ${took} and processed ${tokens} tokens.`,
+    stepTook: (took: string) => `The design step took ${took}.`,
   },
 
   agents: {
@@ -851,10 +851,10 @@ export const en: Messages = {
     preflightHeading: 'If a ticket started on this pipeline now',
     preflightNote: (version: number) => `Version ${version}, as saved. Nothing is started.`,
     workingItOut: 'Working it out…',
-    estimateMeasured: (minutes: string | number, costUsd: string | number, samples: number) =>
-      `Comparable runs took about ${minutes} minutes and cost about ${costUsd} across ${samples} run${samples === 1 ? '' : 's'}. An estimate, not a commitment.`,
-    estimateNone: (ceilingUsd: string | number, ceilingMinutes: string | number) =>
-      `No comparable run yet, so there is nothing to estimate from. The ceilings are ${ceilingUsd} and ${ceilingMinutes} minutes.`,
+    estimateMeasured: (minutes: string | number, tokens: string, samples: number) =>
+      `Comparable runs took about ${minutes} minutes and processed about ${tokens} tokens across ${samples} run${samples === 1 ? '' : 's'}. An estimate, not a commitment.`,
+    estimateNone: (ceilingMinutes: string | number) =>
+      `No comparable run yet, so there is nothing to estimate from. The time limit is ${ceilingMinutes} minutes.`,
     nothingVerifies: 'Nothing in this pipeline checks the result (FR-034a).',
   },
 
@@ -1069,6 +1069,16 @@ export const en: Messages = {
     Bash: 'Bash',
     WebFetch: 'WebFetch',
     GitPush: 'Git push',
+  },
+
+  /**
+   * Tokens — what a step or a run processed, shown wherever the screens used to
+   * show what it cost. The engine's own counts; `total` is all four added up.
+   */
+  tokens: {
+    count: (compact: string) => `${compact} tokens`,
+    breakdown: (input: string, output: string, cached: string) =>
+      `in ${input} · out ${output} · cached ${cached}`,
   },
 
   owner: {

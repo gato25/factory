@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Step } from '@factory/shared';
+  import { compactTokens, type Step } from '@factory/shared';
   import { page } from '$app/state';
   import Icon from '$components/Icon.svelte';
   import { pipelineName, stepTitle } from '$lib/default-names';
@@ -175,14 +175,11 @@
           {#if dryRun.estimate.kind === 'measured'}
             {m.pipeline.estimateMeasured(
               dryRun.estimate.minutes,
-              dryRun.estimate.costUsd,
+              compactTokens(dryRun.estimate.tokens),
               dryRun.estimate.samples,
             )}
           {:else}
-            {m.pipeline.estimateNone(
-              dryRun.estimate.ceilingUsd,
-              dryRun.estimate.ceilingMinutes,
-            )}
+            {m.pipeline.estimateNone(dryRun.estimate.ceilingMinutes)}
           {/if}
         </p>
         {#if !dryRun.verifies}

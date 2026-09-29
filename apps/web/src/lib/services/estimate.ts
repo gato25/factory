@@ -1,8 +1,9 @@
 import type { Database } from '@factory/db';
-import { agents, pipelineVersions, runs, workspaces } from '@factory/db/schema';
+import { agents, pipelineVersions, runs, stepResults, workspaces } from '@factory/db/schema';
 import { CONDITION_DESCRIPTION, notFound, type Step } from '@factory/shared';
-import { and, eq, inArray, isNotNull } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNotNull } from 'drizzle-orm';
 import { verifies } from './pipeline-defaults';
+import { totalTokensSql } from './token-columns';
 
 /**
  * What a person sees before starting a ticket (FR-019): every step with the
@@ -37,8 +38,8 @@ export interface StepPreview {
 }
 
 export type Estimate =
-  | { kind: 'measured'; costUsd: string; minutes: number; samples: number }
-  | { kind: 'unknown'; ceilingUsd: string; ceilingMinutes: number };
+  | { kind: 'measured'; tokens: number; minutes: number; samples: number }
+  | { kind: 'unknown'; ceilingMinutes: number };
 
 export interface RunPreview {
   steps: StepPreview[];
@@ -107,26 +108,42 @@ export async function previewRun(
 
 async function estimate(database: Database, pipelineId: string): Promise<Estimate> {
   const past = await database
-    .select({ costUsd: runs.costUsd, startedAt: runs.startedAt, finishedAt: runs.finishedAt })
+    .select({ id: runs.id, startedAt: runs.startedAt, finishedAt: runs.finishedAt })
     .from(runs)
     .where(and(eq(runs.status, 'done'), isNotNull(runs.finishedAt)))
+    .orderBy(desc(runs.finishedAt))
     .limit(50);
 
-  const comparable = past.filter((row) => row.startedAt && row.finishedAt);
+  // What each of those runs processed. A run from before tokens were recorded
+  // has none, and is not a sample: averaging it in as zero would say the next
+  // run is nearly free.
+  const perRun = past.length
+    ? await database
+        .select({ runId: stepResults.runId, total: totalTokensSql })
+        .from(stepResults)
+        .where(
+          inArray(
+            stepResults.runId,
+            past.map((row) => row.id),
+          ),
+        )
+        .groupBy(stepResults.runId)
+    : [];
+  const processed = new Map(perRun.map((row) => [row.runId, Number(row.total)]));
+
+  const comparable = past.filter(
+    (row) => row.startedAt && row.finishedAt && (processed.get(row.id) ?? 0) > 0,
+  );
   if (comparable.length === 0) {
     const [workspace] = await database
       .select()
       .from(workspaces)
       .orderBy(workspaces.createdAt)
       .limit(1);
-    return {
-      kind: 'unknown',
-      ceilingUsd: workspace?.defaultCostCeilingUsd ?? '5.0000',
-      ceilingMinutes: workspace?.defaultTimeCeilingMinutes ?? 45,
-    };
+    return { kind: 'unknown', ceilingMinutes: workspace?.defaultTimeCeilingMinutes ?? 45 };
   }
 
-  const totalTenths = comparable.reduce((sum, row) => sum + toTenths(row.costUsd), 0);
+  const totalTokens = comparable.reduce((sum, row) => sum + (processed.get(row.id) ?? 0), 0);
   const totalMinutes = comparable.reduce(
     (sum, row) =>
       sum + ((row.finishedAt as Date).getTime() - (row.startedAt as Date).getTime()) / 60_000,
@@ -134,20 +151,11 @@ async function estimate(database: Database, pipelineId: string): Promise<Estimat
   );
   return {
     kind: 'measured',
-    costUsd: fromTenths(Math.round(totalTenths / comparable.length)),
+    tokens: Math.round(totalTokens / comparable.length),
     minutes: Math.max(1, Math.round(totalMinutes / comparable.length)),
     samples: comparable.length,
   };
 }
-
-const toTenths = (value: string) => {
-  const [whole, fraction = ''] = value.split('.');
-  return Number(`${whole}${fraction.padEnd(4, '0').slice(0, 4)}`);
-};
-const fromTenths = (value: number) => {
-  const s = String(value).padStart(5, '0');
-  return `${s.slice(0, -4)}.${s.slice(-4)}`;
-};
 
 /** The sentence the ticket form shows when nothing verifies the result. */
 export function verificationWarning(preview: RunPreview): string | null {

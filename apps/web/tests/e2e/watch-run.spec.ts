@@ -168,17 +168,24 @@ test.describe('watching a run', () => {
     });
     await expect(page.getByText('reading the ticket…')).toBeVisible({ timeout: 5_000 });
 
-    // --- the step finishes; duration and cost are shown (FR-075) ---
+    // --- the step finishes; duration and tokens are shown (FR-075) ---
+    // The dollar figure is still sent, and recorded for the ceilings; what the
+    // page shows of what the step used is the tokens the engine reported.
     await callback({
       step_index: 0,
       event: 'step_finished',
       status: 'done',
       duration_s: 14,
       cost_usd: '0.4200',
+      tokens: { input: 42, output: 9_158, cache_read: 1_150_000, cache_creation: 40_800 },
       artifacts: [{ kind: 'document', path: 'docs/spec.md', version: 1 }],
     });
-    await expect(page.getByText('$0.42').first()).toBeVisible({ timeout: 5_000 });
+    const used = page.locator('[data-tokens]').first();
+    await expect(used).toHaveText('1.2M', { timeout: 5_000 });
+    await expect(used).toHaveAttribute('data-tokens', '1200000');
+    await expect(page.getByText(m.ticketHead.tokensUsed).first()).toBeVisible();
     await expect(page.getByText(m.time.duration(0, 14)).first()).toBeVisible();
+    await expect(page.getByText('$0.42')).toHaveCount(0);
 
     // --- what the last agent produced is readable in the application (FR-077) ---
     // The results tile names it as the artboard does, by its file name.

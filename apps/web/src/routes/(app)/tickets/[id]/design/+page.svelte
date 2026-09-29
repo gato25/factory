@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { compactTokens } from '@factory/shared';
   import { onMount } from 'svelte';
   import { page } from '$app/state';
   import Icon from '$components/Icon.svelte';
@@ -89,7 +90,7 @@
     branchName={loaded.ticket.branchName}
     createdByName={loaded.ticket.createdByName}
     startedAt={loaded.run.startedAt}
-    costUsd={loaded.run.costUsd}
+    tokens={loaded.run.tokens.total}
     status={paused
       ? { label: m.designReview.waitingForDesignApproval, tone: 'pen' }
       : { label: m.designReview.decided, tone: 'ok' }}
@@ -302,7 +303,9 @@
 
       {#if step}
         <p class="quiet foot">
-          {m.designReview.stepCost(duration(step.durationS ?? 0), `$${Number(step.costUsd ?? 0).toFixed(2)}`)}
+          {step.tokens
+            ? m.designReview.stepCost(duration(step.durationS ?? 0), compactTokens(step.tokens))
+            : m.designReview.stepTook(duration(step.durationS ?? 0))}
         </p>
       {/if}
     </aside>

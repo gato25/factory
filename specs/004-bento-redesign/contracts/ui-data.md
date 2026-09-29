@@ -23,7 +23,7 @@ subscription (FR-014).
   firstAttempt: { counted: number; successes: number; rate: number | null };
   mergeRequestsByDay: { date: string; count: number; today: boolean }[]; // exactly 7, oldest first
   mergeRequestsTotal: number;
-  costToday: string; // fixed-point dollars, e.g. "3.4200"
+  tokensToday: number; // tokens processed by the steps finished today, all four counts added
 }
 ```
 

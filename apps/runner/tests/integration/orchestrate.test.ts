@@ -149,7 +149,14 @@ beforeEach(() => {
   build();
   host.files.set('/work/docs/spec.md', '# Spec');
   host.responses = [
-    { match: 'claude', result: { stdout: '{"total_cost_usd":0.42,"num_turns":3}' } },
+    {
+      match: 'claude',
+      result: {
+        stdout:
+          '{"total_cost_usd":0.42,"num_turns":3,"usage":{"input_tokens":40,"output_tokens":900,' +
+          '"cache_read_input_tokens":20000,"cache_creation_input_tokens":3000}}',
+      },
+    },
     { match: 'npm test', result: { stdout: '12 pass\n' } },
   ];
 });
@@ -169,11 +176,20 @@ describe('a run, start to merge request', () => {
     const finished = callbacks[2] as Callback & {
       status: string;
       cost_usd: string;
+      tokens?: { input: number; output: number; cache_read: number; cache_creation: number };
       artifacts: unknown[];
       artifact_contents: Record<string, string>;
     };
     expect(finished.status).toBe('done');
     expect(finished.cost_usd).toBe('0.4200');
+    // What the step processed goes to the application with the cost, so the
+    // screens can show it.
+    expect(finished.tokens).toEqual({
+      input: 40,
+      output: 900,
+      cache_read: 20_000,
+      cache_creation: 3_000,
+    });
     expect(finished.artifacts).toEqual([{ kind: 'document', path: 'docs/spec.md', version: 1 }]);
     // And what is IN the document, not merely that it exists: without this the
     // application stores a row with nothing in it, and the checkpoint below

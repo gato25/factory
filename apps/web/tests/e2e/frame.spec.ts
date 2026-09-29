@@ -3,6 +3,7 @@ import type { BrowserContext, Page } from '@playwright/test';
 import { expect, test } from '@playwright/test';
 import postgres from 'postgres';
 import { m } from '../../src/lib/i18n';
+import { freeReference } from './free-reference';
 
 /**
  * User Story 2's Independent Test (specs/004-bento-redesign): visit one page
@@ -56,7 +57,7 @@ async function seed(): Promise<Seeded> {
   const other = `Unrelated ${tag}`;
   const ticketIds: string[] = [];
   for (const title of [found, other]) {
-    const reference = `#${Math.floor(Math.random() * 900_000) + 100_000}`;
+    const reference = await freeReference(sql);
     const [ticket] = await sql`
       insert into tickets (repository_id, created_by, reference, title, acceptance_criteria,
         pipeline_id, pipeline_version, status)

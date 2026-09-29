@@ -3,6 +3,7 @@ import type { BrowserContext, Page } from '@playwright/test';
 import { expect, test } from '@playwright/test';
 import postgres from 'postgres';
 import { m } from '../../src/lib/i18n';
+import { freeReference } from './free-reference';
 
 /**
  * User Story 4's Independent Test (specs/004-bento-redesign): tickets on
@@ -17,6 +18,9 @@ const SESSION_SECRET = process.env.SESSION_SECRET ?? '';
 const sql = postgres(DATABASE_URL, { max: 2, idle_timeout: 2, onnotice: () => {} });
 
 type Json = postgres.JSONValue;
+/** What every finished (not skipped) step of a seeded run reports having used. */
+const STEP_TOKENS = { input: 100, output: 200, cacheCreation: 300, cacheRead: 2_000 };
+
 type Pipeline = { id: string; name: string; steps: Json[] };
 type Seeded = {
   userId: string;
@@ -75,7 +79,7 @@ async function seed(): Promise<Seeded> {
     run: { status: string; current: number },
     skipped: { index: number; reason: string }[] = [],
   ) => {
-    const reference = `#${Math.floor(Math.random() * 900_000) + 100_000}`;
+    const reference = await freeReference(sql);
     const runId = randomUUID();
     const status = run.status;
     const [row] = await sql`
@@ -119,9 +123,12 @@ async function seed(): Promise<Seeded> {
     for (let index = 0; index < run.current; index++) {
       const skip = skipped.find((s) => s.index === index);
       await sql`
-        insert into step_results (run_id, step_index, status, condition_not_met, started_at, finished_at, duration_s)
+        insert into step_results (run_id, step_index, status, condition_not_met, started_at, finished_at,
+          duration_s, input_tokens, output_tokens, cache_creation_tokens, cache_read_tokens)
         values (${runId}, ${index}, ${skip ? 'skipped' : 'done'}, ${skip?.reason ?? null},
-                ${new Date(Date.now() - 15 * 60_000)}, ${new Date(Date.now() - 10 * 60_000)}, ${skip ? null : 120})`;
+                ${new Date(Date.now() - 15 * 60_000)}, ${new Date(Date.now() - 10 * 60_000)}, ${skip ? null : 120},
+                ${skip ? 0 : STEP_TOKENS.input}, ${skip ? 0 : STEP_TOKENS.output},
+                ${skip ? 0 : STEP_TOKENS.cacheCreation}, ${skip ? 0 : STEP_TOKENS.cacheRead})`;
     }
     if (status === 'running') {
       await sql`insert into step_results (run_id, step_index, status, started_at)
@@ -287,13 +294,26 @@ test.describe('a ticket drawn against its own pipeline (US4)', () => {
       ),
     );
 
+    // The head says how many tokens the run has used, where it used to say
+    // what it had cost: the same 5,200 the details tab breaks down below.
+    const used = page.locator('[data-tokens]').first();
+    await expect(used).toHaveAttribute('data-tokens', '5200');
+    await expect(used).toHaveText('5.2K');
+    await expect(page.getByText(m.ticketHead.tokensUsed).first()).toBeVisible();
+
     // The run's details are a tab of their own: the pipeline, the attempt,
-    // the budget used of its cap — and no link to an orchestration service.
+    // the tokens it has used — and no link to an orchestration service.
     await page.getByRole('tab', { name: m.run.tabDetails }).click();
     const details = page.getByRole('tabpanel');
     await expect(details).toContainText(seeded.pipelines.six.name);
     await expect(details).toContainText(m.runDetails.attemptOrdinal(1));
-    await expect(details).toContainText(m.runDetails.budgetOf('0.0000', '5.0000'));
+    // Steps 1 and 4 finished (2 and 3 were skipped and used nothing), each
+    // with 100 in, 200 out and 2,300 cached: 5,200 in all, 4,600 of it cached.
+    await expect(details).toContainText(m.runDetails.tokens);
+    await expect(details).toContainText(m.tokens.count('5.2K'));
+    await expect(details).toContainText(m.tokens.breakdown('200', '400', '4.6K'));
+    // It used to say what the run had spent of its dollar cap.
+    await expect(details).not.toContainText('$');
     await expect(details.getByRole('link')).toHaveCount(0);
     await expect(page.locator('a[href*="n8n"], a[href*="orchestrat"]')).toHaveCount(0);
   });

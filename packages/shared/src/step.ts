@@ -1,5 +1,6 @@
 import type { ArtifactRef } from './callbacks';
 import type { Step } from './snapshot';
+import type { TokenUsage } from './tokens';
 
 /**
  * One interface, three implementations (contracts/step-engines.md). This is
@@ -21,6 +22,12 @@ export interface StepOutcome {
   status: 'done' | 'failed';
   /** From the engine's own reported usage, never our own estimate (D6). */
   costUsd: string;
+  /**
+   * What the engine says it processed. Absent for a step that has no engine
+   * (a shell command) and for one whose engine reported nothing; the
+   * application records that as zero.
+   */
+  tokens?: TokenUsage;
   durationS: number;
   sessionId?: string;
   summary?: string;

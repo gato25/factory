@@ -77,7 +77,7 @@ Then push the branch, open the merge request (FR-065), post `done`, and destroy 
 | --- | --- | --- |
 | `started` | `container_id` | Run → `running` |
 | `step_started` | — | Step → `running` |
-| `step_finished` | `status, duration_s, cost_usd, engine_session_id, summary, artifacts[]` | Step recorded; cost added to the ledger |
+| `step_finished` | `status, duration_s, cost_usd, tokens?, engine_session_id, summary, artifacts[]` | Step recorded; cost added to the ledger; tokens stored with the step |
 | `step_skipped` | `condition_not_met` | Step → `skipped`, run continues (FR-111) |
 | `ticket_classified` | `has_ui, rationale` | Sets the ticket's classification (FR-099, FR-100) |
 | `waiting_approval` | `resume_url, approvers` | Run and ticket → `waiting_approval`; approvers notified (FR-057, FR-058) |
@@ -87,6 +87,11 @@ Then push the branch, open the merge request (FR-065), post `done`, and destroy 
 | `done` | `merge_request_url, cost_usd` | Ticket → `done` (FR-070a) |
 | `failed` | `step_index, reason, detail` | Run → `failed` with a readable reason (FR-087) |
 | `cancelled` | — | Run → `cancelled`, sandbox released (FR-097) |
+
+`tokens` is optional — `{ input, output, cache_read, cache_creation }`, whole numbers, as the engine
+reported them for the step — and is what the screens show of a step's expense (004, "tokens are shown
+where cost was"). A missing or malformed one is stored as zeros: it is never a reason to refuse the
+outcome. `cost_usd` is still sent and recorded, because the ceilings are enforced on it.
 
 **Every callback is idempotent.** `(run_id, step_index)` is the key; a repeat is a no-op and must
 not advance the run twice (FR-095). Authenticated with `resume_secret`; unauthenticated calls are

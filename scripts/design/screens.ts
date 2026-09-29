@@ -118,7 +118,6 @@ export const SCREENS: Screen[] = [
       'сүүлийн 30 хоног',
       'Нэгтгэх хүсэлт',
       'энэ 7 хоногт нээсэн',
-      'Өнөөдрийн зардал',
       'Хөгжүүлж байна',
       'pen.dev дээр зурж байна',
       'Тодорхойлж байна',
@@ -135,6 +134,10 @@ export const SCREENS: Screen[] = [
       'Мя',
     ],
     omits: [
+      {
+        label: 'Өнөөдрийн зардал',
+        why: 'The week tile shows the tokens the steps finished today processed ("Өнөөдрийн токен"), not their cost in dollars: tokens are what the engines report, and what people compare runs by.',
+      },
       {
         label: '4 дэлгэц · 38 мин өмнө',
         why: 'The approvals tile reads the board, which knows how long a gate has waited but not how many screens its design step exported; every waiting item says when it became ready instead.',
@@ -253,7 +256,6 @@ export const SCREENS: Screen[] = [
       'Стандарт',
       'Хяналттай',
       'Хурдан засвар',
-      'Ойролцоо зардал ≈ ',
       'Ноороглох',
       'Үүсгээд эхлүүлэх',
       'Юу болох вэ',
@@ -270,6 +272,10 @@ export const SCREENS: Screen[] = [
       'Энэ даалгавар интерфейс өөрчилж байгаа эсэхийг Тодорхойлолт агент шийднэ. Хэрэв тийм бол Дизайн агент pen.dev дээр зурж, код бичихээс өмнө та дэлгэцүүдийг хянана.',
     ],
     omits: [
+      {
+        label: 'Ойролцоо зардал ≈ ',
+        why: 'The estimate under the form is in tokens ("Ойролцоогоор ≈ … токен"), taken from comparable finished runs; a dollar figure would be a second unit for a number the run pages show in tokens.',
+      },
       {
         label: 'Шалгуур нэмэх',
         why: 'The criteria are one per line in a text field, which the form has always submitted; a row-per-criterion editor with its own add button would be new behaviour (FR-025).',
@@ -298,7 +304,6 @@ export const SCREENS: Screen[] = [
       ' эхэлсэн',
       ' алхам',
       'хугацаа',
-      'зарцуулсан · төсөв ',
       'Түр зогсоох',
       'Цуцлах',
       'Тодорхойлолт',
@@ -324,6 +329,10 @@ export const SCREENS: Screen[] = [
       'хүлээгдэж · хүн шийднэ',
     ],
     omits: [
+      {
+        label: 'зарцуулсан · төсөв ',
+        why: 'The head shows the tokens the run has used so far ("токен ашигласан") and no budget beside it: the dollar ceiling is a limit each step is stopped at, not an allowance the run is spending down.',
+      },
       {
         label: '4 даалгавар · Даалгавар агент',
         why: 'The run records the task list as a document, not how many tasks it holds; the row says what the document is for, as the other documents do.',

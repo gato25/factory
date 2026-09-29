@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { compactTokens } from '@factory/shared';
   import FilePicker from '$components/FilePicker.svelte';
   import Icon from '$components/Icon.svelte';
   import { agentDescription, agentName, pipelineDescription, pipelineName } from '$lib/default-names';
@@ -210,12 +211,9 @@
       <span class="note">
         <Icon name="coins" size={15} />
         {#if shown?.estimate.kind === 'measured'}
-          {m.newTicket.estimateMeasured(shown.estimate.costUsd, shown.estimate.minutes)}
+          {m.newTicket.estimateMeasured(compactTokens(shown.estimate.tokens), shown.estimate.minutes)}
         {:else if shown}
-          {m.newTicket.estimateCeiling(
-            shown.estimate.ceilingUsd,
-            shown.estimate.ceilingMinutes,
-          )}
+          {m.newTicket.estimateCeiling(shown.estimate.ceilingMinutes)}
         {:else}
           {m.newTicket.estimateUnknown}
         {/if}

@@ -2,6 +2,7 @@ import { createHmac, randomUUID } from 'node:crypto';
 import type { BrowserContext, Page } from '@playwright/test';
 import { expect, test } from '@playwright/test';
 import postgres from 'postgres';
+import { freeReference } from './free-reference';
 
 /**
  * User Story 3's Independent Test (specs/004-bento-redesign): measure every
@@ -89,7 +90,7 @@ const SCREENS: Screen[] = [
       '.link',
       '.more',
       '.ring-tile .label',
-      '.cost .l',
+      '.tokens .l',
       '.notice',
     ],
   },
@@ -304,7 +305,7 @@ async function seed(): Promise<Seeded> {
     status: string,
     run?: { status: string; current: number | null; failure?: string },
   ) => {
-    const reference = `#${Math.floor(Math.random() * 900_000) + 100_000}`;
+    const reference = await freeReference(sql);
     const runId = run ? randomUUID() : null;
     const [row] = await sql`
       insert into tickets (repository_id, created_by, reference, title, description, acceptance_criteria,
@@ -347,8 +348,10 @@ async function seed(): Promise<Seeded> {
                 ${run.status === 'queued' ? null : started},
                 ${['done', 'failed'].includes(run.status) ? new Date() : null})`;
       for (let index = 0; index < (run.current ?? 0); index++) {
-        await sql`insert into step_results (run_id, step_index, status, started_at, finished_at, duration_s, cost_usd)
-                  values (${runId}, ${index}, 'done', ${started}, ${new Date()}, 95, '0.1400')`;
+        await sql`insert into step_results (run_id, step_index, status, started_at, finished_at, duration_s,
+                    cost_usd, input_tokens, output_tokens, cache_creation_tokens, cache_read_tokens)
+                  values (${runId}, ${index}, 'done', ${started}, ${new Date()}, 95, '0.1400',
+                    1200, 3400, 5000, 250000)`;
       }
       if (run.status === 'running') {
         await sql`insert into step_results (run_id, step_index, status, started_at)

@@ -6,6 +6,7 @@ import type { RunStatus, StepShape } from '$lib/step-shape';
 import { firstAttempt } from './first-attempt';
 import { stepShapes } from './run-view';
 import { stateContext, stateOf, type TicketState } from './ticket-state';
+import { totalTokensSql } from './token-columns';
 
 /**
  * What the dashboard reads (specs/004-bento-redesign FR-009 to FR-013,
@@ -163,8 +164,8 @@ export interface DashboardFigures {
   /** Exactly seven, oldest first, by the server's own calendar. */
   mergeRequestsByDay: { date: string; count: number; today: boolean }[];
   mergeRequestsTotal: number;
-  /** Fixed-point dollars, as the ledger keeps them: "3.4200". */
-  costToday: string;
+  /** Everything the steps that finished today processed, in tokens. */
+  tokensToday: number;
 }
 
 /**
@@ -172,9 +173,9 @@ export interface DashboardFigures {
  *
  * A merge request is counted on the day its run finished `done`: that is the
  * moment it was opened, and a ticket's own `updated_at` moves on every later
- * edit (research D4). Today's cost is the steps that finished today, so a run
- * that spans midnight is split across the two days it spent; a step whose
- * engine never reported usage is 0.0000 and adds nothing.
+ * edit (research D4). Today's tokens are those of the steps that finished today,
+ * so a run that spans midnight is split across the two days it worked; a step
+ * whose engine never reported usage adds nothing.
  */
 export async function dashboardFigures(
   database: Database,
@@ -191,9 +192,7 @@ export async function dashboardFigures(
       .from(runs)
       .where(and(eq(runs.status, 'done'), gte(runs.finishedAt, firstDay))),
     database
-      .select({
-        total: sql<string>`coalesce(sum(${stepResults.costUsd}), 0)::numeric(12, 4)::text`,
-      })
+      .select({ total: totalTokensSql })
       .from(stepResults)
       .where(gte(stepResults.finishedAt, today)),
   ]);
@@ -213,7 +212,7 @@ export async function dashboardFigures(
     firstAttempt: figure,
     mergeRequestsByDay: days,
     mergeRequestsTotal: days.reduce((sum, day) => sum + day.count, 0),
-    costToday: cost?.total ?? '0.0000',
+    tokensToday: Number(cost?.total ?? 0),
   };
 }
 

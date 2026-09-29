@@ -171,7 +171,31 @@ and no text is under 12px (the board's five columns wrap into rows); in English 
 | 10 Agent Editor | yes | no "Sandbox-д турших" (nothing behind it); Edit and Write are separate switches; prompt variables and skill chips are neutral, not blue |
 | 11 Skills | yes | skill orbs are neutral, not blue, except the one open, in the accent |
 | 12 Settings | yes | sections ordered by the one form they share (limits before keys); no Docker host, sandbox status, removal toggle, workspace design model or export — none is a setting the application has; the limits and notifications orbs are neutral |
-| 14 Design Review | yes | the design step's own time and cost are beside the screens, not in the head |
+| 14 Design Review | yes | the design step's own time and tokens are beside the screens, not in the head |
+
+### Follow-up: tokens shown where cost was
+
+The screens now show the tokens a run processed wherever they used to show what it cost (spec.md,
+"Divergence", "Amended"); the dollar ceilings are unchanged. Re-verified after the change:
+
+- **Typecheck**: `bun run check` — 0 errors, 0 warnings, all four packages.
+- **Lint**: no new finding in a touched file (the one warning a new test added was removed); the
+  repository's totals are the T091 kinds.
+- **Unit, contract and integration**, file by file as above: **127 files, 1316 pass, 18 fail** —
+  the same 18 as before (16 assert the old English wording, 2 depend on this container's
+  privileges). Five files more than T092's 122: four for this change (`tokens` in `shared` and in
+  the web integration tests, `token-usage` in the runner, `step-spent`) and `startup-check`, added
+  with the server-deployment work. The dashboard and merge-request tests assert tokens.
+- **Browser tests**: **84 tests: 81 passed, 3 skipped, 0 failed** (3.7 min). The dashboard test now
+  checks "today's tokens" against the database's own sum; the run page and details tab check a
+  seeded run's 5.2K; the live-update test posts a `step_finished` carrying tokens and watches the
+  head change without a reload. The specs that seeded a random six-digit ticket reference failed
+  about one run in four once the shared database held ~1,900 tickets (`tickets_reference_unique`);
+  they draw a free one now (`tests/e2e/free-reference.ts`).
+- **Audits**: `audit:browser` and `audit:offline` pass; the production build succeeds.
+- **Not verified**: the runner's reading of a real Claude CLI's `usage` and `modelUsage`. It is
+  written and tested against the field names in the installed CLI and against fixtures; no model
+  was called. The first real run is the check: if a finished step shows no tokens, look there first.
 
 ### Human checks (T096) — waiting on people
 

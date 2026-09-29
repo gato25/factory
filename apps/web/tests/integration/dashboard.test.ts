@@ -362,10 +362,10 @@ describe('the figures beside the list (FR-013)', () => {
     const figures = await dashboardFigures(db);
     expect(figures.mergeRequestsByDay.map((day) => day.count)).toEqual([0, 0, 0, 0, 0, 0, 0]);
     expect(figures.mergeRequestsTotal).toBe(0);
-    expect(figures.costToday).toBe('0.0000');
+    expect(figures.tokensToday).toBe(0);
   });
 
-  test("today's cost is the fixed-point sum of the steps finished since midnight", async () => {
+  test("today's tokens are the sum of every count on the steps finished since midnight", async () => {
     const now = new Date();
     const midnight = startOfDay(now);
     const row = await ticket({
@@ -374,9 +374,28 @@ describe('the figures beside the list (FR-013)', () => {
     });
     const todayAt = new Date(Math.max(midnight.getTime(), now.getTime() - 60_000));
     await db.insert(stepResults).values([
-      // Two steps finished today.
-      { runId: row.runId!, stepIndex: 0, status: 'done', finishedAt: todayAt, costUsd: '1.2500' },
-      { runId: row.runId!, stepIndex: 1, status: 'done', finishedAt: todayAt, costUsd: '2.1700' },
+      // Two steps finished today. Every one of the four counts is part of the
+      // figure: the cache reads are usually most of it.
+      {
+        runId: row.runId!,
+        stepIndex: 0,
+        status: 'done',
+        finishedAt: todayAt,
+        inputTokens: 100,
+        outputTokens: 2_000,
+        cacheReadTokens: 30_000,
+        cacheCreationTokens: 400,
+      },
+      {
+        runId: row.runId!,
+        stepIndex: 1,
+        status: 'done',
+        finishedAt: todayAt,
+        inputTokens: 5,
+        outputTokens: 60,
+        cacheReadTokens: 700,
+        cacheCreationTokens: 0,
+      },
       // Killed before its engine reported usage: nothing to add.
       { runId: row.runId!, stepIndex: 2, status: 'failed', finishedAt: todayAt },
       // Finished yesterday, and the one still running: neither is today's.
@@ -385,7 +404,8 @@ describe('the figures beside the list (FR-013)', () => {
         stepIndex: 3,
         status: 'running',
         startedAt: new Date(midnight.getTime() - 60_000),
-        costUsd: '9.0000',
+        inputTokens: 9_000,
+        outputTokens: 9_000,
       },
     ]);
     const other = await ticket({
@@ -398,11 +418,37 @@ describe('the figures beside the list (FR-013)', () => {
       stepIndex: 0,
       status: 'done',
       finishedAt: new Date(midnight.getTime() - 60_000),
-      costUsd: '4.0000',
+      inputTokens: 4_000,
+      outputTokens: 4_000,
     });
 
     const figures = await dashboardFigures(db, now);
-    expect(figures.costToday).toBe('3.4200');
+    expect(figures.tokensToday).toBe(100 + 2_000 + 30_000 + 400 + (5 + 60 + 700));
+  });
+
+  test('a day of very large runs is summed without overflowing a 32-bit count', async () => {
+    const now = new Date();
+    const midnight = startOfDay(now);
+    const row = await ticket({
+      status: 'running',
+      run: { status: 'running', steps: stepsOf(3), current: 2 },
+    });
+    const todayAt = new Date(Math.max(midnight.getTime(), now.getTime() - 60_000));
+    // Each column is a 32-bit integer and each of these is near its ceiling;
+    // three of them add to far more than one can hold.
+    const big = 2_000_000_000;
+    const runId = row.runId as string;
+    await db.insert(stepResults).values(
+      [0, 1, 2].map((stepIndex) => ({
+        runId,
+        stepIndex,
+        status: 'done' as const,
+        finishedAt: todayAt,
+        cacheReadTokens: big,
+      })),
+    );
+    const figures = await dashboardFigures(db, now);
+    expect(figures.tokensToday).toBe(3 * big);
   });
 
   test('the first-attempt figure is the shared function over thirty days', async () => {

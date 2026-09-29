@@ -53,8 +53,8 @@ bun scripts/audit/first-attempt-rate.ts --since 30d
 
 Run it without `--exclude`: the dashboard has no manual exclusions. Expected: the dashboard's
 first-attempt figure and its ticket count equal the audit's "N of M" line (SC-004); with nothing
-decided, both say there is nothing to measure yet. The 7-day chart's total equals the done runs of the week; today's cost equals the sum of the
-steps finished today.
+decided, both say there is nothing to measure yet. The 7-day chart's total equals the done runs of the week; today's tokens equal the sum of the
+four token counts of the steps finished today.
 
 ## 4. Run the checks
 

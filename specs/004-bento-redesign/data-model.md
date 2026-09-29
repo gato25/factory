@@ -66,10 +66,14 @@ A queued run that has a place in the queue states it — "position 3 in the queu
 `count` = runs with status `done` whose `finished_at` falls on that server-local date. Days with no
 merge request are present with `count = 0`. `mergeRequestsTotal` = the sum of the seven.
 
-## CostToday — FR-013
+## TokensToday — FR-013
 
-`costToday: string` — the sum, in the ledger's fixed-point form (e.g. `"3.4200"`), of `step_results.cost_usd` for steps whose
-`finished_at` is on or after the start of the current server-local day. Labelled as recorded cost.
+`tokensToday: number` — the sum of `input_tokens + output_tokens + cache_read_tokens +
+cache_creation_tokens` of `step_results` whose `finished_at` is on or after the start of the current
+server-local day. Summed as `bigint`: each column is a 32-bit integer and a busy day passes what one
+can hold. A step that reported none adds nothing. (Replaces `costToday`, the dollars of the same
+steps, which the dashboard no longer shows; `step_results.cost_usd` is still recorded for the
+ceilings.)
 
 ## PipelineSummary addition — FR-019
 

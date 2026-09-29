@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { compactTokens } from '@factory/shared';
   import type { Snippet } from 'svelte';
   import Icon from '$components/Icon.svelte';
   import { ago, exact } from '$lib/format';
@@ -26,8 +27,7 @@
     branchName,
     createdByName,
     startedAt = null,
-    costUsd,
-    costCeilingUsd = null,
+    tokens,
     elapsedS = null,
     pipeline = null,
     status,
@@ -42,9 +42,8 @@
     branchName: string | null;
     createdByName: string | null;
     startedAt?: Date | string | null;
-    costUsd: string;
-    /** The run's budget, shown beside what it has spent. */
-    costCeilingUsd?: string | null;
+    /** Everything the run's steps have processed so far; shown where the cost used to be. */
+    tokens: number;
     /** Total of the steps that have run. */
     elapsedS?: number | null;
     /** "Стандарт · 6 алхам": the pipeline the run pinned, and its length. */
@@ -57,7 +56,6 @@
   } = $props();
 
   const run = $derived(variant !== 'wide');
-  const dollars = (fixed: string) => `$${Number(fixed).toFixed(2)}`;
   /** The kit's pill tones; the older names the screens pass map onto them. */
   const TONE: Record<string, string> = {
     run: '',
@@ -104,7 +102,7 @@
           </span>
         {/if}
         {#if !run}
-          <span class="chip"><Icon name="coins" size={12} />{m.ticketHead.soFar(dollars(costUsd))}</span>
+          <span class="chip"><Icon name="coins" size={12} />{m.ticketHead.soFar(compactTokens(tokens))}</span>
         {/if}
       </div>
     </div>
@@ -117,10 +115,9 @@
           <span class="k">{m.ticketHead.elapsed}</span>
         </div>
         <div class="stat">
-          <span class="v">{dollars(costUsd)}</span>
-          <span class="k">
-            {costCeilingUsd ? m.ticketHead.spentOf(dollars(costCeilingUsd)) : m.ticketHead.spent}
-          </span>
+          <!-- A dash, not "0": a run from before tokens were recorded did not use none. -->
+          <span class="v" data-tokens={tokens}>{tokens > 0 ? compactTokens(tokens) : '—'}</span>
+          <span class="k">{m.ticketHead.tokensUsed}</span>
         </div>
       {/if}
       {#if actions}

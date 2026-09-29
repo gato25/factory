@@ -217,6 +217,7 @@ export async function runDesignStep(
       {
         status: 'failed',
         costUsd: usage.costUsd,
+        tokens: usage.tokens,
         durationS,
         outputs: outputsFor(partial.sourceExists ? config.source_path : null, partial.screens),
         error: {
@@ -254,6 +255,7 @@ export async function runDesignStep(
     return {
       status: 'failed',
       costUsd: usage.costUsd,
+      tokens: usage.tokens,
       durationS,
       outputs: outputsFor(partial.sourceExists ? config.source_path : null, partial.screens),
       error: {
@@ -292,6 +294,7 @@ export async function runDesignStep(
     {
       status: 'done',
       costUsd: usage.costUsd,
+      tokens: usage.tokens,
       durationS,
       summary: `${revising ? 'Revised' : 'Designed'} ${produced.screens.length} screen${
         produced.screens.length === 1 ? '' : 's'

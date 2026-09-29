@@ -568,8 +568,12 @@ there is one. The lines worth alerting on:
 | `could not write the failure down` (runner) | The state directory refused a write while a run was failing. Disk, first |
 | `the run was released while it was being driven` (runner, in a failure detail) | Expected: a cancel landed during a step and the loop stood down |
 
-A run's own state is on its ticket page and needs no log reading: which step is executing, what has
-been spent, what the last agent produced, and the failing step and reason when it fails.
+A run's own state is on its ticket page and needs no log reading: which step is executing, how many
+tokens it has used so far, what the last agent produced, and the failing step and reason when it
+fails. The figure is the tokens the model CLI reported for each finished step — fresh input, output,
+and what the prompt cache read and wrote, added up; a step still running has none until it finishes,
+and a run from before they were recorded shows a dash. What limits a run is still the dollar
+ceiling, which is not shown as a figure: it appears only in the message of a run that reached it.
 
 ## Restarting things
 

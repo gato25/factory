@@ -406,6 +406,11 @@ test.describe('designing the interface before building it', () => {
       select step_index, cost_usd from step_results
       where run_id = ${seeded.runId} order by step_index`;
     expect(spend.find((s) => s.step_index === 1)?.cost_usd).toBe('0.0000');
+    const [designTokens] = await sql`
+      select coalesce(sum(input_tokens::bigint + output_tokens + cache_read_tokens
+                          + cache_creation_tokens), 0)::text as total
+        from step_results where run_id = ${seeded.runId} and step_index = 1`;
+    expect(designTokens?.total).toBe('0');
     const [run] = await sql`select status, cost_usd from runs where id = ${seeded.runId}`;
     expect(run!.status).toBe('done');
     // Only the spec and implement steps cost anything.

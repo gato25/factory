@@ -103,7 +103,7 @@
     branchName={loaded.ticket.branchName}
     createdByName={loaded.ticket.createdByName}
     startedAt={loaded.run.startedAt}
-    costUsd={loaded.run.costUsd}
+    tokens={loaded.run.tokens.total}
     status={paused
       ? { label: m.approve.waitingForYourApproval, tone: 'warn' }
       : { label: m.approve.decided, tone: 'ok' }}

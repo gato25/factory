@@ -79,6 +79,14 @@ const result = JSON.stringify({
   duration_ms: 105_895,
   num_turns: 17,
   total_cost_usd: 0.979335,
+  // The API's own key names, as the CLI's result carries them: running totals
+  // for the whole session. 42 + 9,180 + 1,118,400 + 61,300 = 1,188,922.
+  usage: {
+    input_tokens: 42,
+    output_tokens: 9_180,
+    cache_read_input_tokens: 1_118_400,
+    cache_creation_input_tokens: 61_300,
+  },
   session_id: '35654891-de5a',
   result:
     'Wrote `docs/spec.md`.\n\nThe ticket had no acceptance criteria, so the spec had to define the work.',
@@ -104,8 +112,9 @@ describe('each event becomes a line a person can read', () => {
     expect(lines[4]).toBe('  ✗ error: ls: cannot access src');
   });
 
-  test('the summary carries turns, time and cost, then the closing message', () => {
-    expect(lines[5]).toBe('✓ Finished · 17 turns · 1m 46s · $0.9793');
+  test('the summary carries turns, time and tokens, then the closing message', () => {
+    // Tokens where it used to say what the step cost.
+    expect(lines[5]).toBe('✓ Finished · 17 turns · 1m 46s · 1.2M tokens');
     expect(lines[6]).toBe('Wrote `docs/spec.md`.');
     expect(lines[7]).toBe(
       'The ticket had no acceptance criteria, so the spec had to define the work.',
@@ -123,10 +132,20 @@ describe('each event becomes a line a person can read', () => {
     expect(lines.join('\n')).not.toContain('total_cost_usd');
   });
 
+  test('no dollar figure reaches the log — the cost is still recorded, just not shown', () => {
+    expect(lines.join('\n')).not.toMatch(/\$\d/);
+  });
+
   test('the cost is read from the result event exactly as before', () => {
     expect(renderer.resultJson).toBe(result);
     const usage = usageFromClaudeJson(renderer.resultJson ?? '');
     expect(usage.costUsd).toBe('0.9793');
+    expect(usage.tokens).toEqual({
+      input: 42,
+      output: 9_180,
+      cache_read: 1_118_400,
+      cache_creation: 61_300,
+    });
     expect(usage.durationMs).toBe(105_895);
     expect(usage.sessionId).toBe('35654891-de5a');
     expect(renderer.resultText?.startsWith('Wrote `docs/spec.md`.')).toBe(true);
@@ -151,8 +170,11 @@ test('lines that are not JSON pass through untouched', () => {
 
 test('the old single-object output is still a result', () => {
   const { lines, renderer } = render([JSON.stringify({ total_cost_usd: 0.42, num_turns: 3 })]);
-  expect(lines).toEqual(['✓ Finished · 3 turns · $0.4200']);
-  expect(usageFromClaudeJson(renderer.resultJson ?? '').costUsd).toBe('0.4200');
+  // No usage block, so no token count in the line; the cost is still read.
+  expect(lines).toEqual(['✓ Finished · 3 turns']);
+  const usage = usageFromClaudeJson(renderer.resultJson ?? '');
+  expect(usage.costUsd).toBe('0.4200');
+  expect(usage.tokens).toBeUndefined();
 });
 
 test('a result that ended in error says so', () => {

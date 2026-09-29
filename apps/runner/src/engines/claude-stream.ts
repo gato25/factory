@@ -9,7 +9,7 @@
  * it reached for and with what, what came back — and this turns each into a
  * line: the agent's words as they are, a tool call as `▶ Read src/x.ts`, a
  * tool that failed as `✗ error: …`, and at the end one summary with turns,
- * time and cost, followed by the agent's own closing message. The markers
+ * time and tokens, followed by the agent's own closing message. The markers
  * are the ones the ticket page already colours: ▶ for a command, ✓, ✗ and ⚠.
  *
  * The final `result` event is kept verbatim as `resultJson`, because that is
@@ -20,6 +20,9 @@
  * A line that is not JSON is passed through untouched. The CLI prints a few
  * of those, and a test fake prints only those.
  */
+
+import { addTokens, compactTokens, NO_TOKENS, type TokenUsage, totalTokens } from '@factory/shared';
+import { tokensFromResult } from './usage';
 
 type Block =
   | { type: 'text'; text: string }
@@ -33,9 +36,16 @@ interface Event {
   model?: string;
   session_id?: string;
   message?: {
+    /** One API response. The CLI can emit several events for one, all carrying its usage. */
+    id?: string;
     content?: Block[] | string;
     /** Per-turn counts. Cost is not here — only the result event carries it. */
-    usage?: { input_tokens?: number; output_tokens?: number };
+    usage?: {
+      input_tokens?: number;
+      output_tokens?: number;
+      cache_read_input_tokens?: number | null;
+      cache_creation_input_tokens?: number | null;
+    };
   };
   // result
   is_error?: boolean;
@@ -43,6 +53,9 @@ interface Event {
   num_turns?: number;
   duration_ms?: number;
   total_cost_usd?: number;
+  /** Running totals for the whole session; read from the result, never summed across results. */
+  usage?: unknown;
+  modelUsage?: unknown;
   permission_denials?: { tool_name?: string; tool_input?: Record<string, unknown> }[];
 }
 
@@ -68,14 +81,54 @@ export class ClaudeStreamRenderer {
    * zero indistinguishable from a step that really was free.
    */
   turns = 0;
-  inputTokens = 0;
-  outputTokens = 0;
+  /**
+   * The counts of each API response, by its id. The CLI emits one event per
+   * content block, and every one of them carries the whole response's usage,
+   * so a response with some text and a tool call arrives twice; adding both
+   * would count it twice. Kept per id, at the largest each count was seen at
+   * (a streamed response's output count grows), and summed on demand.
+   */
+  private readonly byMessage = new Map<string, TokenUsage>();
+  /** Events with no id cannot be told apart, so each stands for itself. */
+  private anonymous: TokenUsage = { ...NO_TOKENS };
+
+  /**
+   * What the stream itself counted, for a step that ended before it reported.
+   * Fewer than the final result would have said — it sees the assistant's
+   * turns only — but a fact, where zero would be a claim.
+   */
+  observedTokens(): TokenUsage {
+    return addTokens(this.anonymous, ...this.byMessage.values());
+  }
 
   /** What the stream saw, for a step that ended before it reported. */
   observed(): string | null {
-    if (this.turns === 0 && this.inputTokens === 0 && this.outputTokens === 0) return null;
-    const tokens = this.inputTokens + this.outputTokens;
-    return `${this.turns} turn${this.turns === 1 ? '' : 's'} and ${tokens} tokens`;
+    const tokens = totalTokens(this.observedTokens());
+    if (this.turns === 0 && tokens === 0) return null;
+    return `${this.turns} turn${this.turns === 1 ? '' : 's'} and ${compactTokens(tokens)} tokens`;
+  }
+
+  private countTurn(message: Event['message']): void {
+    this.turns += 1;
+    const usage = message?.usage;
+    if (!usage) return;
+    const seen: TokenUsage = {
+      input: Number(usage.input_tokens) || 0,
+      output: Number(usage.output_tokens) || 0,
+      cache_read: Number(usage.cache_read_input_tokens) || 0,
+      cache_creation: Number(usage.cache_creation_input_tokens) || 0,
+    };
+    if (!message?.id) {
+      this.anonymous = addTokens(this.anonymous, seen);
+      return;
+    }
+    const before = this.byMessage.get(message.id) ?? NO_TOKENS;
+    this.byMessage.set(message.id, {
+      input: Math.max(before.input, seen.input),
+      output: Math.max(before.output, seen.output),
+      cache_read: Math.max(before.cache_read, seen.cache_read),
+      cache_creation: Math.max(before.cache_creation, seen.cache_creation),
+    });
   }
 
   constructor(private readonly write: (text: string) => void) {}
@@ -131,9 +184,7 @@ export class ClaudeStreamRenderer {
         }
         return;
       case 'assistant':
-        this.turns += 1;
-        this.inputTokens += event.message?.usage?.input_tokens ?? 0;
-        this.outputTokens += event.message?.usage?.output_tokens ?? 0;
+        this.countTurn(event.message);
         for (const block of blocks(event)) {
           if (block.type === 'text' && 'text' in block && block.text.trim()) {
             this.write(`${block.text.trim()}\n`);
@@ -167,7 +218,10 @@ export class ClaudeStreamRenderer {
     if (event.num_turns !== undefined)
       parts.push(`${event.num_turns} turn${event.num_turns === 1 ? '' : 's'}`);
     if (event.duration_ms !== undefined) parts.push(duration(event.duration_ms));
-    if (event.total_cost_usd !== undefined) parts.push(`$${event.total_cost_usd.toFixed(4)}`);
+    // Tokens, where the summary used to say what the step cost; the cost is
+    // still read from this same event (`usageFromClaudeJson`), just not shown.
+    const tokens = tokensFromResult(event);
+    if (tokens) parts.push(`${compactTokens(totalTokens(tokens))} tokens`);
     const failed = event.is_error || (event.subtype !== undefined && event.subtype !== 'success');
     this.write(
       `${failed ? '✗ Ended' : '✓ Finished'}${parts.length ? ` · ${parts.join(' · ')}` : ''}\n`,

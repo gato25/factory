@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { compactTokens } from '@factory/shared';
   import QueuePosition from '$components/QueuePosition.svelte';
   import { pipelineName } from '$lib/default-names';
   import { position } from '$lib/remote/runs.remote';
@@ -47,8 +48,21 @@
       {/if}
     </dd>
 
-    <dt>{m.runDetails.budget}</dt>
-    <dd>{m.runDetails.budgetOf(view.run.costUsd, view.run.costCeilingUsd)}</dd>
+    <dt>{m.runDetails.tokens}</dt>
+    <dd>
+      {#if view.run.tokens.total > 0}
+        {m.tokens.count(compactTokens(view.run.tokens.total))}
+        <span class="muted">
+          · {m.tokens.breakdown(
+            compactTokens(view.run.tokens.input),
+            compactTokens(view.run.tokens.output),
+            compactTokens(view.run.tokens.cacheRead + view.run.tokens.cacheCreation),
+          )}
+        </span>
+      {:else}
+        —
+      {/if}
+    </dd>
 
     <!--
       Per step, and it says so. The tracker used to print "45 min limit"

@@ -1,3 +1,5 @@
+import type { TokenUsage } from './tokens';
+
 /** The twelve events in contracts/orchestrator.md §3. */
 export type CallbackEvent =
   | 'started'
@@ -52,6 +54,13 @@ export type CallbackPayload =
       status: 'done' | 'failed';
       duration_s: number;
       cost_usd: string;
+      /**
+       * What the step processed, as the engine reported it: shown on the run,
+       * on the dashboard and in the merge request in place of what it cost.
+       * Optional, and never a reason to refuse the outcome — a run started
+       * before this field existed, and a step with no engine, send none.
+       */
+      tokens?: TokenUsage;
       engine_session_id?: string;
       summary?: string;
       artifacts: ArtifactRef[];

@@ -306,6 +306,27 @@ function screen(variant: number) {
 
 // ---------------------------------------------------------------- tickets
 
+/**
+ * Sample token counts for a step the plan gave a dollar figure.
+ *
+ * The plan below was written in dollars, before the screens showed tokens, so
+ * the counts are derived from those figures rather than written out a second
+ * time — and derived at the mix a real agent step has: mostly reads of the
+ * prompt cache (it re-reads the repository every turn), a little written to
+ * it, a little fresh input, and the output. About a million and a half tokens
+ * to the dollar at that mix. Made-up numbers for made-up runs, like the
+ * dollars they come from; a re-seed always gives the same ones.
+ */
+function tokensFor(cost: number | undefined) {
+  const dollars = cost ?? 0;
+  return {
+    input: Math.round(dollars * 7_000),
+    output: Math.round(dollars * 19_000),
+    cacheCreation: Math.round(dollars * 70_000),
+    cacheRead: Math.round(dollars * 1_400_000),
+  };
+}
+
 interface StepPlan {
   /** minutes before now the step started; omitted for a step not reached */
   started?: number;
@@ -819,11 +840,14 @@ async function seed() {
         if (step.status === 'waiting') continue;
         const stepStarted = step.started;
         const stepFinished = step.finishedAt;
+        const tokens = tokensFor(step.cost);
         await sql`
           insert into step_results (run_id, step_index, status, condition_not_met, started_at, finished_at,
-                                    duration_s, cost_usd, summary)
+                                    duration_s, cost_usd, input_tokens, output_tokens,
+                                    cache_creation_tokens, cache_read_tokens, summary)
           values (${runId}, ${index}, ${step.status}, ${step.reason ?? null}, ${at(stepStarted)},
                   ${at(stepFinished)}, ${step.duration ?? null}, ${money(step.cost ?? 0)},
+                  ${tokens.input}, ${tokens.output}, ${tokens.cacheCreation}, ${tokens.cacheRead},
                   ${step.status === 'done' ? 'Дууссан' : null})`;
       }
 

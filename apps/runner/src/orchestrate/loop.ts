@@ -715,6 +715,7 @@ export class Orchestrator {
           status: outcome.status,
           duration_s: outcome.durationS,
           cost_usd: outcome.costUsd,
+          tokens: outcome.tokens,
           engine_session_id: outcome.sessionId,
           summary: outcome.summary ?? outcome.error?.detail,
           artifacts: outcome.outputs,

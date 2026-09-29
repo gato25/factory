@@ -79,7 +79,7 @@
       <WeekChart
         days={numbers.current.mergeRequestsByDay}
         total={numbers.current.mergeRequestsTotal}
-        costToday={numbers.current.costToday}
+        tokensToday={numbers.current.tokensToday}
       />
     {/if}
   </div>

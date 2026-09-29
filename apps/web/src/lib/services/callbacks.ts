@@ -5,6 +5,7 @@ import {
   createLogger,
   createRedactor,
   FactoryError,
+  normaliseTokens,
   notAuthorised,
   type PipelineSnapshot,
 } from '@factory/shared';
@@ -130,6 +131,9 @@ export async function applyCallback(
         status: callback.status,
         durationS: callback.duration_s,
         costUsd: callback.cost_usd,
+        // Read leniently: counts are for showing, so whatever arrived that is
+        // not a count is zero and never a reason to refuse the outcome.
+        tokens: normaliseTokens(callback.tokens),
         engineSessionId: callback.engine_session_id,
         summary: callback.summary,
       });

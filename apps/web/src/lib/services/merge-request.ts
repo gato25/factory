@@ -1,6 +1,8 @@
 import type { Database } from '@factory/db';
 import { artifacts, runs, stepResults, tickets } from '@factory/db/schema';
+import { compactTokens } from '@factory/shared';
 import { desc, eq, sql } from 'drizzle-orm';
+import { sumRows, type TokenFigures } from './token-columns';
 
 /**
  * The merge request body. A reviewer who never saw the ticket must be able to
@@ -60,6 +62,10 @@ export async function composeMergeRequest(
     .where(sql`${stepResults.runId} = ${runId}::uuid and ${stepResults.status} = 'skipped'`)
     .orderBy(stepResults.stepIndex);
 
+  const tokens = sumRows(
+    await database.select().from(stepResults).where(eq(stepResults.runId, runId)),
+  );
+
   const durationMinutes =
     run.startedAt && run.finishedAt
       ? Math.max(1, Math.round((run.finishedAt.getTime() - run.startedAt.getTime()) / 60_000))
@@ -115,7 +121,7 @@ export async function composeMergeRequest(
   sections.push(
     [
       '## Run',
-      `- Cost: $${trimMoney(run.costUsd)}`,
+      tokensLine(tokens),
       durationMinutes ? `- Duration: ${durationMinutes} min` : null,
       // "Attempt 2" without saying so reads as a detail; saying it plainly
       // tells a reviewer this change has been tried before.
@@ -173,9 +179,19 @@ function edited(document: { createdBy: string | null }): string {
   return document.createdBy ? ' (edited by a person at a review gate)' : '';
 }
 
-/** `1.8400` reads like machine output; `1.84` reads like money. */
-function trimMoney(value: string): string {
-  return value.includes('.') ? value.replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '') : value;
+/**
+ * What the run processed, in tokens: the total, then how it splits — fresh
+ * input, output, and what came from or went to the prompt cache. Left out
+ * when nothing was recorded, since "0 tokens" would say the run did no work.
+ */
+function tokensLine(tokens: TokenFigures): string | null {
+  if (tokens.total === 0) return null;
+  const cached = tokens.cacheRead + tokens.cacheCreation;
+  return (
+    `- Tokens: ${compactTokens(tokens.total)} ` +
+    `(${compactTokens(tokens.input)} in · ${compactTokens(tokens.output)} out · ` +
+    `${compactTokens(cached)} cached)`
+  );
 }
 
 /**

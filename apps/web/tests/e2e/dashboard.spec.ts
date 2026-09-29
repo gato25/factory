@@ -1,10 +1,12 @@
 import { spawnSync } from 'node:child_process';
 import { createHmac, randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
+import { compactTokens } from '@factory/shared';
 import type { BrowserContext, Page } from '@playwright/test';
 import { expect, test } from '@playwright/test';
 import postgres from 'postgres';
 import { m } from '../../src/lib/i18n';
+import { freeReference } from './free-reference';
 
 /**
  * User Story 1's Independent Test (specs/004-bento-redesign): with tickets in
@@ -22,6 +24,18 @@ const SESSION_SECRET = process.env.SESSION_SECRET ?? '';
 const sql = postgres(DATABASE_URL, { max: 2, idle_timeout: 2, onnotice: () => {} });
 
 const MINUTE = 60_000;
+
+/**
+ * What the seeded finished run's one step reports having used: input, output,
+ * cache writes and cache reads, so the headline has all four to add.
+ */
+const SEEDED_STEP_TOKENS = {
+  input: 1_200,
+  output: 3_400,
+  cacheCreation: 5_000,
+  cacheRead: 250_000,
+};
+const SEEDED_TOKENS = Object.values(SEEDED_STEP_TOKENS).reduce((a, b) => a + b, 0);
 
 type Seeded = {
   userId: string;
@@ -83,7 +97,7 @@ async function seed(): Promise<Seeded> {
     run?: { status: string; current: number | null; finished?: Date; failure?: string },
     createdAt = new Date(),
   ) => {
-    const reference = `#${Math.floor(Math.random() * 900_000) + 100_000}`;
+    const reference = await freeReference(sql);
     const runId = run ? randomUUID() : null;
     const secret = `e2e-${randomUUID()}`;
     const [row] = await sql`
@@ -133,6 +147,16 @@ async function seed(): Promise<Seeded> {
       if (run.status === 'running') {
         await sql`insert into step_results (run_id, step_index, status, started_at)
                   values (${runId}, ${run.current}, 'running', ${new Date(Date.now() - 4 * MINUTE)})`;
+      }
+      if (run.status === 'done') {
+        // A finished step that reported what it used, so the week's "tokens
+        // today" has something to add up rather than being zero on both sides.
+        await sql`insert into step_results (run_id, step_index, status, started_at, finished_at,
+                    duration_s, input_tokens, output_tokens, cache_creation_tokens, cache_read_tokens)
+                  values (${runId}, 0, 'done', ${new Date(Date.now() - 3 * MINUTE)},
+                    ${run.finished ?? new Date()}, 120, ${SEEDED_STEP_TOKENS.input},
+                    ${SEEDED_STEP_TOKENS.output}, ${SEEDED_STEP_TOKENS.cacheCreation},
+                    ${SEEDED_STEP_TOKENS.cacheRead})`;
       }
     }
     return { ticketId: row!.id as string, runId: runId as string, secret };
@@ -321,7 +345,7 @@ test.describe('the dashboard (US1)', () => {
     }
   });
 
-  test("5: seven bars oldest first, today marked, the week's total and today's cost", async ({
+  test("5: seven bars oldest first, today marked, the week's total and today's tokens", async ({
     page,
     context,
   }) => {
@@ -347,11 +371,22 @@ test.describe('the dashboard (US1)', () => {
       String(counts.reduce((a, b) => a + b, 0)),
     );
 
-    const [cost] = await sql`
-      select coalesce(sum(cost_usd), 0)::numeric(12, 4)::text as total from step_results
+    // The four counts of every step finished today, added up by the database
+    // — summed as bigint, since a busy day can pass what one column holds.
+    const [tokens] = await sql`
+      select coalesce(sum(input_tokens::bigint + output_tokens::bigint
+                          + cache_read_tokens::bigint + cache_creation_tokens::bigint), 0)::text as total
+        from step_results
        where finished_at >= date_trunc('day', now())`;
-    await expect(week.locator('[data-cost]')).toHaveText(`$${Number(cost!.total).toFixed(2)}`);
-    await expect(week).toContainText(m.dashboard.week.costToday);
+    const total = Number(tokens!.total);
+    // Ours is in it, so the figure is not zero for want of anything to add.
+    expect(total).toBeGreaterThanOrEqual(SEEDED_TOKENS);
+    const figure = week.locator('[data-tokens]');
+    await expect(figure).toHaveAttribute('data-tokens', String(total));
+    await expect(figure).toHaveText(compactTokens(total));
+    await expect(week).toContainText(m.dashboard.week.tokensToday);
+    // What the tile used to show was money; nothing of that is left on it.
+    await expect(week).not.toContainText('$');
   });
 
   test('6: a callback that moves a run moves its row, without a reload', async ({

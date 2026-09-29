@@ -1,7 +1,8 @@
 import type { Database } from '@factory/db';
 import { artifacts, runs, stepResults } from '@factory/db/schema';
-import type { ArtifactRef } from '@factory/shared';
+import type { ArtifactRef, TokenUsage } from '@factory/shared';
 import { eq, sql } from 'drizzle-orm';
+import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 
 /**
  * Recording a step and adding its cost. The unique key on
@@ -15,10 +16,56 @@ export interface StepRecord {
   status: 'running' | 'done' | 'failed' | 'skipped';
   durationS?: number;
   costUsd?: string;
+  /** What the engine said the step processed; absent is zero. Shown, never enforced. */
+  tokens?: TokenUsage;
   engineSessionId?: string;
   summary?: string;
   conditionNotMet?: string;
   errorDetail?: string;
+}
+
+/** The most a 32-bit `integer` column holds. */
+const INTEGER_MAX = 2_147_483_647;
+
+/**
+ * The four counts as the columns that hold them; zeros when the engine
+ * reported none.
+ *
+ * Clamped to what the column can hold. A count past two billion for one step
+ * is not a real one — the dollar ceiling stops a step long before — but if an
+ * engine ever sent one, the insert would fail and the step's outcome, its
+ * artifacts and the run's progress with it. Counts are for showing.
+ */
+function tokenColumns(tokens: TokenUsage | undefined) {
+  const held = (count: number | undefined) => Math.min(count ?? 0, INTEGER_MAX);
+  return {
+    inputTokens: held(tokens?.input),
+    outputTokens: held(tokens?.output),
+    cacheReadTokens: held(tokens?.cache_read),
+    cacheCreationTokens: held(tokens?.cache_creation),
+  };
+}
+
+/**
+ * The same counts, added to what the step already holds.
+ *
+ * A step that runs again — a change request sent the run back to it, or a
+ * failed run was continued from it — starts a new pass on the SAME row, and
+ * the run's dollar cost already adds the passes together (`addCost`). Its
+ * tokens do too, or a run that had to redo a step would report fewer than it
+ * used. The row is only promoted while it is `running`, so a pass's report
+ * repeated is still dropped, never added twice.
+ */
+function addedTokenColumns(tokens: TokenUsage | undefined) {
+  const added = (column: AnyPgColumn, count: number) =>
+    sql`least(${column}::bigint + ${count}, ${INTEGER_MAX})::integer`;
+  const now = tokenColumns(tokens);
+  return {
+    inputTokens: added(stepResults.inputTokens, now.inputTokens),
+    outputTokens: added(stepResults.outputTokens, now.outputTokens),
+    cacheReadTokens: added(stepResults.cacheReadTokens, now.cacheReadTokens),
+    cacheCreationTokens: added(stepResults.cacheCreationTokens, now.cacheCreationTokens),
+  };
 }
 
 /**
@@ -37,6 +84,7 @@ export async function recordStep(
       status: record.status,
       durationS: record.durationS,
       costUsd: record.costUsd ?? '0.0000',
+      ...tokenColumns(record.tokens),
       engineSessionId: record.engineSessionId,
       summary: record.summary,
       conditionNotMet: record.conditionNotMet,
@@ -59,6 +107,7 @@ export async function recordStep(
       status: record.status,
       durationS: record.durationS,
       costUsd: record.costUsd ?? '0.0000',
+      ...addedTokenColumns(record.tokens),
       engineSessionId: record.engineSessionId,
       summary: record.summary,
       conditionNotMet: record.conditionNotMet,

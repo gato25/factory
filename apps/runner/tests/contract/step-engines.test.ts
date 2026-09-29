@@ -198,6 +198,97 @@ test('the agent engine reports the cost the CLI reported', async () => {
   expect(outcome.durationS).toBe(12);
 });
 
+// --- tokens: what the engine said it processed, shown in place of what it cost ---
+
+const REPORTED = {
+  input_tokens: 42,
+  output_tokens: 9_180,
+  cache_read_input_tokens: 1_118_400,
+  cache_creation_input_tokens: 61_300,
+};
+
+test('the agent engine reports the tokens the CLI reported, beside the cost', async () => {
+  const host = new FakeHost();
+  host.files.set('/work/docs/spec.md', '# Spec');
+  host.responses = [
+    {
+      match: 'claude',
+      result: { stdout: JSON.stringify({ total_cost_usd: 0.42, num_turns: 5, usage: REPORTED }) },
+    },
+  ];
+  const { logs } = sink();
+  const outcome = await runClaudeStep(host, {
+    step: agentStep,
+    snapshot,
+    agent,
+    containerId: 'c1',
+    logs,
+  });
+  expect(outcome.status).toBe('done');
+  expect(outcome.costUsd).toBe('0.4200');
+  expect(outcome.tokens).toEqual({
+    input: 42,
+    output: 9_180,
+    cache_read: 1_118_400,
+    cache_creation: 61_300,
+  });
+});
+
+test('a step killed before its result still carries what the stream counted', async () => {
+  const assistant = (id: string, output: number) =>
+    JSON.stringify({
+      type: 'assistant',
+      message: {
+        id,
+        content: [{ type: 'text', text: 'working' }],
+        usage: { input_tokens: 3, output_tokens: output, cache_read_input_tokens: 5_000 },
+      },
+    });
+  const host = new FakeHost();
+  host.responses = [
+    {
+      match: 'claude',
+      // Stopped at its deadline: two responses, and no result event.
+      result: { exitCode: 124, stdout: `${assistant('m1', 100)}\n${assistant('m2', 250)}\n` },
+    },
+  ];
+  const { logs } = sink();
+  const outcome = await runClaudeStep(host, {
+    step: agentStep,
+    snapshot,
+    agent,
+    containerId: 'c1',
+    logs,
+  });
+  expect(outcome.status).toBe('failed');
+  // The cost stays at zero — it is not estimated (FR-108) — but the tokens
+  // are a fact the stream reported, and the step is not shown as free.
+  expect(outcome.costUsd).toBe('0.0000');
+  expect(outcome.tokens).toEqual({ input: 6, output: 350, cache_read: 10_000, cache_creation: 0 });
+  // And the failure says what it is showing, in tokens: no dollar figure is
+  // put on a screen that shows none anywhere else.
+  expect(outcome.error?.detail).toContain('stopped before it reported its usage');
+  expect(outcome.error?.detail).toContain('2 turns and 10K tokens');
+  expect(outcome.error?.detail).not.toContain('$');
+});
+
+test('a step whose CLI said nothing about tokens has none, not zero', async () => {
+  const host = new FakeHost();
+  host.files.set('/work/docs/spec.md', '# Spec');
+  host.responses = [
+    { match: 'claude', result: { stdout: JSON.stringify({ total_cost_usd: 0.2 }) } },
+  ];
+  const { logs } = sink();
+  const outcome = await runClaudeStep(host, {
+    step: agentStep,
+    snapshot,
+    agent,
+    containerId: 'c1',
+    logs,
+  });
+  expect(outcome.tokens).toBeUndefined();
+});
+
 test('unreadable usage is zero, never a guess — a guess would be enforced against a ceiling', () => {
   expect(usageFromClaudeJson('not json at all').costUsd).toBe('0.0000');
   expect(normaliseCost(undefined)).toBe('0.0000');

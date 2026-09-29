@@ -58,9 +58,10 @@ on each of the last 7 server-local days, including days with zero. Rationale: a 
 is the moment its merge request was opened (the orchestrator sends `mr_opened` then `done`);
 `tickets.updated_at` moves on later edits and would count a ticket twice.
 
-**Today's cost (FR-013).** Decision: sum `step_results.cost_usd` for steps whose `finished_at` is
-today, across all runs. Rationale: cost is recorded per step, so a long run spanning midnight is split
-correctly; an unreported cost is `0.0000` and contributes nothing, as the spec's edge case now states.
+**Tokens today (FR-013, amended from "today's cost").** Decision: sum the four token counts of
+`step_results` whose `finished_at` is today, across all runs. Rationale: tokens are recorded per step,
+so a long run spanning midnight is split correctly; a step that reported none is zero and contributes
+nothing, as the spec's edge case now states. Summed as `bigint` because each column is 32-bit.
 
 ## D5 — The dashboard's ticket list
 

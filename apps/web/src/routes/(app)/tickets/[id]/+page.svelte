@@ -156,8 +156,7 @@
       branchName={loaded.ticket.branchName}
       createdByName={loaded.ticket.createdByName}
       startedAt={loaded.run.startedAt}
-      costUsd={loaded.run.costUsd}
-      costCeilingUsd={loaded.run.costCeilingUsd}
+      tokens={loaded.run.tokens.total}
       elapsedS={loaded.steps.reduce((total, s) => total + (s.durationS ?? 0), 0)}
       pipeline={m.ticketHead.pipeline(pipelineName(loaded.pipeline.name), loaded.steps.length + 1)}
       variant="run"

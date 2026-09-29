@@ -35,6 +35,34 @@ async function aRun() {
   return run.id;
 }
 
+/**
+ * Two finished steps whose tokens add up to a round 1,200,000 — 42 in, 9,158
+ * out, 40,800 written to the prompt cache and 1,150,000 read back from it — so
+ * the headline and each part of the breakdown compact to something checkable.
+ */
+async function tokensSpent(runId: string) {
+  await db.insert(stepResults).values([
+    {
+      runId,
+      stepIndex: 0,
+      status: 'done',
+      inputTokens: 40,
+      outputTokens: 4_000,
+      cacheReadTokens: 600_000,
+      cacheCreationTokens: 40_800,
+    },
+    {
+      runId,
+      stepIndex: 1,
+      status: 'done',
+      inputTokens: 2,
+      outputTokens: 5_158,
+      cacheReadTokens: 550_000,
+      cacheCreationTokens: 0,
+    },
+  ]);
+}
+
 async function document(runId: string, path: string, content: string, createdBy?: string) {
   await db
     .insert(artifacts)
@@ -50,6 +78,7 @@ afterAll(async () => {
 
 test('the body carries everything a reviewer needs, in a readable order', async () => {
   const runId = await aRun();
+  await tokensSpent(runId);
   await document(runId, 'docs/spec.md', 'A "Continue with Google" button appears.');
   await document(runId, 'docs/plan.md', '1. Add the provider configuration.');
 
@@ -71,8 +100,12 @@ test('the body carries everything a reviewer needs, in a readable order', async 
   // The plan is, because the diff already shows how the work was done.
   expect(content.description).toContain('<summary>Plan</summary>');
 
-  // What it cost, how long, and that nothing is about to merge itself.
-  expect(content.description).toContain('- Cost: $1.84');
+  // What it used, how long, and that nothing is about to merge itself. The
+  // run's dollar figure is what the ceilings are enforced on; it is not what
+  // a reviewer is shown.
+  expect(content.description).toContain('- Tokens: 1.2M (42 in · 9.2K out · 1.2M cached)');
+  expect(content.description).not.toContain('$1.84');
+  expect(content.description).not.toContain('Cost');
   expect(content.description).toContain('- Duration: 14 min');
   expect(content.description).toContain('- First attempt');
   expect(content.description).toContain('never merges: this waits for a person');
@@ -98,6 +131,28 @@ test('a document no person touched does not claim they did', async () => {
   const content = await composeMergeRequest(db, runId, { ticketUrl: `${PUBLIC}/tickets/x` });
   expect(content.description).toContain('## Specification\n\n');
   expect(content.description).not.toContain('edited by a person');
+});
+
+test('a run that recorded no tokens has no tokens line, rather than one claiming zero', async () => {
+  // Runs from before tokens were recorded, and steps killed before their
+  // engine reported anything: "0 tokens" would say the run did no work.
+  const runId = await aRun();
+  const content = await composeMergeRequest(db, runId, { ticketUrl: `${PUBLIC}/tickets/x` });
+  expect(content.description).not.toContain('Tokens');
+  expect(content.description).toContain('- Duration: 14 min');
+});
+
+test('small runs show their tokens whole, and a run of only output says so', async () => {
+  const runId = await aRun();
+  await db.insert(stepResults).values({
+    runId,
+    stepIndex: 0,
+    status: 'done',
+    inputTokens: 900,
+    outputTokens: 100,
+  });
+  const content = await composeMergeRequest(db, runId, { ticketUrl: `${PUBLIC}/tickets/x` });
+  expect(content.description).toContain('- Tokens: 1K (900 in · 100 out · 0 cached)');
 });
 
 test('a second attempt says so, rather than burying it as a number', async () => {

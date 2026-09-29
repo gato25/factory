@@ -4,6 +4,7 @@ import {
   type SnapshotAgent,
   type Step,
   type StepOutcome,
+  totalTokens,
 } from '@factory/shared';
 import { agentSlug, substitute } from '../container/config';
 import { GUARD_SETTINGS_PATH } from '../container/guard';
@@ -212,6 +213,13 @@ export async function runClaudeStep(
   const usage = usageFromClaudeJson(rendered.resultJson ?? result.stdout);
   const durationS = Math.max(1, Math.round((usage.durationMs ?? Date.now() - started) / 1000));
 
+  // Tokens, for the screens to show. The engine's own report where there is
+  // one; where the step was stopped before it made one, what the stream
+  // itself counted — a fact, unlike a cost we would have to guess, and short
+  // of the truth at worst. A step that processed nothing observable has none.
+  const observed = rendered.observedTokens();
+  const tokens = usage.tokens ?? (totalTokens(observed) > 0 ? observed : undefined);
+
   if (result.exitCode !== 0) {
     /**
      * A step stopped before it reported says so.
@@ -225,13 +233,14 @@ export async function runClaudeStep(
      */
     const unreported =
       rendered.resultJson === null && rendered.observed()
-        ? ` It was stopped before reporting its cost, so this step is recorded at ` +
-          `$0.0000 although it ran ${rendered.observed()}.`
+        ? ` It was stopped before it reported its usage, so this step is recorded with what ` +
+          `its output showed — ${rendered.observed()} — and no cost in dollars.`
         : '';
     const outcome = applyLimits(
       {
         status: 'failed',
         costUsd: usage.costUsd,
+        tokens,
         durationS,
         sessionId: usage.sessionId,
         outputs: [],
@@ -255,6 +264,7 @@ export async function runClaudeStep(
     return {
       status: 'failed',
       costUsd: usage.costUsd,
+      tokens,
       durationS,
       sessionId: usage.sessionId,
       outputs: [],
@@ -277,6 +287,7 @@ export async function runClaudeStep(
     {
       status: 'done',
       costUsd: usage.costUsd,
+      tokens,
       durationS,
       sessionId: usage.sessionId,
       // The agent's own closing line where it wrote one — "Wrote docs/spec.md"

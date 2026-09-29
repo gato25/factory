@@ -54,8 +54,8 @@ visible.
 A person opens the dashboard. Without scrolling they see every ticket that is moving, grouped by
 what state it is in, each one showing how far through *its own* pipeline it is and, in words, what
 is happening to it now. Beside that list they see what is waiting for their approval, how often runs
-succeed on their first attempt, and how many merge requests were opened this week and what today
-cost.
+succeed on their first attempt, and how many merge requests were opened this week and how many
+tokens today's steps processed.
 
 **Why this priority**: the dashboard is the first thing the audience sees and the page a team lives
 on. It is also the only screen that gains new information.
@@ -80,8 +80,8 @@ the right heading with a step bar of the right length, and the three figures mat
 4. **Given** no ticket in the last 30 days with a known outcome, **When** the dashboard opens,
    **Then** the first-attempt figure says there is nothing to measure yet instead of showing 0%.
 5. **Given** merge requests opened on several of the last seven days, **When** the dashboard opens,
-   **Then** a bar per day shows how many, today is marked, the week's total is shown, and today's
-   total cost is shown beside it.
+   **Then** a bar per day shows how many, today is marked, the week's total is shown, and the tokens
+   processed today are shown beside it.
 6. **Given** a run that changes state while the dashboard is open, **When** its callback arrives,
    **Then** the list, the approvals and the figures update without a reload.
 7. **Given** a workspace that is not yet set up, **When** the dashboard opens, **Then** it still says
@@ -245,9 +245,9 @@ it fails and names the screen and phrase.
 - Many tickets in one state: the dashboard shows the most relevant first and states how many more
   there are, with a link to the board.
 - A day with no merge requests: its bar is drawn at zero height, not omitted.
-- A run whose cost was not reported (killed before its engine reported usage): today's figure is
-  labelled as the recorded cost and adds nothing for it; the run page keeps saying, as it already
-  does, that its cost is missing.
+- A run whose tokens were not reported (killed before its engine reported usage): today's figure
+  counts what the engines reported and adds nothing for it; a step with no recorded tokens shows none,
+  rather than "0 tokens", and the run page's total leaves the figure out when nothing was recorded.
 - A run waiting for approval appears once in the approvals, however many people may approve it.
 - A browser window narrower than the design: tiles stack rather than overflow, and no text falls
   below the minimum size.
@@ -305,7 +305,7 @@ it fails and names the screen and phrase.
   request on attempt 1 with no artifact of that attempt edited by a person — shown with the number of
   tickets counted. When no ticket qualifies, it MUST say there is nothing to measure yet.
 - **FR-013**: The dashboard MUST show merge requests opened on each of the last 7 days, with today
-  marked and the 7-day total, and today's total recorded cost.
+  marked and the 7-day total, and the tokens processed today (amended, see below: tokens, not cost).
 - **FR-014**: The dashboard MUST update live as runs change, and MUST keep the notice that names what
   is missing when the workspace is not set up.
 
@@ -366,8 +366,9 @@ it fails and names the screen and phrase.
   nothing new is stored.
 - **Merge requests per day (derived)**: for each of the last 7 days, the number of merge requests
   opened; computed from existing run records.
-- **Today's cost (derived)**: the sum of the costs of the steps that finished today, across all runs,
-  as recorded — an unreported cost contributes nothing.
+- **Tokens today (derived)**: the sum of the tokens — input, output, and cache reads and writes — of
+  the steps that finished today, across all runs, as the engines reported them; a step that reported
+  none contributes nothing.
 
 ## Success Criteria *(mandatory)*
 
@@ -411,6 +412,20 @@ it fails and names the screen and phrase.
 
 ## Divergence from the product specification
 
+**Amended: tokens are shown where cost was.** The screens drew what a run cost in dollars — today's
+cost on the dashboard, the estimate on the new-ticket form and the pipeline page, the spend so far in
+the run head, the details tab, the design review, and the merge request's "Run" list. Everywhere a
+person is *shown* a run's expense it is now the tokens the engines reported (input, output, and the
+prompt cache's reads and writes, added up and written compactly: 842, 18.4K, 1.2M), because that is the
+number the engine itself reports and the one people compare runs by. Nothing that *enforces* a limit
+changed: the ceilings — Settings' cost limits, an agent's maximum cost, and the "stopped at its limit"
+message — remain in dollars, since the model CLI is stopped on a dollar figure and a limit must be
+stated in the unit it is enforced in. Each `step_results` row gains four counts (`input_tokens`,
+`output_tokens`, `cache_read_tokens`, `cache_creation_tokens`); the run's figure is their sum, and a
+step that runs again (a change request, a continued run) adds its passes together, as the run's dollar
+cost does; runs from before the counts existed show none, and the estimate ignores them. `step_finished` carries an
+optional `tokens` object (001 `contracts/orchestrator.md`).
+
 **Superseded requirements of 001.** Two requirements of `specs/001-code-factory-mvp/spec.md` describe
 the dashboard this feature replaces, and are superseded by it; 001 is amended to point here:
 
@@ -431,7 +446,7 @@ Constitution Principle I. The divergences are:
 
 - The frame: a white left sidebar and a separate top bar become one floating top navigation bar.
 - 01 Dashboard: the four stat tiles and the recent-activity feed are replaced by the grouped ticket
-  list, the first-attempt figure and the 7-day merge-request chart with today's cost; the "four-segment
+  list, the first-attempt figure and the 7-day merge-request chart with today's tokens; the "four-segment
   progress bar" becomes a bar per ticket sized to its pipeline; "callbacks arrive from n8n" becomes
   callbacks from the execution service.
 - 02 Repositories: a table becomes tiles, and the latest ticket worked on is added.

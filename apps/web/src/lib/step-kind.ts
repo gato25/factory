@@ -18,6 +18,7 @@
  * different glyphs on one screen.
  */
 
+import { compactTokens } from '@factory/shared';
 import { type Messages, m } from './i18n';
 import type { StepView } from './services/run-view';
 
@@ -91,15 +92,15 @@ export function duration(seconds: number, words: Messages = m): string {
 }
 
 /**
- * "2m 10s · $0.14", the Live Output panel's meta line.
+ * "2m 10s · 14K tokens", the Live Output panel's meta line.
  *
  * Empty when the step has neither, which is what the artboard draws for a
  * step that has not run: the meta is not there at all, rather than there
  * saying nothing.
  */
-export function spent(step: Pick<StepView, 'durationS' | 'costUsd'>): string {
+export function spent(step: Pick<StepView, 'durationS' | 'tokens'>, words: Messages = m): string {
   const parts: string[] = [];
-  if (step.durationS) parts.push(duration(step.durationS));
-  if (step.costUsd && Number(step.costUsd) > 0) parts.push(`$${Number(step.costUsd).toFixed(2)}`);
+  if (step.durationS) parts.push(duration(step.durationS, words));
+  if (step.tokens && step.tokens > 0) parts.push(words.tokens.count(compactTokens(step.tokens)));
   return parts.join(' · ');
 }

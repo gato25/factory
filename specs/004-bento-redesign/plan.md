@@ -10,7 +10,7 @@ Rebuild the web application's fourteen screens to the approved `design.pen` artb
 navigation instead of the sidebar, the bento surfaces of the UI kit, the tangerine palette already
 mirrored into the token layer, and text sizes and contrast that survive a projector (FR-007, FR-008,
 measured by a new browser test). Behaviour does not change (FR-025). The dashboard gains three figures
-— first-attempt rate, merge requests per day, today's cost — computed from existing records, the first
+— first-attempt rate, merge requests per day, today's tokens — computed from existing records, the first
 one by a function shared with the existing audit so the two can never disagree (SC-004). Step bars
 everywhere are drawn against each ticket's pinned pipeline. The fidelity check is rewritten to the
 Mongolian design, and `spec.md` §4 and 001 FR-071 / FR-073 are amended.

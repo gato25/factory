@@ -199,8 +199,8 @@ export const mn = {
       weekdays: ['Ня', 'Да', 'Мя', 'Лх', 'Пү', 'Ба', 'Бя'],
       today: 'өнөөдөр',
       day: (weekday: string, n: number) => `${weekday}: ${n} нэгтгэх хүсэлт`,
-      costToday: 'Өнөөдрийн зардал',
-      costNote: 'бүртгэгдсэн зардал',
+      tokensToday: 'Өнөөдрийн токен',
+      tokensNote: 'өнөөдөр дууссан алхмуудын боловсруулсан токен',
     },
     /** What `readiness()` finds missing, as the notice names it. */
     missing: {
@@ -412,11 +412,11 @@ export const mn = {
     notStarted: 'эхлээгүй',
     started: (reference: string) => `${reference} эхэллээ.`,
     savedAsDraft: (reference: string) => `${reference} ноорог болж хадгалагдлаа.`,
-    estimateMeasured: (costUsd: string | number, minutes: string | number) =>
-      `Ойролцоо зардал ≈ ${costUsd} · ихэвчлэн ${minutes} мин`,
-    estimateCeiling: (ceilingUsd: string | number, ceilingMinutes: string | number) =>
-      `Харьцуулах ажиллагаа одоогоор байхгүй · дээд тал нь ${ceilingUsd} ба ${ceilingMinutes} мин`,
-    estimateUnknown: 'Зардлыг харахын тулд репозитори, дамжлага сонгоно уу.',
+    estimateMeasured: (tokens: string, minutes: string | number) =>
+      `Ойролцоогоор ≈ ${tokens} токен · ихэвчлэн ${minutes} мин`,
+    estimateCeiling: (ceilingMinutes: string | number) =>
+      `Харьцуулах ажиллагаа одоогоор байхгүй · дээд тал нь ${ceilingMinutes} мин`,
+    estimateUnknown: 'Тооцоог харахын тулд репозитори, дамжлага сонгоно уу.',
     saveAsDraft: 'Ноороглох',
     creating: 'Үүсгэж байна…',
     createAndStart: 'Үүсгээд эхлүүлэх',
@@ -467,11 +467,11 @@ export const mn = {
     continue: 'Үргэлжлүүлэх',
     pause: 'Түр зогсоох',
     continueRunTitle:
-      'Хэсэг хугацаанд юу ч болоогүй бол ажиллагааг дуусаагүй эхний алхмаас дахин хөдөлгөнө. Дууссан алхмууд ба тэдний зардал хадгалагдана. Зөвхөн гацсан ажиллагаанд: ажиллаж байгаа алхам хоёр удаа ажиллах болно.',
+      'Хэсэг хугацаанд юу ч болоогүй бол ажиллагааг дуусаагүй эхний алхмаас дахин хөдөлгөнө. Дууссан алхмууд ба тэдний токен хадгалагдана. Зөвхөн гацсан ажиллагаанд: ажиллаж байгаа алхам хоёр удаа ажиллах болно.',
     continueRun: 'Ажиллагааг үргэлжлүүлэх',
     cancelRun: 'Цуцлах',
     continueFromFailedTitle:
-      'Амжилтгүй болсон алхмаас дахин ажиллуулна. Дууссан алхмууд ба тэдний зардал хадгалагдана.',
+      'Амжилтгүй болсон алхмаас дахин ажиллуулна. Дууссан алхмууд ба тэдний токен хадгалагдана.',
     continueFromFailed: 'Амжилтгүй алхмаас үргэлжлүүлэх',
     retry: 'Дахин ажиллуулах',
   },
@@ -482,10 +482,9 @@ export const mn = {
     noBranch: 'салбар хараахан алга',
     createdBy: (name: string) => `${name} үүсгэсэн`,
     started: (ago: string) => `${ago} эхэлсэн`,
-    soFar: (dollars: string) => `одоогоор ${dollars}`,
+    soFar: (tokens: string) => `одоогоор ${tokens} токен`,
     elapsed: 'хугацаа',
-    spent: 'зарцуулсан',
-    spentOf: (budget: string) => `зарцуулсан · төсөв ${budget}`,
+    tokensUsed: 'токен ашигласан',
     pipeline: (pipeline: string, steps: number) => `${pipeline} · ${steps} алхам`,
   },
 
@@ -540,7 +539,7 @@ export const mn = {
     branch: 'Салбар',
     sandbox: 'Орчин',
     execution: 'Ажиллуулалт',
-    budget: 'Төсөв',
+    tokens: 'Токен',
     time: 'Хугацаа',
     changesInterface: 'Интерфейсийг өөрчилнө',
     noInterfaceChange: 'Интерфейс өөрчлөгдөхгүй',
@@ -549,7 +548,6 @@ export const mn = {
     attemptOrdinal: (attempt: number) => `(${attempt}-р оролдлого)`,
     notCreated: 'үүсгээгүй',
     notStarted: 'эхлээгүй',
-    budgetOf: (spent: string | number, cap: string | number) => `${cap} хязгаараас ${spent}`,
     timeCap: (minutes: string | number) => `алхам тутамд ${minutes} мин хязгаар`,
     classificationMissing:
       'Тодорхойлолтын алхам интерфейсийн талаар шийдвэр бичээгүй тул дизайн алгасагдсан. Энэ даалгаварт дэлгэц шаардлагатай байсан эсэхийг шалгана уу.',
@@ -681,7 +679,9 @@ export const mn = {
     afterYouApprove: 'Батласны дараа',
     openMergeRequest: 'Нэгтгэх хүсэлт нээх',
     openMergeRequestNote: 'Салбар түлхэгдэж, хүсэлт нээгдэж, даалгавар хаагдана',
-    stepCost: (took: string, cost: string) => `Дизайн алхам ${took} зарцуулж, ${cost} өртсөн.`,
+    stepCost: (took: string, tokens: string) =>
+      `Дизайн алхам ${took} ажиллаж, ${tokens} токен ашигласан.`,
+    stepTook: (took: string) => `Дизайн алхам ${took} ажилласан.`,
   },
 
   agents: {
@@ -901,10 +901,10 @@ export const mn = {
     preflightHeading: 'Одоо энэ дамжлагаар даалгавар эхэлбэл',
     preflightNote: (version: number) => `${version}-р хувилбар, хадгалсан байдлаар. Юу ч эхлээгүй.`,
     workingItOut: 'Тооцоолж байна…',
-    estimateMeasured: (minutes: string | number, costUsd: string | number, samples: number) =>
-      `Ижил төрлийн ажиллагаанууд ойролцоогоор ${minutes} минут, ${costUsd} зарцуулсан (${samples} ажиллагаагаар). Энэ нь тооцоо бөгөөд батлан даалт биш.`,
-    estimateNone: (ceilingUsd: string | number, ceilingMinutes: string | number) =>
-      `Харьцуулах ажиллагаа байхгүй тул тооцоолох үндэс байхгүй. Дээд хязгаар нь ${ceilingUsd} ба ${ceilingMinutes} минут.`,
+    estimateMeasured: (minutes: string | number, tokens: string, samples: number) =>
+      `Ижил төрлийн ажиллагаанууд ойролцоогоор ${minutes} минут, ${tokens} токен ашигласан (${samples} ажиллагаагаар). Энэ нь тооцоо бөгөөд батлан даалт биш.`,
+    estimateNone: (ceilingMinutes: string | number) =>
+      `Харьцуулах ажиллагаа байхгүй тул тооцоолох үндэс байхгүй. Дээд хугацаа нь ${ceilingMinutes} минут.`,
     nothingVerifies: 'Энэ дамжлагад үр дүнг шалгах юу ч байхгүй (FR-034a).',
   },
 
@@ -1118,6 +1118,16 @@ export const mn = {
     Bash: 'Bash',
     WebFetch: 'WebFetch',
     GitPush: 'Git түлхэлт',
+  },
+
+  /**
+   * Tokens — what a step or a run processed, shown wherever the screens used to
+   * show what it cost. The engine's own counts; `total` is all four added up.
+   */
+  tokens: {
+    count: (compact: string) => `${compact} токен`,
+    breakdown: (input: string, output: string, cached: string) =>
+      `оролт ${input} · гаралт ${output} · кэш ${cached}`,
   },
 
   owner: {
