@@ -52,6 +52,34 @@ export async function listFiles(database: Database, ticketId: string): Promise<S
   );
 }
 
+/**
+ * One file with its text, for a person to read on the ticket page.
+ *
+ * Scoped to the ticket as well as the id, so an id from another ticket reads
+ * nothing through this route. Null when there is no such file — removed while
+ * somebody was looking at it, say — which is an ordinary thing to have
+ * happen and not an error.
+ */
+export async function getFile(
+  database: Database,
+  ticketId: string,
+  fileId: string,
+): Promise<(StoredFile & { content: string }) | null> {
+  const [row] = await database
+    .select({
+      id: ticketFiles.id,
+      name: ticketFiles.name,
+      contentType: ticketFiles.contentType,
+      bytes: ticketFiles.bytes,
+      createdAt: ticketFiles.createdAt,
+      content: ticketFiles.content,
+    })
+    .from(ticketFiles)
+    .where(and(eq(ticketFiles.ticketId, ticketId), eq(ticketFiles.id, fileId)))
+    .limit(1);
+  return row ?? null;
+}
+
 /** The content too — only the execution service needs this. */
 export async function readFiles(
   database: Database,

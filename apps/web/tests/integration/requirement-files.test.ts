@@ -4,6 +4,7 @@ import { startRun } from '../../src/lib/services/run';
 import {
   attachFiles,
   fileManifest,
+  getFile,
   listFiles,
   readFiles,
   removeFile,
@@ -145,6 +146,40 @@ test('removing one is scoped to its ticket', async () => {
 
   expect((await removeFile(db, scenario.ticketId, file?.id as string)).removed).toBe(true);
   expect(await listFiles(db, scenario.ticketId)).toEqual([]);
+});
+
+test('a person can read an attached document back, by its ticket and its id', async () => {
+  // What a run was given is worth being able to read: the list said a name
+  // and a size, and the text went to the agents and nowhere a person could see.
+  await attachFiles(db, scenario.ticketId, [brief()], scenario.userId);
+  const [file] = await listFiles(db, scenario.ticketId);
+
+  const read = await getFile(db, scenario.ticketId, file?.id as string);
+  expect(read?.name).toBe('brief.md');
+  expect(read?.content).toBe(brief().content);
+  expect(read?.bytes).toBe(bytesOf(brief().content));
+});
+
+test('reading one is scoped to its ticket: another ticket’s id reads nothing', async () => {
+  await attachFiles(db, scenario.ticketId, [brief()], scenario.userId);
+  const [file] = await listFiles(db, scenario.ticketId);
+
+  expect(await getFile(db, scenario.userId, file?.id as string)).toBeNull();
+});
+
+test('reading one that has been removed is nothing, not an error', async () => {
+  // Somebody removes it while someone else has the page open.
+  await attachFiles(db, scenario.ticketId, [brief()], scenario.userId);
+  const [file] = await listFiles(db, scenario.ticketId);
+  await removeFile(db, scenario.ticketId, file?.id as string);
+
+  expect(await getFile(db, scenario.ticketId, file?.id as string)).toBeNull();
+});
+
+test('the list stays free of text: reading it is a separate call', async () => {
+  await attachFiles(db, scenario.ticketId, [brief()], scenario.userId);
+  const [listed] = await listFiles(db, scenario.ticketId);
+  expect(listed).not.toHaveProperty('content');
 });
 
 test('removing one that is already gone is not an error', async () => {

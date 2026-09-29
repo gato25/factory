@@ -163,7 +163,7 @@ and no text is under 12px (the board's five columns wrap into rows); in English 
 | 03 Connect Repository | yes | — |
 | 04 Tickets Board | yes | the backlog column is neutral; tints are the design's deepest in each hue (ΔE ≥ 10) |
 | 05 Create Ticket | yes | the file field's "Choose Files" is the browser's own control, in the browser's language; the no-verification caution is red |
-| 06 Ticket Run | yes | the task document is named by what it is for, not its task count |
+| 06 Ticket Run | yes | the task document is named by what it is for, not its task count; a "What was asked" tile (description, criteria, documents) sits in the side column, and a draft has a page with a Start button — the artboard draws neither (spec: Divergence) |
 | 07 Approval Checkpoint | yes | the timeline names a decision, not who made it |
 | 08 Pipeline Builder | yes | a checkpoint is titled by kind, not purpose; a condition in the form's words; a custom agent's step takes the deep accent, not blue |
 | 08 Pipelines list | no artboard | built from the kit's tiles and chips |
@@ -240,3 +240,38 @@ lights on, and people seeing the screens for the first time.
 - **SC-003**: 3 viewers at 6 metres in the lit room read every ticket title and state on the
   dashboard, the board and a running ticket. _Result: not yet run._
 
+### Follow-up: what was asked, on the ticket
+
+What a person gives when they make a ticket — the description, the acceptance criteria, the documents
+they attach — was on no screen once the ticket existed (spec.md, "Divergence", "Amended"). It is now:
+a "What was asked" tile in the run page's side column, each attached document opening in place in the
+Requirements tab (Markdown rendered, anything else as written), and a page for a ticket saved as a
+draft with the same tile, its documents and a Start button. The form's file field is named as a list
+(`files[]`), which it was not, so attaching two documents at once no longer ends in a 500 page. Start on
+a draft says why when it is refused. Re-verified after the change:
+
+- **Typecheck**: `bun run check` — 0 errors, 0 warnings, all four packages.
+- **Lint**: no new finding in a touched file. The import-order error in `tickets.remote.ts` is the
+  repository's own (`$lib/i18n` after the services), there before this change.
+- **Unit, contract and integration**, file by file as above: **129 files, 1358 pass, 18 fail** — the
+  same 18 (16 assert the old English wording, 2 depend on this container's privileges). Two files more
+  than the tokens follow-up's 127: the runner's `output-capture` and `deadlines`, from the stability
+  work. This change adds four tests of reading a document back (`requirement-files`) and two of the
+  contract (`bento-ui-data`: `ticketFile`, and `start` replying with its refusal).
+- **Browser tests**: **91 tests: 88 passed, 3 skipped, 0 failed** (4.7 min). Five are new
+  (`ticket-brief.spec.ts`): two documents picked at once on the form are both kept (the spec fails with
+  the old field name), two attached from the ticket page are too, a started ticket shows its
+  description, criteria and documents and each document reads, a draft shows the same and Start gives
+  it a run (against a stand-in execution service that takes the run), and a draft with no pipeline says
+  so and stays a draft. The legibility check gained two screens (the Requirements tab with a Markdown
+  and a plain-text document open, and the draft page), holds the brief on the run page to 14px, and
+  waits for what loads after the page before it measures. Measuring them found the description and a
+  document's paragraphs at 13px and the Attach button at 12px; the first two are 14px where a document
+  is what is being read (`--markdown-size` on `Markdown`, unchanged at 13px everywhere else) and the
+  button is 14px. Five specs that still drew a five-digit ticket reference (`approve`, `design-stage`,
+  `pipeline-builder`, `recover`, `watch-run`) draw a free one now; one had collided with the database's
+  earlier tickets in the first run of this change.
+- **Audits**: `audit:browser` and `audit:offline` pass; the production build succeeds.
+- **Not verified**: starting a draft against a real execution service. The button was exercised
+  against a stand-in that answers the way the service does. A draft with no pipeline chosen still
+  cannot be started from the ticket page, because nothing there chooses one; the refusal names it.

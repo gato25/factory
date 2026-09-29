@@ -51,8 +51,15 @@ interface Screen {
   primary: string[];
   /** Measure only inside this element — the frame, on a screen not rebuilt yet. */
   within?: string;
-  /** Pressed before measuring: a tab or a dialog that is part of the screen. */
-  click?: string;
+  /** Pressed, in order, before measuring: a tab or a dialog that is part of the screen. */
+  click?: string | string[];
+  /**
+   * Shown before measuring. What loads after the page does — a list of
+   * documents, the text of one — is not on the screen yet when the page goes
+   * quiet, and a screen measured before its content arrived passes for having
+   * none of it.
+   */
+  ready?: string[];
 }
 
 const SCREENS: Screen[] = [
@@ -122,7 +129,21 @@ const SCREENS: Screen[] = [
     name: '06 Ticket Run',
     path: (seeded) => `/tickets/${seeded.tickets.running}`,
     signedIn: true,
-    primary: ['h1', '.cell .n', '.run-tabs button', '.results .t', '.btn', '.log .t', '.note'],
+    ready: ['[data-brief-description]', '[data-brief] .docs li'],
+    primary: [
+      'h1',
+      '.cell .n',
+      '.run-tabs button',
+      '.results .t',
+      '.btn',
+      '.log .t',
+      '.note',
+      // What was asked, beside the results.
+      '[data-brief] .text',
+      '[data-brief] .criteria li',
+      '[data-brief] .docs li',
+      '[data-brief] .read',
+    ],
   },
   {
     name: '06 Ticket Run, failed',
@@ -150,6 +171,32 @@ const SCREENS: Screen[] = [
     signedIn: true,
     click: '.run-tabs button:nth-child(3)',
     primary: ['h1', '.btn'],
+  },
+  {
+    // The Requirements tab with a Markdown document and a table of numbers
+    // both open: what a person reads to check what a run was given.
+    name: '06 Ticket Run, documents',
+    path: (seeded) => `/tickets/${seeded.tickets.running}`,
+    signedIn: true,
+    click: ['.run-tabs button:nth-child(4)', '.open >> nth=0', '.open >> nth=1'],
+    ready: ['[data-file-view] pre', '[data-file-view] h1'],
+    primary: ['h1', '.open', '[data-file-view] p', '[data-file-view] pre', '.btn', '.add'],
+  },
+  {
+    // A ticket saved as a draft: what was asked, its documents, and Start.
+    name: '06 Ticket Run, draft',
+    path: (seeded) => `/tickets/${seeded.tickets.draft}`,
+    signedIn: true,
+    ready: ['[data-brief-description]', '.open'],
+    primary: [
+      'h1',
+      '.btn',
+      '[data-draft-note]',
+      '[data-brief] .text',
+      '[data-brief] .criteria li',
+      '.open',
+      '.add',
+    ],
   },
   {
     name: '07 Approval Checkpoint',
@@ -361,23 +408,37 @@ async function seed(): Promise<Seeded> {
     return row!.id as string;
   };
 
+  const made = {
+    draft: await ticket(`Draft ${tag}`, 'draft'),
+    queued: await ticket(`Queued ${tag}`, 'queued', { status: 'queued', current: null }),
+    running: await ticket(`Running ${tag}`, 'running', { status: 'running', current: 0 }),
+    waiting: await ticket(`Waiting ${tag}`, 'waiting_approval', {
+      status: 'waiting_approval',
+      current: 2,
+    }),
+    failed: await ticket(`Failed ${tag}`, 'failed', {
+      status: 'failed',
+      current: 3,
+      failure: 'The tests failed at implement.',
+    }),
+    done: await ticket(`Done ${tag}`, 'done', { status: 'done', current: null }),
+  };
+
+  // Documents on the two tickets that show them, so what a person reads there is measured.
+  for (const ticketId of [made.draft, made.running]) {
+    for (const [name, type, content] of [
+      ['rates.csv', 'text/csv', 'item,rate\nvat,10\n'],
+      ['spec.md', 'text/markdown', '# What to build\n\nRead from the back of the room.\n'],
+    ] as const) {
+      await sql`
+        insert into ticket_files (ticket_id, name, content_type, bytes, content, uploaded_by)
+        values (${ticketId}, ${name}, ${type}, ${Buffer.byteLength(content)}, ${content}, ${userId})`;
+    }
+  }
+
   return {
     userId,
-    tickets: {
-      draft: await ticket(`Draft ${tag}`, 'draft'),
-      queued: await ticket(`Queued ${tag}`, 'queued', { status: 'queued', current: null }),
-      running: await ticket(`Running ${tag}`, 'running', { status: 'running', current: 0 }),
-      waiting: await ticket(`Waiting ${tag}`, 'waiting_approval', {
-        status: 'waiting_approval',
-        current: 2,
-      }),
-      failed: await ticket(`Failed ${tag}`, 'failed', {
-        status: 'failed',
-        current: 3,
-        failure: 'The tests failed at implement.',
-      }),
-      done: await ticket(`Done ${tag}`, 'done', { status: 'done', current: null }),
-    },
+    tickets: made,
     agentId: writer.id as string,
     pipelineId: pipeline!.id as string,
     skillId: skill!.id as string,
@@ -629,9 +690,12 @@ test.describe('every screen can be read from the back of a lit room', () => {
       const seeded = await seed();
       if (screen.signedIn) await signIn(context, seeded.userId);
       await page.goto(screen.path(seeded), { waitUntil: 'networkidle' });
-      if (screen.click) {
-        await page.locator(screen.click).first().click();
+      for (const selector of [screen.click ?? []].flat()) {
+        await page.locator(selector).first().click();
         await page.waitForLoadState('networkidle');
+      }
+      for (const selector of screen.ready ?? []) {
+        await page.locator(selector).first().waitFor({ state: 'visible' });
       }
       const findings = await measured(page, screen);
       expect(findings, `${screen.name}:\n${findings.join('\n')}`).toEqual([]);

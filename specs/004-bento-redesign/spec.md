@@ -426,6 +426,20 @@ step that runs again (a change request, a continued run) adds its passes togethe
 cost does; runs from before the counts existed show none, and the estimate ignores them. `step_finished` carries an
 optional `tokens` object (001 `contracts/orchestrator.md`).
 
+**Amended: the ticket shows what was asked.** What a person gives when they make a ticket — the
+description, the acceptance criteria, the requirement documents they attach — was shown on no screen
+once the ticket existed: the run page had a title, the criteria appeared only at an approval
+checkpoint, and a document was a name and a size in the Requirements tab. Artboard 06 has no tile for
+it; the screen adds one, "Юу хүссэн бэ" ("What was asked"), in the side column under the results,
+holding the description (rendered as Markdown), the criteria, and the names of the documents with a
+button to the Requirements tab, where each document opens in place — Markdown rendered, anything else
+as written. A ticket saved as a draft (001 FR-017) had no page beyond "not started", and no way to be
+started from the app; its page now shows the same tile and documents, and a Start button that does what
+"Create & start" does. This is the one place FR-025 is exceeded: starting a draft is behaviour, but it
+is behaviour 001 FR-017 already required and the application had the command for (`start`) with no
+screen calling it. Attaching two documents at once, which the form offers, failed with a server error
+because the file field was not named as a list (`files[]`); it is named so now.
+
 **Superseded requirements of 001.** Two requirements of `specs/001-code-factory-mvp/spec.md` describe
 the dashboard this feature replaces, and are superseded by it; 001 is amended to point here:
 

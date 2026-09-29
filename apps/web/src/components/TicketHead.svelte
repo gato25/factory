@@ -32,6 +32,7 @@
     pipeline = null,
     status,
     variant = 'wide',
+    stats = true,
     actions,
     children,
   }: {
@@ -50,6 +51,8 @@
     pipeline?: string | null;
     status: { label: string; tone: string };
     variant?: 'wide' | 'run' | 'rail';
+    /** The run variant's two figures. Left out for a ticket with no run, where both would be a dash. */
+    stats?: boolean;
     actions?: Snippet;
     /** The step track, under the head (the run variant). */
     children?: Snippet;
@@ -108,7 +111,7 @@
     </div>
 
     <div class="r">
-      {#if run}
+      {#if run && stats}
         <!-- The two figures somebody watching a run looks at. -->
         <div class="stat">
           <span class="v">{elapsedS ? duration(elapsedS) : '—'}</span>

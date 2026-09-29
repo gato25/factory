@@ -3,6 +3,7 @@ import type { APIRequestContext, BrowserContext } from '@playwright/test';
 import { expect, test } from '@playwright/test';
 import postgres from 'postgres';
 import { m } from '../../src/lib/i18n';
+import { freeReference } from './free-reference';
 
 /**
  * User Story 3's Independent Test (quickstart.md scenario C): a gate after the
@@ -74,7 +75,7 @@ async function seed(approvers: 'anyone' | 'ticket_creator'): Promise<Seeded> {
   await sql`insert into pipeline_versions (pipeline_id, version, steps)
             values (${pipeline!.id}, 1, ${sql.json(steps)})`;
 
-  const reference = `#${Math.floor(Math.random() * 90_000) + 10_000}`;
+  const reference = await freeReference(sql);
   const [ticket] = await sql`
     insert into tickets (repository_id, created_by, reference, title, description,
       acceptance_criteria, pipeline_id, pipeline_version, status, branch_name, current_run_id)

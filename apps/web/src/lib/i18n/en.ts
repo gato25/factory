@@ -396,6 +396,12 @@ export const en: Messages = {
     runView: 'Run view',
     loading: 'Loading the run…',
     notStarted: 'This ticket has not been started yet.',
+    draftNote: 'Saved as a draft. Nothing runs until you start it.',
+    startTicket: 'Start',
+    starting: 'Starting…',
+    startQueued:
+      'Queued, but the execution service did not answer, so it has not started yet. It will be tried again.',
+    startFailed: (detail: string) => `Could not start it: ${detail}`,
     statusQueued: 'Queued',
     statusRunning: 'Running',
     statusWaitingApproval: 'Waiting for approval',
@@ -1112,6 +1118,24 @@ export const en: Messages = {
     heading: 'Requirements',
     remove: (file: string) => `Remove ${file}`,
     empty: 'Nothing attached. Agents work from the ticket text alone.',
+    view: (file: string) => `Read ${file}`,
+    loading: 'Loading…',
+    gone: 'This file is no longer attached.',
+    attach: 'Attach',
+    removed: (file: string) => `${file} removed.`,
+    alreadyGone: (file: string) => `${file} was already gone.`,
+    runReadsOnce:
+      'A run reads these once, when its sandbox is built. Changing them here affects the next attempt, not one already going.',
+  },
+
+  /**
+   * What the person gave when they made the ticket, shown on the ticket
+   * itself. It was written once, on the form, and nothing afterwards showed it.
+   */
+  brief: {
+    heading: 'What was asked',
+    empty: 'Nothing was written: no description and no criteria.',
+    readDocuments: 'Read the documents',
   },
 
   markdown: {

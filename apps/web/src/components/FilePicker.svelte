@@ -22,7 +22,16 @@
    * problem while they are still looking at the file they picked.
    */
 
-  let { name = 'files' }: { name?: string } = $props();
+  /**
+   * `id` is what a label points at. The field's NAME is not a prop: it is
+   * `files[]`, and has to be. The forms this sits in are SvelteKit remote
+   * forms, which read a field as a list only when its name ends in `[]`.
+   * Named `files`, a `multiple` input made the form throw "cannot contain
+   * duplicated keys" the moment two documents were picked — the whole page
+   * became a 500 and the ticket was never created — and, in development, an
+   * error on every pick even for one.
+   */
+  let { id = 'files' }: { id?: string } = $props();
 
   let input = $state<HTMLInputElement | null>(null);
   let picked = $state<File[]>([]);
@@ -77,8 +86,8 @@
   <input
     bind:this={input}
     type="file"
-    id={name}
-    {name}
+    {id}
+    name="files[]"
     {accept}
     multiple
     onchange={onPick}

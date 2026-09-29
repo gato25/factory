@@ -69,8 +69,11 @@
 </div>
 
 <style>
+  /* 13px by default, as it always was. A screen where the document is what
+     the person came to read sets --markdown-size to its body size, and the
+     code and tables follow it a pixel below. */
   .markdown {
-    font-size: 13px;
+    font-size: var(--markdown-size, 13px);
     line-height: 1.65;
     color: var(--text);
   }
@@ -91,7 +94,7 @@
     font-size: 15px;
   }
   h3 {
-    font-size: 13px;
+    font-size: var(--markdown-size, 13px);
   }
   p {
     margin: 0 0 10px;
@@ -108,7 +111,7 @@
     border-radius: 4px;
     background: var(--surface-2);
     font-family: var(--font-mono);
-    font-size: 12px;
+    font-size: calc(var(--markdown-size, 13px) - 1px);
   }
   .table {
     margin: 0 0 10px;
@@ -117,7 +120,7 @@
   table {
     border-collapse: collapse;
     width: 100%;
-    font-size: 12px;
+    font-size: calc(var(--markdown-size, 13px) - 1px);
   }
   th,
   td {

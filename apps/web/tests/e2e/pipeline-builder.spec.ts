@@ -4,6 +4,7 @@ import { expect, test } from '@playwright/test';
 import postgres from 'postgres';
 import { modelName } from '../../src/lib/format';
 import { m } from '../../src/lib/i18n';
+import { freeReference } from './free-reference';
 
 /**
  * User Story 6's Independent Test (quickstart.md scenario F): build a
@@ -73,7 +74,7 @@ async function seed(): Promise<Seeded> {
   await sql`update repositories set default_pipeline_id = ${pipeline!.id}
             where id = ${repo!.id}`;
 
-  const reference = `#${Math.floor(Math.random() * 90_000) + 10_000}`;
+  const reference = await freeReference(sql);
   const [ticket] = await sql`
     insert into tickets (repository_id, created_by, reference, title, acceptance_criteria,
       pipeline_id, pipeline_version, status, branch_name, current_run_id)

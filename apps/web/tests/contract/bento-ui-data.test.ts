@@ -67,3 +67,24 @@ test('settings() says whether the runner token is set, reading it only through r
   // reach the page (research D13, Constitution V).
   expect(source).not.toContain('RUNNER_AUTH_TOKEN');
 });
+
+test('ticketFile reads one document, by the ticket and the file, from tickets.remote.ts', () => {
+  const found = declaration('tickets.remote.ts', 'ticketFile');
+  expect(found?.kind).toBe('query');
+  // The ticket is part of the question: a file id from another ticket reads nothing.
+  expect(read('tickets.remote.ts')).toMatch(/ticketFile = query\(\s*v\.object\(\{ ticketId:/);
+  expect(remoteFiles.filter((file) => declaration(file, 'ticketFile'))).toEqual([
+    'tickets.remote.ts',
+  ]);
+  // The list stays a list: its query never carries a document's text.
+  expect(declaration('tickets.remote.ts', 'ticketFiles')?.kind).toBe('query');
+});
+
+test('start says why it refused, in the reply, rather than throwing what the browser cannot read', () => {
+  const source = read('tickets.remote.ts');
+  expect(declaration('tickets.remote.ts', 'start')?.kind).toBe('command');
+  const body = source.slice(source.indexOf('export const start = command('));
+  expect(body).toContain('ok: true as const');
+  expect(body).toContain('ok: false as const');
+  expect(body).toContain('error instanceof FactoryError');
+});

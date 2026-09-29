@@ -4,9 +4,18 @@
 
 This amends `specs/001-code-factory-mvp/contracts/ui-data.md` for the queries the redesigned screens
 read. Every query is a SvelteKit remote `query` in `apps/web/src/lib/remote/`, authenticated by the
-session as today, and read-only. No command or form changes shape.
+session as today, and read-only. No form changes shape; the one command whose reply changed is
+`start`, below.
 
 ## Added
+
+### `ticketFile({ ticketId, fileId })` — `tickets.remote.ts`
+
+One attached document with its text — `{ id, name, contentType, bytes, createdAt, content }` — read
+when somebody opens it in the Requirements tab, and `null` when the id is not one of that ticket's
+files (removed while it was being looked at, or another ticket's). It is separate from
+`ticketFiles(ticketId)`, which lists names and sizes only and is refreshed every time a file is
+attached or removed. Any signed-in person may read it, as they may list the files.
 
 ### `dashboardTickets()` — `runs.remote.ts`
 
@@ -31,6 +40,15 @@ subscription (FR-014).
 0%. Refreshed on the same subscription.
 
 ## Changed
+
+### `start(ticketId)` — `tickets.remote.ts`
+
+The command that starts a ticket saved as a draft (001 FR-017) now replies
+`{ ok: true, runId, started, message }` or `{ ok: false, message }`. A refusal the service words for a
+person — no pipeline pinned, a run already going — is the `message`; thrown, a command reaches the
+browser as "Internal Error" and nothing else, so the ticket page's Start button would have looked as if
+it did nothing. `started` is whether the execution service took the run; when it did not, the run is
+queued and `message` says so. It gained its first caller with the draft page (spec: Divergence).
 
 ### `ticketBoard()` — `tickets.remote.ts`
 

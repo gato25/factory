@@ -11,6 +11,7 @@
   import RunDetails from '$components/RunDetails.svelte';
   import RunResults from '$components/RunResults.svelte';
   import StepTracker from '$components/StepTracker.svelte';
+  import TicketBrief from '$components/TicketBrief.svelte';
   import TicketHead from '$components/TicketHead.svelte';
   import { pipelineName, stepName, stepTitle } from '$lib/default-names';
   import { subscribeToRun } from '$lib/events/subscribe';
@@ -23,7 +24,9 @@
     retry,
     unpause
   } from '$lib/remote/run-actions.remote';
+  import { repositories } from '$lib/remote/repositories.remote';
   import { log, position, run, runForTicket } from '$lib/remote/runs.remote';
+  import { start, ticket } from '$lib/remote/tickets.remote';
 
   /**
    * Screen 06 — Ticket Run, built to artboard 06 (specs/004-bento-redesign
@@ -59,6 +62,36 @@
   const failed = $derived(
     view.ready && view.current ? failure(view.current.run.id) : null
   );
+
+  /**
+   * A ticket with no run yet — one saved as a draft. It has no run to show, so
+   * the page shows the ticket: what was asked, the documents, and a way to
+   * start it. Read only when there is no run, and from the same query the
+   * board uses.
+   */
+  const draft = $derived(view.ready && !view.current ? ticket(ticketId) : null);
+  const repos = $derived(view.ready && !view.current ? repositories() : null);
+
+  async function startDraft() {
+    working = true;
+    notice = null;
+    try {
+      const started = await start(ticketId);
+      if (!started.ok) {
+        // Refused, in words: it stays a draft, and says why.
+        notice = started.message;
+        return;
+      }
+      // Queued, and the execution service did not take it at once: the
+      // ticket now has a run and the page shows it, with this beside it.
+      notice = started.message;
+      await runForTicket(ticketId).refresh();
+    } catch (error) {
+      notice = m.run.startFailed(error instanceof Error ? error.message : String(error));
+    } finally {
+      working = false;
+    }
+  }
 
   /**
    * SC-009 — retrying takes at most two interactions. Retry is one; editing
@@ -138,7 +171,44 @@
 {:else}
   {@const loaded = view.current}
   {#if !loaded}
-    <p class="tile">{m.run.notStarted}</p>
+    {#if draft?.ready && draft.current}
+      {@const t = draft.current}
+      <TicketHead
+        {ticketId}
+        repositoryName={repos?.ready ? (repos.current.find((r) => r.id === t.repositoryId)?.name ?? '') : ''}
+        reference={t.reference}
+        title={t.title}
+        branchName={t.branchName}
+        createdByName={null}
+        tokens={0}
+        variant="run"
+        stats={false}
+        status={{ label: m.ticketCard.readyToStart, tone: 'queue' }}
+      >
+        {#snippet actions()}
+          <button type="button" class="btn" disabled={working} onclick={startDraft}>
+            <Icon name="play" size={14} />
+            {working ? m.run.starting : m.run.startTicket}
+          </button>
+        {/snippet}
+      </TicketHead>
+
+      {#if notice}
+        <p class="tile notice" role="status">{notice}</p>
+      {/if}
+      <p class="tile notice" data-draft-note>{m.run.draftNote}</p>
+
+      <div class="draft-body">
+        <TicketBrief
+          {ticketId}
+          description={t.description}
+          criteria={t.acceptanceCriteria}
+        />
+        <RequirementFiles {ticketId} hasRun={false} />
+      </div>
+    {:else}
+      <p class="tile">{m.run.notStarted}</p>
+    {/if}
   {:else}
     {@const status = STATUS[loaded.run.status] ?? { label: loaded.run.status, tone: '' }}
     {@const step = loaded.steps[selected ?? loaded.run.currentStepIndex ?? 0]}
@@ -435,6 +505,14 @@
 
       <aside class="side">
         <RunResults view={loaded} onOpen={() => (tab = 'artifacts')} />
+        <!-- What the run was asked, beside what it has produced. Below the
+             results, which are what the design puts first. -->
+        <TicketBrief
+          ticketId={loaded.ticket.id}
+          description={loaded.ticket.description}
+          criteria={loaded.ticket.acceptanceCriteria}
+          onOpenDocuments={() => (tab = 'requirements')}
+        />
       </aside>
     </div>
   {/if}
@@ -552,9 +630,19 @@
     overflow-y: auto;
   }
   .side {
+    display: flex;
     flex: none;
+    flex-direction: column;
+    gap: 12px;
     width: 400px;
     overflow-y: auto;
+  }
+  /* A ticket not yet started: what was asked, then its documents. */
+  .draft-body {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-width: 900px;
   }
 
   /* The design's tabs: an accent track, the current tab raised in white. */

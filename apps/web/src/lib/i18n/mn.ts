@@ -444,6 +444,12 @@ export const mn = {
     runView: 'Ажиллагааны харагдац',
     loading: 'Ажиллагааг ачаалж байна…',
     notStarted: 'Энэ даалгавар одоохондоо эхлээгүй байна.',
+    draftNote: 'Ноорог болгон хадгалсан. Та эхлүүлэх хүртэл юу ч ажиллахгүй.',
+    startTicket: 'Эхлүүлэх',
+    starting: 'Эхлүүлж байна…',
+    startQueued:
+      'Дараалалд орсон ч гүйцэтгэх үйлчилгээ хариу өгөөгүй тул хараахан эхлээгүй байна. Дахин оролдоно.',
+    startFailed: (detail: string) => `Эхлүүлж чадсангүй: ${detail}`,
     statusQueued: 'Дараалалд',
     statusRunning: 'Ажиллаж буй',
     statusWaitingApproval: 'Баталгаажуулалт хүлээж буй',
@@ -1161,6 +1167,24 @@ export const mn = {
     heading: 'Шаардлага',
     remove: (file: string) => `${file}-ийг хасах`,
     empty: 'Юу ч хавсаргаагүй. Агентууд зөвхөн даалгаврын текстээс ажиллана.',
+    view: (file: string) => `${file}-ийг унших`,
+    loading: 'Ачаалж байна…',
+    gone: 'Энэ файл хавсралтаас хасагдсан байна.',
+    attach: 'Хавсаргах',
+    removed: (file: string) => `${file} хасагдлаа.`,
+    alreadyGone: (file: string) => `${file} аль хэдийн хасагдсан байсан.`,
+    runReadsOnce:
+      'Ажиллагаа эдгээрийг нэг л удаа, орчноо бүтээхдээ уншдаг. Эндээс өөрчилбөл дараагийн оролдлогод нөлөөлнө, ажиллаж буйд нөлөөлөхгүй.',
+  },
+
+  /**
+   * What the person gave when they made the ticket, shown on the ticket
+   * itself. It was written once, on the form, and nothing afterwards showed it.
+   */
+  brief: {
+    heading: 'Юу хүссэн бэ',
+    empty: 'Юу ч бичээгүй: тайлбар ч, шалгуур ч алга.',
+    readDocuments: 'Баримтуудыг унших',
   },
 
   markdown: {

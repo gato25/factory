@@ -2,6 +2,7 @@
   import { describeBytes } from '@factory/shared';
   import FilePicker from '$components/FilePicker.svelte';
   import Icon from '$components/Icon.svelte';
+  import RequirementFileView from '$components/RequirementFileView.svelte';
   import { m } from '$lib/i18n';
   import { attach, detach, ticketFiles } from '$lib/remote/tickets.remote';
 
@@ -24,6 +25,8 @@
   const files = $derived(ticketFiles(ticketId));
   let removing = $state<string | null>(null);
   let notice = $state<string | null>(null);
+  /** Which documents are open to be read. */
+  let open = $state<Record<string, boolean>>({});
 
   const total = $derived(
     files.ready ? files.current.reduce((sum, file) => sum + file.bytes, 0) : 0
@@ -33,7 +36,7 @@
     removing = id;
     try {
       const { removed } = await detach({ ticketId, fileId: id });
-      notice = removed ? `${name} removed.` : `${name} was already gone.`;
+      notice = removed ? m.files.removed(name) : m.files.alreadyGone(name);
     } finally {
       removing = null;
     }
@@ -53,17 +56,34 @@
     <ul>
       {#each files.current as file (file.id)}
         <li>
-          <Icon name="file-text" size={14} />
-          <span class="n">{file.name}</span>
-          <span class="s">{describeBytes(file.bytes)}</span>
-          <button
-            type="button"
-            disabled={removing === file.id}
-            onclick={() => remove(file.id, file.name)}
-            aria-label={m.files.remove(file.name)}
-          >
-            <Icon name="x" size={14} />
-          </button>
+          <div class="row">
+            <!-- The name is what opens the document: what a run was given is
+                 worth being able to read, not just to count. -->
+            <button
+              type="button"
+              class="open"
+              aria-expanded={open[file.id] === true}
+              aria-label={m.files.view(file.name)}
+              onclick={() => (open[file.id] = !open[file.id])}
+            >
+              <Icon name={open[file.id] ? 'chevron-down' : 'chevron-right'} size={14} />
+              <Icon name="file-text" size={14} />
+              <span class="n">{file.name}</span>
+            </button>
+            <span class="s">{describeBytes(file.bytes)}</span>
+            <button
+              type="button"
+              class="x"
+              disabled={removing === file.id}
+              onclick={() => remove(file.id, file.name)}
+              aria-label={m.files.remove(file.name)}
+            >
+              <Icon name="x" size={14} />
+            </button>
+          </div>
+          {#if open[file.id]}
+            <RequirementFileView {ticketId} fileId={file.id} />
+          {/if}
         </li>
       {/each}
     </ul>
@@ -77,17 +97,14 @@
     <FilePicker />
     <button class="add" type="submit">
       <Icon name="plus" size={14} />
-      Attach
+      {m.files.attach}
     </button>
   </form>
 
   {#if notice}<p class="notice">{notice}</p>{/if}
 
   {#if hasRun}
-    <p class="note">
-      A run reads these once, when its sandbox is built. Changing them here affects the next
-      attempt, not one already going.
-    </p>
+    <p class="note">{m.files.runReadsOnce}</p>
   {/if}
 </section>
 
@@ -123,23 +140,45 @@
   ul {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 6px;
     margin: 0;
     padding: 0;
     list-style: none;
   }
   li {
     display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 12px;
+    background: var(--surface-2);
+    font-size: var(--type-body);
+  }
+  .row {
+    display: flex;
     align-items: center;
     gap: 8px;
-    padding: 6px 10px;
-    border-radius: var(--r-sm);
-    background: var(--surface-2);
-    font-size: 12px;
   }
   li :global(svg) {
     color: var(--text-2);
     flex: none;
+  }
+  .open {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    padding: 2px 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    text-align: left;
+    color: var(--text);
+    cursor: pointer;
+  }
+  .open:hover .n {
+    text-decoration: underline;
   }
   .n {
     flex: 1;
@@ -151,22 +190,23 @@
   }
   .s {
     flex: none;
+    font-size: var(--type-caption);
     color: var(--text-3);
   }
-  li button {
+  .x {
     display: flex;
-    padding: 2px;
+    padding: 4px;
     border: 0;
-    border-radius: 4px;
+    border-radius: 6px;
     background: none;
     color: var(--text-3);
     cursor: pointer;
   }
-  li button:hover:not(:disabled) {
+  .x:hover:not(:disabled) {
     background: var(--danger-soft);
     color: var(--danger);
   }
-  li button:disabled {
+  .x:disabled {
     opacity: 0.4;
     cursor: progress;
   }
@@ -187,7 +227,7 @@
     border-radius: var(--r-sm);
     background: var(--surface);
     font: inherit;
-    font-size: 12px;
+    font-size: var(--type-body);
     font-weight: 500;
     color: var(--text);
     cursor: pointer;

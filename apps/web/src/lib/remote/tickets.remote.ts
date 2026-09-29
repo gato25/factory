@@ -2,6 +2,7 @@ import {
   ACCEPTED_EXTENSIONS,
   createLogger,
   extensionOf,
+  FactoryError,
   invalidInput,
   notAuthorised,
 } from '@factory/shared';
@@ -14,7 +15,7 @@ import { previewRun, verificationWarning } from '$lib/services/estimate';
 import { handOver, orchestratorAccess } from '$lib/services/orchestrator';
 import { startRun } from '$lib/services/run';
 import { createTicket, getTicket, listTickets } from '$lib/services/ticket';
-import { attachFiles, listFiles, removeFile } from '$lib/services/ticket-files';
+import { attachFiles, getFile, listFiles, removeFile } from '$lib/services/ticket-files';
 import { m } from '$lib/i18n';
 
 const log = createLogger('web');
@@ -147,21 +148,38 @@ export const create = form(CreateSchema, async (data) => {
   return { id: created.id, reference: created.reference, started: true, runId: run.id };
 });
 
-/** Starting a ticket that was saved as a draft (FR-017). */
+/**
+ * Starting a ticket that was saved as a draft (FR-017).
+ *
+ * A refusal the service words for a person — no pipeline pinned, a run
+ * already going — comes back as the message, like the run actions do. Thrown,
+ * a command reaches the browser as "Internal Error" and nothing else, and the
+ * button would have looked as if it did nothing.
+ */
 export const start = command(v.pipe(v.string(), v.uuid()), async (ticketId) => {
   requireUser();
-  const config = loadWebConfig();
-  const { run, snapshot } = await startRun(db(), {
-    ticketId,
-    callbackBaseUrl: config.callbackBaseUrl,
-  });
-  const delivery = await handOver(
-    db(),
-    { runId: run.id, snapshot },
-    await orchestratorAccess(db()),
-  );
-  await tickets().refresh();
-  return { runId: run.id, started: delivery.delivered };
+  try {
+    const config = loadWebConfig();
+    const { run, snapshot } = await startRun(db(), {
+      ticketId,
+      callbackBaseUrl: config.callbackBaseUrl,
+    });
+    const delivery = await handOver(
+      db(),
+      { runId: run.id, snapshot },
+      await orchestratorAccess(db()),
+    );
+    await tickets().refresh();
+    return {
+      ok: true as const,
+      runId: run.id,
+      started: delivery.delivered,
+      message: delivery.delivered ? null : m.run.startQueued,
+    };
+  } catch (error) {
+    if (error instanceof FactoryError) return { ok: false as const, message: error.message };
+    throw error;
+  }
 });
 
 /**
@@ -175,6 +193,19 @@ export const ticketFiles = query(v.pipe(v.string(), v.uuid()), async (ticketId) 
   requireUser();
   return listFiles(db(), ticketId);
 });
+
+/**
+ * One attached document with its text, read when somebody opens it. Not part
+ * of `ticketFiles`, which is refreshed whenever anything is attached or
+ * removed and should not carry every document's text each time.
+ */
+export const ticketFile = query(
+  v.object({ ticketId: v.pipe(v.string(), v.uuid()), fileId: v.pipe(v.string(), v.uuid()) }),
+  async ({ ticketId, fileId }) => {
+    requireUser();
+    return getFile(db(), ticketId, fileId);
+  },
+);
 
 const AttachSchema = v.object({
   ticketId: v.pipe(v.string(), v.uuid()),
