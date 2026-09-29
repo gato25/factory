@@ -1,201 +1,286 @@
 # Code Factory
 
-Turns a written ticket into a reviewable merge request.
+Бичсэн тикетийг хянаж болохуйц merge request болгон хувиргана.
 
-You connect a git repository, write a ticket describing a change, and a pipeline of AI agents
-produces a specification, a plan, a task list and then the implementation. When it finishes, a
-branch is pushed and a merge request is opened on GitLab or GitHub, carrying everything a reviewer
-needs to judge the change. **Nothing is ever merged automatically** — a person always decides.
+Та git репозиториогоо холбож, хийх өөрчлөлтөө тикет болгон бичнэ. Дараа нь AI агентуудын
+пайплайн тодорхойлолт (spec), шаардлагатай бол дизайн, төлөвлөгөө (plan), ажлын жагсаалт
+(tasks)-ыг бичиж, эцэст нь кодыг хэрэгжүүлнэ. Дуусмагц салбар (branch) push хийгдэж, GitLab эсвэл
+GitHub дээр merge request нээгдэнэ. Хянагчид шаардлагатай бүх зүйл тэр merge request-д байна.
+**Юу ч автоматаар merge хийгдэхгүй** — шийдвэрийг үргэлж хүн гаргана.
 
-You can put a checkpoint anywhere in the pipeline. A run stops there and waits for somebody to
-approve, edit the document it produced, or send it back with feedback.
-
-## What it looks like
+## Хэрхэн ажилладаг вэ
 
 ```
-Ticket ─→ Spec ─→ Design ─→ Plan ─→ Tasks ─→ Implement ─→ Merge request
-                     ↑
-        runs only when the ticket changes the interface
+Тикет ─→ Spec ─→ Design ─→ Plan ─→ [Шалгах цэг] ─→ Tasks ─→ Implement ─→ Merge request
+                    ↑                   ↑
+   зөвхөн тикет интерфэйс       хүн батлах, засах эсвэл
+   өөрчлөх үед ажиллана         санал өгч буцаах хүртэл хүлээнэ
 ```
 
-The pipeline is data, not code. It lives in the database, you edit it in the interface, and the
-execution service reads each run's own copy of it — so changing a pipeline never disturbs a run
-already in flight.
+1. **Тикет.** Гарчиг, тайлбар, хүлээн авах шалгуур, шаардлагатай бол хавсаргасан баримт.
+   Тикет бүр репозиторийн нэг пайплайнтай холбогдоно.
+2. **Snapshot.** Ажиллуулалт (run) эхлэхэд вэб апп тухайн пайплайны хувилбар, агент бүрийн
+   заавар, skill, зардлын дээд хязгаарыг **нэг баримт болгон бэхэлнэ**. Иймээс пайплайн эсвэл
+   агентыг засахад аль хэдийн явж буй ажиллуулалтад нөлөөлөхгүй.
+3. **Runner.** Гүйцэтгэлийн үйлчилгээ (`apps/runner`) snapshot-ыг хүлээн авч ажиллуулалт бүрийг
+   өөрөө удирдана: дараагийн алхмыг шийдэж, ажиллуулж, шалгах цэг дээр хүлээж, merge request нээнэ.
+   Ажиллуулалт бүрийн байрлалыг `~/.code-factory/state` дотор бичдэг тул дахин эхлүүлэхэд
+   ажиллуулалтууд алдагдахгүй, үргэлжилнэ. Тусдаа orchestration үйлчилгээ байхгүй.
+4. **Sandbox.** Ажиллуулалт бүр шинэ ажлын хавтас (эсвэл контейнер) авна. Репозиторийн үндсэн
+   салбараас clone хийж, тикетийн салбар руу шилжинэ. Claude CLI зөвхөн тухайн ажиллуулалтын
+   итгэмжлэлтэйгээр тэнд ажиллана.
+5. **Алхам бүрийн дараа** үр дүн вэб апп руу буцаж очно (log, зарцуулсан token, бичсэн баримт).
+   Вэб дээрх алхмын мөр, log шууд шинэчлэгдэнэ.
+6. **Төгсгөлд** салбар push хийгдэж merge request нээгдэнэ. Түүний тайлбарт тикет, тодорхойлолт,
+   төлөвлөгөө, алгассан алхмууд болон шалтгаан нь орно.
 
-## Running it locally
+### Пайплайн гэж юу вэ
 
-You need [Bun](https://bun.sh) (the version in `.bun-version`), a Postgres — Docker's, or one you
-installed — and the tools a step runs: git, Node and the
-[Claude CLI](https://docs.anthropic.com/en/docs/claude-code). On Windows that means Git for
-Windows, whose shell every step runs in.
+Пайплайн бол код биш, **өгөгдөл**. Өгөгдлийн санд хадгалагдаж, интерфэйсээр засагдана. Засвар
+бүр шинэ хувилбар үүсгэнэ. Алхмын төрлүүд:
+
+| Төрөл | Юу хийдэг |
+|---|---|
+| `agent` | Claude CLI-ээр агентыг ажиллуулна. Гаргах ёстой файлуудыг (`output_files`) зааж болно; файлгүй агент бол код бичдэг алхам |
+| `design` | pen.dev дизайн эх файл болон дэлгэц бүрийн зургийг гаргана |
+| `checkpoint` | Ажиллуулалтыг зогсоож хүний шийдвэр хүлээнэ |
+| `shell` | Репозиторийн команд ажиллуулна — жишээ нь `npm ci`, эсвэл `npm test && npm run build` шалгалт |
+| `notify` | Мэдэгдэл илгээнэ |
+
+Алхам нөхцөлтэй байж болно. Жишээ нь `ticket_has_ui` нөхцөлтэй дизайн алхам зөвхөн тикет
+интерфэйс өөрчлөх үед ажиллана. Энэ шийдвэрийг тикетийн зохиогч биш, **spec агент** гаргадаг:
+тодорхойлолтынхоо төгсгөлд `has_ui: true | false` болон нэг өгүүлбэр шалтгаан бичнэ. Алгассан
+алхам бүр яагаад алгасагдсанаа ажиллуулалт болон merge request дээр харуулна.
+
+Гурван бэлэн пайплайн ирдэг. Аль нь ч шалгалтын команд агуулдаггүй, учир нь тэр команд
+репозитори бүрт өөр бөгөөд систем түүнийг таамагладаггүй:
+
+- **Quick fix** — шалгах цэггүй
+- **Standard** — төлөвлөгөөний дараа, код бичихээс өмнө нэг шалгах цэг
+- **Review-heavy** — тодорхойлолт, төлөвлөгөө, хэрэгжүүлэлт гурвын дараа шалгах цэг
+
+Шалгалтын `shell` алхам нэмэх хүртэл хэрэгжүүлэгч агентаас өөр юу ч үр дүнг шалгахгүй. Пайплайн
+засагч үүнийг харж байх ёстой.
+
+### Тикет бүрийн баримт, салбар
+
+- **Тодорхойлолт, төлөвлөгөө** тикет бүрт шинээр, өөрийн хавтаст бичигдэнэ:
+  `docs/tickets/<дугаар>/spec.md`, `docs/tickets/<дугаар>/plan.md`. Өмнөх тикетүүдийнх
+  репозиторид түүх болж үлдэнэ. Агентын заавар болон алхмын замд `{{ticket.docs}}` гэж бичвэл
+  энэ хавтас болж орлогдоно. Хуучин `docs/spec.md`, `docs/plan.md` гэсэн замтай пайплайнууд ч
+  автоматаар энэ хавтас руу шилждэг.
+- **Дизайн** (`docs/design/ui.pen`, дэлгэцийн зургууд, `ui.txt`) болон **ажлын жагсаалт**
+  (`docs/tasks.md`) нийтлэг: тикет бүр нэг л файлыг шинэчилнэ.
+- **Хуучирсан файлыг хүлээж авахгүй.** Алхмын гаргах файл үндсэн салбар дээрхтэй яг ижил хэвээр
+  байвал (өөрөөр хэлбэл өмнөх тикетээс үлдсэн бол) тэр алхам амжилтгүй болно. Файл байгаа эсэхийг
+  шалгах нь хангалтгүй.
+- **Салбарын нэр** тикетийн дугаар, гарчиг, тикетийн id-ийн 6 тэмдэгтээс бүрдэнэ:
+  `factory/12-add-login-a1b2c3`. Тиймээс ижил гарчигтай тикетүүд, эсвэл дугаарлалт дахин
+  эхэлсэн өгөгдлийн сан ч нэг салбар дээр давхцахгүй. Латин бус үсэг хасагддаг тул кирилл
+  гарчигтай тикетийн салбар `factory/4-change-a1b2c3` гэх мэт болно.
+
+### Шалгах цэг
+
+Ажиллуулалт шалгах цэг дээр ирэхэд хүн гурван зүйлийн аль нэгийг сонгоно:
+
+- **Батлах** — дараагийн алхам руу үргэлжилнэ.
+- **Засах** — баримтыг (жишээ нь `plan.md`) шууд засна. Дараагийн алхам засварласан хувилбарыг уншина.
+- **Өөрчлөлт хүсэх** — санал бичиж өмнөх алхмыг дахин ажиллуулна. Агент саналыг
+  `.factory/feedback.md`-ээс уншина.
+
+Хэн батлах эрхтэйг (`anyone` эсвэл `ticket_creator`) болон хугацаа хэтэрвэл юу болохыг шалгах цэг
+бүр дээр тохируулна.
+
+### Явж буй ажиллуулалтыг удирдах
+
+| Үйлдэл | Юу болох |
+|---|---|
+| **Түр зогсоох** | Одоогийн алхам дуусна, дараагийнх нь эхлэхгүй |
+| **Цуцлах** | Sandbox суллагдана, салбар хэвээр үлдэнэ |
+| **Үргэлжлүүлэх** | Гацсан эсвэл амжилтгүй болсон ажиллуулалтыг эхний дуусаагүй алхмаас нь үргэлжлүүлнэ. Дууссан алхмууд болон зардал хадгалагдана |
+| **Дахин ажиллуулах** | Ижил пайплайн хувилбараар, шинэ sandbox-оор шинэ оролдлого эхлүүлнэ. Өмнөх оролдлогын бүх зүйл уншигдахуйц үлдэнэ |
+| **Засаад дахин ажиллуулах** | Тикетийн гарчиг, тайлбар, шалгуурыг засаад нэг үйлдлээр дахин ажиллуулна |
+| **Пайплайн солих** | Тикетийг өөр пайплайн, эсвэл өөрийн пайплайны засварласан хамгийн сүүлийн хувилбар руу шилжүүлнэ (доор) |
+
+**Пайплайн солих.** Ажиллуулалт эхлэхдээ пайплайны хувилбараа бэхэлдэг тул пайплайныг засах нь
+явж буй тикетэд хүрэхгүй. Пайплайн солиход:
+
+1. Одоогийн оролдлого цуцлагдана.
+2. Тикет сонгосон пайплайны одоогийн хувилбар дээр бэхлэгдэнэ.
+3. Шинэ оролдлого эхэлнэ.
+
+Өмнөх оролдлогууд бүх гаргах файлыг нь аль хэдийн бичсэн эхний алхмуудыг (spec, plan, design)
+дахин хийхгүй. Тэдгээрийн баримт шинэ ажиллуулалт руу хуулагдах тул шалгах цэг болон merge request
+тэдгээрийг хэвийн уншина. Шалгах цэг, `shell` алхам, код бичих алхмыг хэзээ ч алгасахгүй —
+нэг пайплайн дор баталсан төлөвлөгөө өөр пайплайн дор батлагдсан гэсэн үг биш.
+
+### Зардал ба хязгаар
+
+Алхам бүрийн token-ыг CLI-ийн өөрийн тайлангаас авдаг, таамагладаггүй. Хугацааны болон зардлын
+дээд хязгаар ажлын орчин (workspace)-оос ирж, агент тус бүрийн хязгаартай хамт мөрдөгдөнө.
+Хязгаарт хүрсэн ажиллуулалт тэр шалтгаанаа нэрлэж амжилтгүй болно.
+
+### Үр дүнг ажиллуулж харах (Run it)
+
+Дууссан тикет **Run it** карттай. Push хийсэн салбарыг шинэ sandbox-д clone хийж, суулгаад, зөвхөн
+таны машинаас хандах боломжтой порт дээр төслийг асаана. Тикет интерфэйс өөрчилдөг бол ажиллаж
+буй хуудсыг, үгүй бол хүсэлтийн консолыг (method, path, header, body) харуулна. Гучин минут хэн ч
+харахгүй бол өөрөө зогсоно.
+
+Эхний удаа командыг `package.json`-оос таамаглаж, хаанаас таамагласнаа хэлнэ. Буруу бол
+репозитори дээр нэг удаа тохируулна (**Репозиториуд → ⋯ → Хэрхэн эхлэх**). Сервер контейнер дотор
+`localhost` биш `0.0.0.0` дээр сонсох ёстой. `HOST`, `PORT` орчны хувьсагчид тохируулагдсан байна.
+
+## Локал дээр ажиллуулах
+
+Шаардлагатай зүйлс:
+
+- [Bun](https://bun.sh) (`.bun-version` дахь хувилбар)
+- Postgres (Docker-ийнх эсвэл өөрийн суулгасан)
+- Алхмуудын хэрэглэдэг хэрэгслүүд: git, Node, [Claude CLI](https://docs.anthropic.com/en/docs/claude-code)
+- Windows дээр Git for Windows (алхам бүр түүний shell-д ажиллана)
 
 ```bash
 bun install
-cp .env.example .env            # then fill it in; the comments say what each value is
+cp .env.example .env            # бөглөнө; тайлбар бүр юу болохыг хэлнэ
 bun run dev                     # → http://localhost:5173
 ```
 
-`bun run dev` is the whole of it: Postgres, the two databases if they are missing, the schema, a
-check that git and the Claude CLI are where a step will look for them, and then the execution
-service and the web application together. It names each step as it goes and stops at the first thing that genuinely
-blocks, so a failure tells you where you are. Ctrl-C stops the two services; Postgres keeps running.
+`bun run dev` дараах бүгдийг хийнэ:
 
-There is no orchestration service any more. The execution service drives each run itself — decides
-the next step, runs it, waits at a checkpoint, opens the merge request — and writes every run's
-position under `~/.code-factory/state`, so restarting it resumes runs rather than losing them.
+- Postgres-ийг асааж, дутуу бол хоёр өгөгдлийн санг (үндсэн болон `_test`) үүсгэнэ
+- Migration ажиллуулна
+- git болон Claude CLI байгаа эсэхийг шалгана
+- Гүйцэтгэлийн үйлчилгээ (порт 8080) болон вэб апп (порт 5173)-ыг хамт асаана
+- Хоёр минут тутамд засвар үйлчилгээний шалгалтыг (`sweep`) ажиллуулна: хязгаараа хэтэрсэн
+  ажиллуулалтыг зогсоож, хугацаа нь дууссан шалгах цэгийг шийдэж, орхигдсон sandbox-уудыг
+  сулгана
 
-It reads the root `.env` itself and hands it to every service, so they cannot disagree about it —
-`bun run dev:runner` on its own starts in `apps/runner`, where Bun would not find that file. The
-separate commands are still there — `dev:web`, `dev:runner`, `db:migrate` — for when you want one
-of them alone.
+Алхам бүрээ нэрлэж, жинхэнэ саад болох эхний зүйл дээр зогсдог тул алдаа гарвал хаана байгаагаа
+мэднэ. Ctrl-C хоёр үйлчилгээг зогсооно, Postgres ажилласаар үлдэнэ. Тус тусад нь асаах бол
+`dev:web`, `dev:runner`, `db:migrate` командууд бий.
 
-### Where Postgres comes from
+### Postgres хаанаас ирэх вэ
 
-`DATABASE_MODE=docker`, the default, starts the Postgres in `docker-compose.yml` and needs nothing
-installed. `DATABASE_MODE=system` uses a Postgres you already have — on this machine or wherever
-`DATABASE_URL` points — and then Docker is not needed at all, since runs execute as processes too.
-In either mode `bun run dev` creates the database named in `DATABASE_URL`, and its `_test` sibling
-the tests use, when they do not exist yet.
+- `DATABASE_MODE=docker` (өгөгдмөл) — `docker-compose.yml` дахь Postgres-ийг асаана.
+- `DATABASE_MODE=system` — `DATABASE_URL`-ийн заасан, аль хэдийн байгаа Postgres-ийг ашиглана.
+  Энэ тохиолдолд Docker огт хэрэггүй.
 
-### Where a run executes
+### Ажиллуулалт хаана гүйцэтгэгдэх вэ
 
-By default a run executes as ordinary processes on this machine. Each run gets a fresh directory
-under `~/.code-factory/runs` (`FACTORY_WORK_DIR` moves it); the repository is cloned into it, the
-Claude CLI runs there with the run's credentials in its environment and nothing of yours, and the
-directory is removed when the run ends or reaches its wall-clock ceiling. Nothing about Docker is
-involved, and every address between the pieces is plain `localhost`.
+**Өгөгдмөл (`EXECUTION_HOST` тохируулаагүй):** энэ машин дээр энгийн процессоор ажиллана.
+Ажиллуулалт бүр `~/.code-factory/runs` дотор шинэ хавтас авч (`FACTORY_WORK_DIR`-ээр өөрчилнө),
+дуусахад эсвэл хугацааны хязгаарт хүрэхэд тэр хавтас устана. Энэ бол хөгжүүлэлтийн тохиргоо бөгөөд
+гурван зүйлээс татгалзана:
 
-That is a development arrangement, and it gives up three things the constitution's sandbox invariant
-asks for: the process runs as you, not as an unprivileged user; CPU and memory ceilings are recorded
-and not enforced; and a run cannot be cut off from the network, so a workspace that asks for that is
-refused at start rather than quietly given the internet. `EXECUTION_HOST=docker` restores all three
-— one fresh non-root container per run from the sandbox image, which `bun run dev` then builds — and
-a deployment should run that way. To host the execution service itself as a container — restarted
-when it dies, bounded, its logs rotated — `infra/runner/compose.yml` does that against the host's
-Docker; [docs/operations.md](docs/operations.md#hosting-the-runner-in-a-container) says what it
-gets right that is easy to get wrong.
+- процесс хамгаалалтгүй хэрэглэгчээр биш, таны нэрээр ажиллана;
+- CPU, санах ойн хязгаар бичигддэг ч мөрдөгддөггүй;
+- сүлжээг тасалж чадахгүй. Сүлжээгүй ажиллахыг шаардсан ажлын орчныг чимээгүй интернэттэй
+  ажиллуулахын оронд эхлэхэд нь татгалзана.
 
-The **Run it** card publishes a port and needs a container for it whichever host runs execute on, so
-it uses Docker and the sandbox image in either mode. Build the image once when you want it:
-`docker build -t code-factory/sandbox:latest infra/sandbox`.
+**`EXECUTION_HOST=docker`:** дээрх гурвыг бүгдийг сэргээнэ — ажиллуулалт бүрт sandbox зургаас
+шинэ, root бус контейнер үүсгэнэ. Production ийм байх ёстой. Гүйцэтгэлийн үйлчилгээг өөрийг нь
+контейнерт байршуулах бол `infra/runner/compose.yml`-ийг ашиглана.
 
-Open it and **create the first account** — the sign-in screen asks for one when nobody has one yet,
-and that first account is the administrator. (It used to require hand-written SQL: `role` defaults to
-`member`, every Settings operation needs `admin`, and inviting an admin needs to be one.) After that,
-people arrive by invitation or through a connected provider.
-
-Settings should already be filled in. The two service addresses come from `.env`, and the
-application copies them into Settings the first time it starts; a model key in `.env`
-(`ANTHROPIC_API_KEY`, or `CLAUDE_CODE_OAUTH_TOKEN` from `claude setup-token`) is stored the same
-way, sealed. Only a repository is left to connect — the one thing that genuinely needs you. Then
-press **Test every connection**. The dashboard names anything still missing and links to where it
-is fixed, so you should not need to come back here.
-
-### Seeing a change running
-
-A finished ticket has a **Run it** card. It clones the pushed branch into a fresh sandbox, installs,
-starts the project on a port only your machine can reach, and shows the result on the ticket: the
-running page when the ticket changes the interface, a request console — method, path, headers,
-body in; status, headers, body out — when it does not. You can switch between the two. Stop it, or
-walk away: a launch nobody looks at for thirty minutes stops itself, and the sandbox's own lifetime
-ceiling is underneath that.
-
-The first launch on a repository detects the command from `package.json` and says where the guess
-came from. When it is wrong — or the project is not something the sandbox image can run — set the
-command and port once on the repository (**Repositories → ⋯ → Set how it starts**). Whatever the
-command, the server has to listen on `0.0.0.0` inside the container, not `localhost`; the detected
-commands carry each framework's flag for that, and `HOST` and `PORT` are set in the environment.
-
-### How the model work is paid for
-
-The model credential in **Settings → Claude CLI & keys** accepts either kind, and which one you
-store decides who pays:
-
-| Credential | Where it comes from | What it draws on |
-|---|---|---|
-| API key | Anthropic Console | Billed per use to that account |
-| Subscription token | `claude setup-token` on your own machine | That Claude subscription's allowance |
-
-The runner tells them apart by prefix and hands the Claude CLI whichever variable that kind is read
-from — `ANTHROPIC_API_KEY` or `CLAUDE_CODE_OAUTH_TOKEN`, one or the other, never both. So switching
-is storing a different credential, with no code change and no rebuild.
-
-Two things to weigh before choosing the subscription token. Its limits are shaped around one person
-working interactively, and a pipeline runs steps unattended and sometimes several at once — you will
-meet those limits in a different pattern than a person does, and meeting them fails runs rather than
-queueing them. And it is long-lived rather than permanent: when it expires, every run fails at once
-with an authentication error. Whether a subscription covers team automation at all is a question for
-Anthropic's terms.
-
-Settings reports which limits the configured host enforces, once you have pressed **Test every
-connection** — it asks the execution service rather than assuming, because the execution service is
-the only thing that knows what it is.
-
-[docs/operations.md](./docs/operations.md) is the full deployment guide: configuration, the
-maintenance pass you must schedule, network boundaries, key rotation, and what to watch. Putting it
-on a Linux server — systemd units, nginx with TLS, the environment file — is its section
-[On a Linux server](./docs/operations.md#on-a-linux-server), with the files in
-[infra/server/](./infra/server/).
-
-## Checks
+**Run it** карт аль ч горимд Docker болон sandbox зураг шаардана:
 
 ```bash
-bun run verify                  # lint, typecheck, and 494 unit and integration tests
-bun run e2e                     # 40 browser tests (3 skipped: they need a real provider)
+docker build -t code-factory/sandbox:latest infra/sandbox
 ```
 
-Tests run against a real Postgres, not a fake one. `bun run verify` is what CI runs and what a
-branch has to pass.
+### Анхны тохиргоо
 
-Four audits cover the success criteria no single feature demonstrates — credential leaks,
-concurrency contention, sandbox release, first-attempt rate:
+1. Нээж, **анхны бүртгэлийг үүсгэнэ** — тэр бүртгэл админ болно. Дараагийн хүмүүс урилгаар эсвэл
+   холбогдсон provider-ээр нэвтэрнэ.
+2. Тохиргоо аль хэдийн бөглөгдсөн байх ёстой. Хоёр үйлчилгээний хаяг `.env`-ээс, загварын түлхүүр
+   (`ANTHROPIC_API_KEY` эсвэл `claude setup-token`-ийн `CLAUDE_CODE_OAUTH_TOKEN`) нууцлагдан
+   хадгалагдана.
+3. Зөвхөн репозитори холбох л үлдэнэ. Дараа нь **Бүх холболтыг шалгах** дээр дарна. Дутуу зүйл
+   байвал хянах самбар түүнийг нэрлэж, засах газар руу холбоос өгнө.
+
+Анх эхлэхэд бэлэн агентууд (Spec, Design, Plan, Tasks, Implement), skill-үүд болон гурван
+пайплайн өгөгдлийн санд суулгагдана. Хэн нэгэн өөрчилсөн зүйлийг дахин суулгахдаа дарж бичихгүй.
+
+### Загварын ажлын төлбөр
+
+**Тохиргоо → Claude CLI ба түлхүүрүүд** дээр хадгалсан итгэмжлэл хэн төлөхийг шийднэ:
+
+| Итгэмжлэл | Хаанаас | Юуг зарцуулна |
+|---|---|---|
+| API түлхүүр | Anthropic Console | Тухайн бүртгэлд хэрэглээгээр тооцогдоно |
+| Subscription token | Өөрийн машин дээр `claude setup-token` | Тэр Claude subscription-ы хэмжээ |
+
+Runner тэдгээрийг угтвараар нь ялгаж, Claude CLI-д `ANTHROPIC_API_KEY` эсвэл
+`CLAUDE_CODE_OAUTH_TOKEN`-ы зөвхөн нэгийг нь өгнө. Солих бол өөр итгэмжлэл хадгалахад л хангалттай.
+
+Subscription token-ыг сонгохоос өмнө хоёр зүйлийг анхаарна уу:
+
+- Түүний хязгаар нэг хүний интерактив ажилд зориулагдсан. Пайплайн хүнгүйгээр, заримдаа хэд хэдэн
+  алхмыг зэрэг ажиллуулдаг тул хязгаарт хүрвэл ажиллуулалт дараалалд орохын оронд амжилтгүй болно.
+- Удаан хүчинтэй ч мөнхийн биш. Хугацаа дуусахад бүх ажиллуулалт нэгэн зэрэг баталгаажуулалтын
+  алдаагаар унана.
+
+Бүрэн байршуулалтын заавар [docs/operations.md](./docs/operations.md)-д байна: тохиргоо, заавал
+товлох засвар үйлчилгээ, сүлжээний хил, түлхүүр солих, юуг хянах. Linux сервер дээр (systemd, TLS-тэй
+nginx) байршуулах нь [On a Linux server](./docs/operations.md#on-a-linux-server) хэсэгт, файлууд нь
+[infra/server/](./infra/server/)-д байна.
+
+## Шалгалт
+
+```bash
+bun run verify                  # lint, typecheck, audit, unit болон integration тест
+bun run e2e                     # browser тест
+```
+
+Тестүүд хуурамч биш, жинхэнэ Postgres дээр ажиллана. `bun run verify` бол CI-ийн ажиллуулдаг,
+салбарын давах ёстой шалгалт.
+
+Дөрвөн audit ганц функцээр харагдахгүй амжилтын шалгуурыг хамардаг — итгэмжлэл алдагдах,
+зэрэгцээ ажиллагааны өрсөлдөөн, sandbox суллах, эхний оролдлогоор амжилттай болох хувь:
 
 ```bash
 bun run audit:credentials --since 7d
 ```
 
-Each exits 0 for a pass, 1 for findings, and **2 for inconclusive** — meaning there was nothing to
-examine, so nothing was proved. Exit 2 is not a pass.
+Гарах код: 0 бол давсан, 1 бол асуудал олдсон, **2 бол тодорхойгүй** — шалгах зүйл байгаагүй тул юу
+ч батлагдаагүй гэсэн үг. 2 бол давсан гэсэн үг биш.
 
-## Layout
+## Бүтэц
 
 ```
-apps/web           SvelteKit — every screen, every remote function, the callback routes
-apps/runner        Executes every step and drives every run, as a daemon; the only component with execution rights
-packages/db        Drizzle schema and migrations — the single datastore
-packages/shared    Types and contracts both deployables agree on
-infra/sandbox      The image a run executes in under EXECUTION_HOST=docker, and Run it always
-scripts/           The maintenance pass, the audits, and the defaults installer
-docs/              Operations guide and the Phase 11 reviews
-specs/             The specification this was built from
+apps/web           SvelteKit — бүх дэлгэц, remote функц, callback маршрутууд, snapshot бэхлэх
+apps/runner        Алхам бүрийг гүйцэтгэж, ажиллуулалт бүрийг удирддаг daemon; гүйцэтгэх эрхтэй цорын ганц бүрэлдэхүүн
+packages/db        Drizzle схем ба migration — цорын ганц өгөгдлийн сан
+packages/shared    Хоёр байршуулгын тохирсон төрөл, гэрээнүүд
+infra/sandbox      EXECUTION_HOST=docker болон Run it-ийн ажилладаг зураг
+infra/runner       Гүйцэтгэлийн үйлчилгээг контейнерт байршуулах
+infra/server       systemd, nginx — Linux сервер дээр
+scripts/           dev, засвар үйлчилгээ, audit-ууд, бэлэн тохиргоо суулгагч
+docs/              Байршуулалтын заавар ба хяналтууд
+specs/             Энэ төслийг бүтээсэн тодорхойлолтууд
 ```
 
-## Where the specification lives
+## Тодорхойлолт хаана байдаг вэ
 
-This was built spec-first, and the specification is the source of truth rather than a description
-written afterwards:
+Энэ төсөл spec-ээс эхэлж бүтээгдсэн. Тодорхойлолт бол хожим бичсэн тайлбар биш, үнэний эх сурвалж:
 
-- [`spec.md`](./spec.md) — the product specification, screens 00–14, against `design.pen`
-- [`specs/001-code-factory-mvp/`](./specs/001-code-factory-mvp/) — the feature: requirements,
-  [plan](./specs/001-code-factory-mvp/plan.md),
-  [data model](./specs/001-code-factory-mvp/data-model.md),
-  [contracts](./specs/001-code-factory-mvp/contracts/),
-  [quickstart and validation scenarios](./specs/001-code-factory-mvp/quickstart.md), and the
-  [235 tasks](./specs/001-code-factory-mvp/tasks.md)
-- [`.specify/memory/constitution.md`](./.specify/memory/constitution.md) — the five principles the
-  code is held to. Comments throughout the source cite requirement identifiers (`FR-082`, `SC-014`)
-  so you can find what authorises a piece of behaviour
+- [`spec.md`](./spec.md) — бүтээгдэхүүний тодорхойлолт, `design.pen`-тэй тулгасан 00–14 дэлгэц
+- [`specs/001-code-factory-mvp/`](./specs/001-code-factory-mvp/) — шаардлага,
+  [төлөвлөгөө](./specs/001-code-factory-mvp/plan.md),
+  [өгөгдлийн загвар](./specs/001-code-factory-mvp/data-model.md),
+  [гэрээнүүд](./specs/001-code-factory-mvp/contracts/),
+  [ажлын жагсаалт](./specs/001-code-factory-mvp/tasks.md)
+- [`specs/`](./specs/) — дараагийн функцүүд (hosted runner sandbox, bento дизайн гэх мэт)
+- [`.specify/memory/constitution.md`](./.specify/memory/constitution.md) — кодын баримталдаг таван
+  зарчим
 
-Requirement identifiers in code comments are not decoration: they are how you tell a deliberate
-constraint from an accident.
+Кодын тайлбар дахь шаардлагын дугаарууд (`FR-082`, `SC-014`) чимэглэл биш: тэдгээрээр санаатай
+хязгаарлалтыг санамсаргүй алдаанаас ялгадаг.
 
-## State of it
+## Одоогийн байдал
 
-Every one of the 235 tasks is done. 494 unit and integration tests pass, and 37 of 40 browser tests;
-the three that are skipped need a GitLab or GitHub credential and a real repository, which do not
-exist in the environment this was built in.
-
-**No end-to-end run has ever executed**, and that is stated here rather than left to be found out.
-What is verified, what is not, and why is set out in
-[docs/operations.md](./docs/operations.md#what-has-not-been-run) and in the four reviews under
-[docs/reviews/](./docs/reviews/).
+Жинхэнэ репозитори, тикет дээр бүтэн ажиллуулалт хийгдэж, merge request нээгдэж байгаа. Сүүлд нэмэгдсэн өөрчлөлтүүдийн дараа бүтэн тест
+(`bun run verify`) хараахан ажиллуулаагүй: тикет бүрийн баримтын хавтас, салбарын нэрийн дагавар,
+хуучирсан файлын шалгалт, пайплайн солих. Юу шалгагдсан, юу шалгагдаагүйг
+[docs/operations.md](./docs/operations.md#what-has-not-been-run) болон
+[docs/reviews/](./docs/reviews/)-ээс харна уу.
