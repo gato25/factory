@@ -5,6 +5,7 @@ import { loadWebConfig } from '$lib/config';
 import { db } from '$lib/db';
 import { stepTitle } from '$lib/default-names';
 import { m } from '$lib/i18n';
+import { changePipeline } from '$lib/services/change-pipeline';
 import { continueRun } from '$lib/services/continue';
 import { attemptsOf, failureOf } from '$lib/services/failure';
 import { handOver, orchestratorAccess } from '$lib/services/orchestrator';
@@ -16,6 +17,7 @@ import {
   resumeRun,
   retryRun,
 } from '$lib/services/run';
+import { runnerRelease } from '$lib/services/sandbox';
 import { runForTicket } from './runs.remote';
 
 /**
@@ -243,5 +245,37 @@ export const openDesign = command(
         message: m.notice.designToolSilent,
       };
     }
+  },
+);
+
+/**
+ * The ticket onto another pipeline, or the edited version of its own, mid
+ * work: the current attempt is cancelled and a new one starts at the first
+ * step the earlier attempts did not already finish.
+ */
+export const switchPipeline = command(
+  v.object({ ticketId: TicketId, pipelineId: v.pipe(v.string(), v.uuid()) }),
+  async ({ ticketId, pipelineId }) => {
+    requireUser();
+    return attempt(async () => {
+      const config = loadWebConfig();
+      const access = await orchestratorAccess(db());
+      const { run, snapshot, carried } = await changePipeline(db(), {
+        ticketId,
+        pipelineId,
+        callbackBaseUrl: config.callbackBaseUrl,
+        releaseSandbox: runnerRelease({ baseUrl: access.baseUrl, authToken: access.token }),
+      });
+      const delivered = await handOver(db(), { runId: run.id, snapshot }, access);
+      await runForTicket(ticketId).refresh();
+      return {
+        ok: true,
+        runId: run.id,
+        attempt: run.attempt,
+        message: delivered.delivered
+          ? m.changePipeline.started(run.attempt, carried)
+          : m.changePipeline.notBegun(run.attempt, delivered.detail ?? ''),
+      };
+    });
   },
 );

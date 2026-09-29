@@ -86,7 +86,7 @@ export interface RunView {
     createdAt: Date;
   };
   repository: { name: string; fullPath: string; provider: string; defaultBranch: string };
-  pipeline: { name: string; version: number };
+  pipeline: { id: string; name: string; version: number };
   steps: StepView[];
   artifacts: {
     id: string;
@@ -192,7 +192,11 @@ export async function runView(database: Database, runId: string): Promise<RunVie
       provider: repository?.provider ?? '',
       defaultBranch: repository?.defaultBranch ?? '',
     },
-    pipeline: { name: snapshot.pipeline.name, version: snapshot.pipeline.version },
+    pipeline: {
+      id: snapshot.pipeline.id,
+      name: snapshot.pipeline.name,
+      version: snapshot.pipeline.version,
+    },
     steps,
     artifacts: artifactRows.map((a) => ({
       id: a.id,

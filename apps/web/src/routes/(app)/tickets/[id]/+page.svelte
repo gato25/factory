@@ -21,8 +21,10 @@
     failure,
     pause,
     retry,
+    switchPipeline,
     unpause
   } from '$lib/remote/run-actions.remote';
+  import { pipelines } from '$lib/remote/pipelines.remote';
   import { repositories } from '$lib/remote/repositories.remote';
   import { log, position, run, runForTicket } from '$lib/remote/runs.remote';
   import { start, ticket } from '$lib/remote/tickets.remote';
@@ -58,6 +60,10 @@
   let draftTitle = $state('');
   let draftDescription = $state('');
   let draftCriteria = $state('');
+  /** The pipeline picker, when open: which pipeline to continue on. */
+  let switching = $state(false);
+  let chosenPipeline = $state('');
+  const pipelineList = $derived(switching ? pipelines() : null);
 
   const failed = $derived(
     view.ready && view.current ? failure(view.current.run.id) : null
@@ -319,6 +325,43 @@
           </section>
         {/if}
 
+        <!-- Another pipeline, or the edited version of this one, mid work:
+             the attempt is cancelled and the next picks up after what is done. -->
+        {#if switching}
+          <section class="tile editor">
+            <h2>{m.changePipeline.action}</h2>
+            <label class="field">
+              <span class="label">{m.changePipeline.choose}</span>
+              <select bind:value={chosenPipeline}>
+                {#if pipelineList?.ready}
+                  {#each pipelineList.current as item (item.id)}
+                    <option value={item.id}>
+                      {pipelineName(item.name)} · {m.pipeline.version(item.currentVersion)}
+                    </option>
+                  {/each}
+                {/if}
+              </select>
+            </label>
+            <p class="small-note">{m.changePipeline.note}</p>
+            <div class="row">
+              <button type="button" class="btn btn--secondary" onclick={() => (switching = false)}
+                >{m.changePipeline.cancel}</button
+              >
+              <button
+                type="button"
+                class="btn"
+                disabled={working || !chosenPipeline}
+                onclick={async () => {
+                  await act(() => switchPipeline({ ticketId, pipelineId: chosenPipeline }));
+                  switching = false;
+                }}
+              >
+                {m.changePipeline.confirm}
+              </button>
+            </div>
+          </section>
+        {/if}
+
         <div class="run-tabs" role="tablist" aria-label={m.run.runView}>
           {#each TABS as t (t.id)}
             {@const n = t.id === 'artifacts' ? loaded.artifacts.length : 0}
@@ -491,6 +534,21 @@
               >
                 <Icon name="pencil" size={14} />
                 {m.run.editAndRetry}
+              </button>
+            {/if}
+            {#if loaded.run.status !== 'done' && loaded.run.status !== 'opening_mr'}
+              <button
+                type="button"
+                class="btn btn--secondary"
+                disabled={working}
+                title={m.changePipeline.title}
+                onclick={() => {
+                  chosenPipeline = loaded.pipeline.id;
+                  switching = true;
+                }}
+              >
+                <Icon name="git-branch" size={14} />
+                {m.changePipeline.action}
               </button>
             {/if}
           {/snippet}

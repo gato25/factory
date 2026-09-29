@@ -1420,4 +1420,22 @@ export const en: Messages = {
     or: 'or with email',
     signInNote: 'Signing in connects nothing. You add your repositories in the next step.',
   },
+  changePipeline: {
+    action: 'Change pipeline',
+    title: 'Continue this ticket on another pipeline, or on the edited version of its own',
+    choose: 'Pipeline',
+    confirm: 'Change and continue',
+    cancel: 'Cancel',
+    note: 'The current attempt is cancelled. The specification, plan and design already written are not redone — the new attempt starts at the next step.',
+    finished: (reference: string) =>
+      `${reference} has finished or is opening its merge request — its pipeline can no longer be changed.`,
+    noInterface: 'The ticket changes no interface',
+    carriedFrom: (attempt: number) => `Carried over from attempt ${attempt}`,
+    started: (attempt: number, carried: string[]) =>
+      carried.length > 0
+        ? `Attempt ${attempt} started on the new pipeline. Not redone: ${carried.join(', ')}.`
+        : `Attempt ${attempt} started on the new pipeline, from the beginning.`,
+    notBegun: (attempt: number, detail: string) =>
+      `Attempt ${attempt} was created but the runner has not taken it: ${detail}`,
+  },
 };
