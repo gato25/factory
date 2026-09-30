@@ -15,6 +15,9 @@ const config = {
   kit: {
     adapter: adapter(),
     alias: { $components: 'src/components' },
+    csrf: {
+      checkOrigin: false,
+    },
     experimental: {
       remoteFunctions: true,
     },
