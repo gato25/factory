@@ -8,6 +8,8 @@
   ],
   "scripts": {
     "dev": "bun scripts/dev.ts",
+    "build": "bun run --filter @factory/web build",
+    "start": "bun scripts/start.ts",
     "dev:web": "bun run --filter @factory/web dev",
     "dev:runner": "bun run --filter @factory/runner dev",
     "db:generate": "bun run --filter @factory/db generate",
