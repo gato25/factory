@@ -51,7 +51,7 @@ export const GET: RequestHandler = async ({ params, url, cookies }) => {
     cookies.set(
       SESSION_COOKIE,
       createSessionToken(user.id, config.sessionSecret),
-      { ...SESSION_COOKIE_OPTIONS, secure: url.protocol === 'https:' },
+      SESSION_COOKIE_OPTIONS,
     );
   } catch (error) {
     const problem =

@@ -56,7 +56,7 @@ export const actions: Actions = {
       cookies.set(
         SESSION_COOKIE,
         createSessionToken(user.id, loadWebConfig().sessionSecret),
-        { ...SESSION_COOKIE_OPTIONS, secure: url.protocol === 'https:' },
+        SESSION_COOKIE_OPTIONS,
       );
     } catch (error) {
       // A FactoryError is a refusal with a reason somebody can act on, and it
@@ -92,7 +92,7 @@ export const actions: Actions = {
       cookies.set(
         SESSION_COOKIE,
         createSessionToken(user.id, loadWebConfig().sessionSecret),
-        { ...SESSION_COOKIE_OPTIONS, secure: url.protocol === 'https:' },
+        SESSION_COOKIE_OPTIONS,
       );
     } catch (error) {
       const message =
